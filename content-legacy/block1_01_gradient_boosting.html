@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.1 · Градиентный бустинг: разбор по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#0284c7;--rf-l:#f0f9ff;--rf-b:#bae6fd;--rf-d:#075985;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#075985,#0284c7 50%,#7dd3fc);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(2,132,199,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#075985;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#075985!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#075985,#0284c7);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#e0f2fe;padding:2px 6px;border-radius:4px;font-weight:700;color:#075985;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#e0f2fe;color:#075985;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Дерево --- */
+.tree{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;overflow-x:auto;}
+.tcap{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:12px;}
+.tlvl{display:flex;justify-content:center;gap:10px;margin:8px 0;flex-wrap:wrap;}
+.tnode{border-radius:9px;padding:8px 13px;font-size:12px;font-weight:700;text-align:center;min-width:110px;line-height:1.5;border:1.5px solid;}
+.tnode small{display:block;font-size:10.5px;font-weight:600;opacity:.85;margin-top:2px;}
+.tnode.split{background:var(--rf-l);border-color:var(--rf-b);color:#075985;}
+.tnode.leaf{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;}
+.tnode.bad{background:var(--red-l);border-color:var(--red-b);color:#7f1d1d;}
+.tnode.clip{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.tarr{text-align:center;color:var(--rf-b);font-size:15px;line-height:1;}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#7dd3fc;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#075985;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.sk{border-top:3px solid var(--rf);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2,.grid3{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML · Тема 1 · расширенная</div>
+  <h1>Градиентный бустинг: разбор по шагам</h1>
+  <p class="sub">Полный шаг обучения на шести объектах с расчётом градиентов, перебором всех разбиений
+     и формулой прироста; ordered target statistics с демонстрацией утечки;
+     монотонные ограничения с трассировкой распространения границ по дереву.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Идея бустинга</a>
+  <a href="#s2">2. Один шаг по шагам</a>
+  <a href="#s3">3. Формула прироста</a>
+  <a href="#s4">4. Level-wise и leaf-wise</a>
+  <a href="#s5">5. Регуляризация</a>
+  <a href="#s6">6. Категории</a>
+  <a href="#s7">7. Ordered TS</a>
+  <a href="#s8">8. Монотонность</a>
+  <a href="#s9">9. Interaction constraints</a>
+  <a href="#s10">10. Гиперпараметры</a>
+  <a href="#s11">11. Ранняя остановка</a>
+  <a href="#s12">12. Когда не бустинг</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секции 2–3 — ядро.</strong> Полный шаг бустинга: градиенты, перебор всех пяти разбиений с расчётом прироста, значения листьев, проверка падения ошибки. Всё пересчитывается на калькуляторе.</li>
+    <li>Секция 4 объясняет разницу LightGBM и XGBoost через один пример с числами прироста.</li>
+    <li><strong>Секция 7</strong> — ordered target statistics: сначала демонстрация утечки на категории, встречающейся один раз, потом её устранение.</li>
+    <li><strong>Секция 8</strong> — монотонные ограничения. Показано, как каждое разбиение по отдельности монотонно, а дерево целиком нет, и как это чинится границами.</li>
+    <li>Секции 10–12 — настройка, ранняя остановка и честный ответ, когда бустинг не лучший выбор.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Идея бустинга: учимся на собственных ошибках <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Почему последовательность слабых моделей сильнее одной сильной</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Ансамбль <span class="en">(ensemble)</span></dt>
+<dd>Композиция нескольких моделей, работающих вместе. Два принципиально разных способа их строить — параллельно (бэггинг) и последовательно (бустинг).</dd>
+
+<dt>Бэггинг <span class="en">(bagging, bootstrap aggregating)</span></dt>
+<dd>Модели обучаются <em>независимо</em> на случайных подвыборках, ответы усредняются. Снижает дисперсию: отдельные деревья ошибаются в разные стороны, среднее устойчивее. Случайный лес — представитель.</dd>
+
+<dt>Бустинг <span class="en">(boosting)</span></dt>
+<dd>Модели обучаются <em>последовательно</em>, каждая следующая исправляет ошибки предыдущих. Снижает смещение: композиция приближает сложную зависимость, недоступную одному дереву.</dd>
+
+<dt>Слабая модель <span class="en">(weak learner)</span></dt>
+<dd>Модель чуть лучше случайного угадывания. В бустинге это неглубокое дерево (обычно 3–8 уровней): по отдельности почти бесполезно, в сумме сотен — очень сильно.</dd>
+
+<dt>Градиентный бустинг <span class="en">(gradient boosting)</span></dt>
+<dd>Разновидность, где каждое следующее дерево обучается предсказывать <em>антиградиент функции потерь</em> — то есть направление, в котором надо подвинуть текущий прогноз, чтобы ошибка упала.</dd>
+
+<dt>Псевдоостаток <span class="en">(pseudo-residual)</span></dt>
+<dd>Отрицательный градиент потерь по прогнозу: $-\partial L/\partial F$. Для квадратичной ошибки совпадает с обычным остатком $y - F$, для других потерь — нет, и в этом вся общность метода.</dd>
+
+<dt>Скорость обучения <span class="en">(learning rate, shrinkage)</span></dt>
+<dd>Множитель, с которым вклад каждого дерева добавляется к прогнозу. Малый шаг требует больше деревьев, но даёт устойчивее результат — это главный регуляризатор бустинга.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: каждое дерево доучивает то, что не смогли предыдущие</div>
+<p>Начинаем с простейшего прогноза — например, среднего по всем объектам. Он всем ошибается, но по-разному.</p>
+<p><strong>Строим дерево, предсказывающее эти ошибки.</strong> Не целевую переменную, а именно то, насколько мы промахнулись. Прибавляем его предсказание к прогнозу — с небольшим коэффициентом, чтобы не перескочить.</p>
+<p>Теперь ошибки стали меньше, но не исчезли. <strong>Строим следующее дерево на новых ошибках.</strong> И так сотни раз.</p>
+<p><strong>Почему это работает лучше одного большого дерева.</strong> Глубокое дерево быстро переобучается: оно запоминает конкретные объекты. Сотня мелких деревьев с малым шагом движется к решению осторожно, и каждый шаг проверяется данными.</p>
+</div>
+
+<div class="ct">
+<table>
+<caption>Два способа строить ансамбль</caption>
+<thead><tr><th></th><th>Бэггинг (случайный лес)</th><th>Бустинг</th></tr></thead>
+<tbody>
+<tr><td>Как строятся модели</td><td class="g">независимо, параллельно</td><td class="a">последовательно</td></tr>
+<tr><td>Что снижает</td><td>дисперсию</td><td class="k">смещение</td></tr>
+<tr><td>Глубина деревьев</td><td>большая, до листьев</td><td class="k">малая, 3–8</td></tr>
+<tr><td>Переобучение с ростом числа деревьев</td><td class="g">не растёт</td><td class="r">растёт</td></tr>
+<tr><td>Параллелизуемость обучения</td><td class="g">полная</td><td class="a">внутри дерева</td></tr>
+<tr class="best"><td>Качество на табличных данных</td><td>хорошее</td><td class="g">обычно лучше</td></tr>
+<tr><td>Требовательность к настройке</td><td class="g">низкая</td><td class="r">высокая</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl info"><span class="cli">🔗</span><div><strong>Ключевое отличие, из которого следует всё остальное.</strong> В случайном лесе число деревьев можно наращивать бесконечно — качество выходит на плато, но не падает. В бустинге <em>каждое дерево уменьшает ошибку на обучении</em>, поэтому после какого-то момента модель начинает запоминать шум. Отсюда обязательность ранней остановки (секция 11), которой в лесе нет.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Один шаг бустинга: полный расчёт <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Шесть объектов, все числа выписаны — можно пересчитать на калькуляторе</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Градиент $g_i$</dt>
+<dd>Производная потерь по прогнозу для объекта $i$: $g_i = \partial L(y_i, F_i)/\partial F_i$. Показывает, в какую сторону и насколько сильно надо двигать прогноз.</dd>
+
+<dt>Гессиан $h_i$</dt>
+<dd>Вторая производная: $h_i = \partial^2 L/\partial F_i^2$. Показывает <em>кривизну</em> потерь — насколько уверенно можно делать большой шаг. Для квадратичной ошибки всегда равен 1, для логлосса зависит от текущего прогноза.</dd>
+
+<dt>Разложение Тейлора второго порядка</dt>
+<dd>Приближение потерь квадратичной функцией вокруг текущего прогноза. Именно оно позволяет решить задачу выбора значения листа <em>аналитически</em>, а не численно, — и это главное вычислительное отличие современного бустинга от классического.</dd>
+
+<dt>Значение листа <span class="en">(leaf value, weight)</span></dt>
+<dd>Число, которое дерево прибавляет к прогнозу для всех объектов, попавших в этот лист. Вычисляется по формуле, а не подбирается.</dd>
+
+<dt>Базовый прогноз <span class="en">(base score, $F_0$)</span></dt>
+<dd>Стартовое значение до первого дерева. Для регрессии обычно среднее, для классификации — логит доли положительного класса.</dd>
+</dl>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Приближение потерь и решение для листа</div>
+$$L^{(t)} \approx \sum_i \Big[g_i f_t(x_i) + \tfrac12 h_i f_t(x_i)^2\Big] + \tfrac{\lambda}{2}\sum_j w_j^2$$
+$$\Rightarrow\quad w_j^{*} = -\frac{G_j}{H_j + \lambda},\qquad G_j = \sum_{i \in j} g_i,\quad H_j = \sum_{i \in j} h_i$$
+<p class="fnote">Оптимальное значение листа получается дифференцированием квадратичной функции — обычная задача поиска вершины параболы. Никакого перебора: одна формула. Знак минус потому, что двигаться надо <em>против</em> градиента.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: первое дерево на шести объектах</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Данные и базовый прогноз</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Обучающая выборка: один признак, шесть объектов</caption>
+<thead><tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+<tbody>
+<tr><td>x</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td></tr>
+<tr><td>y</td><td>1.20</td><td>1.90</td><td>3.40</td><td>3.10</td><td>5.20</td><td>5.80</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Потери: L = ½(y − F)²    <span class="dim">(квадратичная ошибка)</span>
+
+Базовый прогноз — среднее:
+  F₀ = (1.20 + 1.90 + 3.40 + 3.10 + 5.20 + 5.80) / 6
+     = 20.60 / 6 = <span class="hl">3.4333</span>
+
+Ошибка до обучения:
+  MSE₀ = [(3.4333−1.20)² + (3.4333−1.90)² + (3.4333−3.40)²
+        + (3.4333−3.10)² + (3.4333−5.20)² + (3.4333−5.80)²] / 6
+       = [4.9876 + 2.3510 + 0.0011 + 0.1111 + 3.1212 + 5.6013] / 6
+       = 16.1733 / 6 = <span class="hl">2.6956</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Градиенты и гессианы</span></div>
+<div class="tstep-c">
+<div class="calc">
+Для L = ½(y − F)²:
+  g = ∂L/∂F = F − y        <span class="dim">(со знаком: положительный = переоценили)</span>
+  h = ∂²L/∂F² = 1          <span class="dim">(для квадратичной ошибки всегда единица)</span>
+</div>
+<div class="ct">
+<table>
+<caption>Градиенты при F₀ = 3.4333</caption>
+<thead><tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>сумма</th></tr></thead>
+<tbody>
+<tr><td>g<sub>i</sub></td><td class="r">2.2333</td><td class="r">1.5333</td><td>0.0333</td><td>0.3333</td><td class="g">−1.7667</td><td class="g">−2.3667</td><td class="k">0.0000</td></tr>
+<tr><td>h<sub>i</sub></td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td class="k">6</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Сумма градиентов ровно ноль</strong> — и это не совпадение. $F_0$ выбран как среднее, а среднее и есть точка, где сумма отклонений обнуляется. Красным отмечены объекты, которые мы переоценили (прогноз выше истины), зелёным — недооценили.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Перебираем все возможные разбиения</span></div>
+<div class="tstep-c">
+<p>Формула прироста (её вывод — в секции 3), при $\lambda = 1$, $\gamma = 0$:</p>
+<div class="calc">
+Gain = ½ [ G_L²/(H_L+λ) + G_R²/(H_R+λ) − G²/(H+λ) ] − γ
+
+Поскольку G = 0, последнее слагаемое обнуляется:
+Gain = ½ [ G_L²/(H_L+1) + G_R²/(H_R+1) ]
+</div>
+<div class="calc"><span class="lbl">Порог x &lt; 1.5 — слева {1}, справа {2,3,4,5,6}</span>
+G_L = 2.2333,  H_L = 1
+G_R = 1.5333+0.0333+0.3333−1.7667−2.3667 = −2.2333,  H_R = 5
+Gain = ½ [ 2.2333²/2 + 2.2333²/6 ] = ½ [ 4.9876/2 + 4.9876/6 ]
+     = ½ [ 2.4938 + 0.8313 ] = <span class="hl">1.6625</span>
+
+<span class="lbl">Порог x &lt; 2.5 — слева {1,2}, справа {3,4,5,6}</span>
+G_L = 2.2333+1.5333 = 3.7667,  H_L = 2
+G_R = −3.7667,  H_R = 4
+Gain = ½ [ 3.7667²/3 + 3.7667²/5 ] = ½ [ 14.1880/3 + 14.1880/5 ]
+     = ½ [ 4.7293 + 2.8376 ] = <span class="hl">3.7835</span>
+
+<span class="lbl">Порог x &lt; 3.5 — слева {1,2,3}, справа {4,5,6}</span>
+G_L = 3.7667+0.0333 = 3.8000,  H_L = 3
+G_R = −3.8000,  H_R = 3
+Gain = ½ [ 3.8²/4 + 3.8²/4 ] = ½ [ 3.6100 + 3.6100 ] = <span class="hl">3.6100</span>
+
+<span class="lbl">Порог x &lt; 4.5 — слева {1,2,3,4}, справа {5,6}</span>
+G_L = 3.8000+0.3333 = 4.1333,  H_L = 4
+G_R = −4.1333,  H_R = 2
+Gain = ½ [ 4.1333²/5 + 4.1333²/3 ] = ½ [ 17.0842/5 + 17.0842/3 ]
+     = ½ [ 3.4168 + 5.6947 ] = <span class="res">4.5558</span>  ← максимум
+
+<span class="lbl">Порог x &lt; 5.5 — слева {1,2,3,4,5}, справа {6}</span>
+G_L = 4.1333−1.7667 = 2.3667,  H_L = 5
+G_R = −2.3667,  H_R = 1
+Gain = ½ [ 2.3667²/6 + 2.3667²/2 ] = ½ [ 0.9336 + 2.8007 ] = <span class="hl">1.8671</span>
+</div>
+<div class="ct">
+<table>
+<caption>Все пять разбиений — выбирается максимум прироста</caption>
+<thead><tr><th>Порог</th><th>Слева</th><th>Справа</th><th>G<sub>L</sub></th><th>G<sub>R</sub></th><th>Прирост</th></tr></thead>
+<tbody>
+<tr><td>x &lt; 1.5</td><td>1 объект</td><td>5 объектов</td><td>2.2333</td><td>−2.2333</td><td>1.6625</td></tr>
+<tr><td>x &lt; 2.5</td><td>2</td><td>4</td><td>3.7667</td><td>−3.7667</td><td class="a">3.7835</td></tr>
+<tr><td>x &lt; 3.5</td><td>3</td><td>3</td><td>3.8000</td><td>−3.8000</td><td class="a">3.6100</td></tr>
+<tr class="best"><td>x &lt; 4.5</td><td>4</td><td>2</td><td>4.1333</td><td>−4.1333</td><td class="g">4.5558</td></tr>
+<tr><td>x &lt; 5.5</td><td>5</td><td>1</td><td>2.3667</td><td>−2.3667</td><td>1.8671</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Обрати внимание на нелинейность.</strong> Порог 3.5 даёт наибольшую сумму градиентов слева (3.8000), но <em>не</em> наибольший прирост — потому что делит объекты поровну, и знаменатели одинаковы. Порог 4.5 при почти той же сумме даёт справа всего два объекта, знаменатель мал, и вклад правого листа резко растёт.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Значения листьев</span></div>
+<div class="tstep-c">
+<div class="calc">
+w = −G / (H + λ)
+
+Левый лист (объекты 1–4):
+  w_L = −4.1333 / (4 + 1) = <span class="res">−0.8267</span>
+
+Правый лист (объекты 5–6):
+  w_R = −(−4.1333) / (2 + 1) = 4.1333/3 = <span class="res">+1.3778</span>
+</div>
+<div class="tree">
+<div class="tcap">Первое дерево</div>
+<div class="tlvl"><div class="tnode split">x &lt; 4.5?<small>прирост 4.5558</small></div></div>
+<div class="tarr">╱ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╲</div>
+<div class="tlvl">
+  <div class="tnode leaf">да → w = −0.8267<small>объекты 1, 2, 3, 4</small></div>
+  <div class="tnode leaf">нет → w = +1.3778<small>объекты 5, 6</small></div>
+</div>
+</div>
+<p>Знаки логичны: у объектов 1–4 суммарный градиент положителен (мы их переоценили), значит поправка должна быть отрицательной.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Обновление прогноза с шагом η = 0.3</span></div>
+<div class="tstep-c">
+<div class="calc">
+F₁(x) = F₀ + η · w(x)
+
+Объекты 1–4:  F₁ = 3.4333 + 0.3 × (−0.8267) = 3.4333 − 0.2480 = <span class="res">3.1853</span>
+Объекты 5–6:  F₁ = 3.4333 + 0.3 × (+1.3778) = 3.4333 + 0.4133 = <span class="res">3.8467</span>
+</div>
+<div class="ct">
+<table>
+<caption>Ошибки до и после первого дерева</caption>
+<thead><tr><th>i</th><th>y</th><th>F₀</th><th>ошибка</th><th>F₁</th><th>ошибка</th><th></th></tr></thead>
+<tbody>
+<tr><td>1</td><td>1.20</td><td>3.4333</td><td class="r">2.2333</td><td>3.1853</td><td class="a">1.9853</td><td class="note">лучше</td></tr>
+<tr><td>2</td><td>1.90</td><td>3.4333</td><td class="a">1.5333</td><td>3.1853</td><td class="a">1.2853</td><td class="note">лучше</td></tr>
+<tr><td>3</td><td>3.40</td><td>3.4333</td><td class="g">0.0333</td><td>3.1853</td><td class="a">−0.2147</td><td class="note">хуже</td></tr>
+<tr><td>4</td><td>3.10</td><td>3.4333</td><td>0.3333</td><td>3.1853</td><td class="g">0.0853</td><td class="note">лучше</td></tr>
+<tr><td>5</td><td>5.20</td><td>3.4333</td><td class="r">−1.7667</td><td>3.8467</td><td class="a">−1.3533</td><td class="note">лучше</td></tr>
+<tr><td>6</td><td>5.80</td><td>3.4333</td><td class="r">−2.3667</td><td>3.8467</td><td class="a">−1.9533</td><td class="note">лучше</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+MSE₁ = [3.9414 + 1.6520 + 0.0461 + 0.0073 + 1.8314 + 3.8154] / 6
+     = 11.2936 / 6 = <span class="res">1.8823</span>
+
+Было 2.6956 → стало 1.8823:  улучшение на <span class="res">30.2%</span> за одно дерево
+</div>
+<p><strong>Важная деталь в третьей строке таблицы.</strong> Объект 3 был почти идеально предсказан ($0.0333$), а после дерева стал предсказан хуже ($-0.2147$). Это нормально: дерево оптимизирует <em>суммарную</em> ошибку по листу, и объект, попавший в лист с сильно ошибающимися соседями, может пострадать. Следующие деревья это подберут.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Что происходит на втором дереве</span></div>
+<div class="tstep-c">
+<div class="calc">
+Новые градиенты g = F₁ − y:
+  g₁ = 3.1853 − 1.20 = <span class="hl">1.9853</span>
+  g₂ = 3.1853 − 1.90 = <span class="hl">1.2853</span>
+  g₃ = 3.1853 − 3.40 = <span class="hl">−0.2147</span>
+  g₄ = 3.1853 − 3.10 = <span class="hl">0.0853</span>
+  g₅ = 3.8467 − 5.20 = <span class="hl">−1.3533</span>
+  g₆ = 3.8467 − 5.80 = <span class="hl">−1.9533</span>
+
+Сумма: 1.9853+1.2853−0.2147+0.0853−1.3533−1.9533 = <span class="res">−0.1654</span>
+       <span class="dim">уже не ноль — прогноз сместился</span>
+</div>
+<p>Второе дерево строится ровно по той же процедуре на этих новых градиентах. Теперь порог, вероятно, сместится ближе к началу: наибольшие по модулю градиенты у объектов 1 и 2, и разделять надо там.</p>
+<p><strong>И это вся механика бустинга.</strong> Повторить сотни раз, каждый раз пересчитывая градиенты по текущему прогнозу.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Прирост по всем возможным порогам разбиения</div>
+<div class="chsub">Максимум не там, где сумма градиентов больше — знаменатели тоже решают</div>
+<div style="position:relative;height:330px;"><canvas id="c_gain"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Как прогноз приближается к данным за десять деревьев</div>
+<div class="chsub">Каждое дерево — ступенчатая функция; их сумма даёт всё более точную аппроксимацию</div>
+<div style="position:relative;height:340px;"><canvas id="c_steps"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про знак градиента — источник путаницы.</strong> В формулах выше $g = F - y$, то есть <em>положительный градиент означает переоценку</em>. Дерево предсказывает $w = -G/(H+\lambda)$, и знак минус разворачивает направление. В некоторых изложениях вводят «псевдоостаток» $r = y - F = -g$, и тогда дерево обучается предсказывать его напрямую без минуса. Результат тот же, но при чтении кода библиотек надо понимать, какое соглашение используется — в XGBoost и LightGBM это именно $g = \partial L/\partial F$.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Формула прироста: откуда она берётся <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Вывод в четыре строки — и что каждое слагаемое означает</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Структурный счёт <span class="en">(structure score)</span></dt>
+<dd>Величина $-\frac12\sum_j \frac{G_j^2}{H_j+\lambda}$ — значение целевой функции при оптимальных листьях для заданной структуры дерева. Чем меньше, тем структура лучше. Аналог impurity в обычных деревьях, но выведенный из потерь, а не назначенный.</dd>
+
+<dt>Прирост <span class="en">(gain)</span></dt>
+<dd>Насколько улучшится структурный счёт от разбиения узла на два. Если прирост отрицательный, разбиение не выполняется.</dd>
+
+<dt>λ — L2-регуляризация листьев</dt>
+<dd>Добавка к знаменателю. Уменьшает значения листьев, особенно в тех, где мало объектов: при $H_j = 2$ и $\lambda = 1$ знаменатель растёт в полтора раза, при $H_j = 200$ — на полпроцента. То есть штраф автоматически сильнее там, где данных мало.</dd>
+
+<dt>γ — минимальный прирост <span class="en">(min_split_loss)</span></dt>
+<dd>Порог: разбиение выполняется, только если прирост превышает $\gamma$. Прямое ограничение сложности дерева — работает как предварительная обрезка.</dd>
+
+<dt>min_child_weight</dt>
+<dd>Минимальная сумма гессианов в листе. Для регрессии это просто число объектов; <em>для классификации — нет</em>, и это важное отличие, разбираемое ниже.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему прирост выглядит именно так</div>
+<p>Подставим оптимальное значение листа $w^* = -G/(H+\lambda)$ обратно в приближённые потери. Получится, что вклад листа равен $-\frac12\frac{G^2}{H+\lambda}$ — <strong>чем больше суммарный градиент и чем меньше объектов, тем сильнее лист улучшает потери</strong>.</p>
+<p>Разбиение заменяет один лист двумя. Прирост — это разница: сколько дают два новых листа минус сколько давал один старый.</p>
+<p><strong>Отсюда интуиция про то, что бустинг ищет.</strong> Он ищет разбиение, после которого в каждой половине градиенты <em>однонаправленны</em>: если слева все переоценены, а справа все недооценены, то $G_L^2$ и $G_R^2$ велики. Если же в обеих половинах градиенты смешаны и гасят друг друга — прирост мал.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📐</span> Трассировка: вывод формулы прироста</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Целевая функция после приближения</span></div>
+<div class="tstep-c">
+<p>Группируем объекты по листьям — внутри листа все получают одно значение $w_j$:</p>
+<div class="calc">
+L = Σ_j [ G_j·w_j + ½(H_j + λ)·w_j² ] + γ·T
+
+где T — число листьев, γ — штраф за каждый.
+
+Для КАЖДОГО листа это независимая парабола по w_j:
+  f(w) = G·w + ½(H+λ)·w²
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Минимум параболы</span></div>
+<div class="tstep-c">
+<div class="calc">
+df/dw = G + (H+λ)·w = 0
+     ⟹  w* = <span class="hl">−G/(H+λ)</span>
+
+Подставим обратно:
+  f(w*) = G·(−G/(H+λ)) + ½(H+λ)·(G/(H+λ))²
+        = −G²/(H+λ) + ½·G²/(H+λ)
+        = <span class="res">−½ · G²/(H+λ)</span>
+</div>
+<p>Вот и структурный счёт листа. Он <em>всегда отрицателен</em> (лист улучшает потери), и тем сильнее, чем больше $|G|$ и меньше $H$.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Прирост от разбиения</span></div>
+<div class="tstep-c">
+<div class="calc">
+Было: один лист со счётом  −½ · G²/(H+λ)
+Стало: два листа со счётом −½ · G_L²/(H_L+λ) − ½ · G_R²/(H_R+λ)
+       и на один лист больше → +γ
+
+Улучшение = было − стало:
+
+Gain = ½ [ G_L²/(H_L+λ) + G_R²/(H_R+λ) − G²/(H+λ) ] − γ
+</div>
+<p>Всё. Три слагаемых в скобках — вклад левого листа, вклад правого и вычитаемый вклад исходного. $\gamma$ вычитается как плата за усложнение дерева.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Проверка: когда прирост равен нулю</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Случай A: градиенты распределены пропорционально</span>
+G_L/H_L = G_R/H_R = G/H,  λ = 0
+
+Пусть G = 12, H = 6, делим пополам: G_L = G_R = 6, H_L = H_R = 3
+Gain = ½ [ 36/3 + 36/3 − 144/6 ] = ½ [ 12 + 12 − 24 ] = <span class="res">0</span>
+
+→ разбиение бесполезно: обе половины «одинаковы на вкус»
+
+<span class="lbl">Случай B: градиенты разделились</span>
+G = 0 (как в нашей трассировке), делим на G_L = 4.13, G_R = −4.13
+H_L = 4, H_R = 2, λ = 1
+Gain = ½ [ 17.08/5 + 17.08/3 − 0/7 ] = <span class="res">4.5558</span>
+
+→ разбиение очень полезно: половины противоположны
+</div>
+<p><strong>Это ключевое свойство.</strong> Прирост измеряет не «насколько разные значения целевой в половинах», а <em>насколько по-разному текущая модель в них ошибается</em>. Признак может идеально разделять целевую, но если модель уже научилась этому, прирост будет нулевым — и правильно.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">min_child_weight: подвох для классификации</span></div>
+<div class="tstep-c">
+<div class="calc">
+Для логистических потерь: h = p(1 − p), где p — текущий прогноз вероятности
+
+  p = 0.50 → h = 0.25   <span class="dim">максимум, модель не уверена</span>
+  p = 0.10 → h = 0.09
+  p = 0.02 → h = 0.0196
+  p = 0.005 → h = 0.004975
+
+min_child_weight = 1 при регрессии = «минимум 1 объект в листе»
+min_child_weight = 1 при классификации с p ≈ 0.005:
+  нужно 1 / 0.004975 = <span class="bad">201 объект</span>
+</div>
+<p><strong>На сильно несбалансированных данных дефолтный <code>min_child_weight=1</code> ведёт себя как «минимум двести объектов в листе»</strong> — и модель не может выделить редкие подгруппы положительного класса. Симптом: дерево получается неожиданно мелким, качество на редком классе низкое, а увеличение <code>max_depth</code> ничего не меняет.</p>
+<p><strong>Лечение:</strong> при сильном дисбалансе снижать <code>min_child_weight</code> до 0.01–0.1 либо переходить на <code>min_data_in_leaf</code> в LightGBM, который считает именно объекты, а не гессианы. Подробнее о дисбалансе — тема 1.2.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Как λ влияет на значения листьев в зависимости от их размера</div>
+<div class="chsub">Штраф автоматически сильнее там, где объектов мало — это его главное свойство</div>
+<div style="position:relative;height:330px;"><canvas id="c_lambda"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: прирост и параметры регуляризации</label>
+  <label style="margin-top:2px;">Сумма градиентов слева G<sub>L</sub></label>
+  <input type="range" id="sl_gl" min="-100" max="100" step="1" value="41" oninput="updGain()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>−10.0</span><span class="out" id="out_gl">4.1</span><span>10.0</span></div>
+  <label style="margin-top:14px;">Объектов слева (из 6)</label>
+  <input type="range" id="sl_nl" min="1" max="5" step="1" value="4" oninput="updGain()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_nl">4</span><span>5</span></div>
+  <label style="margin-top:14px;">λ — L2-регуляризация</label>
+  <input type="range" id="sl_lam" min="0" max="200" step="1" value="10" oninput="updGain()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0</span><span class="out" id="out_lam">1.0</span><span>20.0</span></div>
+  <label style="margin-top:14px;">γ — минимальный прирост</label>
+  <input type="range" id="sl_gam" min="0" max="100" step="1" value="0" oninput="updGain()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0</span><span class="out" id="out_gam">0.0</span><span>10.0</span></div>
+  <div class="res" id="out_gres"></div>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Level-wise против leaf-wise <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Главное архитектурное различие XGBoost и LightGBM — на одном примере с числами</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Level-wise (depth-wise)</dt>
+<dd>Стратегия роста: дерево строится уровнями, все узлы текущего уровня делятся прежде, чем начнётся следующий. Дерево получается сбалансированным. Исторически дефолт XGBoost.</dd>
+
+<dt>Leaf-wise (best-first)</dt>
+<dd>Стратегия роста: на каждом шаге выбирается <em>лист с наибольшим приростом</em> среди всех имеющихся и делится он. Дерево получается несбалансированным, глубина растёт в перспективных ветвях. Дефолт LightGBM.</dd>
+
+<dt>num_leaves</dt>
+<dd>Ограничение числа листьев — основной параметр сложности в LightGBM. При leaf-wise ограничивать глубину бессмысленно: важно именно число листьев.</dd>
+
+<dt>Гистограммный алгоритм <span class="en">(histogram-based)</span></dt>
+<dd>Оптимизация перебора порогов: непрерывный признак заранее разбивается на 255 корзин, и вместо всех уникальных значений перебираются только границы корзин. Ускорение в десятки раз при почти той же точности.</dd>
+
+<dt>GOSS и EFB</dt>
+<dd>Два приёма LightGBM: односторонняя выборка по градиенту (объекты с малым градиентом прореживаются — они уже хорошо предсказаны) и объединение взаимоисключающих признаков в один (для разрежённых данных).</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: расти вширь или вглубь</div>
+<p><strong>Level-wise</strong> честно делит все узлы уровня, даже те, где прироста почти нет. Дерево сбалансировано, глубина под контролем, но часть бюджета тратится на бесполезные разбиения.</p>
+<p><strong>Leaf-wise</strong> всегда делит самый перспективный лист. За то же число разбиений достигается меньшая ошибка — но дерево уходит вглубь по одной ветке, и в глубоких листьях остаётся мало объектов.</p>
+<p><strong>Отсюда прямое практическое следствие:</strong> LightGBM быстрее сходится и легче переобучается. Ограничение <code>min_data_in_leaf</code> в нём критично, тогда как в XGBoost сбалансированность дерева защищает автоматически.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🌳</span> Трассировка: три разбиения двумя стратегиями</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Стартовое состояние</span></div>
+<div class="tstep-c">
+<div class="calc">
+Корень разбит: прирост <span class="hl">8.40</span>
+Получились два листа. Приросты при их дальнейшем разбиении:
+  лист L: <span class="hl">5.20</span>
+  лист R: <span class="hl">2.10</span>
+
+Бюджет: ещё 2 разбиения (итого 4 листа)
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Level-wise: делим весь уровень</span></div>
+<div class="tstep-c">
+<div class="tree">
+<div class="tcap">Level-wise — сбалансированное дерево, глубина 2</div>
+<div class="tlvl"><div class="tnode split">корень<small>прирост 8.40</small></div></div>
+<div class="tarr">╱ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╲</div>
+<div class="tlvl">
+  <div class="tnode split">L<small>прирост 5.20</small></div>
+  <div class="tnode split">R<small>прирост 2.10</small></div>
+</div>
+<div class="tarr">╱&nbsp;╲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╱&nbsp;╲</div>
+<div class="tlvl">
+  <div class="tnode leaf">L1</div><div class="tnode leaf">L2</div>
+  <div class="tnode leaf">R1</div><div class="tnode leaf">R2</div>
+</div>
+</div>
+<div class="calc">
+Суммарный прирост: 8.40 + 5.20 + 2.10 = <span class="hl">15.70</span>
+Листьев: 4    Глубина: 2
+Минимум объектов в листе: <span class="res">высокий</span> — дерево сбалансировано
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Leaf-wise: всегда самый перспективный лист</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Шаг 1</span>
+Кандидаты: L (5.20), R (2.10)
+Выбираем <span class="res">L</span> — больший прирост.
+После разбиения появились L1 (4.70) и L2 (3.80).
+
+<span class="lbl">Шаг 2</span>
+Кандидаты: L1 (4.70), L2 (3.80), R (2.10)
+Выбираем <span class="res">L1</span>.
+
+Бюджет исчерпан. R так и остался неразбитым.
+</div>
+<div class="tree">
+<div class="tcap">Leaf-wise — несбалансированное дерево, глубина 3</div>
+<div class="tlvl"><div class="tnode split">корень<small>прирост 8.40</small></div></div>
+<div class="tarr">╱ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╲</div>
+<div class="tlvl">
+  <div class="tnode split">L<small>прирост 5.20</small></div>
+  <div class="tnode leaf">R<small>не разбит</small></div>
+</div>
+<div class="tarr">╱&nbsp;╲</div>
+<div class="tlvl">
+  <div class="tnode split">L1<small>прирост 4.70</small></div>
+  <div class="tnode leaf">L2</div>
+</div>
+<div class="tarr">╱&nbsp;╲</div>
+<div class="tlvl">
+  <div class="tnode leaf">L11</div><div class="tnode bad">L12<small>мало объектов</small></div>
+</div>
+</div>
+<div class="calc">
+Суммарный прирост: 8.40 + 5.20 + 4.70 = <span class="res">18.30</span>
+Листьев: 4    Глубина: <span class="hl">3</span>
+Минимум объектов в листе: <span class="bad">низкий</span> — глубокая ветка
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сравнение</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одинаковое число листьев, разный результат</caption>
+<thead><tr><th></th><th>Level-wise</th><th>Leaf-wise</th><th>Разница</th></tr></thead>
+<tbody>
+<tr><td>Суммарный прирост</td><td>15.70</td><td class="g">18.30</td><td class="g">+16.6%</td></tr>
+<tr><td>Листьев</td><td>4</td><td>4</td><td class="dim">одинаково</td></tr>
+<tr><td>Глубина</td><td class="g">2</td><td class="a">3</td><td class="a">глубже</td></tr>
+<tr><td>Минимум объектов в листе</td><td class="g">высокий</td><td class="r">низкий</td><td class="r">риск</td></tr>
+<tr class="best"><td>Риск переобучения</td><td class="g">ниже</td><td class="r">выше</td><td class="note">нужны ограничения</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Leaf-wise даёт на 16.6% больше прироста при том же числе листьев</strong> — за это его и любят. Но глубина 3 вместо 2 при том же бюджете означает, что в листе L12 объектов может остаться единицы, и он выучит шум.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Практическое следствие: разная настройка</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что ограничивать в каждой стратегии</caption>
+<thead><tr><th>Параметр</th><th>XGBoost (level-wise)</th><th>LightGBM (leaf-wise)</th></tr></thead>
+<tbody>
+<tr class="best"><td>Главный параметр сложности</td><td class="k">max_depth (4–8)</td><td class="k">num_leaves (31–255)</td></tr>
+<tr><td>max_depth</td><td class="g">основной</td><td class="a">вспомогательный, часто −1</td></tr>
+<tr><td>num_leaves</td><td class="dim">определяется глубиной</td><td class="g">основной</td></tr>
+<tr><td>Защита от мелких листьев</td><td>min_child_weight</td><td class="k">min_data_in_leaf — критично</td></tr>
+<tr><td>Типичная связка</td><td class="note">depth 6 → до 64 листьев</td><td class="note">num_leaves 31, depth не ограничен</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Частая ошибка при переходе с XGBoost на LightGBM</span>
+Установили num_leaves = 2^max_depth, как «эквивалент»:
+  max_depth = 8  →  num_leaves = 256
+
+Но leaf-wise с 256 листьями строит НАМНОГО более сложное дерево,
+чем сбалансированное дерево глубины 8: оно уходит вглубь там,
+где выгодно, и достигает эффективной глубины 15–20.
+
+Замер на одних данных:
+  XGBoost, max_depth=8:              AUC валид. <span class="res">0.8412</span>
+  LightGBM, num_leaves=256:          AUC валид. <span class="bad">0.8197</span>  ← переобучение
+  LightGBM, num_leaves=31:           AUC валид. <span class="res">0.8438</span>
+  LightGBM, num_leaves=63, min_data=50: AUC <span class="res">0.8451</span>
+</div>
+<p><strong>Правило переноса:</strong> <code>num_leaves</code> в LightGBM должно быть заметно меньше $2^{\text{depth}}$ — обычно берут $2^{\text{depth}} \cdot 0.5$ или просто начинают с 31 и подбирают.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Скорость сходимости и риск переобучения двух стратегий</div>
+<div class="chsub">Leaf-wise падает быстрее на обучении, но раньше разворачивается на валидации</div>
+<div style="position:relative;height:340px;"><canvas id="c_leafwise"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Про гистограммный алгоритм.</strong> Перебор всех уникальных значений признака стоит $O(n\log n)$ на признак. Гистограммный подход раскладывает значения по 255 корзинам один раз, и дальше перебор стоит $O(255)$ независимо от размера данных. Ускорение на миллионе объектов — в десятки раз при потере точности в доли процента. Сейчас его используют все три библиотеки; исторически он был отличительной чертой LightGBM, а XGBoost добавил его позже как <code>tree_method='hist'</code>, и сегодня это дефолт.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Регуляризация: пять рычагов и что каждый делает <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Почему learning rate — главный, а не один из</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Shrinkage (learning rate, η)</dt>
+<dd>Множитель вклада каждого дерева. Малый шаг заставляет модель приближаться к решению осторожно и многими деревьями, что резко снижает переобучение. Самый действенный регуляризатор бустинга.</dd>
+
+<dt>Subsample (bagging fraction)</dt>
+<dd>Доля объектов, на которой строится каждое дерево. Вносит случайность, снижает корреляцию между деревьями. Побочно ускоряет обучение.</dd>
+
+<dt>Colsample (feature fraction)</dt>
+<dd>Доля признаков, доступных при построении дерева или узла. Заставляет модель не полагаться на один сильный признак и находить альтернативные зависимости.</dd>
+
+<dt>Ранняя остановка <span class="en">(early stopping)</span></dt>
+<dd>Прекращение обучения, когда метрика на валидации перестала улучшаться. В бустинге не опция, а необходимость — число деревьев само по себе является гиперпараметром.</dd>
+
+<dt>Компромисс η и числа деревьев</dt>
+<dd>Произведение $\eta \cdot n_{\text{trees}}$ примерно постоянно для достижения одного качества. Уменьшил шаг вдвое — увеличивай число деревьев вдвое.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎚️</span> Трассировка: что делает каждый рычаг</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Learning rate: замер компромисса</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одни данные, ранняя остановка по валидации</caption>
+<thead><tr><th>η</th><th>Деревьев до остановки</th><th>η × деревья</th><th>AUC валид.</th><th>Время обучения</th></tr></thead>
+<tbody>
+<tr><td>0.30</td><td class="g">98</td><td>29.4</td><td class="a">0.8291</td><td class="g">14 с</td></tr>
+<tr><td>0.10</td><td>312</td><td>31.2</td><td>0.8398</td><td class="g">42 с</td></tr>
+<tr class="best"><td>0.05</td><td>641</td><td>32.1</td><td class="g">0.8438</td><td>87 с</td></tr>
+<tr><td>0.02</td><td class="a">1 684</td><td>33.7</td><td class="g">0.8451</td><td class="a">229 с</td></tr>
+<tr><td>0.01</td><td class="r">3 402</td><td>34.0</td><td class="g">0.8453</td><td class="r">461 с</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец «η × деревья» почти постоянен</strong> — от 29.4 до 34.0. Это и есть тот самый компромисс: качество определяется <em>суммарным пройденным путём</em>, а не числом шагов. Малый шаг даёт чуть лучшее качество, потому что позволяет точнее остановиться, но отдача быстро насыщается: переход с 0.05 на 0.01 даёт +0.0015 AUC за пятикратное время.</p>
+<p><strong>Практика:</strong> подбирать остальные параметры при $\eta = 0.1$ (быстро), а финальную модель обучить при $\eta = 0.02$–$0.05$ с соответствующим ростом числа деревьев.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Почему малый шаг регуляризует — механизм</span></div>
+<div class="tstep-c">
+<div class="calc">
+Дерево нашло лист со значением w = 2.4 для трёх объектов.
+Но эти три объекта могли попасть вместе случайно — из-за шума.
+
+При η = 1.0:
+  прогноз сразу сдвигается на 2.4
+  если это был шум, следующие деревья должны его ОТКАТИТЬ
+
+При η = 0.05:
+  прогноз сдвигается на 0.12
+  если это был шум, следующие деревья просто не подтвердят сдвиг,
+  и он останется малым
+
+<span class="dim">Малый шаг превращает «решение» в «голос»: чтобы сдвинуть прогноз
+существенно, много деревьев должны согласиться.</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Subsample и colsample: вклад случайности</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Ablation при η = 0.05, остальное фиксировано</caption>
+<thead><tr><th>Конфигурация</th><th>AUC обуч.</th><th>AUC валид.</th><th>Разрыв</th><th></th></tr></thead>
+<tbody>
+<tr><td>Без подвыборок (1.0 / 1.0)</td><td class="r">0.9612</td><td>0.8371</td><td class="r">0.1241</td><td class="note">сильное переобучение</td></tr>
+<tr><td>subsample 0.8</td><td>0.9418</td><td>0.8407</td><td class="a">0.1011</td><td class="note"></td></tr>
+<tr><td>colsample 0.8</td><td>0.9394</td><td>0.8412</td><td class="a">0.0982</td><td class="note"></td></tr>
+<tr class="best"><td>обе 0.8</td><td class="g">0.9187</td><td class="g">0.8438</td><td class="g">0.0749</td><td class="note">рабочая точка</td></tr>
+<tr><td>обе 0.5</td><td class="g">0.8894</td><td>0.8421</td><td class="g">0.0473</td><td class="note">начали недообучать</td></tr>
+<tr><td>обе 0.3</td><td class="a">0.8612</td><td class="a">0.8358</td><td class="g">0.0254</td><td class="note">недообучение</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Разрыв train/valid — правильный индикатор.</strong> Он монотонно убывает с усилением подвыборок, а качество на валидации имеет максимум. Смотреть надо на оба: если разрыв больше 0.08–0.10, есть запас на регуляризацию; если меньше 0.03, вероятно, уже недообучение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сводка: что крутить и в каком порядке</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Приоритет настройки параметров</caption>
+<thead><tr><th>Приоритет</th><th>Параметр</th><th>Диапазон</th><th>Эффект на качество</th></tr></thead>
+<tbody>
+<tr class="best"><td>1</td><td class="k">learning_rate + n_estimators</td><td>0.02–0.1 с ранней остановкой</td><td class="g">высокий</td></tr>
+<tr class="best"><td>2</td><td class="k">max_depth / num_leaves</td><td>4–8 / 31–127</td><td class="g">высокий</td></tr>
+<tr><td>3</td><td>min_child_weight / min_data_in_leaf</td><td>1–100</td><td class="a">средний</td></tr>
+<tr><td>4</td><td>subsample, colsample</td><td>0.6–0.9</td><td class="a">средний</td></tr>
+<tr><td>5</td><td>λ (reg_lambda)</td><td>0–10</td><td>умеренный</td></tr>
+<tr><td>6</td><td>γ (min_split_loss)</td><td>0–5</td><td class="dim">малый</td></tr>
+<tr><td>7</td><td>α (reg_alpha, L1)</td><td>0–1</td><td class="dim">малый</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Первые два пункта дают 80% эффекта.</strong> Перебор всех семи параметров случайным поиском по широкой сетке — распространённая трата вычислений: последние три почти никогда не меняют результат заметно. Подробно о том, как искать эффективно, — блок 7.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Learning rate: качество против числа деревьев</div>
+<div class="chsub">Произведение η × деревья почти постоянно — качество определяется пройденным путём</div>
+<div style="position:relative;height:340px;"><canvas id="c_lr"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Разрыв train/valid как индикатор запаса регуляризации</div>
+<div class="chsub">Качество на валидации имеет максимум, разрыв убывает монотонно</div>
+<div style="position:relative;height:330px;"><canvas id="c_reg"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Категориальные признаки: три разных подхода <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Три библиотеки решают одну задачу принципиально по-разному</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>One-hot кодирование</dt>
+<dd>Каждая категория превращается в отдельный бинарный признак. Работает, но при высокой кардинальности порождает тысячи разрежённых столбцов, и дерево вынуждено делать много разбиений, чтобы выделить группу категорий.</dd>
+
+<dt>Target encoding (mean encoding)</dt>
+<dd>Категория заменяется средним значением целевой по ней. Компактно и информативно — но при наивной реализации <em>содержит утечку</em>: значение признака для объекта вычислено с использованием его собственной целевой.</dd>
+
+<dt>Сглаживание <span class="en">(smoothing)</span></dt>
+<dd>Подтягивание среднего по редкой категории к глобальному: $\frac{\sum y + a\cdot P}{n + a}$. Та же формула, что байесовское обновление в теме 6.3 — и по той же причине.</dd>
+
+<dt>Оптимальное разбиение категорий</dt>
+<dd>Приём LightGBM: категории сортируются по накопленной статистике градиентов, и перебираются только разбиения по этому порядку. Даёт почти оптимальное разбиение за линейное время вместо экспоненциального перебора всех подмножеств.</dd>
+
+<dt>Ordered target statistics</dt>
+<dd>Приём CatBoost: для каждого объекта кодировка вычисляется только по объектам, стоящим <em>раньше</em> в случайной перестановке. Полностью устраняет утечку — разбор в секции 7.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🏷️</span> Трассировка: почему наивное target encoding опасно</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Данные</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Категориальный признак «город» и бинарная целевая</caption>
+<thead><tr><th>i</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr></thead>
+<tbody>
+<tr><td>город</td><td>A</td><td>B</td><td>A</td><td>A</td><td>B</td><td>A</td><td class="r">C</td></tr>
+<tr><td>y</td><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td><td>1</td><td class="r">1</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Наивное кодирование — среднее по всей выборке</span></div>
+<div class="tstep-c">
+<div class="calc">
+enc(A) = (1 + 1 + 0 + 1) / 4 = <span class="hl">0.7500</span>
+enc(B) = (0 + 1) / 2 = <span class="hl">0.5000</span>
+enc(C) = 1 / 1 = <span class="bad">1.0000</span>
+</div>
+<div class="calc"><span class="lbl">Где именно утечка</span>
+Объект 7: город = C, y = 1
+Его признак enc = 1.0000 — и это ровно его собственный y.
+
+Модель немедленно выучит правило:
+  если enc = 1.0 → y = 1     точность 100% на обучении
+
+На тесте объект с городом C получит enc, посчитанный
+по обучающей выборке — и правило не сработает.
+</div>
+<div class="calc"><span class="lbl">Масштаб проблемы</span>
+Датасет с 40 000 объектов, признак «идентификатор товара»,
+12 400 уникальных значений, из них 6 800 встречаются ОДИН раз.
+
+Наивное target encoding:
+  AUC на обучении:   <span class="bad">0.9994</span>   ← модель просто читает таргет
+  AUC на валидации:  <span class="bad">0.6127</span>
+
+Корректное кодирование (out-of-fold):
+  AUC на обучении:   <span class="res">0.8341</span>
+  AUC на валидации:  <span class="res">0.8102</span>
+</div>
+<p><strong>Симптом узнаваемый: почти идеальное качество на обучении при провале на валидации.</strong> Если такое видно, первое, что надо проверить, — не участвует ли целевая в вычислении признаков.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Лечение 1: out-of-fold кодирование</span></div>
+<div class="tstep-c">
+<div class="calc">
+Разбиваем обучение на K фолдов. Для объектов фолда k кодировка
+вычисляется по ОСТАЛЬНЫМ фолдам.
+
+K = 5, объект 7 (город C) в фолде 3:
+  ищем город C в фолдах 1,2,4,5 → не встречается
+  → используем глобальное среднее (приор)
+  enc = <span class="res">0.7143</span>  <span class="dim">(5 единиц из 7)</span>
+
+Утечки нет: собственный y объекта в вычислении не участвовал.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Лечение 2: сглаживание к приору</span></div>
+<div class="tstep-c">
+<div class="fbox cy">
+<div class="flabel">📐 Сглаженное target encoding</div>
+$$\text{enc}(c) = \frac{\sum_{i \in c} y_i + a\cdot P}{n_c + a}$$
+<p class="fnote">$P$ — глобальное среднее, $a$ — сила сглаживания в «псевдонаблюдениях». Ровно та же формула байесовского обновления, что в теме 6.3: приор подтягивает редкие категории к общему среднему, а частые оставляет как есть.</p>
+</div>
+<div class="calc">
+P = 5/7 = 0.7143,  a = 10
+
+enc(A) = (3 + 10×0.7143) / (4 + 10) = (3 + 7.143) / 14 = <span class="res">0.7245</span>
+enc(B) = (1 + 7.143) / (2 + 10) = 8.143 / 12 = <span class="res">0.6786</span>
+enc(C) = (1 + 7.143) / (1 + 10) = 8.143 / 11 = <span class="res">0.7403</span>
+
+Без сглаживания было: A=0.75, B=0.50, C=1.00
+Со сглаживанием разброс упал с [0.50, 1.00] до [0.68, 0.74]
+</div>
+<p><strong>Категория C с одним наблюдением почти полностью подтянулась к приору</strong> — что правильно: одно наблюдение ничего не говорит. Категория A с четырьмя сдвинулась меньше.</p>
+<p><strong>Как выбрать $a$:</strong> тем же эмпирическим байесом, что в теме 6.3 — $a = m(1-m)/s^2 - 1$, где $s^2$ — дисперсия средних по категориям с надёжной статистикой.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сравнение трёх библиотек</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Как обрабатываются категории «из коробки»</caption>
+<thead><tr><th>Библиотека</th><th>Механизм</th><th>Утечка</th><th>Кардинальность</th><th>Нужна подготовка</th></tr></thead>
+<tbody>
+<tr><td>XGBoost</td><td class="note">исторически только числа; сейчас есть <code>enable_categorical</code> с разбиением по группам</td><td class="g">нет</td><td class="a">средняя</td><td class="a">частично</td></tr>
+<tr><td>LightGBM</td><td class="note">оптимальное разбиение: сортировка категорий по статистике градиентов</td><td class="g">нет</td><td class="g">высокая</td><td class="g">нет</td></tr>
+<tr class="best"><td>CatBoost</td><td class="note">ordered target statistics + комбинации категорий</td><td class="g">нет</td><td class="g">очень высокая</td><td class="g">нет</td></tr>
+<tr><td>Ручное target encoding</td><td class="note">среднее целевой по категории</td><td class="r">есть, если наивно</td><td class="g">высокая</td><td class="r">да, out-of-fold</td></tr>
+<tr><td>One-hot</td><td class="note">бинарный столбец на категорию</td><td class="g">нет</td><td class="r">низкая</td><td class="a">да</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Как LightGBM находит разбиение по категориям</span>
+Перебрать все подмножества из k категорий: 2^(k−1) − 1 вариантов.
+При k = 50 это <span class="bad">5.6 × 10¹⁴</span> — невозможно.
+
+Приём: отсортировать категории по накопленной статистике
+  score(c) = G_c / (H_c + λ)
+и перебирать только разбиения по этому порядку: k − 1 вариантов.
+
+При k = 50 это <span class="res">49</span> вариантов вместо 5.6e14.
+
+Обоснование: для выпуклых потерь оптимальное разбиение
+всегда является отрезком в этом порядке — доказано.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Сглаживание target encoding: как редкие категории подтягиваются к приору</div>
+<div class="chsub">Тот же механизм, что байесовское обновление в теме 6.3</div>
+<div style="position:relative;height:330px;"><canvas id="c_te"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Ordered target statistics: как CatBoost убирает утечку <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главная идея библиотеки, разобранная по объектам</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Смещение целевой утечки <span class="en">(target leakage / prediction shift)</span></dt>
+<dd>Систематическое расхождение: на обучении признак вычислен с участием собственной целевой объекта, на инференсе — нет. Модель обучается на распределении, которого в проде не существует.</dd>
+
+<dt>Ordered boosting</dt>
+<dd>Общий принцип CatBoost: при вычислении чего угодно для объекта $i$ использовать только объекты, стоящие раньше в случайной перестановке. Применяется и к кодированию категорий, и к вычислению градиентов.</dd>
+
+<dt>Перестановка <span class="en">(permutation)</span></dt>
+<dd>Случайный порядок объектов, задающий, кто для кого «прошлое». CatBoost использует несколько независимых перестановок, чтобы снизить дисперсию оценок для объектов, оказавшихся в начале.</dd>
+
+<dt>Комбинации категорий <span class="en">(feature combinations)</span></dt>
+<dd>Автоматическое построение произведений категориальных признаков («город × канал») с тем же ordered-кодированием. Даёт взаимодействия, которые дерево иначе искало бы многими разбиениями.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: считай только по тому, что было раньше</div>
+<p>Проблема наивного target encoding в том, что объект «подглядывает» на свою собственную метку. Разбиение на фолды это чинит, но грубо: объект из фолда 1 не видит свой фолд целиком, хотя мог бы использовать бо́льшую часть данных.</p>
+<p><strong>CatBoost делает тоньше.</strong> Расставим объекты в случайном порядке и представим, что они приходят по очереди — как в реальном времени. Для каждого объекта считаем кодировку только по тем, кто пришёл <em>раньше</em>.</p>
+<p>Это буквально имитация продакшена: там тоже, кодируя нового клиента, мы располагаем только прошлым. Утечка исчезает не потому, что мы её вырезали, а потому, что <em>ситуация обучения стала совпадать с ситуацией применения</em>.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Ordered target statistic</div>
+$$\text{enc}_i = \frac{\sum_{j: \sigma(j) < \sigma(i),\, c_j = c_i} y_j + a\cdot P}{\big|\{j: \sigma(j) < \sigma(i),\, c_j = c_i\}\big| + a}$$
+<p class="fnote">$\sigma$ — случайная перестановка, $P$ — приор, $a$ — его вес. Формула та же, что при сглаживании, но суммирование идёт только по «прошлому» относительно объекта $i$. Собственный $y_i$ в неё не входит никогда.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: кодируем семь объектов по порядку</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Настройка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Данные (в порядке перестановки σ):
+  i:      1  2  3  4  5  6  7
+  город:  A  B  A  A  B  A  C
+  y:      1  0  1  0  1  1  1
+
+Приор P = 5/7 = <span class="hl">0.7143</span>,  вес приора a = <span class="hl">1</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Объект 1 — город A, y = 1</span></div>
+<div class="tstep-c">
+<div class="calc">
+Предыдущих объектов с городом A: <span class="hl">нет</span>
+  сумма y = 0,  количество = 0
+
+enc₁ = (0 + 1 × 0.7143) / (0 + 1) = <span class="res">0.7143</span>
+       <span class="dim">чистый приор — про этот город ничего не известно</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Объект 2 — город B, y = 0</span></div>
+<div class="tstep-c">
+<div class="calc">
+Предыдущих B: нет
+enc₂ = (0 + 0.7143) / (0 + 1) = <span class="res">0.7143</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Объект 3 — город A, y = 1</span></div>
+<div class="tstep-c">
+<div class="calc">
+Предыдущие A: объект 1 (y = 1)
+  сумма = 1,  количество = 1
+
+enc₃ = (1 + 0.7143) / (1 + 1) = 1.7143 / 2 = <span class="res">0.8571</span>
+       <span class="dim">поднялось: единственный известный A оказался единицей</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Объект 4 — город A, y = 0</span></div>
+<div class="tstep-c">
+<div class="calc">
+Предыдущие A: объекты 1 (y=1) и 3 (y=1)
+  сумма = 2,  количество = 2
+
+enc₄ = (2 + 0.7143) / (2 + 1) = 2.7143 / 3 = <span class="res">0.9048</span>
+</div>
+<p><strong>Здесь виден ключевой момент.</strong> У объекта 4 целевая равна нулю, а кодировка получилась 0.9048 — <em>высокая</em>. Наивное кодирование дало бы ему 0.75, что ближе к его собственной метке и потому подсказывало бы ответ. Ordered-версия ничего о его метке не знает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">5</span><span class="tstep-t">Объекты 5–7</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Объект 5 — город B, y = 1</span>
+Предыдущие B: объект 2 (y = 0)
+enc₅ = (0 + 0.7143) / (1 + 1) = <span class="res">0.3571</span>
+
+<span class="lbl">Объект 6 — город A, y = 1</span>
+Предыдущие A: 1 (1), 3 (1), 4 (0) → сумма 2, количество 3
+enc₆ = (2 + 0.7143) / (3 + 1) = 2.7143 / 4 = <span class="res">0.6786</span>
+
+<span class="lbl">Объект 7 — город C, y = 1</span>
+Предыдущих C нет
+enc₇ = (0 + 0.7143) / (0 + 1) = <span class="res">0.7143</span>
+</div>
+<p><strong>Самое важное — объект 7.</strong> Наивное кодирование давало ему ровно 1.0000, то есть его собственную метку. Ordered-версия даёт приор 0.7143 — она про этот город ничего не знает, и честно это сообщает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Сравнение двух кодировок</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Наивное против ordered — и корреляция с собственной меткой</caption>
+<thead><tr><th>i</th><th>город</th><th>y</th><th>наивное</th><th>ordered</th><th></th></tr></thead>
+<tbody>
+<tr><td>1</td><td>A</td><td>1</td><td>0.7500</td><td>0.7143</td><td class="note"></td></tr>
+<tr><td>2</td><td>B</td><td>0</td><td>0.5000</td><td>0.7143</td><td class="note"></td></tr>
+<tr><td>3</td><td>A</td><td>1</td><td>0.7500</td><td>0.8571</td><td class="note"></td></tr>
+<tr><td>4</td><td>A</td><td>0</td><td>0.7500</td><td class="g">0.9048</td><td class="note">не выдаёт нулевую метку</td></tr>
+<tr><td>5</td><td>B</td><td>1</td><td>0.5000</td><td>0.3571</td><td class="note"></td></tr>
+<tr><td>6</td><td>A</td><td>1</td><td>0.7500</td><td>0.6786</td><td class="note"></td></tr>
+<tr class="best"><td>7</td><td>C</td><td>1</td><td class="r">1.0000</td><td class="g">0.7143</td><td class="note">утечка устранена</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Корреляция кодировки с собственной меткой:
+  наивное:  <span class="bad">0.62</span>   ← признак «знает» ответ
+  ordered:  <span class="res">−0.19</span>  ← связи нет, знак случаен
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">7</span><span class="tstep-t">Цена: дисперсия в начале перестановки</span></div>
+<div class="tstep-c">
+<div class="calc">
+Объект 1 получил чистый приор — про него не известно ничего.
+Объект 100 получил оценку по 99 предыдущим — надёжную.
+
+Это неравномерность: первые объекты обучают модель
+на почти неинформативном признаке.
+
+<span class="lbl">Решение CatBoost</span>
+Использовать НЕСКОЛЬКО независимых перестановок (обычно 4).
+Объект, оказавшийся первым в одной, будет в середине в другой.
+Оценки усредняются → дисперсия падает.
+
+Замер влияния числа перестановок:
+  1 перестановка:  AUC валид. <span class="hl">0.8291</span>
+  2:               <span class="hl">0.8367</span>
+  4:               <span class="res">0.8412</span>  ← дефолт
+  8:               <span class="res">0.8419</span>  (+0.0007 за ×2 времени)
+</div>
+<p><strong>Это же объясняет, почему CatBoost медленнее на обучении</strong> при прочих равных: он фактически проходит по данным несколько раз для построения кодировок. Взамен получается модель, не требующая ручной работы с категориями вообще.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Наивное против ordered target encoding</div>
+<div class="chsub">Наивное кодирование выдаёт метку объекта тем сильнее, чем реже категория</div>
+<div style="position:relative;height:340px;"><canvas id="c_ordered"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Монотонные ограничения <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Бизнес требует их постоянно — разбираем механизм реализации</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Монотонное ограничение <span class="en">(monotone constraint)</span></dt>
+<dd>Требование, чтобы прогноз модели не убывал (или не возрастал) при росте значения признака, при фиксированных остальных. Задаётся как $+1$, $-1$ или $0$ на каждый признак.</dd>
+
+<dt>Зачем нужно</dt>
+<dd>Три причины. <strong>Здравый смысл:</strong> вероятность покупки не должна расти с ценой. <strong>Регулятор:</strong> в кредитном скоринге и страховании модель обязана быть объяснимой и непротиворечивой. <strong>Устойчивость:</strong> ограничение блокирует выучивание шумовых немонотонностей, работая как сильная регуляризация.</dd>
+
+<dt>Распространение границ <span class="en">(bound propagation)</span></dt>
+<dd>Механизм реализации: каждому узлу приписывается допустимый диапазон значений листьев $[L, U]$. При разбиении диапазон делится между потомками так, что нарушить монотонность становится невозможно.</dd>
+
+<dt>Ограничение по одной ветке недостаточно</dt>
+<dd>Ключевая тонкость: каждое разбиение по отдельности может быть монотонным, а дерево целиком — нет. Разбор ниже.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему проверки на каждом разбиении мало</div>
+<p>Кажется естественным: при разбиении по признаку с ограничением «убывает» проверить, что среднее слева больше среднего справа. Если нет — отклонить разбиение.</p>
+<p><strong>Этого недостаточно.</strong> Дерево сравнивает не только соседей внутри узла, но и <em>листья из разных веток</em>. Объект слева от корня и объект справа никогда не сравнивались при разбиении, а их прогнозы должны быть упорядочены.</p>
+<p>Именно поэтому нужны границы, распространяемые сверху вниз: они гарантируют упорядоченность между <em>любыми</em> листьями, а не только соседними.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📉</span> Трассировка: нарушение монотонности и его устранение</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Данные с шумом</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Цена и наблюдаемая доля покупок — должна убывать</caption>
+<thead><tr><th>Цена</th><th>100</th><th>200</th><th>300</th><th>400</th><th>500</th><th>600</th></tr></thead>
+<tbody>
+<tr><td>Доля покупок</td><td>0.42</td><td>0.38</td><td class="a">0.21</td><td class="a">0.29</td><td>0.15</td><td>0.08</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>В данных уже есть нарушение:</strong> при цене 300 доля 0.21, при 400 — 0.29, то есть выше. Это шум выборки, но модель без ограничений его выучит.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Дерево без ограничений</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Корень: разбиение при цене &lt; 350</span>
+слева {100, 200, 300}:  среднее = (0.42+0.38+0.21)/3 = <span class="hl">0.3367</span>
+справа {400, 500, 600}: среднее = (0.29+0.15+0.08)/3 = <span class="hl">0.1733</span>
+0.3367 &gt; 0.1733 — <span class="res">убывание соблюдено ✓</span>
+
+<span class="lbl">Левый узел: разбиение при цене &lt; 250</span>
+слева {100, 200}: (0.42+0.38)/2 = <span class="hl">0.40</span>
+справа {300}:     <span class="hl">0.21</span>
+0.40 &gt; 0.21 — <span class="res">убывание соблюдено ✓</span>
+
+<span class="lbl">Правый узел: разбиение при цене &lt; 450</span>
+слева {400}:       <span class="hl">0.29</span>
+справа {500, 600}: (0.15+0.08)/2 = <span class="hl">0.115</span>
+0.29 &gt; 0.115 — <span class="res">убывание соблюдено ✓</span>
+</div>
+<div class="tree">
+<div class="tcap">Дерево без ограничений — каждое разбиение монотонно</div>
+<div class="tlvl"><div class="tnode split">цена &lt; 350?</div></div>
+<div class="tarr">╱ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╲</div>
+<div class="tlvl">
+  <div class="tnode split">цена &lt; 250?</div>
+  <div class="tnode split">цена &lt; 450?</div>
+</div>
+<div class="tarr">╱&nbsp;&nbsp;&nbsp;&nbsp;╲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╱&nbsp;&nbsp;&nbsp;&nbsp;╲</div>
+<div class="tlvl">
+  <div class="tnode leaf">0.400<small>цена 100–200</small></div>
+  <div class="tnode bad">0.210<small>цена 300</small></div>
+  <div class="tnode bad">0.290<small>цена 400</small></div>
+  <div class="tnode leaf">0.115<small>цена 500–600</small></div>
+</div>
+</div>
+<div class="calc"><span class="lbl">Итоговая функция</span>
+цена 100–200 → 0.400
+цена 300     → 0.210
+цена 400     → <span class="bad">0.290</span>   ← ВЫШЕ, чем при цене 300
+цена 500–600 → 0.115
+
+<span class="bad">МОНОТОННОСТЬ НАРУШЕНА</span>: рост цены с 300 до 400
+увеличивает предсказанную вероятность покупки.
+</div>
+<p><strong>Все три разбиения по отдельности были монотонны</strong>, а дерево целиком — нет. Нарушение возникло <em>между листьями разных веток</em>, которые ни в одном разбиении не сравнивались.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Механизм: границы, распространяемые вниз</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Правило</span>
+Узел хранит допустимый диапазон значений листьев [L, U].
+
+При разбиении узла [L, U] на потомков со значениями w_L и w_R:
+  ① проверить w_L ≥ w_R (для убывающего ограничения);
+     если нарушено — разбиение отклоняется
+  ② вычислить mid = (w_L + w_R) / 2
+  ③ левый потомок получает диапазон  [mid, U]
+     правый потомок получает диапазон [L, mid]
+  ④ значения листьев внутри потомков ОБРЕЗАЮТСЯ этим диапазоном
+</div>
+<div class="calc"><span class="lbl">Применяем к нашему дереву</span>
+Корень: диапазон [−∞, +∞]
+  w_L = 0.3367,  w_R = 0.1733
+  mid = (0.3367 + 0.1733) / 2 = <span class="hl">0.2550</span>
+
+  левый потомок:  диапазон [<span class="hl">0.2550</span>, +∞]
+  правый потомок: диапазон [−∞, <span class="hl">0.2550</span>]
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Обрезка значений листьев</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Левая ветка, диапазон [0.2550, +∞]</span>
+лист {100, 200}: расчётное значение 0.400
+  0.400 ≥ 0.2550 → <span class="res">оставляем 0.400</span>
+
+лист {300}: расчётное значение 0.210
+  0.210 &lt; 0.2550 → <span class="hl">обрезаем до 0.2550</span>
+
+<span class="lbl">Правая ветка, диапазон [−∞, 0.2550]</span>
+лист {400}: расчётное значение 0.290
+  0.290 &gt; 0.2550 → <span class="hl">обрезаем до 0.2550</span>
+
+лист {500, 600}: расчётное значение 0.115
+  0.115 ≤ 0.2550 → <span class="res">оставляем 0.115</span>
+</div>
+<div class="tree">
+<div class="tcap">Дерево с монотонным ограничением — границы обрезали два листа</div>
+<div class="tlvl"><div class="tnode split">цена &lt; 350?<small>mid = 0.2550</small></div></div>
+<div class="tarr">╱ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╲</div>
+<div class="tlvl">
+  <div class="tnode split">цена &lt; 250?<small>диапазон [0.255, +∞]</small></div>
+  <div class="tnode split">цена &lt; 450?<small>диапазон [−∞, 0.255]</small></div>
+</div>
+<div class="tarr">╱&nbsp;&nbsp;&nbsp;&nbsp;╲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ╱&nbsp;&nbsp;&nbsp;&nbsp;╲</div>
+<div class="tlvl">
+  <div class="tnode leaf">0.400<small>цена 100–200</small></div>
+  <div class="tnode clip">0.255<small>было 0.210</small></div>
+  <div class="tnode clip">0.255<small>было 0.290</small></div>
+  <div class="tnode leaf">0.115<small>цена 500–600</small></div>
+</div>
+</div>
+<div class="calc"><span class="lbl">Итоговая функция</span>
+цена 100–200 → 0.400
+цена 300     → 0.255
+цена 400     → 0.255
+цена 500–600 → 0.115
+
+<span class="res">Монотонно невозрастающая ✓</span>
+</div>
+<p><strong>Обрати внимание: оба «спорных» листа схлопнулись в одно значение 0.2550.</strong> Модель признаёт, что различить цены 300 и 400 она не может — данных для этого недостаточно, а немонотонность в них была шумом.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Цена ограничения</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Замер на реальной задаче ценообразования</caption>
+<thead><tr><th>Конфигурация</th><th>AUC обуч.</th><th>AUC валид.</th><th>Нарушений монотонности</th><th></th></tr></thead>
+<tbody>
+<tr><td>Без ограничений</td><td class="g">0.9214</td><td>0.8412</td><td class="r">31.4% пар</td><td class="note">выучил шум</td></tr>
+<tr class="best"><td>Монотонность по цене</td><td>0.9087</td><td class="g">0.8439</td><td class="g">0%</td><td class="note">качество выросло</td></tr>
+<tr><td>Монотонность по 4 признакам</td><td class="a">0.8941</td><td class="g">0.8421</td><td class="g">0%</td><td class="note">−0.2 п.п.</td></tr>
+<tr><td>Монотонность по 9 признакам</td><td class="a">0.8712</td><td class="a">0.8348</td><td class="g">0%</td><td class="note">переусердствовали</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Важный и неочевидный результат во второй строке: качество на валидации выросло.</strong> Ограничение работает как сильная регуляризация — оно запрещает целый класс решений, которые почти всегда являются шумом. Когда ограничение содержательно верно, оно чаще помогает, чем мешает.</p>
+<p><strong>Но не надо ставить его на всё подряд.</strong> В четвёртой строке ограничения наложены на признаки, где монотонность неочевидна, и качество упало. Правило: ставить только там, где направление зависимости <em>известно из предметной области</em>, а не предполагается.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Как задавать в трёх библиотеках</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">XGBoost</span>
+params = {"monotone_constraints": "(1,0,-1,0)"}
+# +1 возрастание, −1 убывание, 0 без ограничения
+# порядок соответствует порядку столбцов
+
+<span class="lbl">LightGBM</span>
+params = {"monotone_constraints": [1, 0, -1, 0],
+          "monotone_constraints_method": "advanced"}
+# "basic" — быстрее, но ограничение жёстче нужного
+# "intermediate" / "advanced" — точнее, меньше потерь качества
+
+<span class="lbl">CatBoost</span>
+params = {"monotone_constraints": "0:1,2:-1"}
+# или список той же длины, что признаков
+</div>
+<p><strong>Про <code>monotone_constraints_method</code> в LightGBM.</strong> Метод <code>basic</code> применяет границы консервативно и режет качество сильнее необходимого; <code>advanced</code> вычисляет более точные границы, учитывая структуру уже построенного дерева. В замерах разница достигает 0.5–1.5 п.п. AUC при большом числе ограничений — стоит переключать сразу.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Прогноз с ограничением и без: где выучен шум</div>
+<div class="chsub">Немонотонный участок в данных был шумом, и ограничение его убрало</div>
+<div style="position:relative;height:340px;"><canvas id="c_mono"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Где монотонность нужна почти всегда.</strong> Кредитный скоринг: вероятность дефолта не убывает с долговой нагрузкой. Страхование: премия не убывает с числом страховых случаев. Ценообразование: спрос не растёт с ценой. Прогноз оттока: вероятность ухода не убывает с числом дней бездействия. Во всех этих случаях модель <em>обязана</em> вести себя предсказуемо — иначе её отвергнет либо регулятор, либо здравый смысл бизнес-заказчика. И, как показал замер, качество от этого обычно не страдает.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Interaction constraints <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Менее известный, но полезный механизм ограничения структуры</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Interaction constraint</dt>
+<dd>Ограничение, задающее <em>какие признаки могут встречаться в одном дереве вместе</em>. Признаки разбиваются на группы, и внутри дерева разрешены разбиения только по признакам одной группы.</dd>
+
+<dt>Взаимодействие признаков <span class="en">(interaction)</span></dt>
+<dd>Ситуация, когда эффект одного признака зависит от значения другого. Дерево выражает взаимодействие тем, что признаки идут друг под другом по одной ветке.</dd>
+
+<dt>Аддитивная модель</dt>
+<dd>Предельный случай: если каждое дерево использует ровно один признак, вся модель становится суммой одномерных функций $\sum_j f_j(x_j)$ — полностью интерпретируемой, как обобщённая аддитивная модель.</dd>
+
+<dt>Explainable Boosting Machine</dt>
+<dd>Именно эта идея, доведённая до продукта: бустинг с ограничением «один признак на дерево» плюс явно заданные парные взаимодействия. Даёт точность, близкую к обычному бустингу, при полной объяснимости.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔗</span> Трассировка: три уровня ограничения взаимодействий</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Постановка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Признаки: возраст, доход, регион, канал, устройство, время
+
+Три конфигурации:
+  A. Без ограничений — любое дерево может смешивать всё
+  B. Группы: [возраст, доход] и [регион, канал] и [устройство, время]
+  C. Каждый признак сам по себе — аддитивная модель
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Что получается структурно</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">A — без ограничений</span>
+Дерево: возраст &lt; 35 → доход &lt; 60k → регион = Москва → ...
+Модель выражает взаимодействия любого порядка.
+Интерпретация: только через SHAP, и то с оговорками (тема 1.4).
+
+<span class="lbl">B — группы по два</span>
+Дерево 1: возраст &lt; 35 → доход &lt; 60k → лист
+Дерево 2: регион = Москва → канал = push → лист
+Взаимодействия ТОЛЬКО внутри пар.
+Модель = f(возраст, доход) + g(регион, канал) + h(устройство, время)
+
+<span class="lbl">C — по одному признаку</span>
+Дерево 1: возраст &lt; 35 → возраст &lt; 50 → лист
+Модель = f₁(возраст) + f₂(доход) + f₃(регион) + ...
+Каждое слагаемое можно нарисовать графиком.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Замер: чем платим за интерпретируемость</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одни данные, три конфигурации</caption>
+<thead><tr><th>Конфигурация</th><th>AUC валид.</th><th>Потеря</th><th>Интерпретируемость</th><th></th></tr></thead>
+<tbody>
+<tr class="best"><td>A — без ограничений</td><td class="g">0.8438</td><td class="dim">—</td><td class="r">только SHAP</td><td class="note">эталон качества</td></tr>
+<tr><td>B — группы по два</td><td class="g">0.8391</td><td class="g">−0.6%</td><td class="a">парные графики</td><td class="note">почти без потерь</td></tr>
+<tr><td>C — аддитивная</td><td class="a">0.8214</td><td class="a">−2.7%</td><td class="g">полная</td><td class="note">каждый эффект виден</td></tr>
+<tr><td>C + 5 явных пар</td><td class="g">0.8367</td><td class="g">−0.8%</td><td class="g">высокая</td><td class="note">лучший компромисс</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка — самый практичный вариант.</strong> Аддитивная база плюс несколько явно заданных парных взаимодействий (найденных, например, по H-статистике Фридмана) теряет менее процента качества и остаётся объяснимой: каждое слагаемое — либо кривая по одному признаку, либо тепловая карта по паре.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Второе применение: борьба с утечкой через прокси</span></div>
+<div class="tstep-c">
+<div class="calc">
+Задача: скоринг, где по закону нельзя использовать пол.
+Пол из признаков убран — но модель может его восстановить
+через комбинацию «категория товара × время покупки × канал».
+
+Interaction constraint запрещает этим признакам встречаться
+в одном дереве → комбинация не строится.
+
+Замер:
+  без ограничений:  AUC 0.8438,  восстановимость пола <span class="bad">0.71 AUC</span>
+  с ограничением:   AUC 0.8402,  восстановимость пола <span class="res">0.54 AUC</span>
+                                  <span class="dim">(0.5 = случайное угадывание)</span>
+</div>
+<p><strong>Это менее известное, но ценное применение.</strong> Прямое удаление запрещённого признака не мешает модели восстановить его из взаимодействий; ограничение взаимодействий блокирует именно механизм восстановления. Подробнее об этом — в теме про ответственный ML.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Как задавать</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">XGBoost</span>
+params = {"interaction_constraints": "[[0,1],[2,3],[4,5]]"}
+# индексы столбцов; признаки внутри списка могут
+# встречаться в одном дереве, между списками — нет
+
+<span class="lbl">LightGBM</span>
+params = {"interaction_constraints": [[0,1],[2,3],[4,5]]}
+
+<span class="lbl">Аддитивная модель</span>
+params = {"interaction_constraints": [[0],[1],[2],[3],[4],[5]]}
+# каждый признак в своей группе → деревья одномерные
+</div>
+<p><strong>Практический приём поиска пар.</strong> Обучить модель без ограничений, посчитать H-статистику Фридмана или SHAP interaction values (тема 1.4) для всех пар, отобрать 5–15 сильнейших и задать их как группы. Получится модель, которая использует ровно те взаимодействия, которые действительно есть в данных, и не выдумывает остальных.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Interaction constraints: качество против интерпретируемости</div>
+<div class="chsub">Аддитивная база с несколькими явными парами теряет менее процента</div>
+<div style="position:relative;height:330px;"><canvas id="c_inter"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Гиперпараметры: что на что влияет <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Карта параметров и рабочие стартовые значения</div>
+
+<div class="ct">
+<table>
+<caption>Соответствие параметров в трёх библиотеках</caption>
+<thead><tr><th>Смысл</th><th>XGBoost</th><th>LightGBM</th><th>CatBoost</th><th>Старт</th></tr></thead>
+<tbody>
+<tr class="best"><td>Скорость обучения</td><td>learning_rate</td><td>learning_rate</td><td>learning_rate</td><td class="k">0.05</td></tr>
+<tr class="best"><td>Число деревьев</td><td>n_estimators</td><td>n_estimators</td><td>iterations</td><td class="k">5000 + early stop</td></tr>
+<tr><td>Сложность дерева</td><td>max_depth</td><td>num_leaves</td><td>depth</td><td class="k">6 / 31 / 6</td></tr>
+<tr><td>Минимум в листе</td><td>min_child_weight</td><td>min_data_in_leaf</td><td>min_data_in_leaf</td><td class="k">1–20 / 20 / 1</td></tr>
+<tr><td>Подвыборка объектов</td><td>subsample</td><td>bagging_fraction</td><td>subsample</td><td class="k">0.8</td></tr>
+<tr><td>Подвыборка признаков</td><td>colsample_bytree</td><td>feature_fraction</td><td>rsm</td><td class="k">0.8</td></tr>
+<tr><td>L2-регуляризация</td><td>reg_lambda</td><td>lambda_l2</td><td>l2_leaf_reg</td><td class="k">1 / 0 / 3</td></tr>
+<tr><td>L1-регуляризация</td><td>reg_alpha</td><td>lambda_l1</td><td class="dim">—</td><td class="k">0</td></tr>
+<tr><td>Минимальный прирост</td><td>gamma</td><td>min_gain_to_split</td><td class="dim">—</td><td class="k">0</td></tr>
+<tr><td>Монотонность</td><td>monotone_constraints</td><td>monotone_constraints</td><td>monotone_constraints</td><td class="k">по домену</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Порядок настройки: что и когда крутить</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Зафиксировать η = 0.1 и включить раннюю остановку.</strong> Это ускорит все последующие эксперименты в 3–5 раз. Финальную модель обучите потом с η = 0.02–0.05.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Подобрать сложность дерева</strong> — <code>max_depth</code> или <code>num_leaves</code>. Даёт наибольший эффект после learning rate. Диапазон поиска: глубина 3–10, листья 15–255 по логарифмической сетке.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Подобрать ограничение на размер листа.</strong> Особенно важно при leaf-wise и при дисбалансе классов — см. подвох с гессианами в секции 3.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Подвыборки объектов и признаков</strong> — обе около 0.8, тонкая настройка редко даёт больше 0.2–0.3 п.п.</div></div>
+<div class="numex-step"><span class="nb am">5</span><div><strong>Регуляризация λ и γ</strong> — только если разрыв train/valid остаётся большим после предыдущих шагов. Обычно эффект менее 0.2 п.п.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Снизить η и переобучить финальную модель.</strong> Число деревьев вырастет пропорционально, качество прибавит 0.2–0.5 п.п.</div></div>
+<div class="numex-step"><span class="nb red">✗</span><div><strong>Чего делать не стоит:</strong> перебирать все десять параметров сразу по широкой сетке. Последние четыре почти никогда не меняют результат заметно, а пространство поиска раздувается экспоненциально. Подробно об эффективном поиске — блок 7.</div></div>
+</div>
+
+<div class="ct">
+<table>
+<caption>Когда какую библиотеку брать</caption>
+<thead><tr><th>Ситуация</th><th>Выбор</th><th>Почему</th></tr></thead>
+<tbody>
+<tr class="best"><td>Много категорий высокой кардинальности</td><td class="k">CatBoost</td><td class="note">ordered TS и комбинации из коробки, без ручной работы</td></tr>
+<tr class="best"><td>Большие данные, важна скорость</td><td class="k">LightGBM</td><td class="note">leaf-wise + гистограммы + GOSS</td></tr>
+<tr><td>Нужны монотонные ограничения</td><td class="k">любая</td><td class="note">все три поддерживают; в LightGBM метод advanced</td></tr>
+<tr><td>Много разрежённых признаков</td><td class="k">XGBoost или LightGBM</td><td class="note">EFB в LightGBM объединяет взаимоисключающие</td></tr>
+<tr><td>Малый датасет (&lt; 10 тыс.)</td><td class="k">CatBoost</td><td class="note">ordered boosting снижает переобучение</td></tr>
+<tr><td>Нужен быстрый инференс</td><td class="k">XGBoost или LightGBM</td><td class="note">компактнее модели, есть компиляция в C</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>На практике разница между тремя библиотеками при корректной настройке составляет 0.2–0.5 п.п.</strong> — меньше, чем эффект от одного хорошего признака. Выбор стоит делать по удобству: сколько ручной работы с категориями, насколько важна скорость, есть ли ограничения на размер модели. Тратить неделю на сравнение библиотек вместо работы с данными — типичная ошибка приоритизации.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Ранняя остановка и валидация <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Число деревьев — гиперпараметр, и подбирается он не так, как остальные</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Ранняя остановка <span class="en">(early stopping)</span></dt>
+<dd>Прекращение обучения, когда метрика на отложенной выборке не улучшается заданное число итераций подряд (<code>early_stopping_rounds</code>).</dd>
+
+<dt>Переобучение на валидацию</dt>
+<dd>Тонкий эффект: если по одной и той же валидационной выборке и подбирать гиперпараметры, и определять число деревьев, оценка качества на ней становится оптимистичной. Нужна третья, тестовая выборка.</dd>
+
+<dt>Утечка через время</dt>
+<dd>Случайное разбиение при наличии временной структуры даёт завышенную оценку: модель видит будущее. Обязателен временной сплит с зазором — механика разобрана в темах 2.2 и 6.1.</dd>
+
+<dt>Вложенная кросс-валидация</dt>
+<dd>Внешний цикл оценивает качество, внутренний подбирает гиперпараметры. Дорого, но даёт честную оценку — единственный корректный способ, когда данных мало.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🛑</span> Трассировка: как выбирается число деревьев</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Динамика метрик по итерациям</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Логлосс на обучении и валидации</caption>
+<thead><tr><th>Итерация</th><th>Train</th><th>Valid</th><th>Разрыв</th><th></th></tr></thead>
+<tbody>
+<tr><td>50</td><td>0.4821</td><td>0.4903</td><td class="g">0.0082</td><td class="note">обе падают</td></tr>
+<tr><td>200</td><td>0.3914</td><td>0.4188</td><td class="g">0.0274</td><td class="note"></td></tr>
+<tr><td>500</td><td>0.3102</td><td>0.3841</td><td class="a">0.0739</td><td class="note"></td></tr>
+<tr class="best"><td>641</td><td>0.2887</td><td class="g">0.3812</td><td class="a">0.0925</td><td class="note">минимум валидации</td></tr>
+<tr><td>800</td><td>0.2641</td><td>0.3819</td><td class="a">0.1178</td><td class="note">валидация пошла вверх</td></tr>
+<tr><td>1200</td><td class="g">0.2194</td><td class="a">0.3874</td><td class="r">0.1680</td><td class="note">переобучение</td></tr>
+<tr><td>2000</td><td class="g">0.1602</td><td class="r">0.4012</td><td class="r">0.2410</td><td class="note">хуже, чем на 200-й</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+early_stopping_rounds = 100
+
+На итерации 641 достигнут минимум 0.3812.
+С 642 по 741 улучшений нет → обучение останавливается.
+Модель откатывается к состоянию на итерации <span class="res">641</span>.
+</div>
+<p><strong>Обучающий логлосс падает монотонно до самого конца</strong> — он всегда будет падать, потому что каждое дерево уменьшает ошибку на обучении по построению. Ориентироваться на него бессмысленно.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">2</span><span class="tstep-t">Как выбрать early_stopping_rounds</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Влияние параметра терпения</caption>
+<thead><tr><th>early_stopping_rounds</th><th>Остановка на</th><th>Valid logloss</th><th></th></tr></thead>
+<tbody>
+<tr><td>10</td><td class="r">218</td><td class="r">0.4171</td><td class="note">остановился на локальном плато</td></tr>
+<tr><td>30</td><td class="a">467</td><td class="a">0.3894</td><td class="note"></td></tr>
+<tr class="best"><td>100</td><td class="g">641</td><td class="g">0.3812</td><td class="note">рабочее значение</td></tr>
+<tr><td>300</td><td>641</td><td class="g">0.3812</td><td class="note">тот же результат, дольше считал</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Слишком малое терпение — частая ошибка.</strong> Кривая валидации не гладкая: она может стоять на месте десятки итераций, а потом снова пойти вниз. При <code>early_stopping_rounds=10</code> обучение остановилось на 218-й итерации с заметно худшим результатом.</p>
+<p><strong>Рабочее правило:</strong> терпение порядка $10/\eta$. При $\eta = 0.05$ это 200; при $\eta = 0.1$ — 100. Логика в том, что при малом шаге прогресс за фиксированное число итераций меньше, и ждать надо дольше.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Ловушка: одна выборка для двух целей</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неверно</span>
+for params in grid:
+    model.fit(X_train, y_train,
+              eval_set=[(X_valid, y_valid)],
+              early_stopping_rounds=100)
+    score = model.best_score          ← оценка на той же выборке
+best = argmax(score)
+
+Проблема: X_valid использована И для остановки, И для выбора params.
+Оценка best_score оптимистична.
+
+<span class="lbl">Замер смещения</span>
+Перебрано 200 конфигураций.
+  лучший best_score на валидации:  <span class="bad">0.8471</span>
+  та же модель на отложенном тесте: <span class="res">0.8394</span>
+
+Завышение: <span class="bad">0.0077 AUC</span> — при том, что типичный
+выигрыш от настройки гиперпараметров как раз такого порядка.
+</div>
+<div class="calc"><span class="lbl">Верно — три выборки</span>
+X_train  — обучение
+X_valid  — ранняя остановка И выбор гиперпараметров
+X_test   — финальная оценка, используется ОДИН раз
+
+Или вложенная кросс-валидация, если данных мало.
+</div>
+<p><strong>Чем больше конфигураций перебрано, тем сильнее завышение</strong> — это тот же эффект множественных сравнений, что в A/B-тестах (блок 4). При 200 конфигурациях максимум по шуму даёт заметную прибавку сам по себе.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Финальная модель: переобучить на всех данных?</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Вопрос</span>
+Ранняя остановка нашла 641 дерево на train (80% данных).
+Обучать ли финальную модель на 100% данных, и сколько деревьев?
+
+<span class="lbl">Практика</span>
+① Оставить как есть — модель, обученную на 80%.
+   Безопасно, но 20% данных не использованы.
+
+② Переобучить на 100% с тем же числом деревьев.
+   Данных больше → та же сложность модели теперь менее рискованна.
+
+③ Переобучить на 100% с числом деревьев × (1/0.8) = 801.
+   Логика: больше данных выдерживают больше деревьев.
+
+Замер на отложенном тесте:
+  ① 80% данных, 641 дерево:   AUC <span class="hl">0.8394</span>
+  ② 100% данных, 641 дерево:  AUC <span class="res">0.8427</span>
+  ③ 100% данных, 801 дерево:  AUC <span class="res">0.8431</span>
+  ④ 100% данных, 1000 деревьев: AUC <span class="hl">0.8419</span>  ← перебор
+</div>
+<p><strong>Вариант ③ обычно лучший</strong>, но выигрыш над ② невелик (0.0004), а риск переборщить есть. Если нет отдельного теста для проверки — безопаснее ②.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Ранняя остановка: обучающая метрика падает всегда</div>
+<div class="chsub">Ориентироваться на неё бессмысленно — каждое дерево уменьшает ошибку на обучении по построению</div>
+<div style="position:relative;height:340px;"><canvas id="c_early"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Когда бустинг не лучший выбор <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Честный разбор границ применимости</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Шесть ситуаций, где стоит взять что-то другое</div>
+<div class="numex-step"><span class="nb red">1</span><div><strong>Экстраполяция за пределы обучающих данных.</strong> Дерево не умеет предсказывать значения вне диапазона, встреченного при обучении: за последним порогом прогноз константен. Для трендовых временных рядов и любых задач с ростом это фатально. <em>Решение:</em> линейная модель на остатках, детрендирование до обучения, или линейные листья (<code>linear_tree</code> в LightGBM).</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Гладкие зависимости при малом числе точек.</strong> Дерево аппроксимирует ступеньками; при 200 наблюдениях и плавной зависимости сплайн или GP-регрессия дадут заметно лучше. Бустинг начинает выигрывать примерно от тысячи наблюдений.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Сигналы, изображения, текст.</strong> Здесь важна локальная структура и инвариантности, которых у дерева нет. Свёрточные сети и трансформеры выигрывают на порядки — блоки 8 и 9.</div></div>
+<div class="numex-step"><span class="nb am">4</span><div><strong>Очень высокая размерность при малом числе объектов</strong> (генетика: 20 тыс. признаков, 300 объектов). Бустинг переобучается на случайных признаках. Регуляризованная линейная модель с L1 или ядровые методы устойчивее.</div></div>
+<div class="numex-step"><span class="nb am">5</span><div><strong>Нужны калиброванные вероятности из коробки.</strong> Бустинг систематически переоценивает уверенность из-за оптимизации логлосса на ограниченных по глубине деревьях. Требуется отдельный этап калибровки — тема 1.7.</div></div>
+<div class="numex-step"><span class="nb am">6</span><div><strong>Жёсткие требования к латентности и размеру.</strong> Модель из 2 000 деревьев глубины 8 — это сотни тысяч узлов. Для инференса на устройстве или при бюджете в микросекунды нужна логистическая регрессия или дистилляция в неё.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Где бустинг остаётся лучшим выбором:</strong> табличные данные среднего и большого размера со смешанными типами признаков, наличием пропусков, категорий и нелинейных взаимодействий. То есть подавляющее большинство прикладных бизнес-задач.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Экстраполяция: где дерево принципиально не работает</div>
+<div class="chsub">За пределами обучающего диапазона прогноз становится константой</div>
+<div style="position:relative;height:330px;"><canvas id="c_extrap"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про экстраполяцию подробнее.</strong> Это не «плохо работает», а <em>структурная невозможность</em>: последний лист охватывает всё от последнего порога до бесконечности, и в нём одно значение. Если признак «число дней с регистрации» растёт со временем, модель, обученная на диапазоне 0–400 дней, для клиента на 900-м дне выдаст ровно то же, что для клиента на 401-м. Симптом — качество, тихо деградирующее месяцами без явной поломки. Лечение: заменять растущие признаки на ограниченные (бакеты, отношения, разности), а не полагаться на модель.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок, встречающихся регулярно</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Наивное target encoding.</b> Категория, встречающаяся один раз, получает признак, равный собственной метке. В замере AUC на обучении 0.9994 при 0.6127 на валидации. Только out-of-fold и только со сглаживанием.</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>Дефолтный min_child_weight при дисбалансе.</b> При $p \approx 0.005$ гессиан равен 0.005, и <code>min_child_weight=1</code> означает «минимум 200 объектов в листе». Симптом: дерево неожиданно мелкое, рост max_depth ничего не даёт.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Перенос num_leaves = 2^max_depth при переходе на LightGBM.</b> Leaf-wise с 256 листьями строит намного более сложное дерево, чем сбалансированное глубины 8: AUC 0.8197 против 0.8412.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>Нет ранней остановки.</b> Число деревьев — полноценный гиперпараметр, и в отличие от случайного леса переобучение с их ростом реально. На 2000 итерациях валидационный логлосс был хуже, чем на 200.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>early_stopping_rounds слишком мал.</b> Кривая валидации не гладкая и может стоять на плато десятки итераций. При терпении 10 обучение остановилось на 218-й итерации вместо 641-й. Правило: примерно $10/\eta$.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>Одна выборка для ранней остановки и выбора гиперпараметров.</b> При переборе 200 конфигураций оценка завышена на 0.0077 AUC — как раз порядка типичного выигрыша от настройки. Нужна третья выборка.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>Случайный сплит при временной структуре.</b> Модель видит будущее, оценка завышается кратно. Нужен временной сплит с зазором — механика в темах 2.2 и 6.1.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Растущие признаки вроде «дней с регистрации».</b> Дерево не экстраполирует: за последним порогом прогноз константен. Качество деградирует месяцами без явной поломки. Бакетизировать или заменять на ограниченные величины.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Нет монотонных ограничений там, где направление известно.</b> В замере модель без них нарушала монотонность в 31.4% пар, а с ограничением качество на валидации даже выросло — ограничение работает как регуляризация.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>Монотонность навешана на всё подряд.</b> Обратная ошибка: при девяти ограничениях, часть которых не следует из предметной области, AUC упал с 0.8439 до 0.8348.</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Метод basic для монотонных ограничений в LightGBM.</b> Границы применяются консервативнее необходимого, потери качества до 1.5 п.п. Переключать на <code>advanced</code> сразу.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Ожидание калиброванных вероятностей.</b> Бустинг систематически переоценивает уверенность. Если скор идёт в экономический расчёт, нужен отдельный этап калибровки — тема 1.7.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Перебор всех параметров сразу по широкой сетке.</b> Learning rate и сложность дерева дают 80% эффекта; λ, γ и α почти никогда не меняют результат заметно, но раздувают пространство поиска экспоненциально.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>Неделя на сравнение библиотек.</b> При корректной настройке разница составляет 0.2–0.5 п.п. — меньше эффекта одного хорошего признака. Выбирать надо по удобству работы с категориями и скорости.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Один сид и никакой оценки разброса.</b> Разница между двумя запусками с разными сидами достигает 0.3–0.5 п.п. — того же порядка, что «улучшение» от настройки. Сравнивать конфигурации надо по среднему нескольких запусков.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев с нюансами валидации</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏦</span><div><div class="sysname">Кредитный скоринг с регуляторными требованиями</div><div class="syssub">Где ограничения важнее последних процентов качества</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Оценка вероятности дефолта. Модель должна быть объяснима регулятору, вести себя предсказуемо и не использовать запрещённые признаки ни прямо, ни через прокси.</p>
+<p><strong>Решение.</strong> Бустинг с монотонными ограничениями на все содержательно направленные признаки: долговая нагрузка, просрочки в прошлом, срок кредита — вероятность дефолта по ним не убывает. Плюс interaction constraints, разбивающие признаки на группы, чтобы модель не восстанавливала запрещённые характеристики из комбинаций. Число деревьев ограничено ради возможности выгрузить модель в понятный вид.</p>
+<p><strong>Почему так.</strong> Замер из секции 8 показал, что монотонные ограничения не только не вредят, но и слегка улучшают качество на валидации — они блокируют выучивание шумовых немонотонностей. А из секции 9: interaction constraints снижают восстановимость запрещённого признака с 0.71 до 0.54 AUC, то есть почти до случайного угадывания.</p>
+<p><strong>Нюанс валидации.</strong> Помимо обычных метрик проверяется <em>монотонность на сетке</em>: генерируется набор синтетических заявок, где меняется один признак при фиксированных остальных, и проверяется отсутствие разворотов. Это делается для каждой версии модели автоматически. Плюс проверка калибровки по децилям — регулятору нужна не только ранжирующая способность, но и корректность самих вероятностей.</p>
+<p><strong>Подводный камень.</strong> Reject inference: обучающая выборка состоит только из выданных кредитов, а отказники в неё не попали — и это самый информативный сегмент. Модель, обученная на выданных, систематически недооценивает риск на границе. Стандартные подходы — parcelling, augmentation, обучение на данных бюро.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🛒</span><div><div class="sysname">Прогноз конверсии в электронной коммерции</div><div class="syssub">Высокая кардинальность и дисбаланс одновременно</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Предсказать вероятность покупки по сессии. Признаки: идентификатор товара (миллионы значений), категория, бренд, канал, поведение в сессии. Конверсия около 1.5%.</p>
+<p><strong>Решение.</strong> CatBoost из-за ordered target statistics: идентификаторы товаров и брендов кодируются без утечки и без ручной работы. Отдельно снижен <code>min_child_weight</code> — при конверсии 1.5% гессианы малы, и дефолтное значение душит выделение редких сегментов.</p>
+<p><strong>Почему так.</strong> Расчёт из секции 3: при $p \approx 0.015$ гессиан равен 0.0148, и <code>min_child_weight=1</code> эквивалентен требованию 68 объектов в листе. При наивном target encoding идентификатора товара, встречающегося один раз, признак равен метке — точно та ситуация, что разобрана в секции 6.</p>
+<p><strong>Нюанс валидации.</strong> Временной сплит обязателен: ассортимент и промо меняются, и случайное разбиение даёт завышенную оценку. Метрика — PR-AUC, а не ROC-AUC (тема 1.2). Отдельно контролируется <em>стабильность кодировок между обучением и применением</em>: если товар не встречался в обучении, он получит приор, и надо проверить, что доля таких товаров в проде не растёт.</p>
+<p><strong>Подводный камень.</strong> Признак «число дней с появления товара в каталоге» монотонно растёт, и модель не экстраполирует за обучающий диапазон. Через полгода все новые товары попадают в один крайний лист. Заменяется бакетами: новый / до месяца / до квартала / старый.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⚙️</span><div><div class="sysname">Предсказание отказов оборудования</div><div class="syssub">Малый датасет и требование объяснимости инженеру</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> По телеметрии предсказать вероятность отказа узла в ближайшие 30 дней. Отказов исторически несколько сотен, признаков около 400, инженер должен понимать, почему модель тревожится.</p>
+<p><strong>Решение.</strong> Бустинг с interaction constraints в аддитивном режиме плюс десяток явно заданных пар, найденных по SHAP interaction values. Каждое слагаемое модели — либо кривая по одному датчику, либо тепловая карта по паре, и их можно показать инженеру напрямую.</p>
+<p><strong>Почему так.</strong> Из замера в секции 9: аддитивная модель с несколькими явными парами теряет менее процента AUC относительно полной, а объяснимость получается качественно другая — не post-hoc через SHAP, а структурная. Для сценария, где решение приводит к остановке дорогого оборудования, это решающий аргумент.</p>
+<p><strong>Нюанс валидации.</strong> Разбиение по <em>единицам оборудования</em>, а не по наблюдениям: телеметрия одного узла сильно автокоррелирована, и случайный сплит даёт утечку через соседние замеры. Плюс оценка по времени до отказа, а не по бинарной метке в окне — постановка через выживаемость (тема 1.5) здесь корректнее.</p>
+<p><strong>Подводный камень.</strong> При 400 признаках и нескольких сотнях положительных примеров бустинг находит случайные признаки, работающие на обучении. Обязателен отбор признаков с честной вложенной кросс-валидацией — и, скорее всего, стоит проверить регуляризованную линейную модель как базовую линию.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📊</span><div><div class="sysname">Модель в реальном времени с бюджетом в миллисекунды</div><div class="syssub">Когда размер модели становится ограничением</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Скоринг в тракте обработки транзакций, бюджет 3 мс на всё, включая загрузку признаков. Модель из 2 000 деревьев глубины 8 не укладывается.</p>
+<p><strong>Решение.</strong> Ограничение сложности на этапе обучения: меньше деревьев при большем learning rate, ограничение глубины до 4–5, квантование порогов. Компиляция модели в нативный код вместо интерпретации структуры. Отдельно — усечение по вкладу: деревья, чей вклад в итоговый скор мал, отбрасываются.</p>
+<p><strong>Почему так.</strong> Компромисс из секции 5 работает в обе стороны: если $\eta \cdot n$ примерно постоянно, то при $\eta = 0.3$ достаточно 100 деревьев вместо 640 при $\eta = 0.05$. Качество упадёт с 0.8438 до 0.8291, то есть на 1.7% — приемлемая цена за шестикратное ускорение.</p>
+<p><strong>Нюанс валидации.</strong> Помимо качества измеряется <em>распределение времени ответа</em>, а не среднее: p99 определяется самыми глубокими путями в дереве, и при несбалансированном leaf-wise дереве разброс велик. Плюс проверка на совпадение прогнозов до и после компиляции — расхождения из-за разной точности арифметики встречаются и обнаруживаются только явным сравнением.</p>
+<p><strong>Подводный камень.</strong> Соблазн взять LightGBM ради скорости обучения даёт несбалансированные деревья с большим разбросом глубины пути, что ухудшает именно хвост латентности. При жёстких требованиях к p99 сбалансированное дерево XGBoost предсказуемее, хотя формально «медленнее».</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🔁</span><div><div class="sysname">Модель с ежедневным переобучением</div><div class="syssub">Когда стабильность важнее абсолютного качества</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Модель переобучается каждую ночь на скользящем окне. Проблема не в качестве, а в том, что прогнозы прыгают между версиями, и бизнес-пользователи теряют доверие.</p>
+<p><strong>Решение.</strong> Фиксация сида, увеличение подвыборок до 0.9 (меньше случайности), снижение learning rate с увеличением числа деревьев, и главное — <em>инициализация от предыдущей модели</em> вместо обучения с нуля, где библиотека это поддерживает. Плюс сглаживание прогнозов: итоговый скор как смесь новой и вчерашней модели.</p>
+<p><strong>Почему так.</strong> Разброс между запусками с разными сидами достигает 0.3–0.5 п.п. AUC — того же порядка, что реальные изменения в данных. Без фиксации источник колебаний неотличим от сигнала.</p>
+<p><strong>Нюанс валидации.</strong> Помимо качества измеряется <em>стабильность прогнозов</em>: доля объектов, у которых скор изменился более чем на порог, и ранговая корреляция вчерашнего и сегодняшнего скоров. Это отдельная метрика с собственным порогом тревоги, и без неё проблема не обнаруживается, пока не пожалуются пользователи.</p>
+<p><strong>Подводный камень.</strong> Инициализация от предыдущей модели снижает колебания, но накапливает дрейф: модель постепенно уходит от данных, обучаясь на всё более старой основе. Нужен периодический полный пересбор с нуля — обычно раз в 1–2 месяца, с явным сравнением качества.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Чем бустинг принципиально отличается от случайного леса?</div><div class="a">Способом построения и тем, что снижает. Лес строит деревья <em>независимо</em> и усредняет — снижает дисперсию; деревья глубокие, число деревьев можно наращивать без риска. Бустинг строит <em>последовательно</em>, каждое следующее исправляет ошибки предыдущих — снижает смещение; деревья мелкие, а рост их числа реально ведёт к переобучению. Отсюда обязательность ранней остановки, которой в лесе нет.</div></div>
+
+<div class="qa"><div class="q">2. Что именно предсказывает каждое дерево в бустинге?</div><div class="a">Не целевую переменную, а <em>антиградиент потерь по текущему прогнозу</em>. Для квадратичной ошибки это совпадает с обычным остатком $y - F$, но для логлосса или любой другой функции — нет. В этом вся общность метода: меняя функцию потерь, получаем регрессию, классификацию, ранжирование или квантильный прогноз при одном и том же алгоритме.</div></div>
+
+<div class="qa"><div class="q">3. Откуда берётся формула значения листа?</div><div class="a">Из минимизации приближённых потерь. После разложения Тейлора второго порядка вклад листа равен $Gw + \frac12(H+\lambda)w^2$ — обычная парабола по $w$. Дифференцируем, приравниваем нулю: $w^* = -G/(H+\lambda)$. Никакого перебора, одна формула — и это главное вычислительное отличие современного бустинга от классического, где значение листа подбиралось численно.</div></div>
+
+<div class="qa"><div class="q">4. Как устроена формула прироста?</div><div class="a">Подставив $w^*$ обратно, получаем вклад листа $-\frac12 G^2/(H+\lambda)$. Разбиение заменяет один лист двумя, поэтому прирост — это разница: $\frac12[G_L^2/(H_L+\lambda) + G_R^2/(H_R+\lambda) - G^2/(H+\lambda)] - \gamma$. Три слагаемых — вклады левого, правого и исходного листов, $\gamma$ — плата за усложнение дерева.</div></div>
+
+<div class="qa"><div class="q">5. Что на самом деле измеряет прирост?</div><div class="a">Не «насколько разные значения целевой в половинах», а <em>насколько по-разному текущая модель в них ошибается</em>. Если градиенты в обеих половинах распределены пропорционально ($G_L/H_L = G_R/H_R$), прирост равен нулю — проверено в секции 3. Признак может идеально разделять целевую, но если модель уже это выучила, прироста не будет, и это правильно.</div></div>
+
+<div class="qa"><div class="q">6. Почему в трассировке порог 4.5 победил порог 3.5, хотя сумма градиентов слева была почти той же?</div><div class="a">Из-за знаменателей. При пороге 3.5 деление пополам: $G_L = 3.80$, $H_L = H_R = 3$, прирост 3.6100. При пороге 4.5: $G_L = 4.1333$, но справа всего два объекта, $H_R = 2$, знаменатель мал — и вклад правого листа растёт до 5.6947. Итог 4.5558. <strong>Малый лист с большим по модулю градиентом даёт больший вклад</strong>, чем крупный лист с тем же градиентом.</div></div>
+
+<div class="qa"><div class="q">7. Что делает λ и почему он влияет неравномерно?</div><div class="a">Добавляется в знаменатель $w = -G/(H+\lambda)$. При $H = 2$ и $\lambda = 1$ знаменатель растёт в полтора раза, при $H = 200$ — на полпроцента. То есть <em>штраф автоматически сильнее там, где данных мало</em> — именно там, где риск выучить шум высок. Это делает λ более осмысленным регуляризатором, чем просто «уменьшение всех значений».</div></div>
+
+<div class="qa"><div class="q">8. В чём подвох min_child_weight при классификации?</div><div class="a">Он ограничивает сумму <em>гессианов</em>, а не число объектов. Для логлосса $h = p(1-p)$, и при $p \approx 0.005$ это 0.004975. Значит <code>min_child_weight=1</code> требует около 201 объекта в листе. На сильно несбалансированных данных дефолтное значение душит выделение редких сегментов; симптом — неожиданно мелкое дерево, на которое не влияет рост <code>max_depth</code>. Лечение: снизить до 0.01–0.1 или использовать <code>min_data_in_leaf</code>.</div></div>
+
+<div class="qa"><div class="q">9. Чем level-wise отличается от leaf-wise на числах?</div><div class="a">Level-wise делит все узлы уровня, leaf-wise — самый перспективный лист. В примере секции 4 при одинаковых четырёх листьях: level-wise набрал суммарный прирост 15.70 при глубине 2, leaf-wise — 18.30 при глубине 3. То есть <strong>на 16.6% больше прироста при той же сложности</strong>, но ценой глубокой ветки, где объектов может остаться единицы.</div></div>
+
+<div class="qa"><div class="q">10. Почему нельзя просто взять num_leaves = 2^max_depth при переходе на LightGBM?</div><div class="a">Потому что leaf-wise с 256 листьями строит намного более сложное дерево, чем сбалансированное глубины 8: оно уходит вглубь там, где выгодно, и достигает эффективной глубины 15–20. В замере: XGBoost с <code>max_depth=8</code> дал AUC 0.8412, LightGBM с <code>num_leaves=256</code> — 0.8197 (переобучение), а с <code>num_leaves=31</code> — 0.8438. Правило: брать заметно меньше, обычно начинать с 31.</div></div>
+
+<div class="qa"><div class="q">11. Почему learning rate — главный регуляризатор?</div><div class="a">Потому что он превращает решение отдельного дерева в «голос». При $\eta = 1$ найденное деревом значение сразу сдвигает прогноз, и если это был шум, последующие деревья должны его откатывать. При $\eta = 0.05$ сдвиг составляет двадцатую часть, и чтобы прогноз изменился существенно, много деревьев должны согласиться. Из замера: произведение $\eta \times$ деревья почти постоянно (29.4–34.0), то есть качество определяется пройденным путём, а не числом шагов.</div></div>
+
+<div class="qa"><div class="q">12. Как читать разрыв между train и valid?</div><div class="a">Как индикатор запаса на регуляризацию. Из ablation в секции 5: без подвыборок разрыв 0.1241 при валидационном AUC 0.8371; с обеими подвыборками 0.8 разрыв 0.0749 при AUC 0.8438; при подвыборках 0.3 разрыв 0.0254, но AUC упал до 0.8358. <strong>Разрыв больше 0.08–0.10 — есть куда регуляризовать; меньше 0.03 — вероятно, уже недообучение.</strong></div></div>
+
+<div class="qa"><div class="q">13. Почему наивное target encoding опасно и как это выглядит?</div><div class="a">Признак вычисляется с участием собственной метки объекта. Категория, встречающаяся один раз, получает кодировку, <em>ровно равную</em> её метке — модель выучивает «если enc = 1.0, то y = 1». В замере с 6 800 уникальных значений: AUC на обучении 0.9994 при 0.6127 на валидации. Симптом узнаваем — почти идеальное обучение при провале на валидации.</div></div>
+
+<div class="qa"><div class="q">14. Как правильно кодировать категории?</div><div class="a">Два обязательных элемента. <strong>Out-of-fold:</strong> кодировка для объектов фолда $k$ вычисляется по остальным фолдам. <strong>Сглаживание:</strong> $(\sum y + aP)/(n + a)$ — редкие категории подтягиваются к глобальному среднему. В примере секции 6 категория с одним наблюдением сдвинулась с 1.00 до 0.7403, то есть почти к приору. Параметр $a$ выводится эмпирическим байесом, а не угадывается.</div></div>
+
+<div class="qa"><div class="q">15. В чём идея ordered target statistics?</div><div class="a">Считать кодировку для объекта только по тем объектам, что стоят <em>раньше</em> в случайной перестановке. Это буквально имитация продакшена: там тоже, кодируя нового клиента, мы располагаем только прошлым. Утечка исчезает не потому, что её вырезали, а потому что ситуация обучения совпала с ситуацией применения. В трассировке объект 7 с единственной категорией C получил приор 0.7143 вместо собственной метки 1.0.</div></div>
+
+<div class="qa"><div class="q">16. Чем платит CatBoost за ordered-кодирование?</div><div class="a">Дисперсией в начале перестановки и скоростью. Первый объект получает чистый приор — про него не известно ничего, и модель обучается на неинформативном признаке. Лечение — несколько независимых перестановок (обычно 4), в которых объект оказывается в разных позициях. Из замера: 1 перестановка даёт AUC 0.8291, 4 — 0.8412, 8 — 0.8419 за вдвое большее время. Это же объясняет, почему CatBoost медленнее обучается.</div></div>
+
+<div class="qa"><div class="q">17. Как LightGBM находит разбиение по категориям, не перебирая все подмножества?</div><div class="a">Категории сортируются по накопленной статистике $G_c/(H_c+\lambda)$, и перебираются только разбиения по этому порядку. Вместо $2^{k-1}-1$ вариантов получается $k-1$: при 50 категориях это 49 вместо $5.6\times10^{14}$. Обоснование строгое: для выпуклых потерь оптимальное разбиение всегда является отрезком в этом порядке.</div></div>
+
+<div class="qa"><div class="q">18. Почему проверки монотонности на каждом разбиении недостаточно?</div><div class="a">Потому что дерево сравнивает не только соседей внутри узла, но и листья из <em>разных веток</em>, которые ни в одном разбиении не сравнивались. В трассировке секции 8 все три разбиения по отдельности были монотонны, а итоговая функция дала 0.210 при цене 300 и 0.290 при цене 400 — рост вместо падения. Нужны границы, распространяемые сверху вниз.</div></div>
+
+<div class="qa"><div class="q">19. Как реализованы монотонные ограничения?</div><div class="a">Через диапазон допустимых значений листьев $[L, U]$ у каждого узла. При разбиении: проверяется упорядоченность $w_L$ и $w_R$; вычисляется $\text{mid} = (w_L+w_R)/2$; левый потомок получает $[\text{mid}, U]$, правый — $[L, \text{mid}]$; значения листьев внутри обрезаются этими границами. В примере оба спорных листа схлопнулись в 0.2550 — модель признала, что различить цены 300 и 400 не может.</div></div>
+
+<div class="qa"><div class="q">20. Монотонные ограничения ухудшают качество?</div><div class="a">Обычно нет, а часто улучшают. В замере: без ограничений валидационный AUC 0.8412 при 31.4% нарушающих пар, с монотонностью по цене — 0.8439. Ограничение работает как сильная регуляризация, запрещая класс решений, который почти всегда является шумом. <strong>Но только если направление известно из предметной области:</strong> при девяти ограничениях, часть которых предполагалась, AUC упал до 0.8348.</div></div>
+
+<div class="qa"><div class="q">21. Что такое interaction constraints и зачем они?</div><div class="a">Ограничение на то, какие признаки могут встречаться в одном дереве. Два применения. <strong>Интерпретируемость:</strong> если каждый признак в своей группе, модель становится суммой одномерных функций — полностью объяснимой; из замера, аддитивная база с пятью явными парами теряет 0.8% качества. <strong>Блокировка прокси:</strong> ограничение мешает восстановить запрещённый признак из комбинаций — восстановимость упала с 0.71 до 0.54 AUC.</div></div>
+
+<div class="qa"><div class="q">22. Как выбрать early_stopping_rounds?</div><div class="a">Порядка $10/\eta$: при $\eta = 0.05$ это около 200, при $\eta = 0.1$ — около 100. Логика в том, что при малом шаге прогресс за фиксированное число итераций меньше. Слишком малое терпение — частая ошибка: кривая валидации не гладкая и может стоять на плато десятки итераций. В замере при терпении 10 обучение остановилось на 218-й итерации с логлоссом 0.4171 вместо 641-й с 0.3812.</div></div>
+
+<div class="qa"><div class="q">23. Почему нельзя использовать одну выборку и для ранней остановки, и для выбора гиперпараметров?</div><div class="a">Потому что оценка становится оптимистичной. При переборе 200 конфигураций лучший результат на валидации составил 0.8471, а та же модель на отложенном тесте — 0.8394. <strong>Завышение 0.0077 AUC — как раз порядка типичного выигрыша от настройки гиперпараметров</strong>, то есть весь видимый прирост может оказаться шумом. Это тот же эффект множественных сравнений, что в A/B-тестах.</div></div>
+
+<div class="qa"><div class="q">24. Стоит ли переобучать финальную модель на всех данных?</div><div class="a">Обычно да, с числом деревьев, увеличенным пропорционально доле добавленных данных. В замере: 80% данных и 641 дерево дали 0.8394; 100% и 641 дерево — 0.8427; 100% и 801 дерево — 0.8431; 100% и 1000 деревьев — уже 0.8419, перебор. Выигрыш третьего варианта над вторым мал (0.0004), поэтому при отсутствии отдельного теста безопаснее просто переобучить на всех данных с тем же числом деревьев.</div></div>
+
+<div class="qa"><div class="q">25. Почему бустинг не экстраполирует?</div><div class="a">Это структурная невозможность, а не «плохо работает». Последний лист охватывает всё от последнего порога до бесконечности, и в нём одно значение. Признак «дней с регистрации», обученный на диапазоне 0–400, для клиента на 900-м дне выдаст ровно то же, что для клиента на 401-м. Симптом — качество, тихо деградирующее месяцами. Лечение: заменять растущие признаки на ограниченные величины, а не полагаться на модель.</div></div>
+
+<div class="qa"><div class="q">26. Когда бустинг стоит заменить на что-то другое?</div><div class="a">Шесть ситуаций. Экстраполяция за пределы обучающего диапазона. Гладкие зависимости при малом числе точек — до тысячи наблюдений сплайны обычно лучше. Сигналы, изображения, текст — там нужна локальная структура. Очень высокая размерность при малом числе объектов — регуляризованная линейная модель устойчивее. Нужны калиброванные вероятности из коробки. Жёсткие ограничения на размер и латентность.</div></div>
+
+<div class="qa"><div class="q">27. Какую библиотеку выбрать?</div><div class="a">При корректной настройке разница составляет 0.2–0.5 п.п. — меньше эффекта одного хорошего признака, поэтому выбирать надо по удобству. CatBoost при обилии категорий высокой кардинальности и на малых датасетах. LightGBM когда важна скорость на больших данных. XGBoost когда нужен предсказуемый хвост латентности инференса за счёт сбалансированных деревьев. Тратить неделю на сравнение библиотек вместо работы с признаками — типичная ошибка приоритизации.</div></div>
+
+<div class="qa"><div class="q">28. В каком порядке настраивать гиперпараметры?</div><div class="a">Learning rate с ранней остановкой и сложность дерева дают 80% эффекта — их первыми. Затем ограничение на размер листа, особенно при leaf-wise и дисбалансе. Затем подвыборки около 0.8. Регуляризация λ, γ, α — только если разрыв train/valid остаётся большим; обычно их эффект менее 0.2 п.п. Перебирать все параметры сразу по широкой сетке значит раздувать пространство поиска экспоненциально ради последних долей процента.</div></div>
+
+<div class="qa"><div class="q">29. Насколько велик разброс между запусками?</div><div class="a">0.3–0.5 п.п. AUC между разными сидами — того же порядка, что «улучшение» от настройки гиперпараметров. Отсюда два требования: фиксировать сид для воспроизводимости и сравнивать конфигурации по среднему нескольких запусков, а не по одному. Без этого легко принять шум за улучшение, особенно при переборе многих вариантов.</div></div>
+
+<div class="qa"><div class="q">30. С чего начинать на новой табличной задаче?</div><div class="a">① Корректная схема валидации — временной сплит, если есть время; разбиение по сущностям, если данные сгруппированы. ② Базовая линия: LightGBM с дефолтами и ранней остановкой, минут за пять. ③ Проверка на утечку: слишком хорошее качество, один доминирующий признак по важности, плоская метрика по времени. ④ Работа с признаками — обычно даёт больше, чем настройка. ⑤ Монотонные ограничения там, где направление известно. ⑥ И только потом настройка гиперпараметров по порядку из секции 10.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="index_roadmap.html">← К роадмапу</a>
+  <a href="block1_02_class_imbalance.html" class="next">Дальше: 1.2 — Дисбаланс классов →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#2563eb', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_S='#0284c7', C_T='#0d9488', C_GR='#94a3b8', C_V='#7c3aed';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---------- S2: прирост по порогам ---------- */
+(function(){
+  mk('c_gain', {type:'bar', data:{labels:['x<1.5','x<2.5','x<3.5','x<4.5','x<5.5'], datasets:[
+    {label:'Прирост', data:[1.6625,3.7835,3.6100,4.5558,1.8671],
+     backgroundColor:['rgba(148,163,184,.65)','rgba(2,132,199,.70)','rgba(2,132,199,.70)','rgba(22,163,74,.85)','rgba(148,163,184,.65)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'|G_L| — сумма градиентов слева', data:[2.2333,3.7667,3.8000,4.1333,2.3667], type:'line',
+     borderColor:C_A, borderWidth:2.5, pointRadius:6, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Прирост'}},GRID),
+             y2:{position:'right', title:{display:true,text:'|G_L|'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return 'Наибольшая сумма градиентов — но НЕ наибольший прирост:\nделит поровну, знаменатели одинаковы';
+        if(i===3) return '✓ Максимум: справа всего 2 объекта,\nзнаменатель мал, вклад листа велик'; return ''; }}}}}});
+})();
+
+/* ---------- S2: аппроксимация ступеньками ---------- */
+(function(){
+  var xs=[1,2,3,4,5,6], ys=[1.20,1.90,3.40,3.10,5.20,5.80];
+  var f0=[3.4333,3.4333,3.4333,3.4333,3.4333,3.4333];
+  var f1=[3.1853,3.1853,3.1853,3.1853,3.8467,3.8467];
+  var f3=[2.55,2.72,3.18,3.31,4.62,4.79];
+  var f10=[1.62,2.11,3.24,3.19,4.98,5.42];
+  mk('c_steps', {type:'line', data:{labels:xs, datasets:[
+    {label:'Истинные значения y', data:ys, borderColor:'#1e293b', backgroundColor:'#1e293b', pointRadius:8, showLine:false, pointStyle:'rectRot'},
+    {label:'F₀ — базовый прогноз', data:f0, borderColor:C_GR, borderDash:[4,3], stepped:'middle', pointRadius:0, borderWidth:2},
+    {label:'После 1 дерева', data:f1, borderColor:C_A, stepped:'middle', pointRadius:0, borderWidth:2.5},
+    {label:'После 3 деревьев', data:f3, borderColor:C_S, stepped:'middle', pointRadius:0, borderWidth:2.5},
+    {label:'После 10 деревьев', data:f10, borderColor:C_G, stepped:'middle', pointRadius:0, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'x'}},NOG),
+             y:Object.assign({title:{display:true,text:'Прогноз'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Каждое дерево — ступенчатая функция.\nИх сумма приближает данные всё точнее.';}}}}}});
+})();
+
+/* ---------- S3: влияние λ ---------- */
+(function(){
+  var H=[1,2,5,10,25,50,100,200];
+  function w(h,lam){ return +(1/(h+lam)).toFixed(4); }
+  mk('c_lambda', {type:'line', data:{labels:H, datasets:[
+    {label:'λ = 0 — без регуляризации', data:H.map(function(h){return w(h,0);}), borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:5, borderWidth:2},
+    {label:'λ = 1', data:H.map(function(h){return w(h,1);}), borderColor:C_S, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'λ = 10', data:H.map(function(h){return w(h,10);}), borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'λ = 50', data:H.map(function(h){return w(h,50);}), borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'H — объектов в листе'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Множитель 1/(H+λ), лог'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var h=H[c[0].dataIndex];
+        return h<=5 ? 'В малых листьях λ режет значение в разы —\nименно там, где риск выучить шум высок'
+                    : 'В крупных листьях λ почти не влияет'; }}}}}});
+})();
+
+/* ---------- S4: leaf-wise vs level-wise ---------- */
+(function(){
+  var it=[]; for(var i=0;i<=400;i+=20) it.push(i);
+  function curve(a,b,c){ return it.map(function(k){ return +(a*Math.exp(-k/b)+c).toFixed(4); }); }
+  var lwTrain=curve(0.42,90,0.19), llTrain=curve(0.42,140,0.24);
+  var lwValid=it.map(function(k){ return +(0.42*Math.exp(-k/85)+0.30+0.00022*Math.max(0,k-160)).toFixed(4); });
+  var llValid=it.map(function(k){ return +(0.42*Math.exp(-k/135)+0.30+0.00009*Math.max(0,k-260)).toFixed(4); });
+  mk('c_leafwise', {type:'line', data:{labels:it, datasets:[
+    {label:'Leaf-wise — обучение', data:lwTrain, borderColor:C_A, borderDash:[4,3], tension:.25, pointRadius:0, borderWidth:2},
+    {label:'Leaf-wise — валидация', data:lwValid, borderColor:C_A, tension:.25, pointRadius:0, borderWidth:3},
+    {label:'Level-wise — обучение', data:llTrain, borderColor:C_S, borderDash:[4,3], tension:.25, pointRadius:0, borderWidth:2},
+    {label:'Level-wise — валидация', data:llValid, borderColor:C_S, tension:.25, pointRadius:0, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Число деревьев'}},NOG),
+             y:Object.assign({title:{display:true,text:'Логлосс'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var k=it[c[0].dataIndex];
+        return k>=200 ? 'Leaf-wise раньше разворачивается на валидации:\nглубокие ветки выучивают шум' : ''; }}}}}});
+})();
+
+/* ---------- S5: learning rate ---------- */
+(function(){
+  var lr=[0.30,0.10,0.05,0.02,0.01];
+  var trees=[98,312,641,1684,3402];
+  mk('c_lr', {type:'line', data:{labels:lr.map(function(v){return 'η = '+v;}), datasets:[
+    {label:'Деревьев до остановки', data:trees, borderColor:C_S, backgroundColor:'rgba(2,132,199,.10)', fill:true, tension:.3, pointRadius:7, borderWidth:3},
+    {label:'η × деревья (почти постоянно)', data:lr.map(function(v,i){return +(v*trees[i]).toFixed(1);}), borderColor:C_A, borderDash:[4,3], tension:.3, pointRadius:6, borderWidth:2.5, yAxisID:'y2'},
+    {label:'AUC на валидации', data:[0.8291,0.8398,0.8438,0.8451,0.8453], borderColor:C_G, tension:.3, pointRadius:7, borderWidth:3, yAxisID:'y3'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:NOG, y:Object.assign({type:'logarithmic', title:{display:true,text:'Деревьев (лог)'}},GRID),
+             y2:{position:'right', min:0, max:50, title:{display:true,text:'η × деревья'}, grid:{display:false}},
+             y3:{display:false, min:0.82, max:0.85}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i>=3) return 'Отдача насыщается: +0.0015 AUC за пятикратное время';
+        return 'Произведение η × деревья почти постоянно —\nкачество определяется пройденным путём'; }}}}}});
+})();
+
+/* ---------- S5: регуляризация ---------- */
+(function(){
+  mk('c_reg', {type:'line', data:{labels:['1.0/1.0','0.8 subs','0.8 cols','обе 0.8','обе 0.5','обе 0.3'], datasets:[
+    {label:'AUC обучение', data:[0.9612,0.9418,0.9394,0.9187,0.8894,0.8612], borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:6, borderWidth:2},
+    {label:'AUC валидация', data:[0.8371,0.8407,0.8412,0.8438,0.8421,0.8358], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:7, borderWidth:3},
+    {label:'Разрыв', data:[0.1241,0.1011,0.0982,0.0749,0.0473,0.0254], borderColor:C_R, tension:.3, pointRadius:6, borderWidth:2.5, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Подвыборки объектов и признаков'}},NOG),
+             y:Object.assign({min:0.82, title:{display:true,text:'AUC'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Разрыв train−valid'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===3) return '✓ Максимум валидации';
+        if(i>=4) return '⚠ Разрыв мал, но качество падает — недообучение';
+        if(i===0) return '⚠ Разрыв 0.12 — большой запас на регуляризацию'; return ''; }}}}}});
+})();
+
+/* ---------- S6: сглаживание target encoding ---------- */
+(function(){
+  var n=[1,2,3,5,10,25,50,100,500];
+  var P=0.7143, obs=0.30;
+  function enc(cnt,a){ return +(((obs*cnt) + a*P)/(cnt+a)).toFixed(4); }
+  mk('c_te', {type:'line', data:{labels:n, datasets:[
+    {label:'Без сглаживания (a = 0)', data:n.map(function(c){return obs;}), borderColor:C_R, borderDash:[4,3], tension:0, pointRadius:5, borderWidth:2},
+    {label:'a = 5', data:n.map(function(c){return enc(c,5);}), borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'a = 20', data:n.map(function(c){return enc(c,20);}), borderColor:C_S, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Приор P = 0.7143', data:n.map(function(){return P;}), borderColor:C_GR, borderDash:[2,3], pointRadius:0, borderWidth:1.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({type:'logarithmic', title:{display:true,text:'Наблюдений в категории (лог)'}},NOG),
+             y:Object.assign({title:{display:true,text:'Кодировка'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var cnt=n[c[0].dataIndex];
+        return cnt<=3 ? 'Редкая категория подтягивается к приору —\nодно наблюдение ничего не говорит'
+                      : 'Частая категория работает по своим данным'; }}}}}});
+})();
+
+/* ---------- S7: наивное vs ordered ---------- */
+(function(){
+  mk('c_ordered', {type:'bar', data:{labels:['i=1 A y=1','i=2 B y=0','i=3 A y=1','i=4 A y=0','i=5 B y=1','i=6 A y=1','i=7 C y=1'], datasets:[
+    {label:'Наивное кодирование', data:[0.75,0.50,0.75,0.75,0.50,0.75,1.00],
+     backgroundColor:['rgba(148,163,184,.70)','rgba(148,163,184,.70)','rgba(148,163,184,.70)','rgba(217,119,6,.72)','rgba(148,163,184,.70)','rgba(148,163,184,.70)','rgba(220,38,38,.85)'],
+     borderColor:'#fff', borderWidth:2},
+    {label:'Ordered target statistics', data:[0.7143,0.7143,0.8571,0.9048,0.3571,0.6786,0.7143],
+     backgroundColor:'rgba(2,132,199,.78)', borderColor:'#fff', borderWidth:2},
+    {label:'Собственная метка y', data:[1,0,1,0,1,1,1], type:'line', borderColor:'#1e293b', borderWidth:2, pointRadius:7, pointStyle:'rectRot', tension:0, showLine:false}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({max:1.1, title:{display:true,text:'Значение признака'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===6) return '⚠ Наивное даёт РОВНО метку объекта:\nкатегория встречается один раз';
+        if(i===3) return 'Ordered даёт 0.9048 при метке 0 —\nсвязи с собственной меткой нет'; return ''; }}}}}});
+})();
+
+/* ---------- S8: монотонность ---------- */
+(function(){
+  var price=[100,200,300,400,500,600];
+  mk('c_mono', {type:'line', data:{labels:price, datasets:[
+    {label:'Данные (доля покупок)', data:[0.42,0.38,0.21,0.29,0.15,0.08], borderColor:'#1e293b', backgroundColor:'#1e293b', pointRadius:8, showLine:false, pointStyle:'rectRot'},
+    {label:'Без ограничения', data:[0.400,0.400,0.210,0.290,0.115,0.115], borderColor:C_R, stepped:'middle', pointRadius:5, borderWidth:3},
+    {label:'С монотонным ограничением', data:[0.400,0.400,0.255,0.255,0.115,0.115], borderColor:C_G, stepped:'middle', pointRadius:5, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Цена'}},NOG),
+             y:Object.assign({title:{display:true,text:'Вероятность покупки'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2||i===3) return '⚠ Здесь без ограничения прогноз РАСТЁТ с ценой.\nС ограничением оба листа схлопнулись в 0.255.'; return ''; }}}}}});
+})();
+
+/* ---------- S9: interaction constraints ---------- */
+(function(){
+  mk('c_inter', {type:'bar', data:{labels:['Без ограничений','Группы по два','Аддитивная','Аддитивная\n+ 5 пар'], datasets:[
+    {label:'AUC на валидации', data:[0.8438,0.8391,0.8214,0.8367],
+     backgroundColor:['rgba(148,163,184,.70)','rgba(2,132,199,.75)','rgba(217,119,6,.72)','rgba(22,163,74,.85)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Интерпретируемость (условная шкала)', data:[20,55,100,90], type:'line', borderColor:C_V, borderWidth:3, pointRadius:7, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({min:0.81, title:{display:true,text:'AUC'}},GRID),
+             y2:{position:'right', max:110, title:{display:true,text:'Интерпретируемость'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===3) return '✓ Лучший компромисс: −0.8% качества\nпри почти полной объяснимости'; return ''; }}}}}});
+})();
+
+/* ---------- S11: ранняя остановка ---------- */
+(function(){
+  var it=[50,200,500,641,800,1200,2000];
+  mk('c_early', {type:'line', data:{labels:it, datasets:[
+    {label:'Логлосс на обучении', data:[0.4821,0.3914,0.3102,0.2887,0.2641,0.2194,0.1602], borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:6, borderWidth:2},
+    {label:'Логлосс на валидации', data:[0.4903,0.4188,0.3841,0.3812,0.3819,0.3874,0.4012], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:7, borderWidth:3},
+    {label:'Точка остановки', data:[null,null,null,0.3812,null,null,null], borderColor:C_G, backgroundColor:C_G, pointRadius:12, pointStyle:'star', showLine:false}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Итерация'}},NOG),
+             y:Object.assign({title:{display:true,text:'Логлосс'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var k=it[c[0].dataIndex];
+        if(k===641) return '✓ Минимум валидации — сюда откатываемся';
+        if(k>=1200) return '⚠ Обучение продолжает падать, валидация растёт';
+        return ''; }}}}}});
+})();
+
+/* ---------- S12: экстраполяция ---------- */
+(function(){
+  var xs=[]; for(var x=0;x<=20;x++) xs.push(x);
+  var truth=xs.map(function(x){ return +(2+0.8*x).toFixed(2); });
+  var tree=xs.map(function(x){ return x<=10 ? +(2+0.8*Math.floor(x/2)*2).toFixed(2) : 10.00; });
+  var lin=xs.map(function(x){ return +(2+0.8*x).toFixed(2); });
+  mk('c_extrap', {type:'line', data:{labels:xs, datasets:[
+    {label:'Истинная зависимость', data:truth, borderColor:'#1e293b', borderDash:[3,3], pointRadius:0, borderWidth:2},
+    {label:'Бустинг', data:tree, borderColor:C_R, stepped:'middle', pointRadius:0, borderWidth:3},
+    {label:'Линейная модель', data:lin, borderColor:C_G, pointRadius:0, borderWidth:2.5},
+    {label:'Граница обучающих данных', data:xs.map(function(x){ return x<=10 ? 20 : null; }), borderColor:'rgba(2,132,199,.18)', backgroundColor:'rgba(2,132,199,.10)', fill:true, pointRadius:0, borderWidth:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Признак (обучение только до x = 10)'}},NOG),
+             y:Object.assign({max:20, title:{display:true,text:'Прогноз'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex>10
+        ? '⚠ За границей обучения прогноз бустинга — константа.\nЭто структурная невозможность, а не плохая настройка.' : ''; }}}}}});
+})();
+
+/* ---------- Интерактив: прирост ---------- */
+function updGain(){
+  var GL = +document.getElementById('sl_gl').value/10;
+  var nL = +document.getElementById('sl_nl').value;
+  var lam = +document.getElementById('sl_lam').value/10;
+  var gam = +document.getElementById('sl_gam').value/10;
+  document.getElementById('out_gl').textContent = GL.toFixed(1);
+  document.getElementById('out_nl').textContent = nL;
+  document.getElementById('out_lam').textContent = lam.toFixed(1);
+  document.getElementById('out_gam').textContent = gam.toFixed(1);
+  var nR = 6-nL, G = 0, GR = G-GL;
+  var HL = nL, HR = nR, H = 6;
+  var gain = 0.5*(GL*GL/(HL+lam) + GR*GR/(HR+lam) - G*G/(H+lam)) - gam;
+  var wL = -GL/(HL+lam), wR = -GR/(HR+lam);
+  var html = '<b>Прирост = '+gain.toFixed(4)+'</b>';
+  html += gain>0 ? ' — <span style="color:#16a34a;font-weight:800;">разбиение выполняется</span>' : ' — <span style="color:#dc2626;font-weight:800;">разбиение отклоняется</span>';
+  html += '<br><span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'вклад слева '+(0.5*GL*GL/(HL+lam)).toFixed(4)+' &nbsp;·&nbsp; справа '+(0.5*GR*GR/(HR+lam)).toFixed(4)+'<br>';
+  html += 'значения листьев: w_L = <b>'+wL.toFixed(4)+'</b>, w_R = <b>'+wR.toFixed(4)+'</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#075985;">';
+  if(Math.abs(GL) < 0.3) html += 'Градиенты слева почти обнулились — модель уже хорошо предсказывает эту группу, делить незачем';
+  else if(nL===1 || nL===5) html += 'Крайне несбалансированное разбиение: малый лист даёт большой вклад из-за малого знаменателя, но выучит мало объектов — здесь помогает min_child_weight';
+  else if(gain < gam) html += '⚠️ Прирост ниже γ = '+gam.toFixed(1)+' — разбиение блокируется порогом';
+  else html += '✓ Разбиение осмысленно: градиенты в половинах разнонаправлены';
+  if(lam > 5) html += '<br>ℹ️ Большая λ = '+lam.toFixed(1)+' сильно сжимает значения листьев: w_L упало бы до '+(-GL/(HL)).toFixed(3)+' без неё';
+  html += '</span>';
+  document.getElementById('out_gres').innerHTML = html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updGain();
+</script>
+</body>
+</html>

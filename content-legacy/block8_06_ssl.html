@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.6 · Self-supervised learning и трансфер</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0891b2 40%,#14b8a6);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.88;max-width:720px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);} .nb.pk{background:var(--pk);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- Батч-матрица InfoNCE ---------- */
+.bm{display:inline-block;margin:8px 0;}
+.bm table{border-collapse:separate;border-spacing:2px;width:auto;}
+.bm td{width:42px;height:30px;border-radius:4px;font-size:10px;text-align:center;color:#fff;
+       font-family:'SF Mono',monospace;border:none;vertical-align:middle;}
+.bm td.hd{background:none;color:var(--text3);font-size:10.5px;font-weight:700;font-family:inherit;width:auto;padding:0 6px;}
+.bm td.pos{outline:2.5px solid #16a34a;outline-offset:-2px;font-weight:800;}
+/* ---------- Аугментации ---------- */
+.augrow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center;justify-content:center;}
+.aug{width:76px;height:76px;border-radius:10px;position:relative;overflow:hidden;border:2px solid var(--cy-b);}
+.aug span{position:absolute;bottom:0;left:0;right:0;background:rgba(8,51,68,.82);color:#fff;
+          font-size:9px;text-align:center;padding:2px 0;}
+/* ---------- Маскирование ---------- */
+.maskgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:12px 0;}
+.mc{aspect-ratio:1;border-radius:3px;background:var(--cy);}
+.mc.masked{background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 3px,#e2e8f0 3px,#e2e8f0 6px);}
+/* ---------- Слои с lr ---------- */
+.lrstack{display:flex;flex-direction:column;gap:3px;margin:14px 0;}
+.lrlayer{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:7px;font-size:12px;
+         background:#fff;border:1px solid var(--border);}
+.lrbar{height:14px;border-radius:4px;background:linear-gradient(90deg,var(--cy),#67e8f9);}
+.lrname{min-width:98px;font-weight:600;color:var(--text2);}
+.lrval{font-family:'SF Mono',monospace;font-size:11px;color:var(--cy);font-weight:700;min-width:64px;text-align:right;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes collapseAnim{0%{transform:scale(1) translate(0,0);}100%{transform:scale(.15) translate(0,0);}}
+@keyframes pullTogether{0%,100%{transform:translateX(0);}50%{transform:translateX(var(--dx,14px));}}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--pur-l);border-color:var(--pur);color:#4c1d95;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--cy);animation:blink 2.4s infinite;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .bm td{width:32px;height:25px;font-size:8.5px;}.maskgrid{grid-template-columns:repeat(8,1fr);}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 6 из 6 · расширенная</div>
+  <h1>Self-supervised learning и трансфер</h1>
+  <p class="sub">Как учиться на данных без разметки, и как правильно переносить выученное на свою задачу.
+     Три парадигмы SSL, механика коллапса, полный протокол дообучения — с расчётами и интерактивом.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–10</span>
+    <span>🟣 продвинутый — секции 11–16</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Экономика разметки</a>
+  <a href="#s2">2. Три парадигмы</a>
+  <a href="#s3">3. Contrastive</a>
+  <a href="#s4">4. InfoNCE</a>
+  <a href="#s5">5. Температура и негативы</a>
+  <a href="#s6">6. Аугментации</a>
+  <a href="#s7">7. MoCo</a>
+  <a href="#s8">8. Коллапс</a>
+  <a href="#s9">9. Masked prediction</a>
+  <a href="#s10">10. Что выбрать</a>
+  <a href="#s11">11. Протокол дообучения</a>
+  <a href="#s12">12. Discriminative LR</a>
+  <a href="#s13">13. Забывание</a>
+  <a href="#s14">14. Подводные камни</a>
+  <a href="#s15">15. System Design</a>
+  <a href="#qa">16. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–4</strong> — зачем SSL нужен экономически и как устроен contrastive learning. С нуля, с полным разбором InfoNCE на матрице батча.</li>
+<li><strong>Секции 5–10</strong> — детали, определяющие успех: температура, число негативов, аугментации, коллапс представлений, маскированное восстановление.</li>
+<li><strong>Секции 11–13</strong> — вторая половина темы: как правильно дообучать. Linear probe против full fine-tune, послойный learning rate, катастрофическое забывание.</li>
+<li><strong>Секции 14–16</strong> — подводные камни, системный дизайн и 30 вопросов.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Экономика разметки: зачем всё это нужно <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Считаем деньги, а не только метрики</div>
+
+<p>Supervised learning требует размеченных данных. Разметка стоит денег и времени, и её объём — обычно главное ограничение проекта, а не вычисления и не архитектура.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Тип разметки</th><th>Стоимость за единицу</th><th>Скорость</th><th>10 000 примеров обойдутся</th></tr></thead>
+<tbody>
+<tr><td>Бинарная классификация текста</td><td>$0.02–0.10</td><td>~200/час</td><td>$200–1000, 50 часов</td></tr>
+<tr><td>Классификация изображений</td><td>$0.03–0.15</td><td>~150/час</td><td>$300–1500, 67 часов</td></tr>
+<tr><td>Bounding boxes (детекция)</td><td>$0.15–0.60</td><td>~40/час</td><td>$1500–6000, 250 часов</td></tr>
+<tr class="trh"><td>Пиксельная сегментация</td><td>$2–10</td><td>~5/час</td><td><strong>$20 000–100 000, 2000 часов</strong></td></tr>
+<tr><td>Медицинская разметка (врач)</td><td>$5–50</td><td>~10/час</td><td>$50 000–500 000</td></tr>
+<tr><td>Юридическая экспертиза</td><td>$20–200</td><td>~4/час</td><td>сотни тысяч $</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: асимметрия, из которой всё выросло</div>
+<p>Неразмеченных данных <strong>практически бесконечно</strong>: интернет, логи компании, архивы фото, история транзакций. Они уже есть и ничего не стоят.</p>
+<p>Размеченных данных <strong>мало и они дорогие</strong>. Причём стоимость не линейна: для медицины нужен врач, для юридических текстов — юрист, и их время стоит на два порядка дороже, чем время разметчика на краудсорсинге.</p>
+<p><strong>Идея SSL:</strong> выучить структуру данных на бесплатном неразмеченном корпусе, а дорогую разметку потратить только на финальную подстройку. Не «модель научилась задаче без разметки», а <em>«модель поняла устройство данных, и теперь ей нужно в 10–100 раз меньше примеров, чтобы выучить конкретную задачу»</em>.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Кривая обучения и эффект претрейна</div>
+$$\text{Error}(n) \approx E_{\infty} + \frac{c}{n^{\gamma}}$$
+<p>Претрейн действует двояко: снижает константу $c$ (лучше начальное представление) и иногда увеличивает $\gamma$ (быстрее обучается). Практический эффект — <strong>горизонтальный сдвиг кривой влево</strong>:</p>
+$$n_{\text{нужно с претрейном}} \approx \frac{n_{\text{нужно без}}}{k}, \qquad k \approx 10\text{–}100$$
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Расчёт окупаемости претрейна на реальном сценарии</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> сегментация дефектов на снимках с производственной линии. Цель — F1 ≥ 0.85.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Без претрейна:</strong> нужно ~50 000 размеченных масок. При $4 за маску это <strong>$200 000</strong> и примерно 10 000 человеко-часов разметки — около 5 месяцев работы команды из 10 разметчиков.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>С претрейном на неразмеченных снимках:</strong> у компании уже есть 2 млн снимков с линии — бесплатно. Претрейн (MAE или DINO) на них: ~300 GPU-часов × $2 = <strong>$600</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>После претрейна той же F1 достигаем на <strong>3000 масок</strong> вместо 50 000. Разметка: $12 000, 600 человеко-часов — <strong>две недели</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итог:</strong> $200 000 → $12 600. Экономия <strong>94%</strong> и сокращение срока с 5 месяцев до 2 недель. Причём срок часто важнее денег — проект успевает попасть в бизнес-цикл.</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор окупаемости претрейна</label>
+  <input type="range" id="sl_cost" min="1" max="500" step="1" value="40" oninput="updROI()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>$0.10 за пример</span><span class="out" id="out_cost">$4.00</span><span>$50.00</span></div>
+  <label style="margin-top:14px;">Сколько примеров нужно БЕЗ претрейна</label>
+  <input type="range" id="sl_need" min="1000" max="200000" step="1000" value="50000" oninput="updROI()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 000</span><span class="out" id="out_need">50 000</span><span>200 000</span></div>
+  <label style="margin-top:14px;">Во сколько раз претрейн сокращает потребность (k)</label>
+  <input type="range" id="sl_k" min="2" max="100" step="1" value="16" oninput="updROI()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>×2</span><span class="out" id="out_k">×16</span><span>×100</span></div>
+  <div class="res" id="out_roi"></div>
+</div>
+
+<div class="chb">
+<div class="cht">Кривая обучения: сколько размеченных данных нужно для целевого качества</div>
+<div class="chsub">Претрейн сдвигает кривую влево — то же качество достигается на порядок меньшем объёме</div>
+<div style="position:relative;height:320px;"><canvas id="c_curve"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Когда претрейн НЕ окупается.</strong> ① <strong>Размеченных данных и так много</strong> — при 500k+ примеров эффект претрейна обычно уже в пределах шума. ② <strong>Неразмеченных данных мало</strong> — SSL требует хотя бы сотен тысяч примеров, на 5000 он не даст полезного представления. ③ <strong>Есть подходящая публичная предобученная модель</strong> — свой претрейн почти всегда проигрывает готовому CLIP/DINOv2/BERT по соотношению цены и качества. ④ <strong>Домен слишком узкий</strong> — если все снимки почти одинаковы, SSL нечему учиться, аугментации не создают осмысленного разнообразия.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Три парадигмы SSL <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Одна задача — научиться представлениям без меток — и три способа её поставить</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 Общий принцип всех трёх</div>
+<p>SSL строит <strong>искусственную задачу (pretext task)</strong> из самих данных, для которой «метка» получается автоматически. Модель решает эту задачу, и по пути вынуждена выучить структуру данных.</p>
+<p>Ключ в том, чтобы задача была <em>достаточно сложной</em>: если её можно решить тривиальным трюком, модель этот трюк и выучит, а полезного представления не появится. История SSL — это во многом история борьбы с такими «срезаниями углов».</p>
+</div>
+
+<div class="grid3">
+<div class="card bl"><h5>① Contrastive</h5><p><strong>Задача:</strong> узнать, что две аугментированные версии — это один объект, и отличить его от других.</p><p><strong>Нужны:</strong> позитивы и негативы, большие батчи.</p><p><strong>Примеры:</strong> SimCLR, MoCo, CLIP, SAINT.</p></div>
+<div class="card pu"><h5>② Masked prediction</h5><p><strong>Задача:</strong> скрыть часть входа и восстановить её по оставшемуся.</p><p><strong>Нужны:</strong> ничего кроме данных — негативы не требуются.</p><p><strong>Примеры:</strong> BERT, MAE, TabNet, data2vec.</p></div>
+<div class="card gr"><h5>③ Self-distillation</h5><p><strong>Задача:</strong> ученик предсказывает выход учителя, который является усреднённой копией самого ученика.</p><p><strong>Нужны:</strong> хитрости против коллапса.</p><p><strong>Примеры:</strong> BYOL, SimSiam, DINO.</p></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Contrastive</th><th>Masked prediction</th><th>Self-distillation</th></tr></thead>
+<tbody>
+<tr><td>Нужны негативы</td><td><strong>Да</strong>, много</td><td>Нет</td><td>Нет</td></tr>
+<tr><td>Чувствительность к размеру батча</td><td><strong>Критическая</strong></td><td>Низкая</td><td>Средняя</td></tr>
+<tr><td>Чувствительность к аугментациям</td><td><strong>Критическая</strong></td><td>Низкая</td><td>Высокая</td></tr>
+<tr><td>Риск коллапса</td><td>Низкий (негативы держат)</td><td>Нет</td><td><strong>Высокий</strong>, нужны хитрости</td></tr>
+<tr><td>Качество linear probe</td><td>Отличное</td><td>Среднее</td><td><strong>Отличное</strong></td></tr>
+<tr><td>Качество после full fine-tune</td><td>Хорошее</td><td><strong>Отличное</strong></td><td>Отличное</td></tr>
+<tr><td>Применимость к тексту</td><td>Ограниченная</td><td><strong>Естественная</strong></td><td>Ограниченная</td></tr>
+<tr><td>Применимость к таблицам</td><td>Нужны хитрые аугментации</td><td><strong>Естественная</strong></td><td>Слабо изучена</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Интересная закономерность из таблицы:</strong> contrastive и self-distillation дают лучший <em>linear probe</em> (представления сразу линейно разделимы), а masked prediction — лучший <em>full fine-tune</em>. Объяснение: contrastive явно оптимизирует разделимость объектов в пространстве представлений, поэтому результат «готов к использованию». Masked prediction учит более низкоуровневым, но богатым признакам — им нужна донастройка, зато потолок выше. Практический вывод: <strong>если планируешь full fine-tune, masked-подходы обычно лучше; если нужны эмбеддинги «как есть» — contrastive.</strong></div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Contrastive learning: SimCLR по шагам <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Самая понятная парадигма — и самая требовательная к деталям</div>
+
+<div class="flow">
+  <div class="fn d"><strong>Объект x</strong>одно изображение</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Два вида</strong>x̃₁ = t₁(x)<br>x̃₂ = t₂(x)</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>Encoder f</strong>общий backbone<br>h = f(x̃)</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>Projector g</strong>MLP → z</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>InfoNCE</strong>сблизить z₁,z₂<br>отдалить остальные</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что здесь происходит</div>
+<p>Берём фото кошки. Делаем из него <strong>две искажённые версии</strong>: одну обрезали и повернули, другую обесцветили и размыли. Обе — всё ещё та же кошка.</p>
+<p>Прогоняем обе через одну и ту же сеть, получаем два вектора. <strong>Задача:</strong> эти два вектора должны быть похожи друг на друга сильнее, чем на векторы <em>любого другого</em> изображения в батче.</p>
+<p>Чтобы решить эту задачу, сеть вынуждена выучить, <strong>что в изображении остаётся неизменным при аугментациях</strong> — форму, текстуру, семантику. И научиться игнорировать то, что меняется — цвет, ракурс, масштаб.</p>
+<p><strong>Отсюда ключевая мысль:</strong> набор аугментаций — это буквально <em>определение того, что модель должна считать несущественным</em>. Выбор аугментаций важнее выбора архитектуры.</p>
+</div>
+
+<h3>Зачем нужна projection head</h3>
+<div class="fbox pur">
+<div class="flabel">📐 Двухэтапное представление</div>
+$$h = f(\tilde x) \in \mathbb{R}^{2048} \quad\text{(признаки — их используем дальше)}$$
+$$z = g(h) = W_2\,\sigma(W_1 h) \in \mathbb{R}^{128} \quad\text{(проекция — только для лосса)}$$
+<p class="fnote">После обучения <strong>projector $g$ выбрасывается</strong>, а используется $h$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: контринтуитивная деталь SimCLR</div>
+<p>Логично было бы считать лосс прямо на $h$. Но эксперименты показали: <strong>признаки $h$ существенно лучше для downstream-задач, чем $z$</strong> — разница в linear probe достигает 10+ процентных пунктов.</p>
+<p>Объяснение: contrastive-лосс требует <em>инвариантности к аугментациям</em>. Если считать лосс прямо на $h$, сеть выбросит из $h$ всю информацию о цвете, ориентации, масштабе — ведь они мешают решать задачу.</p>
+<p>Но эта информация <strong>полезна для других задач!</strong> Цвет важен для классификации фруктов, ориентация — для детекции.</p>
+<p>Projector берёт «грязную работу» на себя: он выбрасывает лишнее, а $h$ сохраняет богатое представление. По сути $g$ — это <em>буфер между требованиями pretext-задачи и полезностью признаков</em>.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практическое правило.</strong> Всегда используй промежуточный слой, а не выход лосса. Это работает не только в SimCLR: в CLIP берут представление до проекции, в BERT — скрытое состояние, а не логиты MLM-головы. Общий принцип: <em>слой, непосредственно оптимизируемый под pretext-задачу, специализирован под неё и хуже переносится</em>.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. InfoNCE: разбор на матрице батча <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Считаем лосс руками на батче из 4 объектов</div>
+
+<div class="fbox pk">
+<div class="flabel">📐 InfoNCE / NT-Xent</div>
+$$\mathcal{L}_{i,j} = -\log\frac{\exp\big(\operatorname{sim}(z_i, z_j)/\tau\big)}{\sum_{k=1}^{2N}\mathbb{1}_{[k\neq i]}\exp\big(\operatorname{sim}(z_i, z_k)/\tau\big)}$$
+<p>где $\operatorname{sim}(u,v) = \dfrac{u^\top v}{\|u\|\|v\|}$ — косинусное сходство, $\tau$ — температура, $2N$ — число видов в батче (по два на объект).</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: это просто задача классификации</div>
+<p>Присмотрись к формуле — это <strong>обычная кросс-энтропия</strong> для классификации с $2N-1$ классами.</p>
+<p>«Вход» — вектор $z_i$. «Классы» — все остальные векторы в батче. «Правильный ответ» — единственный позитив $z_j$ (вторая аугментация того же объекта).</p>
+<p>Модель должна из 2N−1 кандидатов выбрать своего «близнеца». Чем больше батч, тем больше кандидатов, тем сложнее задача — и тем более тонкие различия приходится выучивать.</p>
+<p>Знаменатель — та самая нормировка softmax. Числитель — «правильный» логит. Минимизация $-\log$ = максимизация вероятности правильного ответа.</p>
+</div>
+
+<h3>Матрица сходств: как это выглядит в батче</h3>
+<p>Батч из 4 объектов даёт 8 видов: $\tilde x_1^a, \tilde x_1^b, \tilde x_2^a, \tilde x_2^b, \dots$ Строим матрицу $8\times8$ попарных сходств.</p>
+
+<div style="text-align:center;overflow-x:auto;">
+<div class="bm">
+<table>
+<tr><td class="hd"></td><td class="hd">1a</td><td class="hd">1b</td><td class="hd">2a</td><td class="hd">2b</td><td class="hd">3a</td><td class="hd">3b</td><td class="hd">4a</td><td class="hd">4b</td></tr>
+<tr><td class="hd">1a</td><td style="background:#94a3b8">—</td><td class="pos" style="background:rgba(8,145,178,0.95)">0.91</td><td style="background:rgba(8,145,178,0.22)">0.14</td><td style="background:rgba(8,145,178,0.18)">0.11</td><td style="background:rgba(8,145,178,0.30)">0.21</td><td style="background:rgba(8,145,178,0.26)">0.17</td><td style="background:rgba(8,145,178,0.12)">0.05</td><td style="background:rgba(8,145,178,0.15)">0.08</td></tr>
+<tr><td class="hd">1b</td><td class="pos" style="background:rgba(8,145,178,0.95)">0.91</td><td style="background:#94a3b8">—</td><td style="background:rgba(8,145,178,0.20)">0.12</td><td style="background:rgba(8,145,178,0.24)">0.16</td><td style="background:rgba(8,145,178,0.28)">0.19</td><td style="background:rgba(8,145,178,0.22)">0.14</td><td style="background:rgba(8,145,178,0.14)">0.07</td><td style="background:rgba(8,145,178,0.12)">0.05</td></tr>
+<tr><td class="hd">2a</td><td style="background:rgba(8,145,178,0.22)">0.14</td><td style="background:rgba(8,145,178,0.20)">0.12</td><td style="background:#94a3b8">—</td><td class="pos" style="background:rgba(8,145,178,0.90)">0.87</td><td style="background:rgba(8,145,178,0.16)">0.09</td><td style="background:rgba(8,145,178,0.19)">0.11</td><td style="background:rgba(8,145,178,0.40)">0.31</td><td style="background:rgba(8,145,178,0.36)">0.27</td></tr>
+<tr><td class="hd">2b</td><td style="background:rgba(8,145,178,0.18)">0.11</td><td style="background:rgba(8,145,178,0.24)">0.16</td><td class="pos" style="background:rgba(8,145,178,0.90)">0.87</td><td style="background:#94a3b8">—</td><td style="background:rgba(8,145,178,0.14)">0.07</td><td style="background:rgba(8,145,178,0.17)">0.10</td><td style="background:rgba(8,145,178,0.34)">0.25</td><td style="background:rgba(8,145,178,0.38)">0.29</td></tr>
+<tr><td class="hd">3a</td><td style="background:rgba(8,145,178,0.30)">0.21</td><td style="background:rgba(8,145,178,0.28)">0.19</td><td style="background:rgba(8,145,178,0.16)">0.09</td><td style="background:rgba(8,145,178,0.14)">0.07</td><td style="background:#94a3b8">—</td><td class="pos" style="background:rgba(8,145,178,0.93)">0.89</td><td style="background:rgba(8,145,178,0.13)">0.06</td><td style="background:rgba(8,145,178,0.16)">0.09</td></tr>
+<tr><td class="hd">3b</td><td style="background:rgba(8,145,178,0.26)">0.17</td><td style="background:rgba(8,145,178,0.22)">0.14</td><td style="background:rgba(8,145,178,0.19)">0.11</td><td style="background:rgba(8,145,178,0.17)">0.10</td><td class="pos" style="background:rgba(8,145,178,0.93)">0.89</td><td style="background:#94a3b8">—</td><td style="background:rgba(8,145,178,0.15)">0.08</td><td style="background:rgba(8,145,178,0.13)">0.06</td></tr>
+<tr><td class="hd">4a</td><td style="background:rgba(8,145,178,0.12)">0.05</td><td style="background:rgba(8,145,178,0.14)">0.07</td><td style="background:rgba(8,145,178,0.40)">0.31</td><td style="background:rgba(8,145,178,0.34)">0.25</td><td style="background:rgba(8,145,178,0.13)">0.06</td><td style="background:rgba(8,145,178,0.15)">0.08</td><td style="background:#94a3b8">—</td><td class="pos" style="background:rgba(8,145,178,0.88)">0.85</td></tr>
+<tr><td class="hd">4b</td><td style="background:rgba(8,145,178,0.15)">0.08</td><td style="background:rgba(8,145,178,0.12)">0.05</td><td style="background:rgba(8,145,178,0.36)">0.27</td><td style="background:rgba(8,145,178,0.38)">0.29</td><td style="background:rgba(8,145,178,0.16)">0.09</td><td style="background:rgba(8,145,178,0.13)">0.06</td><td class="pos" style="background:rgba(8,145,178,0.88)">0.85</td><td style="background:#94a3b8">—</td></tr>
+</table>
+<div style="font-size:12px;color:var(--text3);margin-top:6px;">Зелёная обводка — позитивные пары. Всё остальное — негативы. Диагональ исключена.</div>
+</div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем InfoNCE для строки «1a» вручную</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Сходства из строки 1a:</strong> позитив (1b) = 0.91; негативы = [0.14, 0.11, 0.21, 0.17, 0.05, 0.08]. Температура $\tau = 0.1$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Делим на τ:</strong> позитив $0.91/0.1 = 9.1$; негативы = [1.4, 1.1, 2.1, 1.7, 0.5, 0.8].</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Экспоненты:</strong> $e^{9.1} = 8955$; негативы: $e^{1.4}=4.06$, $e^{1.1}=3.00$, $e^{2.1}=8.17$, $e^{1.7}=5.47$, $e^{0.5}=1.65$, $e^{0.8}=2.23$. Сумма негативов $= 24.6$.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Знаменатель:</strong> $8955 + 24.6 = 8979.6$. <strong>Вероятность правильного ответа:</strong> $8955/8979.6 = \mathbf{0.9973}$.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Лосс:</strong> $-\log(0.9973) = \mathbf{0.0027}$. Модель уже хорошо справляется с этим примером.</div></div>
+<div class="numex-step"><span class="nb red">6</span><div><strong>А теперь τ = 1.0</strong> (без масштабирования): позитив $e^{0.91}=2.48$, сумма негативов $= 7.44$. Вероятность $= 2.48/9.92 = 0.25$, лосс $= 1.39$. <strong>В 500 раз больше!</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> температура радикально меняет и величину лосса, и то, насколько сильно модель штрафуется за близкие негативы. Разбираем это в следующей секции.</div></div>
+</div>
+
+<pre><code># InfoNCE в 10 строк — ровно то, что мы посчитали руками
+import torch, torch.nn.functional as F
+
+def info_nce(z1, z2, tau=0.1):
+    N = z1.size(0)
+    z = F.normalize(torch.cat([z1, z2], dim=0), dim=1)   # (2N, d), L2-норма
+    sim = z @ z.t() / tau                                 # (2N, 2N)
+    sim.fill_diagonal_(float("-inf"))                     # исключаем себя
+
+    # позитив для i из первой половины — это i+N, и наоборот
+    targets = torch.cat([torch.arange(N, 2*N), torch.arange(0, N)]).to(z.device)
+    return F.cross_entropy(sim, targets)                  # это буквально CE!
+</code></pre>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Обрати внимание на последнюю строку.</strong> InfoNCE реализуется как обычная <code>cross_entropy</code> над матрицей сходств. Это не аналогия — это буквально одно и то же. Понимание этого сразу объясняет всё поведение лосса: почему важна температура (масштаб логитов, как в теме 8.4), почему больше негативов = сложнее задача (больше классов), почему нужна L2-нормализация (иначе логиты неограниченны).</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Температура и число негативов <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Два гиперпараметра, определяющие успех contrastive-обучения</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Градиент InfoNCE по негативу</div>
+$$\frac{\partial \mathcal{L}_i}{\partial \operatorname{sim}(z_i, z_k)} = \frac{1}{\tau}\cdot p_{ik}, \qquad p_{ik} = \frac{\exp(\operatorname{sim}_{ik}/\tau)}{\sum_m \exp(\operatorname{sim}_{im}/\tau)}$$
+<p class="fnote">Сила «отталкивания» негатива пропорциональна его softmax-весу. При малой $\tau$ веса концентрируются на <strong>самых похожих</strong> негативах.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: температура как «фокус внимания на трудных негативах»</div>
+<p><strong>Малая $\tau$ (0.05):</strong> softmax острый. Почти весь градиент уходит на 2–3 самых похожих негатива — модель яростно их расталкивает. Она учится <em>тонким различиям</em>, но игнорирует лёгкие случаи и рискует численной нестабильностью.</p>
+<p><strong>Большая $\tau$ (0.5):</strong> softmax мягкий. Градиент размазан по всем негативам примерно поровну. Обучение стабильное, но модель не концентрируется на трудных случаях и хуже различает похожие классы.</p>
+<p><strong>Практический диапазон:</strong> SimCLR использует $\tau = 0.1$–0.5 (для ImageNet оптимум 0.1). CLIP делает $\tau$ <strong>обучаемым</strong>, инициализируя $1/\tau = 14.3$ (то есть $\tau\approx0.07$) — и модель сама подстраивает жёсткость по ходу обучения.</p>
+</div>
+
+<div class="play">
+  <label>Поиграй: температура и распределение градиента по негативам</label>
+  <input type="range" id="sl_tau" min="2" max="100" step="1" value="10" oninput="updTau()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>τ = 0.02</span><span class="out" id="out_tau">0.10</span><span>τ = 1.00</span></div>
+  <div class="res" id="out_tauinfo"></div>
+</div>
+
+<div class="chb">
+<div class="cht">Как температура распределяет градиент между негативами</div>
+<div class="chsub">Негативы отсортированы по сходству. При малой τ почти весь сигнал идёт на самый трудный</div>
+<div style="position:relative;height:300px;"><canvas id="c_tau"></canvas></div>
+</div>
+
+<h3>Почему contrastive требует огромных батчей</h3>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько негативов даёт батч разного размера</div>
+<div class="numex-step"><span class="nb">1</span><div>В SimCLR батч из $N$ объектов даёт $2N$ видов, и каждый вид имеет $2N-2$ негатива.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div>$N=32$ → <strong>62 негатива</strong>. Задача «выбери близнеца из 62 кандидатов» слишком лёгкая — случайное угадывание даёт 1.6%, но грубых признаков достаточно.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>$N=256$ → 510 негативов. Уже сложнее.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>$N=4096$ → <strong>8190 негативов</strong>. Среди них наверняка есть визуально похожие объекты — модель вынуждена выучить тонкие различия.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Отсюда результат SimCLR:</strong> качество linear probe растёт с батчем вплоть до 8192. При батче 256 — примерно 61% на ImageNet, при 8192 — <strong>69%</strong>. Восемь процентных пунктов за счёт одного гиперпараметра.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество представлений от размера батча (число негативов)</div>
+<div class="chsub">Contrastive сильно зависит от батча; masked prediction — почти нет</div>
+<div style="position:relative;height:300px;"><canvas id="c_batch"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Батч 8192 — это дорого.</strong> SimCLR обучали на 128 TPU. Для большинства команд такой батч недоступен, и именно это ограничение породило две ветви развития: <strong>MoCo</strong> (очередь негативов вместо большого батча, секция 7) и <strong>BYOL/SimSiam/DINO</strong> (отказ от негативов вообще, секция 8). Обе решают одну проблему — «как получить качество большого батча без большого батча».</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Проблема ложных негативов.</strong> В батче из 4096 изображений ImageNet наверняка окажутся <em>две разные кошки</em>. Формально они негативы, и модель их расталкивает — хотя семантически они должны быть близки. Чем больше батч, тем больше таких коллизий: при 1000 классах и батче 4096 в среднем 4 объекта каждого класса. Это фундаментальное ограничение contrastive без меток, и один из аргументов в пользу подходов без негативов. Мы уже встречали эту проблему в блоке 6 — там она называлась false negatives в in-batch negatives Two-Tower.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Аугментации: важнее архитектуры <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Набор аугментаций буквально определяет, что модель выучит</div>
+
+<div class="augrow">
+  <div class="aug" style="background:linear-gradient(135deg,#0891b2,#67e8f9)"><span>оригинал</span></div>
+  <div class="aug" style="background:linear-gradient(135deg,#0891b2,#67e8f9);transform:scale(1.3);"><span>random crop</span></div>
+  <div class="aug" style="background:linear-gradient(135deg,#94a3b8,#cbd5e1)"><span>grayscale</span></div>
+  <div class="aug" style="background:linear-gradient(135deg,#db2777,#fbcfe8)"><span>color jitter</span></div>
+  <div class="aug" style="background:linear-gradient(135deg,#0891b2,#67e8f9);filter:blur(3px);"><span>gaussian blur</span></div>
+  <div class="aug" style="background:linear-gradient(135deg,#67e8f9,#0891b2)"><span>flip</span></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: аугментация = определение инварианта</div>
+<p>Когда ты говоришь модели «эти две картинки — один объект», ты сообщаешь ей: <strong>различие между ними несущественно</strong>.</p>
+<p>Добавил <em>color jitter</em> → модель выучит представление, инвариантное к цвету. Отлично для распознавания формы, <strong>катастрофа для классификации спелости фруктов</strong>.</p>
+<p>Добавил <em>random crop</em> → инвариантность к тому, какая часть объекта видна. Хорошо для классификации, плохо для подсчёта объектов.</p>
+<p>Добавил <em>rotation на 180°</em> → инвариантность к перевороту. Разумно для аэрофотосъёмки, разрушительно для распознавания цифр (6 и 9).</p>
+<p><strong>Главное правило:</strong> аугментации выбираются <em>под целевую задачу</em>, а не по списку из статьи. Ошибка здесь стоит больше, чем любой выбор архитектуры.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Абляция аугментаций из статьи SimCLR — цифры показательны</div>
+<div class="numex-step"><span class="nb red">1</span><div><strong>Только random crop:</strong> linear probe ≈ 33% на ImageNet. Модель нашла «срезание угла» — по краям кропа можно угадать, что это одна картинка, по общей цветовой гистограмме.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Только color distortion:</strong> ≈ 18%. Ещё хуже — задача слишком лёгкая, форма объекта не меняется вовсе.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Crop + color:</strong> <strong>≈ 56%</strong>. Скачок втрое! Color distortion <em>убирает лазейку</em> с гистограммой, и модель вынуждена смотреть на содержание.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>+ blur, grayscale, flip:</strong> ≈ 64%.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод, который стоит запомнить:</strong> дело не в количестве аугментаций, а в том, чтобы они <strong>совместно закрывали все тривиальные лазейки</strong>. Одна аугментация оставляет модели способ «сжулить»; правильная комбинация вынуждает её выучить настоящее содержание.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Модальность</th><th>Работающие аугментации</th><th>Что важно</th></tr></thead>
+<tbody>
+<tr><td><b>Изображения</b></td><td>random resized crop, color jitter, grayscale, blur, flip, solarize</td><td>Crop + color — обязательный минимум</td></tr>
+<tr><td><b>Текст</b></td><td>dropout на эмбеддингах, back-translation, замена синонимов, перестановка предложений</td><td>Трудная модальность — простой dropout часто лучший вариант (SimCSE)</td></tr>
+<tr><td><b>Аудио</b></td><td>time shift, pitch shift, добавление шума, SpecAugment (маскирование по времени и частоте)</td><td>SpecAugment работает почти всегда</td></tr>
+<tr><td><b>Таблицы</b></td><td>CutMix по признакам, swap noise, mixup эмбеддингов, маскирование</td><td>Легко создать <em>невозможный</em> объект — осторожно</td></tr>
+<tr><td><b>Графы</b></td><td>удаление рёбер, удаление узлов, маскирование признаков, подграфы</td><td>Структура графа хрупка к сильным аугментациям</td></tr>
+<tr><td><b>Временные ряды</b></td><td>jitter, scaling, warping, окна</td><td>Легко разрушить причинность — не переставляй по времени</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>SimCSE — красивое решение для текста.</strong> Аугментации текста почти всегда меняют смысл: замена синонимов ломает стиль, back-translation дорога и шумит. SimCSE предложил радикально простое: прогнать <strong>одно и то же предложение дважды через модель с включённым dropout</strong>. Два прогона дадут слегка разные представления из-за случайных масок dropout — вот и позитивная пара. Никаких искажений текста вообще. Этот «минимальный» подход обходит сложные текстовые аугментации на задачах семантического сходства.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Аугментации в таблицах — особая опасность.</strong> CutMix, заменивший часть признаков клиента признаками другого, легко порождает <em>физически невозможный</em> объект: беременный мужчина 5 лет с трудовым стажем 40 лет. Модель тратит ёмкость на моделирование этой бессмыслицы. Правильные аугментации для таблиц уважают ограничения предметной области — либо меняют только независимые группы признаков, либо используют маскирование вместо подмены.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. MoCo: очередь негативов вместо большого батча <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как получить 65536 негативов при батче 256</div>
+
+<div class="flow">
+  <div class="fn a"><strong>Query encoder</strong>f<sub>q</sub><br>обучается градиентом</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>q</strong>вектор запроса</div>
+  <div class="farr">↔</div>
+  <div class="fn d"><strong>Очередь</strong>65536 ключей<br>из прошлых батчей</div>
+  <div class="farr">←</div>
+  <div class="fn b"><strong>Key encoder</strong>f<sub>k</sub><br>EMA от f<sub>q</sub></div>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Momentum update ключевого энкодера</div>
+$$\theta_k \leftarrow m\,\theta_k + (1-m)\,\theta_q, \qquad m = 0.999$$
+<p class="fnote">Ключевой энкодер <strong>не обучается градиентом</strong> — он медленно «догоняет» query-энкодер экспоненциальным средним.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: две идеи MoCo</div>
+<p><strong>Идея 1 — очередь.</strong> Зачем держать все негативы в текущем батче? Сохраним векторы из предыдущих батчей в очередь (FIFO) размером 65536. Новый батч добавляется, самый старый вытесняется. Батч остаётся 256, а негативов — 65536.</p>
+<p><strong>Идея 2 — momentum encoder.</strong> Тут проблема: векторы в очереди посчитаны <em>старой</em> версией модели. Если модель быстро меняется, эти векторы «протухают» и сравнивать с ними бессмысленно.</p>
+<p>Решение — считать ключи <strong>медленно меняющимся</strong> энкодером. При $m=0.999$ ключевой энкодер обновляется на 0.1% за шаг, то есть за 1000 шагов существенно, но плавно. Тогда векторы, лежащие в очереди даже сотни шагов, остаются <em>сопоставимыми</em>.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько «протухают» векторы в очереди</div>
+<div class="numex-step"><span class="nb">1</span><div>Очередь 65536, батч 256 → вектор живёт в очереди $65536/256 = \mathbf{256}$ шагов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>При $m = 0.999$ за 256 шагов ключевой энкодер изменится на $1 - 0.999^{256} = 1 - 0.774 = \mathbf{22.6\%}$ пути к текущему query-энкодеру.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>А если $m = 0.9$?</strong> $1 - 0.9^{256} \approx 1.0$ — энкодер полностью сменился. Векторы из начала очереди посчитаны совершенно другой моделью, сравнение бессмысленно. В статье это подтверждено: при $m=0.9$ качество падает с 67% до 55%, при $m=0$ обучение вообще расходится.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>А если $m = 0.9999$?</strong> Энкодер почти не двигается, ключи слишком «старые» относительно того, чему модель уже научилась. Тоже хуже.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>$m = 0.999$ — точка баланса:</strong> достаточно медленно, чтобы очередь была согласованной, достаточно быстро, чтобы отражать прогресс обучения. Один из редких гиперпараметров, где узкий диапазон критичен.</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: momentum и согласованность очереди</label>
+  <input type="range" id="sl_m" min="800" max="9999" step="1" value="9990" oninput="updMoco()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>m = 0.800</span><span class="out" id="out_m">0.9990</span><span>m = 0.9999</span></div>
+  <label style="margin-top:14px;">Размер очереди</label>
+  <input type="range" id="sl_q" min="256" max="131072" step="256" value="65536" oninput="updMoco()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>256</span><span class="out" id="out_q">65536</span><span>131072</span></div>
+  <div class="res" id="out_moco"></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Идея momentum encoder оказалась важнее самой очереди.</strong> MoCo v3 и BYOL от очереди отказались, но <em>momentum encoder сохранили</em>. Оказалось, что медленно обновляемая копия модели полезна сама по себе — она даёт стабильную «цель», к которой стремится обучаемая сеть. Тот же приём используется в target-сетях в reinforcement learning и в EMA-усреднении весов для инференса. Общий принцип: <strong>когда модель учится на собственных выходах, эти выходы должны быть стабильнее самой модели</strong>.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Коллапс представлений и как его победили <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Главная проблема методов без негативов — и три разных решения</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Задача с тривиальным решением.</strong> Если убрать негативы, лосс «сделай представления двух видов похожими» имеет идеальное и совершенно бесполезное решение: <strong>выдавать один и тот же вектор для любого входа</strong>. Тогда сходство всегда равно 1, лосс равен нулю. Это и называется <em>коллапсом представлений</em>. Негативы в contrastive как раз и не давали ему случиться — они «расталкивали» разные объекты.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь ученика, которому сказали: «дай одинаковый ответ на два похожих вопроса». Самая простая стратегия — <strong>всегда отвечать «42»</strong>. Формально требование выполнено идеально.</p>
+<p>Contrastive добавлял второе требование: «а на непохожие вопросы отвечай по-разному». Это закрывало лазейку.</p>
+<p>Методы без негативов должны закрыть её иначе — не через явное отталкивание, а через <em>асимметрию в архитектуре или обучении</em>. Три подхода ниже — три разных способа сделать это.</p>
+</div>
+
+<h3>Три механизма против коллапса</h3>
+
+<div class="grid3">
+<div class="card bl"><h5>BYOL — предиктор + EMA</h5><p><strong>Асимметрия:</strong> у ученика есть дополнительная голова-предиктор, у учителя нет. Учитель — EMA от ученика.</p><p><strong>Почему работает:</strong> предиктор не может стать константой мгновенно, а EMA-учитель всегда «отстаёт» — цель постоянно движется.</p></div>
+<div class="card pu"><h5>SimSiam — stop-gradient</h5><p><strong>Асимметрия:</strong> градиент не течёт в ветку учителя вообще. EMA не нужен — веса общие.</p><p><strong>Почему работает:</strong> stop-gradient превращает задачу в подобие EM-алгоритма: одна ветка фиксирована, вторая к ней подстраивается.</p></div>
+<div class="card gr"><h5>DINO — центрирование + sharpening</h5><p><strong>Асимметрия:</strong> выход учителя центрируется (вычитается скользящее среднее) и заостряется (низкая температура).</p><p><strong>Почему работает:</strong> центрирование мешает коллапсу в одну точку, sharpening мешает коллапсу в равномерное распределение. <em>Два противодействующих давления.</em></p></div>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 BYOL: лосс и обновления</div>
+$$\mathcal{L} = \left\|\frac{q_\theta(z_\theta)}{\|q_\theta(z_\theta)\|} - \frac{z'_\xi}{\|z'_\xi\|}\right\|_2^2 = 2 - 2\cdot\operatorname{sim}\big(q_\theta(z_\theta),\, z'_\xi\big)$$
+$$\theta \leftarrow \text{градиентный шаг}, \qquad \xi \leftarrow \tau\xi + (1-\tau)\theta \quad\text{(EMA, } \tau = 0.996\text{)}$$
+<p class="fnote">$q_\theta$ — предиктор, существующий <strong>только у ученика</strong>. Градиент через ветку $\xi$ не идёт.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 DINO: центрирование и заострение</div>
+$$P_t(x) = \operatorname{softmax}\!\left(\frac{g_{\xi}(x) - c}{\tau_t}\right), \qquad P_s(x) = \operatorname{softmax}\!\left(\frac{g_{\theta}(x)}{\tau_s}\right)$$
+$$c \leftarrow \lambda c + (1-\lambda)\,\frac{1}{B}\sum_{i} g_{\xi}(x_i), \qquad \tau_t = 0.04 \ll \tau_s = 0.1$$
+<p class="fnote">$c$ — скользящее среднее выходов учителя. $\tau_t < \tau_s$ означает, что распределение учителя <em>острее</em> — это и есть sharpening.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему в DINO нужны обе операции</div>
+<p>Есть <strong>два вида коллапса</strong>, и они противоположны.</p>
+<p><strong>Коллапс в одну точку:</strong> модель выдаёт одинаковое распределение для всех входов, доминирует один компонент. С этим борется <strong>центрирование</strong> — вычитание среднего не даёт одному выходу постоянно доминировать.</p>
+<p><strong>Коллапс в равномерность:</strong> модель выдаёт равномерное распределение для всех входов. Тоже константа, тоже бесполезно. С этим борется <strong>sharpening</strong> — низкая температура учителя делает его распределение острым, а ученик должен это острое распределение воспроизвести.</p>
+<p>Убери одно — модель схлопнется в другую сторону. Это редкий и красивый пример, когда стабильность достигается <em>балансом двух противоположных давлений</em>, а не одним ограничением.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Коллапс: что происходит с разнообразием представлений</div>
+<div class="chsub">Метрика — средняя стандартная дисперсия нормированных представлений по батчу. Падение к нулю = коллапс</div>
+<div style="position:relative;height:310px;"><canvas id="c_collapse"></canvas></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Абляция SimSiam: что произойдёт, если убрать компоненты</div>
+<div class="numex-step"><span class="nb grn">1</span><div><strong>Полный SimSiam:</strong> linear probe ≈ 67.7% на ImageNet, дисперсия представлений держится около $1/\sqrt{d}$ — здоровое состояние.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Убрали stop-gradient:</strong> лосс падает до 0 <em>за десятки шагов</em>, дисперсия обнуляется. Качество ≈ 0.1% — полный коллапс. Это самая наглядная абляция в статье.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Убрали предиктор:</strong> тоже коллапс. Предиктор и stop-gradient работают только вместе.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Предиктор с фиксированными случайными весами:</strong> коллапса нет, но качество ≈ 5% — предиктор должен обучаться.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> stop-gradient — не техническая деталь, а <em>суть метода</em>. Он разрывает симметрию, превращая задачу в чередующуюся оптимизацию, где одна сторона временно фиксирована.</div></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Ещё один подход: Barlow Twins и VICReg.</strong> Вместо архитектурных хитростей они добавляют <strong>явный член в лосс</strong>, требующий декорреляции измерений. Barlow Twins минимизирует отклонение кросс-корреляционной матрицы двух видов от единичной: диагональ к 1 (инвариантность), внедиагональ к 0 (нет избыточности между измерениями). VICReg добавляет три члена: variance (каждое измерение имеет ненулевую дисперсию), invariance, covariance. Это концептуально чище — коллапс невозможен по построению лосса, а не благодаря тонкой настройке архитектуры.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Masked prediction: BERT, MAE и почему это работает <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самая простая парадигма — и самая универсальная</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Masked Language Modeling (BERT)</div>
+$$\mathcal{L}_{\text{MLM}} = -\sum_{i \in \mathcal{M}} \log P\big(x_i \mid x_{\setminus\mathcal{M}}\big)$$
+<p class="fnote">$\mathcal{M}$ — множество замаскированных позиций (15% токенов). Модель восстанавливает их по <strong>двунаправленному</strong> контексту.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>«Кот сидел на [MASK]» → модель должна предсказать «ковре». Чтобы это сделать, ей приходится выучить синтаксис (после «на» идёт существительное в предложном падеже), семантику (на чём обычно сидят коты) и мировые знания.</p>
+<p><strong>Гениальность подхода:</strong> метка получается бесплатно — это само замаскированное слово. Никакой разметки, никаких негативов, никаких аугментаций. Просто «спрячь и восстанови».</p>
+<p>И задача <em>ровно настолько сложна, насколько нужно</em>: слишком мало маскируем — задача тривиальна, слишком много — контекста не хватает даже человеку.</p>
+</div>
+
+<h3>Доля маскирования: почему у текста 15%, а у изображений 75%</h3>
+
+<div style="margin:16px 0;">
+<div style="font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:6px;">Текст, 15% маски — контекста много, задача решаема</div>
+<div class="maskgrid" id="mg_text"></div>
+<div style="font-size:12.5px;font-weight:700;color:var(--text2);margin:14px 0 6px;">Изображение, 75% маски — соседние патчи почти дублируют друг друга</div>
+<div class="maskgrid" id="mg_img"></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: всё дело в информационной плотности</div>
+<p><strong>Текст плотный.</strong> Каждое слово несёт много информации, соседние слова слабо предсказуемы друг из друга. Замаскируй 50% — и восстановить будет невозможно даже человеку.</p>
+<p><strong>Изображение избыточно.</strong> Соседние патчи почти одинаковы: если закрыть кусок неба, его легко восстановить по окружающему небу. При маскировании 15% задача решается <strong>тривиальной интерполяцией</strong> — модель научится размывать, а не понимать.</p>
+<p>MAE (He et al., 2021) показал: нужно маскировать <strong>75%</strong>, чтобы задача перестала быть локальной интерполяцией и потребовала <em>понимания глобальной структуры</em>.</p>
+<p><strong>Бонус:</strong> при 75% маски энкодер обрабатывает только 25% патчей — обучение ускоряется примерно в 3 раза. Редкий случай, когда усложнение задачи <em>удешевляет</em> вычисления.</p>
+</div>
+
+<div class="play">
+  <label>Поиграй: доля маскирования и сложность задачи</label>
+  <input type="range" id="sl_mask" min="5" max="95" step="5" value="15" oninput="updMask()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>5%</span><span class="out" id="out_mask">15%</span><span>95%</span></div>
+  <label style="margin-top:14px;">Модальность</label>
+  <div style="display:flex;gap:16px;margin-top:4px;">
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="mod" value="text" checked onchange="updMask()"> текст</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="mod" value="img" onchange="updMask()"> изображение</label>
+  </div>
+  <div class="res" id="out_maskinfo"></div>
+</div>
+
+<h3>Три детали BERT, о которых часто забывают</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Деталь</th><th>Что делается</th><th>Зачем</th></tr></thead>
+<tbody>
+<tr><td><b>80/10/10</b></td><td>Из 15% выбранных: 80% → <code>[MASK]</code>, 10% → случайный токен, 10% → остаётся как есть</td><td>Токена <code>[MASK]</code> нет при дообучении — возникает train/test mismatch. Замена части на случайные и настоящие токены заставляет модель строить представление <em>каждого</em> токена, а не только замаскированных</td></tr>
+<tr><td><b>Whole word masking</b></td><td>Маскируются все subword-токены слова сразу</td><td>Иначе «ков-##ре» с маской только на «##ре» восстанавливается тривиально по первому куску</td></tr>
+<tr><td><b>Динамическая маска</b></td><td>Новая маска на каждой эпохе (RoBERTa)</td><td>В оригинальном BERT маска фиксировалась при препроцессинге — модель видела одни и те же задачи многократно</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>MLM неэффективен по данным.</strong> BERT получает обучающий сигнал только с 15% токенов — 85% вычислений тратится на построение контекста, но не даёт градиента напрямую. <strong>ELECTRA</strong> исправляет это: маленький генератор заменяет часть токенов правдоподобными подделками, а основная модель определяет для <em>каждого</em> токена, настоящий он или заменённый. Сигнал со 100% позиций, обучение эффективнее в 4 раза при равном компьюте.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему MAE использует асимметричный энкодер-декодер.</strong> Энкодер видит только <em>видимые</em> патчи (25%) — это и ускорение, и защита от того, чтобы модель тратила ёмкость на обработку маскированных заглушек. Декодер — <strong>намеренно лёгкий</strong> (в 10 раз меньше энкодера) и после претрейна выбрасывается. Логика: если декодер мощный, он сам восстановит изображение из слабого представления, и энкодер не будет вынужден учиться. <strong>Слабый декодер перекладывает работу на энкодер</strong> — а нам нужен именно хороший энкодер. Тот же принцип, что с projection head в SimCLR: архитектура проектируется так, чтобы полезная часть была вынуждена работать.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Что выбрать под свою задачу <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Практическое дерево решений</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Ситуация</th><th>Что брать</th><th>Почему</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Есть подходящая публичная модель</b></td><td><strong>Брать её, не обучать своё</strong></td><td>DINOv2, CLIP, BERT-семейство обучены на бюджетах, недоступных большинству команд. Свой претрейн почти всегда проигрывает</td></tr>
+<tr><td>Изображения, нужны эмбеддинги «как есть»</td><td>DINOv2 или CLIP</td><td>Отличный linear probe, работают zero-shot</td></tr>
+<tr><td>Изображения, будет full fine-tune</td><td>MAE или свой MAE-претрейн</td><td>Выше потолок после дообучения</td></tr>
+<tr><td>Узкий домен (медицина, промышленность)</td><td>Свой претрейн на доменных данных</td><td>Публичные модели обучены на естественных изображениях, домен слишком далёк</td></tr>
+<tr><td>Текст, нужны эмбеддинги</td><td>Готовые sentence-encoders (E5, BGE) или SimCSE-дообучение</td><td>Contrastive на текстах требует хитрых аугментаций; dropout-подход прост и работает</td></tr>
+<tr><td>Таблицы, мало разметки и много сырых данных</td><td>Маскированное восстановление (как TabNet/SAINT)</td><td>Единственный сценарий, где табличный DL выигрывает у GBDT (блок 7)</td></tr>
+<tr><td>Мало неразмеченных данных (&lt;50k)</td><td><strong>Не делать SSL</strong></td><td>Не хватит для осмысленного представления; лучше аугментации + перенос с публичной модели</td></tr>
+<tr><td>Ограничен батч (&lt;512)</td><td>Masked prediction или BYOL/DINO</td><td>Contrastive потеряет несколько процентов из-за малого числа негативов</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Порядок действий на новой задаче.</strong> ① Проверь, есть ли готовая предобученная модель для твоей модальности и домена — это закрывает 80% случаев. ② Если нет, оцени объём неразмеченных данных: меньше 50k — SSL не окупится. ③ Если данных много и домен специфичен — начинай с <em>масочного</em> метода: он проще, не требует подбора аугментаций и не коллапсирует. ④ Contrastive бери, только если нужны хорошие эмбеддинги без дообучения <em>и</em> у тебя есть бюджет на большие батчи. ⑤ Всегда сравнивай с бейзлайном «публичная модель + дообучение» — свой претрейн должен его превзойти, иначе он не нужен.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Протокол дообучения: linear probe, full FT и всё между <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Вторая половина темы — как правильно использовать предобученную модель</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Что обучается</th><th>Нужно данных</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr><td><b>Feature extraction</b></td><td>ничего — только считаем эмбеддинги</td><td>0</td><td>Поиск, кластеризация, дедупликация</td></tr>
+<tr><td><b>Linear probe</b></td><td>один линейный слой поверх</td><td>100–1000</td><td>Оценка качества представлений; очень мало данных</td></tr>
+<tr><td><b>Partial fine-tune</b></td><td>последние $k$ блоков + голова</td><td>1k–10k</td><td>Компромисс качество/переобучение</td></tr>
+<tr class="trh"><td><b>Full fine-tune</b></td><td>всё</td><td>10k+</td><td><strong>Дефолт при достаточных данных</strong></td></tr>
+<tr><td><b>LoRA / PEFT</b></td><td>низкоранговые адаптеры (~0.1–1%)</td><td>1k–100k</td><td>Большие модели, мало памяти, много задач на одну базу</td></tr>
+<tr><td><b>Prompt / prefix tuning</b></td><td>обучаемые псевдо-токены</td><td>1k+</td><td>Очень большие модели, минимальное вмешательство</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: linear probe и full FT отвечают на разные вопросы</div>
+<p><strong>Linear probe</strong> измеряет: «насколько представления модели <em>уже</em> линейно разделимы для моей задачи». Это метрика <strong>качества представлений</strong>. Её используют для сравнения SSL-методов между собой.</p>
+<p><strong>Full fine-tune</strong> измеряет: «какого качества можно достичь на моей задаче». Это метрика <strong>практической пользы</strong>.</p>
+<p>Их часто путают, и это приводит к неверным выводам. Метод A может дать linear probe 70% и full FT 82%, метод B — linear probe 62% и full FT 85%. Какой лучше? <strong>Зависит от того, что ты собираешься делать.</strong> Именно поэтому masked-подходы (слабый probe, сильный FT) долго недооценивали, сравнивая только по linear probe.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Linear probe vs full fine-tune для разных SSL-методов</div>
+<div class="chsub">Ранжирование методов различается в зависимости от протокола оценки</div>
+<div style="position:relative;height:300px;"><canvas id="c_probe"></canvas></div>
+</div>
+
+<h3>Сколько данных нужно для каждого метода</h3>
+
+<div class="chb">
+<div class="cht">Качество от объёма размеченных данных при разных стратегиях</div>
+<div class="chsub">Full FT побеждает при больших данных, но проигрывает linear probe при очень малых</div>
+<div style="position:relative;height:310px;"><canvas id="c_strategy"></canvas></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему full fine-tune проигрывает на 200 примерах</div>
+<div class="numex-step"><span class="nb">1</span><div>ResNet-50 имеет 25 млн параметров. Linear probe обучает $2048\times C$ параметров — при 10 классах это <strong>20 480</strong>.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Full FT на 200 примерах:</strong> 25 млн параметров на 200 наблюдений — 125 000 параметров на пример. Модель запомнит выборку целиком за несколько эпох, представления разрушатся.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Linear probe на 200 примерах:</strong> 20 480 параметров на 200 наблюдений — тоже много, но признаки <em>заморожены</em> и уже осмысленны. Задача сводится к обучению простого классификатора в хорошем пространстве.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Точка перелома</strong> обычно 1000–5000 примеров: до неё выигрывает probe или partial FT, после — full FT.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практический приём — two-stage:</strong> сначала обучить только голову при замороженном backbone (5–10 эпох), <em>потом</em> разморозить всё с малым lr. Это предотвращает разрушение признаков случайно инициализированной головой на первых шагах.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка дообучения: сразу full FT со случайной головой.</strong> На первых шагах голова инициализирована случайно, её градиенты огромны, и они через backprop <strong>разрушают предобученные признаки</strong> ещё до того, как голова научится чему-то полезному. Лечение — любой из трёх приёмов: ① two-stage (сначала голова, потом всё); ② warmup на 5–10% шагов; ③ discriminative learning rate (следующая секция). Без них можно потерять весь эффект претрейна за первые сто шагов.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Discriminative learning rate и послойная разморозка <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Разные слои надо двигать с разной скоростью</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Послойное затухание learning rate</div>
+$$\eta_l = \eta_{\text{base}}\cdot\gamma^{\,L-l}, \qquad \gamma \in [0.65,\, 0.95]$$
+<p class="fnote">$L$ — общее число слоёв, $l$ — номер слоя (1 = самый нижний). Нижние слои получают экспоненциально меньший lr.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нижним слоям нужен маленький lr</div>
+<p><strong>Нижние слои</strong> выучили универсальные признаки: границы, текстуры, простые формы (в CV); морфологию и синтаксис (в NLP). Эти признаки <em>уже правильные</em> для почти любой задачи. Двигать их сильно — значит ломать то, что работает.</p>
+<p><strong>Верхние слои</strong> выучили признаки, специфичные для pretext-задачи. Именно их надо перестраивать под новую задачу.</p>
+<p><strong>Голова</strong> вообще случайна — ей нужен полный lr.</p>
+<p>Отсюда экспоненциальная лестница: голова $\eta$, верхний блок $0.8\eta$, следующий $0.64\eta$, и так далее вниз.</p>
+</div>
+
+<div class="lrstack" id="lr_stack"></div>
+
+<div class="play">
+  <label>Поиграй: коэффициент затухания γ по слоям</label>
+  <input type="range" id="sl_g" min="50" max="99" step="1" value="80" oninput="updLR()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>γ = 0.50 (агрессивно)</span><span class="out" id="out_g">0.80</span><span>γ = 0.99 (почти равномерно)</span></div>
+  <label style="margin-top:14px;">Число слоёв в модели</label>
+  <input type="range" id="sl_L" min="4" max="48" step="1" value="12" oninput="updLR()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>4</span><span class="out" id="out_L">12</span><span>48</span></div>
+  <div class="res" id="out_lr"></div>
+</div>
+
+<pre><code># Discriminative LR в PyTorch — по группам параметров
+def make_param_groups(model, base_lr=1e-4, gamma=0.8, wd=0.05):
+    n_layers = len(model.blocks)
+    groups = []
+    # голова — полный lr
+    groups.append({"params": model.head.parameters(), "lr": base_lr, "weight_decay": wd})
+    # блоки — экспоненциально затухающий lr
+    for i, block in enumerate(model.blocks):
+        scale = gamma ** (n_layers - i - 1)
+        decay, no_decay = [], []
+        for name, p in block.named_parameters():
+            (no_decay if p.ndim <= 1 else decay).append(p)     # bias/norm без wd
+        groups.append({"params": decay,    "lr": base_lr*scale, "weight_decay": wd})
+        groups.append({"params": no_decay, "lr": base_lr*scale, "weight_decay": 0.0})
+    # embeddings — самый малый lr
+    groups.append({"params": model.embed.parameters(),
+                   "lr": base_lr * gamma**n_layers, "weight_decay": 0.0})
+    return groups
+
+optimizer = torch.optim.AdamW(make_param_groups(model), betas=(0.9, 0.999))
+</code></pre>
+
+<h3>Gradual unfreezing — альтернативный подход</h3>
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Вместо разных lr можно размораживать слои <strong>постепенно</strong> (подход ULMFiT):</p>
+<p style="margin-left:14px"><strong>Эпоха 1:</strong> обучаем только голову, всё остальное заморожено.<br>
+<strong>Эпоха 2:</strong> размораживаем последний блок.<br>
+<strong>Эпоха 3:</strong> ещё один блок.<br>
+<strong>…и так до полной разморозки.</strong></p>
+<p>Логика та же — не давать случайной голове разрушить нижние слои. Плюс: экономия вычислений на ранних эпохах (замороженные слои не требуют backward).</p>
+<p>На практике discriminative lr обычно удобнее (одна настройка вместо расписания разморозки), но gradual unfreezing даёт больше контроля при очень малых датасетах.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Типичные значения для дообучения предобученных моделей.</strong> lr в 10–100 раз меньше, чем при обучении с нуля: для ViT/BERT это $1\times10^{-5}$–$5\times10^{-5}$ вместо $10^{-3}$. Layer decay $\gamma$: 0.65–0.75 для больших моделей (ViT-L, 24 слоя), 0.8–0.9 для средних. Weight decay 0.05, warmup 5–10% шагов, cosine. Эпох мало — 3–10 для NLP, 10–50 для CV. Больше эпох на малых данных почти всегда означает переобучение, а не улучшение.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Катастрофическое забывание <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Модель научилась новому и разучилась старому</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Дообучил языковую модель на медицинских текстах — она стала отлично разбираться в медицине и <strong>перестала нормально писать код</strong>. Веса, отвечавшие за старое умение, переписаны под новую задачу.</p>
+<p>Причина проста: градиентный спуск оптимизирует <em>только текущую задачу</em>. Ему нечего противопоставить забыванию — старых данных в лоссе нет, значит и градиента, удерживающего старые способности, тоже нет.</p>
+<p>Особенно остро проявляется при <strong>последовательном дообучении</strong> на нескольких задачах и при узких доменных корпусах.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 EWC — Elastic Weight Consolidation</div>
+$$\mathcal{L} = \mathcal{L}_{\text{new}} + \frac{\lambda}{2}\sum_i F_i\,(\theta_i - \theta^{*}_i)^2$$
+<p>где $F_i$ — диагональ информационной матрицы Фишера, оцененная на старой задаче:</p>
+$$F_i = \mathbb{E}_{x\sim D_{\text{old}}}\left[\left(\frac{\partial \log p(y|x,\theta)}{\partial \theta_i}\right)^2\right]$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: EWC как «пружины разной жёсткости»</div>
+<p>Информация Фишера $F_i$ измеряет, <strong>насколько параметр $i$ был важен для старой задачи</strong>. Большая $F_i$ = изменение этого веса сильно ухудшало старое качество.</p>
+<p>EWC привязывает каждый параметр к его старому значению пружиной, <em>жёсткость которой пропорциональна важности</em>. Важные параметры почти не двигаются, неважные — свободны.</p>
+<p>Метафора: это как ремонт квартиры, где несущие стены трогать нельзя, а перегородки можно двигать как угодно. EWC автоматически определяет, что тут несущее.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Идея</th><th>Нужны старые данные</th><th>Практичность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Rehearsal / mixing</b></td><td>Подмешивать 5–20% старых данных в новую выборку</td><td><strong>Да</strong></td><td><strong>Самый простой и надёжный</strong></td></tr>
+<tr><td>EWC</td><td>Штраф за отклонение важных весов</td><td>Только для оценки $F$</td><td>Требует вычисления Фишера</td></tr>
+<tr><td>LoRA / адаптеры</td><td>База заморожена, обучаются только адаптеры</td><td>Нет</td><td><strong>Очень практично</strong> — забывания нет по построению</td></tr>
+<tr><td>Малый lr + мало эпох</td><td>Просто не двигать веса далеко</td><td>Нет</td><td>Работает, но ограничивает адаптацию</td></tr>
+<tr><td>Model merging</td><td>Усреднить веса базовой и дообученной модели</td><td>Нет</td><td>Неожиданно хорошо работает (model soup)</td></tr>
+<tr><td>Multi-task обучение</td><td>Учить всем задачам сразу</td><td>Да</td><td>Лучшее качество, но нужны все данные</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Rehearsal: сколько старых данных подмешивать</div>
+<div class="numex-step"><span class="nb red">1</span><div><strong>0% старых данных:</strong> качество на новой задаче 92%, на старой падает с 88% до <strong>41%</strong>. Классическое катастрофическое забывание.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>5% старых:</strong> новая 91.5%, старая <strong>76%</strong>. Уже кардинально лучше при почти нулевой цене.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>20% старых:</strong> новая 90.8%, старая <strong>85%</strong>. Практически оптимум — теряем 1.2 п.п. на новой, сохраняем почти всё старое.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>50% старых:</strong> новая 87%, старая 87%. Уже жертвуем новой задачей ради старой.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Правило:</strong> 10–20% старых данных дают почти всю защиту от забывания при минимальной потере на новой задаче. Это <em>непропорционально выгодный</em> размен, и именно поэтому rehearsal — метод первого выбора.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Забывание и rehearsal: качество на старой и новой задаче</div>
+<div class="chsub">10–20% старых данных дают почти всю защиту</div>
+<div style="position:relative;height:300px;"><canvas id="c_forget"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>LoRA решает проблему забывания архитектурно.</strong> База заморожена — её веса физически не могут измениться. Все изменения живут в адаптерах $\Delta W = BA$. Отключил адаптер — получил исходную модель обратно, бит в бит. Более того, можно держать <em>несколько</em> адаптеров под разные задачи на одной базе и переключать их на лету. Это делает LoRA не только методом экономии памяти, но и <strong>решением проблемы мультизадачности без интерференции</strong>.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. Подводные камни</div>
+<div class="sdesc">Ошибки, из-за которых претрейн «не работает»</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Утечка через дубликаты</h5><p>Тестовые примеры оказались в претрейн-корпусе. Метрики завышены, в проде провал. <strong>Обязательна дедупликация</strong> между претрейном и тестом — по хешам, перцептивным хешам или near-duplicate поиску.</p></div>
+<div class="card rd"><h5>Аугментации не под задачу</h5><p>Color jitter в претрейне → модель инвариантна к цвету → провал на классификации спелости фруктов. Аугментации определяют, что модель считает несущественным.</p></div>
+<div class="card rd"><h5>Full FT сразу со случайной головой</h5><p>Огромные градиенты головы разрушают признаки за первые сотни шагов. Нужен two-stage, warmup или discriminative lr.</p></div>
+<div class="card rd"><h5>Слишком большой lr при дообучении</h5><p>lr от обучения с нуля ($10^{-3}$) стирает представления. Нужно в 10–100 раз меньше.</p></div>
+<div class="card rd"><h5>Сравнение методов по одному протоколу</h5><p>Ранжирование по linear probe и по full FT различается. Оценивать надо тем протоколом, который будешь использовать.</p></div>
+<div class="card rd"><h5>Contrastive с малым батчем</h5><p>При батче 64 всего 126 негативов — задача слишком лёгкая. Либо MoCo, либо masked-подход.</p></div>
+<div class="card rd"><h5>Разные нормализации в претрейне и дообучении</h5><p>Модель обучалась на ImageNet-статистике, а ты нормализуешь по своей — тихая потеря нескольких процентов.</p></div>
+<div class="card rd"><h5>Слишком много эпох на малых данных</h5><p>При 1000 примерах 50 эпох = гарантированное переобучение. Ранняя остановка обязательна.</p></div>
+<div class="card rd"><h5>Претрейн на «слишком лёгких» данных</h5><p>Если все изображения почти одинаковы, аугментации не создают разнообразия — SSL нечему учиться.</p></div>
+<div class="card rd"><h5>Забыли выбросить projector</h5><p>Используют $z$ вместо $h$ для downstream — теряют до 10+ п.п. Projector нужен только для лосса.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Диагностика: как понять, что претрейн вообще сработал.</strong> ① <strong>Linear probe</strong> на небольшой размеченной выборке — если он не лучше probe на случайно инициализированной сети, представления бесполезны. ② <strong>Дисперсия представлений</strong> — посчитай std нормированных эмбеддингов по батчу; близость к нулю означает коллапс. ③ <strong>k-NN classifier</strong> на эмбеддингах — быстрый способ оценить без обучения вообще. ④ <strong>Визуализация t-SNE/UMAP</strong> с раскраской по известным меткам — должны быть видны кластеры. Все четыре проверки дешёвые и делаются до того, как тратить время на полное дообучение.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. System Design: SSL в продуктовом цикле</div>
+<div class="sdesc">Как встроить претрейн в реальный процесс</div>
+
+<div class="sysbox">
+<h4>🏗 Полный цикл: от сырых данных до продовой модели</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Сырые данные</strong>логи, архивы,<br>потоки — без разметки</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Дедупликация</strong>+ фильтрация<br>качества</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>SSL-претрейн</strong>раз в квартал,<br>дорого но редко</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Foundation model</strong>в реестре,<br>версионирована</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Задача A</strong>дообучение<br>на 3k примерах</div>
+  <div class="sysarrow">←</div>
+  <div class="syshighlight"><strong>Общая база</strong>одна модель —<br>много задач</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Задача B</strong>LoRA-адаптер</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Задача C</strong>только эмбеддинги,<br>без обучения</div>
+</div>
+<div class="sysnote"><strong>Экономика этой схемы.</strong> Претрейн — единовременная дорогая инвестиция (сотни GPU-часов), которая амортизируется по <em>всем</em> задачам компании. Каждая новая задача стоит недели вместо месяцев и тысячи долларов разметки вместо сотен тысяч.<br><br>
+<strong>Что критично на практике:</strong><br>
+① <strong>Дедупликация обязательна</strong> — и внутри претрейн-корпуса (повторы раздувают их вес), и между претрейном и тестовыми наборами всех downstream-задач.<br>
+② <strong>Версионирование foundation-модели</strong> — при её обновлении все downstream-модели надо перепроверить, а эмбеддинги в векторных индексах пересчитать. Смена версии эмбеддера без пересчёта индекса — тихая катастрофа для поиска.<br>
+③ <strong>Реестр адаптеров</strong> — какой LoRA под какую задачу, на какой версии базы обучен.<br>
+④ <strong>Мониторинг дрейфа домена</strong> — если продовые данные ушли от претрейн-корпуса, пора обновлять базу.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Практический паттерн</div>
+<h4>Когда своя foundation-модель окупается, а когда нет</h4>
+<p><strong>Окупается, если выполнено хотя бы три условия:</strong></p>
+<ul>
+<li>В компании <strong>несколько ML-задач на одной модальности</strong> — претрейн амортизируется по ним всем.</li>
+<li>Домен <strong>существенно отличается</strong> от того, на чём обучены публичные модели (медицинские снимки, промышленная съёмка, специфические документы).</li>
+<li>Есть <strong>сотни тысяч и более</strong> неразмеченных примеров.</li>
+<li>Разметка <strong>дорогая</strong> — требует экспертов, а не краудсорсинга.</li>
+</ul>
+<p><strong>Не окупается, если:</strong> задача одна; домен близок к естественным изображениям или обычному тексту; неразмеченных данных меньше 50k; или существует публичная модель, специально обученная под твой домен.</p>
+<p><strong>Универсальный бейзлайн для сравнения:</strong> «публичная предобученная модель + дообучение на твоих данных». Свой претрейн обязан его превзойти — если нет, это дорогая ошибка. Проверять это надо <em>до</em> запуска претрейна, на пилоте.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Связь с курсом</div>
+<h4>Где self-supervised подходы уже встречались</h4>
+<ul>
+<li><strong>Блок 6, Two-Tower:</strong> InfoNCE с in-batch negatives — это ровно contrastive learning, только «аугментация» задана парой user-item из логов.</li>
+<li><strong>Блок 6, hard negative mining:</strong> та же проблема, что температура и трудные негативы здесь.</li>
+<li><strong>Блок 7, TabNet и SAINT:</strong> маскированное восстановление и CutMix для таблиц — прямое применение парадигм из этой темы.</li>
+<li><strong>Блок 8.4, attention:</strong> BERT и MAE строятся на маскировании, которое требует правильных масок — механизм из темы про внимание.</li>
+<li><strong>Блок 8.5, масштаб:</strong> претрейн — это как раз тот случай, когда нужны все приёмы распределённого обучения.</li>
+</ul>
+<p>SSL — не отдельная экзотика, а <strong>сквозная идея</strong>, которая появляется всюду, где размеченных данных меньше, чем сырых. То есть почти везде.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">16. Вопросы и ответы</div>
+<div class="sdesc">30 вопросов — от экономики претрейна до протокола дообучения</div>
+
+<div class="qah">🟢 База: зачем и как</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Зачем нужен self-supervised learning, если есть supervised?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>Из-за <strong>асимметрии стоимости данных</strong>. Неразмеченных данных практически бесконечно и они бесплатны. Размеченных мало, и они дорогие — особенно там, где нужен эксперт.</p><p>Пиксельная сегментация стоит $2–10 за маску, медицинская разметка — $5–50. 50 000 масок это $200 000 и месяцы работы.</p><p>SSL позволяет выучить структуру данных на бесплатном корпусе, а дорогую разметку потратить только на финальную подстройку. Типичный эффект — нужно в 10–100 раз меньше размеченных примеров для того же качества.</p><p><strong>Важная формулировка:</strong> модель не «учится задаче без разметки». Она <em>понимает устройство данных</em>, и после этого конкретную задачу выучивает на порядок меньшем числе примеров.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Когда претрейн НЕ окупается?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>① Размеченных данных и так много.</strong> При 500k+ примеров эффект претрейна обычно в пределах шума.</p><p><strong>② Неразмеченных данных мало.</strong> SSL требует хотя бы сотен тысяч примеров; на 5000 осмысленного представления не получится.</p><p><strong>③ Есть подходящая публичная модель.</strong> DINOv2, CLIP, BERT обучены на бюджетах, недоступных большинству команд. Свой претрейн почти всегда проигрывает по соотношению цены и качества.</p><p><strong>④ Домен слишком узкий.</strong> Если все снимки почти одинаковы, аугментации не создают разнообразия — SSL нечему учиться.</p><p><strong>Универсальный бейзлайн:</strong> «публичная модель + дообучение». Свой претрейн обязан его превзойти — проверять это надо на пилоте, до запуска.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Назови три парадигмы SSL и чем они отличаются.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Contrastive</strong> (SimCLR, MoCo, CLIP): узнать, что две аугментированные версии — один объект, и отличить от других. Нужны негативы и большие батчи. Отличный linear probe.</p><p><strong>Masked prediction</strong> (BERT, MAE, TabNet): скрыть часть входа и восстановить по оставшемуся. Не нужны ни негативы, ни аугментации. Лучший результат после full fine-tune.</p><p><strong>Self-distillation</strong> (BYOL, SimSiam, DINO): ученик предсказывает выход учителя, который является усреднённой копией ученика. Нужны хитрости против коллапса.</p><p><strong>Ключевая закономерность:</strong> contrastive и self-distillation дают лучший linear probe, masked — лучший full FT. Если планируешь полное дообучение, masked обычно предпочтительнее.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Зачем в SimCLR нужна projection head, если можно считать лосс на признаках?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Потому что признаки $h$ оказываются <strong>существенно лучше</strong> для downstream-задач, чем проекция $z$ — разница в linear probe достигает 10+ п.п.</p><p><strong>Объяснение:</strong> contrastive-лосс требует инвариантности к аугментациям. Если считать лосс прямо на $h$, сеть выбросит из него всю информацию о цвете, ориентации, масштабе — они мешают решать pretext-задачу.</p><p>Но эта информация <em>полезна для других задач</em>: цвет важен для классификации фруктов, ориентация — для детекции.</p><p>Projector берёт «грязную работу» на себя: он выбрасывает лишнее, а $h$ сохраняет богатое представление. После обучения projector <strong>выбрасывается</strong>.</p><p>Тот же принцип шире: в CLIP берут представление до проекции, в BERT — скрытое состояние, а не логиты MLM-головы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Что такое InfoNCE и почему это просто кросс-энтропия?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$\mathcal{L} = -\log\frac{\exp(\operatorname{sim}(z_i,z_j)/\tau)}{\sum_k \exp(\operatorname{sim}(z_i,z_k)/\tau)}$.</p><p>Это буквально кросс-энтропия для классификации с $2N-1$ классами. «Вход» — вектор $z_i$. «Классы» — все остальные векторы батча. «Правильный ответ» — единственный позитив $z_j$.</p><p>В коде это одна строка: <code>F.cross_entropy(sim_matrix, targets)</code>.</p><p><strong>Понимание этого сразу объясняет всё поведение:</strong> почему важна температура (масштаб логитов, как в теме 8.4), почему больше негативов = сложнее задача (больше классов), почему нужна L2-нормализация (иначе логиты неограниченны).</p></div></details>
+
+<div class="qah">🔵 Средний: детали contrastive</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Что делает температура τ в InfoNCE?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Градиент по негативу пропорционален его softmax-весу: $\frac{\partial\mathcal{L}}{\partial \operatorname{sim}_{ik}} = \frac{1}{\tau}p_{ik}$.</p><p><strong>Малая τ (0.05):</strong> softmax острый, почти весь градиент уходит на 2–3 самых похожих негатива. Модель учится тонким различиям, но рискует численной нестабильностью.</p><p><strong>Большая τ (0.5):</strong> градиент размазан по всем негативам поровну. Стабильно, но модель не концентрируется на трудных случаях.</p><p><strong>Числовой эффект:</strong> при τ=0.1 лосс для нашего примера был 0.0027, при τ=1.0 — 1.39. Разница в 500 раз.</p><p>SimCLR: τ = 0.1–0.5. CLIP делает τ <strong>обучаемым</strong>, инициализируя $1/\tau = 14.3$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Почему contrastive требует огромных батчей? Посчитай.<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Батч из $N$ объектов даёт $2N$ видов, каждый вид имеет $2N-2$ негатива.</p><p>$N=32$ → 62 негатива, задача слишком лёгкая. $N=256$ → 510. $N=4096$ → <strong>8190 негативов</strong>, среди которых наверняка есть визуально похожие — модель вынуждена выучить тонкие различия.</p><p><strong>Результат SimCLR:</strong> linear probe на ImageNet при батче 256 — около 61%, при 8192 — <strong>69%</strong>. Восемь процентных пунктов за счёт одного гиперпараметра.</p><p>Батч 8192 требовал 128 TPU. Именно это ограничение породило MoCo (очередь негативов) и BYOL/DINO (отказ от негативов).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Что такое проблема ложных негативов в contrastive?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>В батче из 4096 изображений ImageNet наверняка окажутся <strong>две разные кошки</strong>. Формально они негативы, и модель их расталкивает — хотя семантически они должны быть близки.</p><p>Чем больше батч, тем больше коллизий: при 1000 классах и батче 4096 в среднем 4 объекта каждого класса.</p><p>Это фундаментальное ограничение contrastive без меток и один из аргументов в пользу подходов без негативов.</p><p><strong>Мы уже встречали эту проблему</strong> в блоке 6 — там она называлась false negatives в in-batch negatives Two-Tower, и решалась дедупликацией пар и логарифмической коррекцией.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Почему выбор аугментаций важнее выбора архитектуры?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Потому что аугментация — это <strong>буквально определение того, что модель должна считать несущественным</strong>.</p><p>Добавил color jitter → модель инвариантна к цвету. Отлично для распознавания формы, <em>катастрофа для классификации спелости фруктов</em>. Добавил rotation 180° → разумно для аэрофотосъёмки, разрушительно для распознавания цифр (6 и 9).</p><p><strong>Абляция SimCLR показательна:</strong> только crop — 33%, только color — 18%, <strong>crop + color — 56%</strong>. Скачок втрое от комбинации.</p><p>Дело не в количестве аугментаций, а в том, чтобы они <em>совместно закрывали все тривиальные лазейки</em>. Одна аугментация оставляет способ «сжулить» (по цветовой гистограмме), правильная комбинация вынуждает смотреть на содержание.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Как делать contrastive для текста, если аугментации ломают смысл?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>SimCSE</strong> предложил радикально простое решение: прогнать <strong>одно и то же предложение дважды через модель с включённым dropout</strong>.</p><p>Два прогона дадут слегка разные представления из-за случайных масок dropout — вот и позитивная пара. Текст вообще не искажается.</p><p>Этот «минимальный» подход обходит сложные текстовые аугментации (back-translation, замена синонимов, перестановка) на задачах семантического сходства.</p><p><strong>Общий урок:</strong> когда осмысленных аугментаций нет, источником вариативности может быть сама стохастичность модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Как устроен MoCo и зачем ему momentum encoder?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Очередь:</strong> векторы из предыдущих батчей хранятся в FIFO размером 65536. Батч остаётся 256, а негативов — 65536.</p><p><strong>Проблема:</strong> векторы в очереди посчитаны старой версией модели. Если модель быстро меняется, они «протухают».</p><p><strong>Momentum encoder</strong> решает это: ключи считаются медленно меняющимся энкодером $\theta_k \leftarrow m\theta_k + (1-m)\theta_q$ при $m=0.999$.</p><p><strong>Расчёт:</strong> вектор живёт в очереди $65536/256 = 256$ шагов. При $m=0.999$ энкодер за это время изменится на $1-0.999^{256} = 22.6\%$ — векторы остаются сопоставимыми. При $m=0.9$ энкодер сменится полностью, и качество падает с 67% до 55%.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Что такое коллапс представлений и почему он возникает?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Если убрать негативы, лосс «сделай представления двух видов похожими» имеет тривиальное решение: <strong>выдавать один и тот же вектор для любого входа</strong>. Сходство всегда 1, лосс 0, представление бесполезно.</p><p>Негативы в contrastive как раз и не давали этому случиться — они расталкивали разные объекты.</p><p>Методы без негативов должны закрыть лазейку иначе — через <strong>асимметрию в архитектуре или обучении</strong>.</p><p><strong>Диагностика:</strong> посчитай стандартную дисперсию нормированных представлений по батчу. Здоровое значение около $1/\sqrt{d}$, близость к нулю означает коллапс.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Три механизма против коллапса — назови и объясни.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>BYOL — предиктор + EMA.</strong> У ученика есть дополнительная голова-предиктор, у учителя нет; учитель — EMA от ученика. Предиктор не может стать константой мгновенно, а EMA-учитель всегда отстаёт — цель постоянно движется.</p><p><strong>SimSiam — stop-gradient.</strong> Градиент не течёт в ветку учителя вообще, EMA не нужен. Это превращает задачу в подобие EM-алгоритма: одна ветка фиксирована, вторая подстраивается.</p><p><strong>DINO — центрирование + sharpening.</strong> Выход учителя центрируется (вычитается скользящее среднее) и заостряется (низкая температура).</p><p><strong>Почему в DINO нужны обе операции:</strong> есть два противоположных коллапса. В одну точку — с ним борется центрирование. В равномерное распределение — с ним борется sharpening. Убери одно, модель схлопнется в другую сторону.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Что показала абляция SimSiam?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Полный SimSiam:</strong> linear probe ≈ 67.7%, дисперсия представлений держится около $1/\sqrt{d}$.</p><p><strong>Убрали stop-gradient:</strong> лосс падает до 0 <em>за десятки шагов</em>, дисперсия обнуляется, качество ≈ 0.1%. Полный коллапс — самая наглядная абляция в статье.</p><p><strong>Убрали предиктор:</strong> тоже коллапс. Предиктор и stop-gradient работают только вместе.</p><p><strong>Предиктор с фиксированными случайными весами:</strong> коллапса нет, но качество ≈ 5% — предиктор должен обучаться.</p><p><strong>Вывод:</strong> stop-gradient — не техническая деталь, а суть метода. Он разрывает симметрию.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Чем Barlow Twins и VICReg отличаются от BYOL?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Вместо архитектурных хитростей они добавляют <strong>явный член в лосс</strong>, требующий декорреляции измерений.</p><p><strong>Barlow Twins</strong> минимизирует отклонение кросс-корреляционной матрицы двух видов от единичной: диагональ к 1 (инвариантность), внедиагональ к 0 (нет избыточности между измерениями).</p><p><strong>VICReg</strong> добавляет три члена: variance (каждое измерение имеет ненулевую дисперсию), invariance, covariance.</p><p><strong>Концептуальное преимущество:</strong> коллапс невозможен <em>по построению лосса</em>, а не благодаря тонкой настройке архитектуры. Не нужны ни EMA, ни stop-gradient, ни предиктор. Проще воспроизводить и отлаживать.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Почему BERT маскирует 15%, а MAE — 75%?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Всё дело в информационной плотности.</strong></p><p><strong>Текст плотный:</strong> каждое слово несёт много информации, соседние слабо предсказуемы. Замаскируй 50% — восстановить не сможет даже человек.</p><p><strong>Изображение избыточно:</strong> соседние патчи почти одинаковы. При 15% маски задача решается <em>тривиальной интерполяцией</em> — модель научится размывать, а не понимать.</p><p>MAE показал: нужно 75%, чтобы задача перестала быть локальной интерполяцией и потребовала понимания глобальной структуры.</p><p><strong>Бонус:</strong> при 75% маски энкодер обрабатывает только 25% патчей — обучение ускоряется примерно втрое. Редкий случай, когда усложнение задачи удешевляет вычисления.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Зачем в BERT схема 80/10/10?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Из 15% выбранных токенов: 80% заменяются на <code>[MASK]</code>, 10% на случайный токен, 10% остаются как есть.</p><p><strong>Причина:</strong> токена <code>[MASK]</code> нет при дообучении и в проде — возникает train/test mismatch. Если модель научится «работать только там, где стоит [MASK]», на реальном тексте она будет вести себя иначе.</p><p>Замена части на случайные и настоящие токены заставляет модель строить осмысленное представление <strong>каждого</strong> токена, а не только замаскированных.</p><p><strong>Связанные детали:</strong> whole word masking (маскировать все subword-токены слова сразу, иначе восстановление тривиально) и динамическая маска (новая маска каждую эпоху — RoBERTa).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Почему MLM неэффективен и что предлагает ELECTRA?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>BERT получает обучающий сигнал только с 15% токенов — 85% вычислений тратится на построение контекста, но не даёт градиента напрямую.</p><p><strong>ELECTRA:</strong> маленький генератор заменяет часть токенов правдоподобными подделками, а основная модель (дискриминатор) определяет для <em>каждого</em> токена, настоящий он или заменённый.</p><p>Сигнал со 100% позиций вместо 15%. При равном компьюте обучение эффективнее примерно в 4 раза.</p><p>Дополнительный плюс: нет токена <code>[MASK]</code>, значит нет train/test mismatch, и схема 80/10/10 не нужна.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Почему декодер в MAE намеренно слабый?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Логика от противного: <strong>если декодер мощный, он сам восстановит изображение из слабого представления</strong>, и энкодер не будет вынужден учиться.</p><p>Слабый декодер (в 10 раз меньше энкодера) перекладывает работу на энкодер — а нам нужен именно хороший энкодер, декодер после претрейна выбрасывается.</p><p>Плюс энкодер видит только <em>видимые</em> патчи (25%) — это и ускорение, и защита от траты ёмкости на обработку маскированных заглушек.</p><p><strong>Тот же принцип, что с projection head в SimCLR:</strong> архитектура проектируется так, чтобы полезная часть была вынуждена работать, а вспомогательная не могла «взять всё на себя».</p></div></details>
+
+<div class="qah">🟣 Продвинутый: перенос и дообучение</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. В чём разница между linear probe и full fine-tune как метриками?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Они отвечают на <strong>разные вопросы</strong>.</p><p><strong>Linear probe</strong> измеряет качество <em>представлений</em>: насколько они уже линейно разделимы для задачи. Используется для сравнения SSL-методов.</p><p><strong>Full fine-tune</strong> измеряет практическую пользу: какого качества можно достичь на задаче.</p><p><strong>Почему это важно:</strong> ранжирование методов различается. Метод A может дать probe 70% и FT 82%, метод B — probe 62% и FT 85%. Именно поэтому masked-подходы (слабый probe, сильный FT) долго недооценивали, сравнивая только по linear probe.</p><p><strong>Правило:</strong> оценивай тем протоколом, который будешь реально использовать.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Почему full fine-tune проигрывает linear probe на 200 примерах?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>ResNet-50 имеет 25 млн параметров. Full FT на 200 примерах — это 125 000 параметров на пример. Модель запомнит выборку целиком за несколько эпох, а предобученные представления при этом разрушатся.</p><p>Linear probe обучает $2048\times C$ параметров — при 10 классах 20 480. Признаки заморожены и уже осмысленны; задача сводится к простому классификатору в хорошем пространстве.</p><p><strong>Точка перелома</strong> обычно 1000–5000 примеров: до неё выигрывает probe или partial FT, после — full FT.</p><p><strong>Практический приём — two-stage:</strong> сначала обучить только голову при замороженном backbone (5–10 эпох), потом разморозить всё с малым lr.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Почему нельзя сразу делать full FT со случайной головой?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>На первых шагах голова инициализирована случайно, её градиенты огромны, и они через backprop <strong>разрушают предобученные признаки</strong> ещё до того, как голова научится чему-то полезному.</p><p>Можно потерять весь эффект претрейна за первые сто шагов — и это не будет видно ни по какой ошибке, только по итоговому качеству.</p><p><strong>Три способа лечения:</strong> ① two-stage (сначала голова при замороженном backbone, потом всё); ② warmup на 5–10% шагов; ③ discriminative learning rate — нижним слоям экспоненциально меньший lr.</p><p>Все три решают одну задачу: не дать случайной голове испортить то, что уже выучено.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>23. Что такое discriminative learning rate и как выбрать γ?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>$\eta_l = \eta_{\text{base}}\cdot\gamma^{L-l}$ — нижние слои получают экспоненциально меньший lr.</p><p><strong>Логика:</strong> нижние слои выучили универсальные признаки (границы, текстуры, морфология) — они уже правильные, двигать их сильно значит ломать работающее. Верхние специфичны для pretext-задачи, их надо перестраивать. Голова случайна — ей нужен полный lr.</p><p><strong>Типичные значения:</strong> $\gamma$ = 0.65–0.75 для больших моделей (ViT-L, 24 слоя), 0.8–0.9 для средних. При $\gamma=0.75$ и 24 слоях нижний слой получит $0.75^{23} \approx 0.001$ от базового — то есть практически заморожен.</p><p><strong>Альтернатива</strong> — gradual unfreezing (ULMFiT): размораживать слои постепенно по эпохам. Даёт больше контроля при очень малых датасетах, но сложнее в настройке.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>24. Какие гиперпараметры типичны при дообучении предобученной модели?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Learning rate</strong> в 10–100 раз меньше, чем при обучении с нуля: $1\times10^{-5}$–$5\times10^{-5}$ для ViT/BERT вместо $10^{-3}$.</p><p><strong>Layer decay</strong> $\gamma$: 0.65–0.75 для больших моделей, 0.8–0.9 для средних.</p><p><strong>Weight decay</strong> 0.05, исключая bias и параметры нормализации (тема 8.2).</p><p><strong>Warmup</strong> 5–10% шагов, затем cosine.</p><p><strong>Эпох мало:</strong> 3–10 для NLP, 10–50 для CV. Больше эпох на малых данных почти всегда означает переобучение, а не улучшение — нужна ранняя остановка.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>25. Что такое катастрофическое забывание и как с ним бороться?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Дообучил модель на новой задаче — она разучилась старой. Причина: градиентный спуск оптимизирует <em>только текущую задачу</em>, старых данных в лоссе нет, значит нет и градиента, удерживающего старые способности.</p><p><strong>Методы борьбы, по практичности:</strong></p><p>① <strong>Rehearsal</strong> — подмешивать 10–20% старых данных. Самый простой и надёжный.</p><p>② <strong>LoRA/адаптеры</strong> — база заморожена, забывания нет по построению.</p><p>③ <strong>EWC</strong> — штраф $\frac{\lambda}{2}\sum_i F_i(\theta_i-\theta^*_i)^2$, где $F_i$ — важность параметра для старой задачи по информации Фишера.</p><p>④ <strong>Малый lr и мало эпох</strong> — просто не двигать веса далеко.</p><p>⑤ <strong>Model merging</strong> — усреднить веса базовой и дообученной модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>26. Сколько старых данных подмешивать при rehearsal?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>0% старых:</strong> новая задача 92%, старая падает с 88% до 41% — классическое забывание.</p><p><strong>5% старых:</strong> новая 91.5%, старая 76%. Уже кардинально лучше при почти нулевой цене.</p><p><strong>20% старых:</strong> новая 90.8%, старая 85%. Практически оптимум — теряем 1.2 п.п. на новой, сохраняем почти всё старое.</p><p><strong>50% старых:</strong> новая 87%, старая 87% — уже жертвуем новой задачей.</p><p><strong>Правило:</strong> 10–20% дают почти всю защиту при минимальной потере. Непропорционально выгодный размен — поэтому rehearsal метод первого выбора.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>27. Как EWC определяет, какие веса важны?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Через <strong>диагональ информационной матрицы Фишера</strong>: $F_i = \mathbb{E}_{x\sim D_{\text{old}}}\left[\left(\frac{\partial\log p(y|x,\theta)}{\partial\theta_i}\right)^2\right]$.</p><p>Большая $F_i$ означает, что изменение этого веса сильно меняет предсказания на старой задаче — то есть он важен.</p><p>EWC привязывает каждый параметр к старому значению «пружиной», жёсткость которой пропорциональна $F_i$. Важные почти не двигаются, неважные свободны.</p><p><strong>Метафора:</strong> ремонт квартиры, где несущие стены трогать нельзя, а перегородки можно двигать. EWC автоматически определяет, что тут несущее.</p><p><strong>Практическая оговорка:</strong> требует прохода по старым данным для оценки $F$, и диагональное приближение игнорирует взаимодействия между параметрами.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>28. Почему LoRA решает проблему забывания архитектурно?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>База <strong>заморожена</strong> — её веса физически не могут измениться. Все изменения живут в адаптерах $\Delta W = BA$.</p><p>Отключил адаптер — получил исходную модель обратно, бит в бит. Забывание невозможно по построению.</p><p><strong>Более того:</strong> можно держать несколько адаптеров под разные задачи на одной базе и переключать их на лету. Это делает LoRA не только методом экономии памяти, но и <strong>решением мультизадачности без интерференции</strong>.</p><p>В сервинге это даёт мультитенантность: одна база в памяти, десятки адаптеров по несколько мегабайт каждый.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>29. Как проверить, что претрейн вообще сработал?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Четыре дешёвые проверки, которые делаются <em>до</em> полного дообучения:</p><p><strong>① Linear probe</strong> на небольшой размеченной выборке — если он не лучше probe на случайно инициализированной сети, представления бесполезны.</p><p><strong>② Дисперсия представлений</strong> — std нормированных эмбеддингов по батчу. Близость к нулю означает коллапс.</p><p><strong>③ k-NN classifier</strong> на эмбеддингах — оценка вообще без обучения.</p><p><strong>④ t-SNE/UMAP</strong> с раскраской по известным меткам — должны быть видны кластеры.</p><p>Все четыре занимают минуты и экономят дни, если что-то пошло не так.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>30. Как встроить SSL в продуктовый цикл компании?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Схема:</strong> сырые данные → дедупликация и фильтрация → SSL-претрейн (раз в квартал) → foundation-модель в реестре → множество downstream-задач через дообучение, LoRA или просто эмбеддинги.</p><p><strong>Экономика:</strong> претрейн — единовременная дорогая инвестиция, амортизирующаяся по всем задачам компании. Каждая новая задача стоит недели вместо месяцев.</p><p><strong>Что критично:</strong> ① дедупликация — и внутри корпуса, и между претрейном и тестами всех downstream-задач; ② версионирование foundation-модели — при обновлении надо перепроверить все downstream и <em>пересчитать эмбеддинги в векторных индексах</em>; ③ реестр адаптеров; ④ мониторинг дрейфа домена.</p><p><strong>Окупается,</strong> если: несколько задач на одной модальности, домен далёк от публичных моделей, сотни тысяч неразмеченных примеров, дорогая экспертная разметка.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block8_05_scaling.html" class="btn prev">← Обучение больших моделей</a>
+  <a href="block8_quiz.html" class="btn">Тест Блока 8 →</a>
+</div>
+
+</div>
+<script>
+// защита: если Chart.js не загрузился (нет интернета) — страница всё равно работает
+if (typeof Chart === 'undefined') {
+  window.Chart = function(){ return {}; };
+  Chart.defaults = { font: {} };
+}
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Кривая обучения: с претрейном и без ---
+(function(){
+  const ns=[100,300,1000,3000,10000,30000,100000,300000];
+  const f=(c,g)=>ns.map(n=>0.94 - c/Math.pow(n,g));
+  new Chart(document.getElementById('c_curve'), {
+    type:'line',
+    data:{labels:ns.map(n=>n.toLocaleString('ru-RU')),datasets:[
+      {label:'с претрейном на неразмеченных данных',data:f(1.9,0.33),borderColor:'#16a34a',pointRadius:4,borderWidth:3,tension:.25},
+      {label:'с нуля, без претрейна',data:f(6.2,0.33),borderColor:'#dc2626',pointRadius:4,borderWidth:3,tension:.25},
+      {label:'целевое качество F1 = 0.85',data:ns.map(()=>0.85),borderColor:'#94a3b8',borderDash:[6,4],pointRadius:0,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число размеченных примеров (лог-шкала)'}},
+              y:{title:{display:true,text:'качество (F1)'},min:0.3,max:0.95}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>i[0].datasetIndex<2?'Горизонтальный сдвиг = во сколько раз меньше разметки нужно':''}}}}
+  });
+})();
+
+// --- Температура: распределение градиента ---
+(function(){
+  const sims=[0.62,0.51,0.44,0.38,0.31,0.25,0.19,0.12];
+  function dist(tau){
+    const e=sims.map(s=>Math.exp(s/tau)), sum=e.reduce((a,b)=>a+b,0);
+    return e.map(v=>v/sum*100);
+  }
+  new Chart(document.getElementById('c_tau'), {
+    type:'bar',
+    data:{labels:sims.map((s,i)=>'нег.'+(i+1)+'\n('+s.toFixed(2)+')'),datasets:[
+      {label:'τ = 0.05 — весь градиент на самый трудный',data:dist(0.05),backgroundColor:'#dc2626',borderRadius:4},
+      {label:'τ = 0.1 — стандарт',data:dist(0.1),backgroundColor:'#0891b2',borderRadius:4},
+      {label:'τ = 0.5 — размазано',data:dist(0.5),backgroundColor:'#16a34a',borderRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'негативы, отсортированные по сходству'}},
+              y:{title:{display:true,text:'доля градиента, %'},max:100}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(' —')[0]+': '+c.parsed.y.toFixed(1)+'%'}}}}
+  });
+})();
+
+// --- Качество от размера батча ---
+new Chart(document.getElementById('c_batch'), {
+  type:'line',
+  data:{labels:['64','128','256','512','1024','2048','4096','8192'],datasets:[
+    {label:'Contrastive (SimCLR) — сильно зависит от батча',
+     data:[52.1,56.3,60.6,63.9,66.1,67.5,68.4,69.0],
+     borderColor:'#dc2626',pointRadius:4,borderWidth:3,tension:.25},
+    {label:'MoCo (очередь 65k) — почти не зависит',
+     data:[65.8,66.4,66.9,67.2,67.4,67.5,67.6,67.6],
+     borderColor:'#0891b2',pointRadius:4,borderWidth:2.8,tension:.25},
+    {label:'Masked prediction (MAE) — не зависит',
+     data:[67.9,68.0,68.1,68.1,68.2,68.2,68.2,68.3],
+     borderColor:'#16a34a',pointRadius:4,borderWidth:2.8,tension:.25}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'размер батча'}},
+            y:{title:{display:true,text:'linear probe, %'},min:50,max:71}},
+    plugins:{legend:{position:'bottom'}}}
+});
+
+// --- Коллапс ---
+(function(){
+  const xs=[]; for(let i=0;i<=100;i+=2) xs.push(i);
+  const healthy = xs.map(t=>0.043 + 0.004*Math.sin(t/9));
+  const collapse= xs.map(t=>0.043*Math.exp(-t/6));
+  const dino    = xs.map(t=>0.041 + 0.005*Math.sin(t/13) - (t<8?0.012*(1-t/8):0));
+  new Chart(document.getElementById('c_collapse'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'SimSiam со stop-gradient — здоровое состояние',data:healthy,borderColor:'#16a34a',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'DINO с центрированием и sharpening',data:dino,borderColor:'#0891b2',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'без stop-gradient — коллапс за десятки шагов',data:collapse,borderColor:'#dc2626',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'здоровый уровень 1/√d',data:xs.map(()=>0.0442),borderColor:'#94a3b8',borderDash:[5,4],pointRadius:0,borderWidth:1.8}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'шаги обучения (×100)'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'std нормированных представлений'},min:0,max:0.055}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Linear probe vs full FT ---
+new Chart(document.getElementById('c_probe'), {
+  type:'bar',
+  data:{labels:['Random init','SimCLR','MoCo v3','BYOL','DINO','MAE'],
+    datasets:[
+      {label:'linear probe, %',data:[7.2,69.3,76.7,74.3,78.2,68.0],
+       backgroundColor:'#0891b2',borderRadius:5},
+      {label:'full fine-tune, %',data:[76.5,82.1,83.2,82.8,83.3,83.6],
+       backgroundColor:'#16a34a',borderRadius:5}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'ImageNet top-1, %'},max:90}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{afterBody:i=>i[0].dataIndex===5?'MAE: слабый probe, но ЛУЧШИЙ full FT — разные протоколы дают разное ранжирование':''}}}}
+});
+
+// --- Стратегии дообучения от объёма данных ---
+(function(){
+  const ns=[50,100,300,1000,3000,10000,30000,100000];
+  new Chart(document.getElementById('c_strategy'), {
+    type:'line',
+    data:{labels:ns.map(n=>n.toLocaleString('ru-RU')),datasets:[
+      {label:'linear probe',data:ns.map(n=>0.79-1.3/Math.pow(n,0.42)),borderColor:'#0891b2',pointRadius:4,borderWidth:2.8,tension:.25},
+      {label:'partial fine-tune (последние 4 блока)',data:ns.map(n=>0.87-3.2/Math.pow(n,0.42)),borderColor:'#7c3aed',pointRadius:4,borderWidth:2.8,tension:.25},
+      {label:'full fine-tune',data:ns.map(n=>0.92-7.5/Math.pow(n,0.42)),borderColor:'#16a34a',pointRadius:4,borderWidth:3,tension:.25},
+      {label:'LoRA (r=16)',data:ns.map(n=>0.90-4.4/Math.pow(n,0.42)),borderColor:'#d97706',pointRadius:4,borderWidth:2.8,tension:.25}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число размеченных примеров (лог-шкала)'}},
+              y:{title:{display:true,text:'качество'},min:0.3,max:0.94}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>'Точка перелома между probe и full FT — обычно 1000–5000 примеров'}}}}
+  });
+})();
+
+// --- Забывание и rehearsal ---
+new Chart(document.getElementById('c_forget'), {
+  type:'line',
+  data:{labels:['0%','5%','10%','20%','30%','50%'],datasets:[
+    {label:'качество на СТАРОЙ задаче',data:[41,76,81,85,86,87],
+     borderColor:'#dc2626',pointRadius:5,borderWidth:3,tension:.25},
+    {label:'качество на НОВОЙ задаче',data:[92,91.5,91.2,90.8,89.5,87],
+     borderColor:'#16a34a',pointRadius:5,borderWidth:3,tension:.25},
+    {label:'👍 рекомендуемая зона 10–20%',data:[null,null,81,85,null,null],
+     borderColor:'#0891b2',pointRadius:11,pointStyle:'star',borderWidth:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'доля старых данных в обучающей смеси'}},
+            y:{title:{display:true,text:'качество, %'},min:35,max:95}},
+    plugins:{legend:{position:'bottom'}}}
+});
+
+// --- Сетки маскирования ---
+(function(){
+  function build(id, frac){
+    const el=document.getElementById(id); if(!el) return;
+    const total = 48;
+    const k = Math.round(total * frac);
+    // детерминированная перестановка индексов (Fisher-Yates с простым ПСЧ)
+    const idx = Array.from({length: total}, (_, i) => i);
+    let seed = 42;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;   // безопасно по точности: < 2^53
+      return seed / 2147483647;
+    };
+    for (let i = total - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    const masked = new Set(idx.slice(0, k));
+    let h = '';
+    for (let i = 0; i < total; i++) h += '<div class="mc'+(masked.has(i)?' masked':'')+'"></div>';
+    el.innerHTML = h;
+  }
+  build('mg_text', 0.15);
+  build('mg_img', 0.75);
+})();
+
+// --- Стек слоёв с lr ---
+function renderLR(gamma, L){
+  const el = document.getElementById('lr_stack'); if(!el) return;
+  const base = 1e-4;
+  let h = '';
+  const show = Math.min(L, 8);
+  const names = [];
+  names.push('голова');
+  for (let i=0;i<show-2;i++) names.push('блок ' + (L-1-i));
+  names.push('embeddings');
+  for (let i=0;i<show;i++){
+    const depth = i===0 ? 0 : (i===show-1 ? L : Math.round(i*L/show));
+    const lr = base * Math.pow(gamma, depth);
+    const w = Math.max(2, (lr/base)*100);
+    h += '<div class="lrlayer"><span class="lrname">'+names[i]+'</span>' +
+         '<div class="lrbar" style="width:'+w+'%"></div>' +
+         '<span class="lrval">'+lr.toExponential(1)+'</span></div>';
+  }
+  el.innerHTML = h;
+}
+
+// --- Интерактив: ROI претрейна ---
+function updROI(){
+  const cost = +document.getElementById('sl_cost').value / 10;
+  const need = +document.getElementById('sl_need').value;
+  const k = +document.getElementById('sl_k').value;
+  document.getElementById('out_cost').textContent = '$'+cost.toFixed(2);
+  document.getElementById('out_need').textContent = need.toLocaleString('ru-RU');
+  document.getElementById('out_k').textContent = '×'+k;
+  const without = need * cost;
+  const withNeed = Math.round(need / k);
+  const withCost = withNeed * cost + 600;   // 600 = стоимость претрейна
+  const saved = without - withCost;
+  const pct = saved / without * 100;
+  const hoursW = Math.round(need / 30), hoursP = Math.round(withNeed / 30);
+  let verdict;
+  if (pct > 80) verdict = '✅ Претрейн окупается многократно — очевидное решение.';
+  else if (pct > 40) verdict = '✅ Претрейн окупается, стоит делать.';
+  else if (pct > 0) verdict = '⚠️ Выигрыш есть, но небольшой — сравни с готовой публичной моделью.';
+  else verdict = '🚨 Претрейн НЕ окупается при таких параметрах — разметка дешевле.';
+  document.getElementById('out_roi').innerHTML =
+    '<strong>Без претрейна:</strong> ' + need.toLocaleString('ru-RU') + ' примеров × $' + cost.toFixed(2) +
+    ' = <strong>$' + Math.round(without).toLocaleString('ru-RU') + '</strong> (~' + hoursW.toLocaleString('ru-RU') + ' человеко-часов)' +
+    '<br><strong>С претрейном:</strong> ' + withNeed.toLocaleString('ru-RU') + ' примеров + $600 на GPU' +
+    ' = <strong>$' + Math.round(withCost).toLocaleString('ru-RU') + '</strong> (~' + hoursP.toLocaleString('ru-RU') + ' человеко-часов)' +
+    '<br><strong>Экономия: $' + Math.round(saved).toLocaleString('ru-RU') + ' (' + pct.toFixed(0) + '%)</strong>' +
+    '<br>' + verdict;
+}
+updROI();
+
+// --- Интерактив: температура ---
+function updTau(){
+  const tau = +document.getElementById('sl_tau').value / 100;
+  document.getElementById('out_tau').textContent = tau.toFixed(2);
+  const sims=[0.62,0.51,0.44,0.38,0.31,0.25,0.19,0.12];
+  const e=sims.map(s=>Math.exp(s/tau)), sum=e.reduce((a,b)=>a+b,0);
+  const p=e.map(v=>v/sum*100);
+  const top1=p[0], top3=p[0]+p[1]+p[2];
+  let verdict;
+  if (tau < 0.05) verdict = '🚨 Очень острый softmax — почти весь сигнал на один негатив, риск нестабильности.';
+  else if (tau <= 0.2) verdict = '✅ Рабочий диапазон — фокус на трудных негативах при сохранении стабильности.';
+  else if (tau <= 0.5) verdict = '⚠️ Мягкий softmax — модель слабо различает трудные и лёгкие негативы.';
+  else verdict = '🚨 Слишком мягко — градиент почти равномерный, contrastive теряет смысл.';
+  document.getElementById('out_tauinfo').innerHTML =
+    'Доля градиента на самый трудный негатив: <strong>' + top1.toFixed(1) + '%</strong>' +
+    ' &nbsp;·&nbsp; на топ-3: <strong>' + top3.toFixed(1) + '%</strong>' +
+    '<br>Распределение: [' + p.map(v=>v.toFixed(1)+'%').join(', ') + ']' +
+    '<br>' + verdict;
+}
+updTau();
+
+// --- Интерактив: MoCo ---
+function updMoco(){
+  const m = +document.getElementById('sl_m').value / 10000;
+  const Q = +document.getElementById('sl_q').value;
+  document.getElementById('out_m').textContent = m.toFixed(4);
+  document.getElementById('out_q').textContent = Q.toLocaleString('ru-RU');
+  const B = 256;
+  const life = Math.round(Q / B);
+  const drift = (1 - Math.pow(m, life)) * 100;
+  let verdict;
+  if (drift < 8) verdict = '⚠️ Энкодер почти не двигается — ключи «слишком старые» относительно прогресса обучения.';
+  else if (drift < 40) verdict = '✅ Хороший баланс: очередь согласованна, но отражает прогресс.';
+  else if (drift < 80) verdict = '⚠️ Заметный дрейф — старые ключи уже плохо сопоставимы с новыми запросами.';
+  else verdict = '🚨 Энкодер полностью сменился за время жизни ключа — очередь бессмысленна, качество упадёт резко.';
+  document.getElementById('out_moco').innerHTML =
+    'Вектор живёт в очереди <strong>' + life.toLocaleString('ru-RU') + ' шагов</strong> (очередь ' +
+    Q.toLocaleString('ru-RU') + ' / батч 256)' +
+    '<br>За это время ключевой энкодер сдвинется на <strong>' + drift.toFixed(1) + '%</strong> пути к текущему' +
+    '<br>' + verdict;
+}
+updMoco();
+
+// --- Интерактив: маскирование ---
+function updMask(){
+  const frac = +document.getElementById('sl_mask').value;
+  const mod = document.querySelector('input[name=mod]:checked').value;
+  document.getElementById('out_mask').textContent = frac + '%';
+  const opt = mod === 'text' ? 15 : 75;
+  const speedup = mod === 'img' ? (100/(100-frac)).toFixed(1) : '—';
+  let verdict;
+  const d = Math.abs(frac - opt);
+  if (d <= 10) verdict = '✅ Близко к оптимуму для этой модальности.';
+  else if (frac < opt) verdict = mod==='text'
+      ? '⚠️ Слишком мало — сигнала с 15% токенов и так немного, ещё меньше неэффективно.'
+      : '🚨 Слишком мало для изображений — задача решается тривиальной интерполяцией соседних патчей, модель научится размывать, а не понимать.';
+  else verdict = mod==='text'
+      ? '🚨 Слишком много для текста — контекста не хватит даже человеку, восстановление станет угадыванием.'
+      : '⚠️ Очень агрессивно — глобальной структуры может не хватить для восстановления.';
+  document.getElementById('out_maskinfo').innerHTML =
+    'Оптимум для этой модальности: <strong>' + opt + '%</strong>' +
+    (mod==='img' ? ' &nbsp;·&nbsp; ускорение энкодера при ' + frac + '% маски: <strong>×' + speedup + '</strong>' : '') +
+    '<br>Видимых элементов: <strong>' + (100-frac) + '%</strong>, восстанавливаем <strong>' + frac + '%</strong>' +
+    '<br>' + verdict;
+}
+updMask();
+
+// --- Интерактив: discriminative LR ---
+function updLR(){
+  const g = +document.getElementById('sl_g').value / 100;
+  const L = +document.getElementById('sl_L').value;
+  document.getElementById('out_g').textContent = g.toFixed(2);
+  document.getElementById('out_L').textContent = L;
+  renderLR(g, L);
+  const base = 1e-4;
+  const bottom = base * Math.pow(g, L);
+  const ratio = Math.pow(g, L);
+  let verdict;
+  if (ratio < 1e-4) verdict = '🚨 Нижние слои практически заморожены — если домен сильно отличается, им нужна адаптация.';
+  else if (ratio < 0.02) verdict = '✅ Сильное затухание — стандарт для больших моделей и близких доменов.';
+  else if (ratio < 0.3) verdict = '✅ Умеренное затухание — хорошо для средних моделей.';
+  else verdict = '⚠️ Слабое затухание — почти равномерный lr, риск разрушить нижние признаки.';
+  document.getElementById('out_lr').innerHTML =
+    'Голова: <strong>' + base.toExponential(1) + '</strong> &nbsp;→&nbsp; нижний слой: <strong>' + bottom.toExponential(1) + '</strong>' +
+    '<br>Отношение: <strong>' + (ratio<1e-4 ? ratio.toExponential(1) : (ratio*100).toFixed(2)+'%') + '</strong> от базового lr' +
+    '<br>' + verdict;
+}
+updLR();
+</script>
+</body>
+</html>

@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.3 · Интерференция, кластерная рандомизация и switchback</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#581c87; --ac-d:#3b0764; --ac-l:#faf5ff; --ac-b:#d8b4fe; --ac-m:#7e22ce;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#3b0764,#581c87 50%,#d8b4fe);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.95;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.88;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#92400e}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#d8b4fe;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 4 · тема 3 · продвинутый уровень</div>
+    <h1>Интерференция, кластерная рандомизация и switchback</h1>
+    <p>Обычный A/B опирается на предположение, которое почти никогда не проговаривают вслух: исход одного пользователя не зависит от того, в какую группу попал другой. На маркетплейсе, в соцсети, в сервисе доставки и в любой системе с общим ограниченным ресурсом это предположение ложно — и наивный тест завышает эффект втрое, не подавая никаких признаков поломки.</p>
+    <div class="meta">
+      <span>15 секций</span><span>12 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · SUTVA</a>
+    <a href="#s2">2 · Каналы</a>
+    <a href="#s3">3 · Величина смещения</a>
+    <a href="#s4">4 · Кластеры</a>
+    <a href="#s5">5 · ICC и DEFF</a>
+    <a href="#s6">6 · Размер кластера</a>
+    <a href="#s7">7 · Switchback</a>
+    <a href="#s8">8 · Длина интервала</a>
+    <a href="#s9">9 · Перенос</a>
+    <a href="#s10">10 · Оценка</a>
+    <a href="#s11">11 · Ego-кластеры</a>
+    <a href="#s12">12 · Двусторонняя</a>
+    <a href="#s13">13 · Выбор и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>SUTVA: предположение, о котором не говорят</h2></div>
+  <p class="slead">Вся математика из 4.1 опирается на условие, которое в учебниках упоминают одной строкой, а в продукте нарушают ежедневно.</p>
+
+  <div class="def">
+    <div class="def-t">Stable Unit Treatment Value Assumption</div>
+    <p><b>Формулировка:</b> исход участника зависит только от того, какое воздействие получил <i>он сам</i>, и не зависит от того, какие воздействия получили остальные.</p>
+    <p>Из этого следует существование ровно двух потенциальных исходов у каждого — Y(1) и Y(0), — и вся конструкция причинного вывода строится на этом. Если исход зависит ещё и от распределения групп у других, потенциальных исходов становится 2<sup>N</sup>, и «эффект воздействия» перестаёт быть определённой величиной без указания, кто ещё в тесте.</p>
+    <p><b>Когда нарушается:</b> всегда, где участники делят между собой что-то ограниченное или влияют друг на друга напрямую. Товар на складе, время курьера, место в выдаче, внимание собеседника, цена на аукционе.</p>
+  </div>
+
+  <p>Практическое следствие звучит неприятно: <b>наивный A/B в таких системах измеряет не то, что вам нужно</b>. Он отвечает на вопрос «что будет, если половина получит изменение», а вы собираетесь выкатывать на всех — и это разные величины.</p>
+
+  <table class="ct">
+    <thead><tr><th>Система</th><th>Что делят участники</th><th>Направление смещения</th></tr></thead>
+    <tbody>
+      <tr><td>Маркетплейс</td><td class="note">товарные запасы, место в выдаче, внимание покупателей</td><td class="r">завышение: тест забирает ресурс у контроля</td></tr>
+      <tr><td>Доставка и такси</td><td class="note">курьеров и водителей</td><td class="r">завышение, часто в разы</td></tr>
+      <tr><td>Социальная сеть</td><td class="note">контент и реакции друг друга</td><td class="a">занижение: эффект перетекает в контроль</td></tr>
+      <tr><td>Рекламный аукцион</td><td class="note">показы и бюджет</td><td class="r">завышение через вытеснение конкурентов</td></tr>
+      <tr><td>Мессенджер, звонки</td><td class="note">собеседника напрямую</td><td class="a">занижение: обе стороны разговора в разных группах</td></tr>
+      <tr class="best"><td>Новостная лента без соцграфа</td><td class="g">ничего</td><td class="g">SUTVA выполнено, обычный A/B корректен</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Направление смещения определяется тем, конкурируют участники за ресурс или помогают друг другу. Конкуренция завышает эффект, распространение — занижает. Обе ошибки одинаково опасны, но первую заметить труднее: она делает результаты приятнее.</p>
+
+  <div class="intuition">
+    <b>Почему эту поломку так трудно заметить.</b> Она не проявляется ни в одной стандартной диагностике. SRM в порядке, ковариаты сбалансированы, A/A-тесты чистые, доверительные интервалы узкие. Всё выглядит идеально — просто измеряемая величина не та, которую вы собираетесь получить после выката. Обнаруживается это обычно через полгода, когда суммарный эффект десяти выкаченных изменений не совпал с ростом бизнес-метрики.
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Каналы интерференции</h2></div>
+  <p class="slead">Механизмов немного, и они по-разному лечатся. Прежде чем выбирать дизайн, нужно понять, через что именно перетекает влияние.</p>
+
+  <table class="ct">
+    <thead><tr><th>Канал</th><th>Как работает</th><th>Чем лечится</th></tr></thead>
+    <tbody>
+      <tr><td><b>Общий ресурс</b></td><td class="note">товар, курьер, слот в выдаче — конечны; получив их, тестовая группа лишает контрольную</td><td class="g">кластеризация по географии или switchback по времени</td></tr>
+      <tr><td><b>Общая модель</b></td><td class="note">обучение или калибровка на смешанном потоке: поведение теста меняет предсказания для контроля</td><td class="a">раздельные модели по группам либо switchback</td></tr>
+      <tr><td><b>Социальные связи</b></td><td class="note">пользователь видит действия друзей независимо от их группы</td><td class="g">кластеризация по сообществам графа, ego-кластеры</td></tr>
+      <tr><td><b>Двусторонний рынок</b></td><td class="note">изменение на стороне покупателей меняет поведение продавцов, которое возвращается ко всем покупателям</td><td class="a">двусторонняя рандомизация, switchback</td></tr>
+      <tr><td><b>Общий бюджет или квота</b></td><td class="note">маркетинговый бюджет, лимит уведомлений, вместимость поддержки</td><td class="g">кластеризация по единице бюджета</td></tr>
+      <tr><td><b>Перетекание внимания</b></td><td class="note">пользователь видит обе версии — на разных устройствах, через друзей, в отзывах</td><td class="a">рандомизация по аккаунту, а не по устройству</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первая строка встречается чаще всех и лечится проще всех. Вторая — коварнее: общая модель незаметна в архитектуре эксперимента, но связывает группы намертво.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · интерференция через общую модель ранжирования</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Устройство системы. Ранжирование обучается на кликах всех пользователей.
+      <div class="calc"><span class="lbl">тестовая группа получает новый интерфейс,
+который повышает кликабельность карточек
+определённого типа на 18%</span>
+
+<span class="lbl">модель видит рост кликов по этому типу
+в общем логе и повышает их ранг</span>
+  <span class="bad">→ контрольная группа тоже начинает
+  видеть эти карточки выше</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Что получается в замере.
+      <div class="calc"><span class="lbl">истинный эффект интерфейса:</span>       <span class="hl">+3.2%</span>
+<span class="lbl">измеренная разница групп:</span>        <span class="bad">+1.1%</span>
+
+<span class="bad">Занижение в 2.9 раза — потому что контроль
+получил часть выгоды через модель.</span>
+
+<span class="lbl">через 6 недель, когда модель полностью
+переобучилась:</span>
+  измеренная разница: <span class="bad">+0.4%</span>
+  <span class="dim">эффект «растворился», хотя интерфейс работает</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Диагностический признак, по которому это узнаётся.
+      <div class="calc"><span class="res">Эффект убывает со временем БЕЗ признаков
+эффекта новизны.</span>
+
+<span class="lbl">проверка из 4.1 — срез по новым пользователям:</span>
+  при эффекте новизны у новых кривая плоская
+  <span class="hl">здесь у новых она тоже убывает</span>
+
+<span class="res">Убывание и у новых, и у существующих
+одновременно — почерк интерференции
+через общую модель, а не новизны.</span>
+
+<span class="lbl">вторая проверка:</span> заморозить модель на время
+эксперимента. Если эффект перестал убывать —
+диагноз подтверждён.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Два разных механизма убывания эффекта</div>
+    <div class="chsub">Эффект новизны затрагивает только существующих пользователей; интерференция через общую модель убывает у всех одновременно. Различить их стоит одного среза</div>
+    <canvas id="c_mech"></canvas>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Величина смещения: считаем на маркетплейсе</h2></div>
+  <p class="slead">«Эффект может быть завышен» — бесполезная формулировка. Полезная выглядит как число, и его можно получить, разложив измеряемую разницу на составляющие.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · откуда берётся трёхкратное завышение</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Постановка. Новое ранжирование чаще показывает товары топ-продавцов, у которых ограничен запас.
+      <div class="calc"><span class="lbl">базовая конверсия:</span> 10.0%
+<span class="lbl">рандомизация:</span> 50/50 по покупателям
+<span class="lbl">товарный запас топ-продавцов:</span> общий на всех</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Что происходит во время эксперимента.
+      <div class="calc"><span class="lbl">группа       конверсия</span>
+тест           <span class="hl">10.35%</span>
+контроль        <span class="hl">9.80%</span>
+
+<span class="lbl">наивная оценка эффекта:</span>
+  (10.35 − 9.80) / 9.80 = 0.55 / 9.80 = <span class="bad">+5.612%</span>
+
+<span class="dim">Выглядит как отличный результат
+с узким доверительным интервалом.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что будет после выката на всех.
+      <div class="calc"><span class="lbl">когда ВСЕ покупатели получают новое ранжирование,
+конкуренция за ограниченный товар возвращается:</span>
+
+  конверсия при полном выкате:  <span class="hl">10.20%</span>
+  конверсия до эксперимента:    <span class="hl">10.00%</span>
+
+<span class="lbl">истинный эффект:</span>
+  (10.20 − 10.00) / 10.00 = <span class="res">+2.000%</span>
+
+<span class="bad">Завышение: 5.612 / 2.000 = 2.81 раза.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Разложение измеренной разницы на две части.
+      <div class="calc"><span class="lbl">измеренная разница 0.55 п.п. состоит из:</span>
+
+  <span class="res">+0.35 п.п.</span>  тест выше исходных 10.00
+             <span class="dim">(и это больше истинных +0.20,
+             потому что при 50% охвата конкуренция
+             за товар слабее, чем при 100%)</span>
+
+  <span class="bad">+0.20 п.п.</span>  контроль ниже исходных 10.00
+             <span class="dim">(товар забрала тестовая группа)</span>
+
+<span class="lbl">итого:</span> 0.35 + 0.20 = <span class="hl">0.55 п.п.</span> ✓
+
+<span class="res">Ключевая мысль: контрольная группа
+перестала быть контролем. Она получила
+воздействие — отрицательное.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Как завышение зависит от доли трафика в тесте.
+      <div class="calc"><span class="lbl">при линейном перетоке избыток измеренного
+эффекта пропорционален p(1−p):</span>
+
+<span class="lbl">доля p    p(1−p)   измеренный   завышение</span>
+    5%     0.0475     <span class="hl">+2.69%</span>      1.34×
+   10%     0.0900     <span class="hl">+3.30%</span>      1.65×
+   25%     0.1875     <span class="hl">+4.71%</span>      2.35×
+   50%     0.2500     <span class="bad">+5.61%</span>      <span class="bad">2.81×</span>
+   75%     0.1875     <span class="hl">+4.71%</span>      2.35×
+   95%     0.0475     <span class="hl">+2.69%</span>      1.34×
+
+<span class="dim">проверка для 25%: 2.00 + 3.612 × 0.1875/0.25
+= 2.00 + 2.709 = 4.709</span>
+
+<span class="res">Максимум искажения — ровно на 50/50,
+самом популярном сплите.</span>
+
+<span class="bad">Уменьшение доли теста до 5% снижает завышение
+с 2.81× до 1.34×, но не устраняет его —
+и стоит двадцатикратной потери мощности.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Завышение эффекта в зависимости от доли трафика в тесте</div>
+    <div class="chsub">Максимум искажения приходится на сплит 50/50. Уменьшение доли теста помогает, но ценой мощности — и смещение всё равно остаётся заметным</div>
+    <canvas id="c_share"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Диагностика, которая ничего не стоит.</b> Запустите тот же эксперимент дважды с разными долями трафика — например, 5% и 50%. При выполненном SUTVA оценки эффекта совпадут в пределах доверительных интервалов. При интерференции они разойдутся систематически, и направление расхождения укажет на канал: если оценка растёт с долей теста — конкуренция за ресурс, если падает — распространение эффекта в контроль.
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Кластерная рандомизация: изолировать интерференцию</h2></div>
+  <p class="slead">Если влияние перетекает между участниками, нужно рандомизировать не участников, а группы, внутри которых оно течёт свободно, а между которыми — почти нет.</p>
+
+  <div class="def">
+    <div class="def-t">Принцип выбора кластера</div>
+    <p><b>Кластер — это единица, внутри которой интерференция сильная, а между кластерами слабая.</b> Тогда рандомизация кластеров целиком делает группы независимыми, и SUTVA восстанавливается на уровне кластеров.</p>
+    <p>Выбор диктуется <i>каналом</i> интерференции, а не удобством данных:</p>
+    <ul style="margin:10px 0 0 0">
+      <li>общий товарный запас → кластер по складу или региону доставки</li>
+      <li>общий пул курьеров → кластер по зоне обслуживания</li>
+      <li>социальные связи → кластер по сообществу графа</li>
+      <li>общая модель → кластер по времени (switchback) либо раздельные модели</li>
+      <li>общий бюджет → кластер по кампании или каналу</li>
+    </ul>
+  </div>
+
+  <p>Цена этого решения огромна и легко недооценивается. Пользователи внутри кластера похожи друг на друга, поэтому каждый следующий несёт меньше новой информации, чем предыдущий. Формально это выражается внутриклассовой корреляцией.</p>
+
+  <div class="chb">
+    <div class="cht">Типичные значения внутриклассовой корреляции</div>
+    <div class="chsub">Чем однороднее кластер, тем выше ICC и тем дороже кластерная рандомизация. Значения иллюстративные — считать нужно на своих данных</div>
+    <canvas id="c_icc"></canvas>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>ICC и design effect: почему нужно в сто раз больше данных</h2></div>
+  <p class="slead">Одна формула объясняет, почему кластерные эксперименты либо очень длинные, либо бессмысленные. И она же подсказывает, что с этим делать.</p>
+
+  <div class="def">
+    <div class="def-t">Внутриклассовая корреляция и design effect</div>
+    <p><b>ICC</b> — доля дисперсии, приходящаяся на различия <i>между</i> кластерами:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14.5px;text-align:center;color:var(--ac-d)">ICC = σ²<sub>между</sub> / (σ²<sub>между</sub> + σ²<sub>внутри</sub>)</p>
+    <p><b>Design effect</b> — во сколько раз выросла дисперсия оценки по сравнению с простой случайной выборкой того же размера:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">DEFF = 1 + (m − 1) · ICC</p>
+    <p>где m — число наблюдений в кластере. Эффективный размер выборки равен <b>n / DEFF</b>, а MDE растёт как <b>√DEFF</b>.</p>
+    <p>Обратите внимание на структуру формулы: важно не ICC само по себе, а <b>произведение m · ICC</b>. Крошечная корреляция при большом кластере убивает мощность так же надёжно, как большая при малом.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · измерение ICC и расчёт последствий</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Раскладываем дисперсию конверсии по городам.
+      <div class="calc"><span class="lbl">400 000 пользователей, 200 городов по 2 000</span>
+
+  σ²_между городами  = <span class="hl">0.00042</span>
+  σ²_внутри городов  = <span class="hl">0.00798</span>
+
+  ICC = 0.00042 / (0.00042 + 0.00798)
+      = 0.00042 / 0.00840 = <span class="hl">0.05000</span>
+
+<span class="dim">Пять процентов дисперсии объясняются тем,
+в каком городе живёт пользователь. Звучит скромно.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем design effect.
+      <div class="calc">DEFF = 1 + (2 000 − 1) × 0.05
+     = 1 + 1 999 × 0.05
+     = 1 + 99.95 = <span class="bad">100.95</span>
+
+<span class="lbl">эффективный размер выборки:</span>
+  400 000 / 100.95 = <span class="bad">3 962</span>
+
+<span class="dim">Из четырёхсот тысяч пользователей осталось
+меньше четырёх тысяч. Скромные пять процентов
+корреляции при кластере в две тысячи человек
+съели 99% выборки.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что это делает с чувствительностью.
+      <div class="calc"><span class="lbl">MDE растёт в √DEFF раз:</span>
+  √100.95 = <span class="bad">10.047</span>
+
+<span class="lbl">было (обычный A/B):</span>   3.00%
+<span class="lbl">стало (кластерный):</span>  3.00 × 10.047 = <span class="bad">30.14%</span>
+
+<span class="bad">Эксперимент, ловивший трёхпроцентные изменения,
+теперь ловит только тридцатипроцентные.
+Практически это означает, что он бесполезен.</span>
+
+<span class="lbl">сколько нужно данных, чтобы вернуть MDE 3%:</span>
+  400 000 × 100.95 = <span class="bad">40.4 млн пользователей</span>
+  <span class="dim">то есть в сто раз больше, чем есть</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Насколько чувствителен результат к самому ICC.
+      <div class="calc"><span class="lbl">при m = 2 000:</span>
+
+  ICC = 0.001:  DEFF = 1 + 1 999×0.001 = <span class="hl">3.00</span>
+  ICC = 0.005:  DEFF = <span class="hl">11.00</span>
+  ICC = 0.010:  DEFF = <span class="hl">20.99</span>
+  ICC = 0.050:  DEFF = <span class="bad">100.95</span>
+  ICC = 0.100:  DEFF = <span class="bad">200.90</span>
+
+<span class="res">Разница между ICC 0.001 и 0.05 — это разница
+между «потеряли две трети выборки» и «потеряли
+всё». Поэтому ICC нужно измерить, а не оценить
+на глаз: ошибка в нём на порядок меняет вывод
+о выполнимости эксперимента.</span>
+
+<span class="lbl">как измерить:</span> взять исторические данные,
+разложить дисперсию метрики по будущим кластерам.
+Это не требует эксперимента и делается за час.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Design effect от размера кластера при разных ICC</div>
+    <div class="chsub">Логарифмические оси. Даже ICC = 0.001 при кластере в десять тысяч человек даёт DEFF около одиннадцати — то есть выбрасывает 91% выборки</div>
+    <canvas id="c_deff"></canvas>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Размер кластера: главный рычаг</h2></div>
+  <p class="slead">DEFF зависит от произведения m · ICC. Изменить ICC вы не можете — это свойство данных. А вот размер кластера выбираете вы, и разница между решениями составляет два с половиной порядка.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · те же 400 000 пользователей, разная нарезка</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> ICC = 0.05 фиксирована. Меняем только число и размер кластеров.
+      <div class="calc"><span class="lbl">кластеров   размер m    DEFF      n_эфф</span>
+     20        20 000    <span class="bad">1 000.95</span>       <span class="bad">400</span>
+    200         2 000      100.95     3 962
+    400         1 000       50.95     7 851
+  4 000           100        5.95    <span class="hl">67 227</span>
+ 40 000            10        1.45   <span class="res">275 862</span>
+
+<span class="lbl">проверка для 4 000 кластеров:</span>
+  DEFF = 1 + 99 × 0.05 = 5.95
+  400 000 / 5.95 = <span class="res">67 227</span> ✓
+
+<span class="bad">Между крайними строками — разница в 690 раз
+при одной и той же выборке.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Но мельчить бесконечно нельзя — растёт утечка через границу.
+      <div class="calc"><span class="lbl">чем мельче кластер, тем больше доля
+взаимодействий, пересекающих его границу:</span>
+
+<span class="lbl">размер   доля взаимодействий   остаточное
+кластера  внутри кластера       смещение</span>
+ 20 000        99.4%              <span class="res">0.6%</span>
+  2 000        97.1%              <span class="res">2.9%</span>
+  1 000        94.8%              <span class="hl">5.2%</span>
+    100        81.3%              <span class="bad">18.7%</span>
+     10        52.4%              <span class="bad">47.6%</span>
+
+<span class="dim">При кластере в 10 человек половина заказов
+уходит курьерам из соседних зон — интерференция
+никуда не делась, мы просто перестали её видеть.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Складываем оба эффекта и находим оптимум.
+      <div class="calc"><span class="lbl">истинный эффект 2.00%, считаем итоговую ошибку
+как корень из суммы квадратов смещения и se</span>
+
+<span class="lbl">размер   se     смещение   RMSE</span>
+ 20 000  <span class="bad">4.74%</span>    0.012%    <span class="bad">4.740%</span>
+  2 000  <span class="hl">1.50%</span>    0.058%    <span class="hl">1.501%</span>
+  1 000  <span class="hl">1.07%</span>    0.104%    <span class="hl">1.075%</span>
+    100  <span class="res">0.37%</span>    0.374%    <span class="res">0.526%</span>
+     10  <span class="res">0.18%</span>    <span class="bad">0.952%</span>    <span class="hl">0.969%</span>
+
+<span class="lbl">проверка для 100:</span> √(0.37² + 0.374²)
+  = √(0.1369 + 0.1399) = √0.2768 = <span class="res">0.526</span>
+
+<span class="res">Оптимум — кластеры примерно по 100 человек.
+Не самые крупные (там нет мощности) и не самые
+мелкие (там возвращается смещение).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Размер кластера: компромисс смещения и разброса</div>
+    <div class="chsub">Логарифмическая ось размера. Крупные кластеры честны, но неизмеримы; мелкие измеримы, но нечестны. Минимум суммарной ошибки — посередине</div>
+    <canvas id="c_size"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Посчитайте для своей конфигурации</h4>
+    <div class="prow">
+      <label>ICC (внутриклассовая корреляция)</label>
+      <input type="range" id="sl_icc" min="1" max="200" step="1" value="50">
+      <output id="out_icc">0.050</output>
+    </div>
+    <div class="prow">
+      <label>Размер кластера m</label>
+      <input type="range" id="sl_m" min="30" max="250" step="1" value="165">
+      <output id="out_m">2 000</output>
+    </div>
+    <div class="prow">
+      <label>Всего пользователей (тысяч)</label>
+      <input type="range" id="sl_n" min="10" max="5000" step="10" value="400">
+      <output id="out_n">400 000</output>
+    </div>
+    <div class="pout" id="out_deff"></div>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Switchback: кластеры во времени</h2></div>
+  <p class="slead">Когда географию разрезать нельзя, а интерференция идёт через общий ресурс здесь и сейчас, единственная оставшаяся ось — время. Вся система целиком попеременно работает в тестовом и контрольном режиме.</p>
+
+  <div class="def">
+    <div class="def-t">Switchback-эксперимент</div>
+    <p><b>Устройство:</b> время делится на интервалы; каждый интервал случайно получает тест или контроль; изменение применяется ко <i>всей</i> системе на этот интервал. Единица рандомизации — интервал времени, а не пользователь.</p>
+    <p><b>Что это решает:</b> внутри интервала интерференции нет по определению — все в одном режиме. Общий ресурс, общая модель, двусторонний рынок перестают связывать группы, потому что групп в один момент времени просто нет.</p>
+    <p><b>Чем платим:</b> число независимых наблюдений падает с миллионов пользователей до десятков или сотен интервалов. Это самый дорогой из всех дизайнов по мощности — и применяется тогда, когда альтернативы дают заведомо неверный ответ.</p>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th></th><th>Обычный A/B</th><th>Кластерный</th><th>Switchback</th></tr></thead>
+    <tbody>
+      <tr><td>Единица рандомизации</td><td class="note">пользователь</td><td class="note">регион, сообщество</td><td class="note">интервал времени</td></tr>
+      <tr><td>Независимых наблюдений</td><td class="g">400 000</td><td class="a">4 000</td><td class="r">336</td></tr>
+      <tr><td>Интерференция через ресурс</td><td class="r">не устранена</td><td class="g">устранена между регионами</td><td class="g">устранена полностью</td></tr>
+      <tr><td>Интерференция через модель</td><td class="r">не устранена</td><td class="r">не устранена</td><td class="a">устранена при раздельных моделях</td></tr>
+      <tr><td>Главная угроза</td><td class="note">смещение</td><td class="note">design effect</td><td class="note">перенос между интервалами</td></tr>
+      <tr><td>Типичный MDE</td><td class="g">3%</td><td class="a">12%</td><td class="r">15–25%</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Строка про модель важна: switchback не спасает автоматически. Если модель обучается на потоке и не различает режимы, она переносит информацию из тестовых интервалов в контрольные. Нужны либо раздельные модели, либо заморозка обучения на время эксперимента.</p>
+
+  <div class="intuition">
+    <b>Неочевидное преимущество switchback.</b> Он измеряет ровно ту величину, которая нужна для решения: «что будет с системой, если изменение включено везде». Обычный A/B измеряет «что будет с половиной пользователей, если вторая половина осталась на старом», и превращение одного в другое требует модели интерференции, которой у вас нет. Switchback платит мощностью за то, что отвечает на правильный вопрос напрямую.
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Длина интервала: компромисс с точным оптимумом</h2></div>
+  <p class="slead">Короткие интервалы дают больше наблюдений, но между ними просачивается эффект. Длинные честны, но их мало. Оптимум считается, и он обычно оказывается ближе к коротким, чем подсказывает интуиция.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · поиск оптимальной длины интервала</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Две противоположные зависимости. Эксперимент 14 дней, истинный эффект 2.00%.
+      <div class="calc"><span class="lbl">длина      интервалов   смещение    se
+интервала   за 14 дней   от переноса</span>
+ 15 мин       1 344        <span class="bad">−38%</span>      <span class="res">0.21%</span>
+  1 час         336        <span class="hl">−14%</span>      <span class="res">0.29%</span>
+  4 часа         84         <span class="res">−4%</span>      <span class="hl">0.52%</span>
+ 12 часов        28         <span class="res">−1%</span>      <span class="bad">0.86%</span>
+ 24 часа         14       <span class="res">−0.5%</span>      <span class="bad">1.18%</span>
+
+<span class="dim">Смещение указано в процентах от истинного
+эффекта: −38% означает, что вместо 2.00%
+измерится 1.24%.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Переводим смещение в те же единицы и складываем ошибки.
+      <div class="calc"><span class="lbl">смещение в процентных пунктах = 2.00 × доля</span>
+
+<span class="lbl">длина     смещение   se      RMSE = √(b² + se²)</span>
+ 15 мин      0.76%    0.21%      <span class="bad">0.789%</span>
+  1 час      0.28%    0.29%      <span class="res">0.403%</span>
+  4 часа     0.08%    0.52%      <span class="hl">0.526%</span>
+ 12 часов    0.02%    0.86%      <span class="bad">0.860%</span>
+ 24 часа     0.01%    1.18%      <span class="bad">1.180%</span>
+
+<span class="lbl">проверка для часа:</span>
+  √(0.28² + 0.29²) = √(0.0784 + 0.0841)
+  = √0.1625 = <span class="res">0.4031</span>
+
+<span class="res">Оптимум — часовые интервалы.</span>
+<span class="dim">Заметьте, что и 15 минут, и сутки хуже
+оптимума примерно вдвое-втрое, но по разным
+причинам: первое смещено, второе шумно.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Приём, который сдвигает компромисс: washout.
+      <div class="calc"><span class="lbl">отбрасываем данные первых минут каждого интервала,
+пока система «переключается»</span>
+
+<span class="lbl">часовые интервалы, washout 10 минут:</span>
+  смещение: −14% → <span class="res">−3%</span>  (0.06 п.п.)
+  потеря данных: 10/60 = 16.7%
+  se: 0.29% → 0.29 / √0.833 = <span class="hl">0.32%</span>
+
+  RMSE = √(0.06² + 0.32²) = √(0.0036 + 0.1024)
+       = √0.1060 = <span class="res">0.326%</span>
+
+<span class="res">0.326 против 0.403 без washout —
+улучшение на 19% при потере шестой части данных.</span>
+
+<span class="lbl">почему это работает:</span> смещение падает быстрее,
+чем растёт разброс. Перенос сосредоточен
+в начале интервала и убывает экспоненциально,
+а потеря данных линейна.</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Как подобрать длительность washout.
+      <div class="calc"><span class="lbl">washout   смещение   потеря   se     RMSE</span>
+   0 мин     0.28%      0%    0.29%   0.403%
+   5 мин     0.13%    8.3%    0.303%  <span class="hl">0.330%</span>
+  10 мин     0.06%   16.7%    0.318%  <span class="res">0.324%</span>
+  15 мин     0.03%   25.0%    0.335%  <span class="res">0.336%</span>
+  30 мин     0.01%   50.0%    0.410%  <span class="hl">0.410%</span>
+
+<span class="res">Оптимум около 10 минут — примерно
+время релаксации системы.</span>
+
+<span class="lbl">как измерить время релаксации:</span>
+построить кривую метрики по минутам от начала
+интервала после переключения. Момент выхода
+на плато и есть нужный washout.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Компромисс длины интервала в switchback</div>
+    <div class="chsub">Смещение растёт при укорочении интервалов, разброс — при удлинении. Суммарная ошибка минимальна на часовых интервалах</div>
+    <canvas id="c_interval"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Подбор длительности washout</div>
+    <div class="chsub">Отбрасывание первых минут каждого интервала снижает перенос быстрее, чем теряется точность. Оптимум примерно совпадает со временем релаксации системы</div>
+    <canvas id="c_wash"></canvas>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Перенос между интервалами: как его измерить</h2></div>
+  <p class="slead">Перенос — главная угроза switchback, и его величину не нужно угадывать. Разбиение интервалов по тому, что было перед ними, даёт прямую оценку.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · оценка переноса через переходы</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Классифицируем интервалы по паре «предыдущий → текущий».
+      <div class="calc"><span class="lbl">тип     что было → что сейчас   конверсия</span>
+ CC       контроль → контроль      <span class="hl">10.00%</span>
+ TC       тест → контроль          <span class="hl">10.09%</span>
+ CT       контроль → тест          <span class="hl">10.18%</span>
+ TT       тест → тест              <span class="hl">10.42%</span>
+
+<span class="dim">Если бы переноса не было, CC и TC совпадали бы
+(оба контрольные), CT и TT тоже.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Извлекаем две величины переноса.
+      <div class="calc"><span class="lbl">след теста в последующем контроле:</span>
+  TC − CC = 10.09 − 10.00 = <span class="bad">+0.09 п.п.</span>
+  <span class="dim">контроль «подтянут» остатками теста</span>
+
+<span class="lbl">недоразгон теста после контроля:</span>
+  TT − CT = 10.42 − 10.18 = <span class="bad">+0.24 п.п.</span>
+  <span class="dim">тест ещё не вышел на свой уровень</span>
+
+<span class="lbl">оба смещения работают в одну сторону —
+на сближение групп.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сравниваем две оценки эффекта.
+      <div class="calc"><span class="lbl">наивная (все T против всех C):</span>
+  (10.42 + 10.18)/2 − (10.00 + 10.09)/2
+  = 10.300 − 10.045 = <span class="bad">0.255 п.п.</span>
+
+<span class="lbl">по стационарным интервалам (TT против CC):</span>
+  10.42 − 10.00 = <span class="res">0.420 п.п.</span>
+
+<span class="lbl">доля истинного эффекта в наивной оценке:</span>
+  0.255 / 0.420 = <span class="bad">60.7%</span>
+  <span class="bad">занижение на 39.3%</span>
+
+<span class="dim">Это и есть то самое «−38%» из таблицы
+предыдущей секции для коротких интервалов.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Три способа справиться, в порядке предпочтения.
+      <div class="calc"><span class="res">1. Washout.</span> Отбросить начало интервала.
+   <span class="dim">Дёшево, работает, теряет часть данных.
+   Расчёт оптимума — в предыдущей секции.</span>
+
+<span class="res">2. Оценка только по стационарным интервалам.</span>
+   <span class="dim">Использовать TT и CC, выбросив переходные.
+   Теряется половина данных, но смещения нет.
+   При случайной последовательности TT и CC
+   составляют по 25% интервалов — итого 50%.</span>
+
+<span class="res">3. Явная модель переноса.</span>
+   <span class="dim">Включить в регрессию признак «режим предыдущего
+   интервала». Данные сохраняются полностью,
+   но модель может быть неверна.</span>
+
+<span class="lbl">итоговая ошибка для трёх способов:</span>
+  washout 10 мин:        <span class="res">0.324%</span>
+  только TT и CC:        <span class="hl">0.412%</span>
+  модель переноса:       <span class="res">0.318%</span>
+
+<span class="res">Первый и третий сопоставимы, но первый
+не требует предположений. Начинать стоит с него.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Конверсия по типу перехода между интервалами</div>
+    <div class="chsub">Если бы переноса не было, столбцы CC и TC совпадали бы, как и CT с TT. Расхождение между ними и есть величина переноса</div>
+    <canvas id="c_carry"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Про последовательность переключений.</b> Чисто случайная последовательность может выдать длинную серию одного режима — и тогда тренд дня попадёт в оценку эффекта. Сбалансированные схемы (равное число интервалов каждого режима в каждом часе и каждом дне) устраняют это, но лишают часть стандартных формул применимости. Практичный компромисс — случайная последовательность с ограничением: не более трёх одинаковых интервалов подряд и равные доли в каждом дне.
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Оценка эффекта: два способа получить неправильное число</h2></div>
+  <p class="slead">В switchback разность средних смещена трендом и сезонностью, а стандартная ошибка занижена автокорреляцией. Обе ошибки исправляются, но обе легко пропустить.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · от наивной оценки к корректной</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Наивная разность средних по интервалам.
+      <div class="calc"><span class="lbl">эффект:</span> <span class="bad">+3.4%</span>,  se <span class="bad">0.19%</span>,  p &lt; 0.001
+<span class="lbl">истинный эффект:</span> <span class="res">+2.0%</span>
+
+<span class="bad">Завышение на 70% при узком интервале
+и убедительном p-значении.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Первая причина: несбалансированность по времени суток.
+      <div class="calc"><span class="lbl">доля вечерних интервалов (18:00–23:00):</span>
+  в тестовых:    <span class="bad">54.2%</span>
+  в контрольных: <span class="hl">45.8%</span>
+
+<span class="dim">Случайность: при 336 интервалах отклонение
+в 8 процентных пунктов вполне вероятно.</span>
+
+<span class="lbl">вечерняя конверсия выше дневной на 22%,
+поэтому тесту досталось преимущество,
+не связанное с изменением.</span>
+
+<span class="res">Лечение: включить фиксированные эффекты
+часа и дня недели в регрессию.</span>
+  оценка с фиксированными эффектами: <span class="res">+2.1%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Вторая причина: занижение стандартной ошибки.
+      <div class="calc"><span class="lbl">интервалы внутри одного дня коррелированы:
+погода, акции конкурентов, новостной фон.</span>
+
+  se по интервалам как независимым:  <span class="bad">0.19%</span>
+  se, кластеризованная по дням:      <span class="res">0.29%</span>
+  <span class="bad">занижение на 34.5%</span>
+
+<span class="lbl">во что превращается заявленный уровень 5%:</span>
+  порог по истинной шкале: 1.959964 / 1.5263
+                         = <span class="hl">1.28418</span>
+  Φ(1.28418) = 0.900461
+  p = 2 × (1 − 0.900461) = <span class="bad">0.19908</span>
+
+<span class="bad">Истинная ошибка первого рода 19.9% вместо 5%.
+Вчетверо больше заявленного.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Итоговый рецепт.
+      <div class="calc"><span class="lbl">оценка                          эффект    se</span>
+разность средних                 <span class="bad">3.4%</span>   <span class="bad">0.19%</span>
++ фиксированные эффекты времени  <span class="res">2.1%</span>   <span class="bad">0.19%</span>
++ кластерные se по дням          <span class="res">2.1%</span>   <span class="res">0.29%</span>
+<span class="dim">──────────────────────────────────────────</span>
+истина                           2.0%     —
+
+<span class="res">Обе поправки обязательны и независимы:
+первая чинит оценку, вторая — интервал.
+Применение одной без другой даёт либо
+верное число с ложной уверенностью,
+либо честный интервал вокруг неверного числа.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Путь от наивной оценки к корректной</div>
+    <div class="chsub">Столбцы — оценка эффекта, усы — 95% интервал. Фиксированные эффекты сдвигают точку к истине, кластерные ошибки расширяют интервал до честной ширины</div>
+    <canvas id="c_est"></canvas>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Ego-кластеры для социальных графов</h2></div>
+  <p class="slead">В графе нельзя провести границу так, чтобы связи её не пересекали. Приём состоит в том, чтобы вместо разрезания графа выбрать в нём непересекающиеся окрестности и рандомизировать их целиком.</p>
+
+  <div class="def">
+    <div class="def-t">Ego-cluster рандомизация</div>
+    <p><b>Устройство:</b> выбирается набор пользователей («эго»), окрестности которых не пересекаются. Каждое эго вместе со всеми своими соседями попадает в одну группу целиком. Метрика измеряется <b>только на эго</b>, а соседи нужны лишь для того, чтобы окружение эго было однородным.</p>
+    <p><b>Что это даёт:</b> у эго из тестовой группы все друзья тоже в тесте, то есть он находится ровно в тех условиях, которые наступят после полного выката. Оцениваемая величина совпадает с нужной для решения.</p>
+    <p><b>Чем платим:</b> непересекающиеся окрестности покрывают лишь часть графа, и в анализ идут только эго — доли процента от аудитории.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · ego-кластеры против кластеризации по сообществам</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Граф: 5 млн пользователей, средняя степень 130.
+      <div class="calc"><span class="lbl">вариант А — кластеризация по сообществам</span>
+  кластеров:            12 000
+  средний размер:          417
+  покрытие:             <span class="res">100%</span> (5 млн)
+  доля связей внутри
+  кластера:              <span class="bad">73%</span>
+  ICC:                   0.110
+
+<span class="lbl">вариант Б — непересекающиеся эго-сети</span>
+  эго-кластеров:        38 000
+  средний размер:           55
+  покрытие:              <span class="bad">42%</span> (2.1 млн)
+  доля связей эго
+  внутри кластера:      <span class="res">100%</span>
+  ICC:                   0.080</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем эффективный размер выборки.
+      <div class="calc"><span class="lbl">вариант А:</span>
+  DEFF = 1 + (417 − 1) × 0.110
+       = 1 + 416 × 0.110 = <span class="hl">46.76</span>
+  n_эфф = 5 000 000 / 46.76 = <span class="hl">106 929</span>
+
+<span class="lbl">вариант Б:</span>
+  DEFF = 1 + (55 − 1) × 0.080
+       = 1 + 54 × 0.080 = <span class="res">5.32</span>
+  n_эфф = 2 100 000 / 5.32 = <span class="res">394 737</span>
+
+<span class="res">Ego-кластеры дают в 3.69 раза больше
+эффективных наблюдений, покрывая
+вдвое меньшую часть графа.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> И при этом измеряют более правильную величину.
+      <div class="calc"><span class="lbl">вариант А:</span> у пользователя 73% друзей
+в его группе и 27% — в чужой.
+  <span class="bad">Это не то состояние, которое наступит
+  после выката (там 100%).</span>
+  остаточное смещение: <span class="bad">−19%</span> от эффекта
+
+<span class="lbl">вариант Б:</span> у эго 100% друзей в его группе.
+  <span class="res">Ровно состояние полного выката.</span>
+  остаточное смещение: <span class="res">−2%</span>
+  <span class="dim">остаток — от друзей второго порядка</span>
+
+<span class="lbl">итоговая ошибка:</span>
+  вариант А: √(0.38² + 0.61²) = <span class="bad">0.719 п.п.</span>
+  вариант Б: √(0.04² + 0.32²) = <span class="res">0.322 п.п.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Ограничения приёма, о которых нужно знать заранее.
+      <div class="calc"><span class="bad">1. Эго — не случайная выборка пользователей.</span>
+  <span class="dim">Алгоритм выбора непересекающихся окрестностей
+  систематически предпочитает пользователей
+  с определённой структурой связей — обычно
+  менее центральных. Эффект на них может
+  отличаться от эффекта на остальных.</span>
+
+<span class="bad">2. Друзья второго порядка остаются смешанными.</span>
+  <span class="dim">Отсюда остаточные −2%. Расширение окрестности
+  до второго порядка резко сокращает число
+  непересекающихся кластеров: с 38 000 до 2 400.</span>
+
+<span class="bad">3. Граф меняется во время эксперимента.</span>
+  <span class="dim">Новые связи пересекают границы кластеров.
+  За месяц около 4% связей оказываются
+  «неправильными».</span>
+
+<span class="res">Проверка репрезентативности: сравнить
+распределение ключевых характеристик у эго
+и у всей аудитории. Расхождение по степени
+вершины неизбежно; расхождение по возрасту
+или платёжеспособности — повод пересмотреть
+алгоритм выбора.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ego-кластеры против кластеризации по сообществам</div>
+    <div class="chsub">Меньшее покрытие компенсируется намного меньшим design effect и почти отсутствующим смещением. Итоговая ошибка вдвое ниже</div>
+    <canvas id="c_ego"></canvas>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Варьировать долю трафика и экстраполировать</h2></div>
+  <p class="slead">Приём, который извлекает несмещённую оценку из смещённого дизайна. Вместо того чтобы бороться с интерференцией, мы измеряем её как функцию доли теста — и достраиваем обе линии до краёв.</p>
+
+  <div class="def">
+    <div class="def-t">Дизайн с переменной долей</div>
+    <p><b>Устройство:</b> кластеры (регионы, зоны, дни) случайно получают <i>разную долю трафика в тесте</i> — например, 10%, 30%, 50%, 70%, 90%. Внутри кластера пользователи рандомизируются обычным способом.</p>
+    <p><b>Что измеряем:</b> отдельно исход тестовых пользователей и исход контрольных как функции доли теста в их кластере. Обе зависимости обычно близки к линейным.</p>
+    <p><b>Как получаем ответ:</b> экстраполируем линию тестовых к доле 100% и линию контрольных к доле 0%. Разность этих двух краёв и есть эффект полного выката — то, что нужно для решения.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · извлечение истинного эффекта из смещённых замеров</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Замеры по кластерам с разной долей теста.
+      <div class="calc"><span class="lbl">доля теста   конверсия      конверсия
+в кластере   тестовых      контрольных</span>
+    10%        <span class="hl">10.47%</span>        <span class="hl">9.96%</span>
+    30%        <span class="hl">10.41%</span>        <span class="hl">9.88%</span>
+    50%        <span class="hl">10.35%</span>        <span class="hl">9.80%</span>
+    70%        <span class="hl">10.29%</span>        <span class="hl">9.72%</span>
+    90%        <span class="hl">10.23%</span>        <span class="hl">9.64%</span>
+
+<span class="dim">Обе линии убывают: чем больше теста в кластере,
+тем сильнее конкуренция за ограниченный ресурс —
+и тестовым, и контрольным достаётся меньше.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Находим наклоны.
+      <div class="calc"><span class="lbl">тестовые:</span>
+  (10.23 − 10.47) / (0.9 − 0.1) = −0.24 / 0.8
+  = <span class="hl">−0.30 п.п. на единицу доли</span>
+
+<span class="lbl">контрольные:</span>
+  (9.64 − 9.96) / (0.9 − 0.1) = −0.32 / 0.8
+  = <span class="hl">−0.40 п.п. на единицу доли</span>
+
+<span class="dim">Контрольные страдают сильнее — логично:
+они проигрывают конкуренцию не только
+за общий ресурс, но и в самом ранжировании.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Экстраполируем к краям.
+      <div class="calc"><span class="lbl">тестовые при доле 100%:</span>
+  10.35 − 0.30 × (1.0 − 0.5) = 10.35 − 0.15
+  = <span class="res">10.20%</span>
+
+<span class="lbl">контрольные при доле 0%:</span>
+  9.80 + 0.40 × (0.5 − 0.0) = 9.80 + 0.20
+  = <span class="res">10.00%</span>
+
+<span class="lbl">эффект полного выката:</span>
+  (10.20 − 10.00) / 10.00 = <span class="res">+2.000%</span>
+
+<span class="res">В точности истинное значение из секции 3 —
+восстановленное из данных, каждое из которых
+по отдельности было смещено.</span>
+
+<span class="lbl">для сравнения, наивная оценка при 50/50:</span>
+  (10.35 − 9.80) / 9.80 = <span class="bad">+5.612%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Условия применимости и цена.
+      <div class="calc"><span class="bad">Условие 1: зависимость близка к линейной.</span>
+  <span class="dim">Проверяется тем же графиком: если точки
+  ложатся на прямую, экстраполяция оправдана.
+  Изгиб означает, что нужна нелинейная модель
+  и края экстраполировать опаснее.</span>
+
+<span class="bad">Условие 2: кластеры достаточно изолированы.</span>
+  <span class="dim">Иначе доля теста «в кластере» не описывает
+  условия, в которых находится пользователь.</span>
+
+<span class="lbl">цена по мощности:</span>
+  se эффекта при обычном A/B 50/50:  0.11 п.п.
+  se экстраполированного эффекта:    <span class="bad">0.34 п.п.</span>
+  <span class="bad">втрое шире</span>
+
+<span class="dim">Экстраполяция всегда дороже интерполяции:
+оценка наклона добавляет неопределённость,
+и она растёт при удалении от центра данных.</span>
+
+<span class="res">Но 2.00% ± 0.34 полезнее, чем 5.61% ± 0.11.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Экстраполяция обеих линий к краям</div>
+    <div class="chsub">Точки — замеры при разных долях теста, пунктир — продолжение до 0% и 100%. Разность крайних значений даёт эффект полного выката</div>
+    <canvas id="c_extra"></canvas>
+  </div>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Выбор дизайна — и 15 подводных камней</h2></div>
+  <p class="slead">Пять вопросов определяют дизайн. Задавать их нужно до запуска: постфактум ни один из них не решается анализом.</p>
+
+  <table class="ct">
+    <thead><tr><th>#</th><th>Вопрос</th><th>Ответ</th><th>Дизайн</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1</td><td>Делят ли участники ограниченный ресурс?</td><td class="note">нет</td><td class="g">обычный A/B</td></tr>
+      <tr><td class="k">2</td><td>Изолируется ли ресурс географически?</td><td class="note">да</td><td class="g">кластеры по региону, размер по расчёту из секции 6</td></tr>
+      <tr><td class="k">3</td><td>Интерференция идёт через социальный граф?</td><td class="note">да</td><td class="g">ego-кластеры</td></tr>
+      <tr><td class="k">4</td><td>Ресурс общий для всей системы?</td><td class="note">да</td><td class="a">switchback с часовыми интервалами и washout</td></tr>
+      <tr><td class="k">5</td><td>Мощности не хватает ни на один из вариантов?</td><td class="note">да</td><td class="a">переменная доля с экстраполяцией либо отказ от эксперимента</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка — не поражение. Честный вывод «этот вопрос нельзя решить экспериментом при нашем масштабе» экономит месяцы и заставляет искать другие способы принять решение.</p>
+
+  <div class="chb">
+    <div class="cht">Сравнение дизайнов по мощности и смещению</div>
+    <div class="chsub">Обычный A/B точен и смещён, switchback честен и шумен. Итоговая ошибка — их комбинация, и выигрывает не тот, у кого у́же интервал</div>
+    <canvas id="c_choice"></canvas>
+  </div>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>SUTVA не проверено вовсе</b><span>Поломка не проявляется ни в SRM, ни в балансе ковариат, ни в A/A. Всё выглядит идеально, просто измеряется не та величина. Проверка стоит одного запуска: тот же эксперимент на 5% и на 50% трафика должен дать совпадающие оценки.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>Уменьшение доли теста как средство от интерференции</b><span>Помогает, но не лечит: при линейном перетоке завышение падает с 2.81× до 1.34× при переходе с 50% на 5%, а мощность падает в двадцать раз. Плохой размен.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>ICC оценена «на глаз»</b><span>Разница между ICC 0.001 и 0.05 при кластере в 2 000 человек — это DEFF 3.0 против 100.95, то есть между «выполнимо» и «безнадёжно». Измерение занимает час на исторических данных и не требует эксперимента.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Кластеры выбраны по удобству данных</b><span>Кластер должен соответствовать каналу интерференции, а не тому, какое поле есть в таблице. Разбиение по стране при конкуренции за курьеров в пределах района не устраняет ничего, а мощность отнимает полностью.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Кластеры сделаны как можно крупнее «для чистоты»</b><span>DEFF растёт линейно с размером: 20 кластеров по 20 000 дают эффективную выборку в 400 человек из 400 000. Оптимум — около сотни человек на кластер, где суммарная ошибка минимальна.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Design effect не учтён в расчёте мощности</b><span>MDE растёт как √DEFF: при DEFF 100.95 трёхпроцентный MDE превращается в тридцатипроцентный. Эксперимент, спланированный без этой поправки, гарантированно закончится словом «незначимо».</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Switchback без раздельных моделей</b><span>Если модель обучается на общем потоке, она переносит информацию из тестовых интервалов в контрольные — и switchback перестаёт что-либо изолировать. Нужны либо раздельные модели, либо заморозка обучения на время эксперимента.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Длина интервала выбрана из соображений удобства</b><span>Суточные интервалы кажутся естественными и дают втрое большую ошибку, чем часовые: 1.180% против 0.403%. Оптимум считается за десять минут по таблице «смещение — разброс».</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Перенос между интервалами не измерен</b><span>Разбиение интервалов по типу перехода (CC, TC, CT, TT) даёт прямую оценку. В разобранном примере наивная оценка составила 60.7% истинного эффекта — занижение на 39%.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Washout не применён</b><span>Отбрасывание первых десяти минут каждого интервала снижает итоговую ошибку с 0.403% до 0.324% — на 19% — ценой шестой части данных. Смещение убывает быстрее, чем растёт разброс.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Разность средних без фиксированных эффектов времени</b><span>Случайная последовательность может дать тесту на 8 п.п. больше вечерних интервалов, а вечерняя конверсия выше дневной на 22%. В примере это завысило оценку с 2.1% до 3.4%.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Стандартные ошибки без кластеризации по дням</b><span>Интервалы внутри дня коррелированы через погоду, акции и новостной фон. Занижение se на 34.5% превращает заявленные 5% ошибки первого рода в фактические 19.9%.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Эго считаются репрезентативной выборкой</b><span>Алгоритм выбора непересекающихся окрестностей систематически предпочитает менее центральных пользователей. Расхождение по степени вершины неизбежно; расхождение по платёжеспособности — повод пересмотреть алгоритм.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Экстраполяция по переменной доле без проверки линейности</b><span>Метод восстанавливает истинный эффект только если зависимость исхода от доли теста близка к прямой. Изгиб на графике означает, что края экстраполировать опасно и нужна нелинейная модель.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Узкий доверительный интервал принят за качество</b><span>Обычный A/B даёт 5.61% ± 0.11, экстраполяция — 2.00% ± 0.34. Первый интервал втрое у́же и не содержит истинного значения. Ширина интервала описывает разброс и ничего не говорит о смещении.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где дизайн эксперимента определяется устройством системы, а не предпочтениями команды.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Сервис доставки: изменение алгоритма назначения курьеров</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Новый алгоритм подбирает курьера к заказу. Курьеры общие для всех заказов зоны — это самый чистый случай конкуренции за ресурс.</p>
+      <p><b>Почему обычный A/B невозможен.</b> Если половина заказов обрабатывается новым алгоритмом, он забирает лучших курьеров, и контрольные заказы обслуживаются хуже, чем обслуживались бы без эксперимента. Измеряется разность между «с преимуществом» и «с ущербом» вместо эффекта самого алгоритма.</p>
+      <p><b>Дизайн — switchback по зонам и времени одновременно.</b> Каждая зона доставки в каждый часовой интервал случайно работает по одному из алгоритмов. Число независимых наблюдений равно произведению зон на интервалы: 40 зон × 336 часов = 13 440, что заметно больше чистого switchback.</p>
+      <p><b>Washout критичен.</b> Курьер, назначенный в конце тестового интервала, выполняет заказ уже в контрольном. Время релаксации равно среднему времени доставки — около 35 минут. При часовых интервалах washout съедает больше половины данных, поэтому интервалы берутся двухчасовыми.</p>
+      <p><b>Что проверять.</b> Баланс по часам и дням недели обязателен: пиковые часы дают половину заказов, и их перекос между режимами исказит результат сильнее любого эффекта.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Маркетплейс: изменение ранжирования выдачи</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 20 млн покупателей, 400 тыс. продавцов. Товарные запасы ограничены у части продавцов, у части — практически нет.</p>
+      <p><b>Ключевое наблюдение.</b> Интерференция существует только там, где запас реально ограничен. Для товаров с большим остатком SUTVA выполнено, и обычный A/B корректен. Это позволяет разделить каталог и не платить полную цену за весь эксперимент.</p>
+      <p><b>Дизайн — двухуровневый.</b> Для основной части каталога обычный A/B по покупателям с MDE около 3%. Для дефицитных товаров (около 12% ассортимента, 31% оборота) — кластеры по складу или переменная доля с экстраполяцией.</p>
+      <p><b>Экстраполяция по доле как основной инструмент.</b> Кластеры получают доли теста 10%, 30%, 50%, 70%, 90%. В разобранном примере это дало 2.00% ± 0.34 против наивных 5.61% ± 0.11 — втрое шире и в три раза ближе к правде.</p>
+      <p><b>Что мониторить отдельно.</b> Продавцы — вторая сторона рынка, и их метрики (доля показов, оборот, время до продажи) должны отслеживаться как гардрейлы. Изменение, улучшающее конверсию покупателей за счёт концентрации показов на топ-продавцах, ухудшает долгосрочное здоровье площадки.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Социальная сеть: изменение алгоритма ленты</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 5 млн активных пользователей, средняя степень 130. Изменение влияет на то, что человек видит, и через его реакции — на то, что видят друзья.</p>
+      <p><b>Направление смещения здесь обратное.</b> Эффект перетекает от теста к контролю: друг из контрольной группы видит активность тестового пользователя. Наивный A/B <b>занижает</b> эффект, и изменение может быть отвергнуто как незначимое, хотя работает.</p>
+      <p><b>Дизайн — ego-кластеры.</b> Из графа выбираются непересекающиеся окрестности первого порядка. В разобранном примере это дало 38 тыс. кластеров, покрывающих 42% графа, с эффективной выборкой 394 тыс. — в 3.7 раза больше, чем кластеризация по сообществам при полном покрытии.</p>
+      <p><b>Что проверить перед запуском.</b> Репрезентативность эго. Распределение возраста, активности и платёжеспособности у эго должно совпадать с общим. Расхождение по степени вершины неизбежно и допустимо, если эффект от неё не зависит — а это отдельная проверка.</p>
+      <p><b>Реалистичное ожидание.</b> MDE на ego-кластерах будет в 2–3 раза хуже наивного A/B. Мелкие улучшения ленты этим дизайном не измеряются, и для них приходится мириться с заниженной оценкой обычного теста, помня о направлении смещения.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Рекламная платформа: изменение стратегии ставок</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Автоматическая стратегия ставок для рекламодателей. Аукцион общий: если половина кампаний повысила ставки, вторая половина проигрывает больше аукционов.</p>
+      <p><b>Самый тяжёлый случай интерференции.</b> Эффект прямо пропорционален доле участников в тесте, и наивная оценка не имеет отношения к результату полного выката. Более того, при полном выкате эффект может быть <b>нулевым</b>: если все повысили ставки, относительные позиции не изменились, а цены выросли.</p>
+      <p><b>Дизайн — переменная доля, обязательно.</b> Только он позволяет увидеть, что линия эффекта уходит в ноль при приближении к 100%. Наивный A/B на 50/50 покажет уверенный положительный результат для изменения, которое при полном выкате не даст ничего, кроме роста издержек.</p>
+      <p><b>Разделение по аукционам, а не по рекламодателям.</b> Кластером должен быть сегмент аукционов, где участники конкурируют между собой: тематика, гео, время суток. Рандомизация по рекламодателям при общих аукционах интерференцию не устраняет.</p>
+      <p><b>Метрика решает.</b> Эффект на позицию и на число показов будет положительным при любом дизайне; эффект на прибыль рекламодателя при полном выкате — вот величина, ради которой всё делается. Выбор метрики здесь важнее выбора дизайна — механика в <a href="block1_12_metrics_framing.html">1.12</a>.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Когда эксперимент невозможен и что делать</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Небольшой маркетплейс: 8 зон доставки, 120 тыс. заказов в месяц. Интерференция через курьеров сильная, кластеров всего восемь.</p>
+      <p><b>Честный расчёт.</b> При восьми кластерах эффективное число независимых наблюдений равно восьми независимо от числа заказов. MDE в такой конфигурации превышает 40% — измеримы только изменения, меняющие метрику в полтора раза.</p>
+      <p><b>Switchback как единственный вариант.</b> Он добавляет временное измерение: 8 зон × 336 часовых интервалов = 2 688 наблюдений. MDE падает примерно до 12% — всё ещё много, но уже осмысленно для крупных изменений.</p>
+      <p><b>Что делать с мелкими улучшениями.</b> Не измерять экспериментом. Принимать по механистическим соображениям, симуляции на исторических данных или мнению операционной команды — и <b>явно называть это решением без эксперимента</b>, а не подкреплять его тестом с мощностью 8%.</p>
+      <p><b>Где эксперимент всё-таки нужен.</b> Как гардрейл: проверка, что изменение не сломало систему, требует чувствительности в десятки процентов, и её как раз хватает. Обратная логика ошибок из <a href="block1_12_metrics_framing.html">1.12</a> здесь уместна — перестраховаться дешевле, чем пропустить поломку.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что такое SUTVA?</b><span>Предположение, что исход участника зависит только от его собственного воздействия и не зависит от того, кто ещё попал в тест. Без него у участника не два потенциальных исхода, а 2<sup>N</sup>, и «эффект» перестаёт быть определённой величиной.</span></div>
+
+  <div class="qa"><b>2. Как понять, что SUTVA нарушено?</b><span>По устройству системы: делят ли участники что-то ограниченное или влияют друг на друга. Эмпирически — запустить один эксперимент с разными долями трафика: при выполненном SUTVA оценки совпадут, при интерференции разойдутся систематически.</span></div>
+
+  <div class="qa"><b>3. В какую сторону смещается оценка?</b><span>Конкуренция за ресурс завышает (тест забирает у контроля), распространение эффекта занижает (контроль получает часть выгоды). Первое опаснее, потому что делает результаты приятнее и потому реже проверяется.</span></div>
+
+  <div class="qa"><b>4. Насколько велико смещение?</b><span>В разобранном примере наивная оценка 5.61% при истинном эффекте 2.00% — завышение в 2.81 раза. Величина зависит от доли ресурса, за который идёт конкуренция, и от доли трафика в тесте.</span></div>
+
+  <div class="qa"><b>5. Почему смещение максимально при сплите 50/50?</b><span>При линейном перетоке избыток измеренного эффекта пропорционален p(1−p), где p — доля теста. Это выражение максимально при p = 0.5. При 5% завышение падает с 2.81× до 1.34× — но мощность при этом падает в двадцать раз.</span></div>
+
+  <div class="qa"><b>6. Заметно ли нарушение SUTVA в стандартных диагностиках?</b><span>Нет. SRM в порядке, ковариаты сбалансированы, A/A чистые, интервалы узкие. Единственный признак — расхождение суммы эффектов выкаченных изменений с фактическим ростом бизнес-метрики, и обнаруживается оно через полгода.</span></div>
+
+  <div class="qa"><b>7. Что такое ICC?</b><span>Доля дисперсии, приходящаяся на различия между кластерами: σ²_между/(σ²_между + σ²_внутри). В примере 0.00042/0.00840 = 0.05. Измеряется на исторических данных за час, без всякого эксперимента.</span></div>
+
+  <div class="qa"><b>8. Что такое design effect?</b><span>DEFF = 1 + (m − 1)·ICC — во сколько раз выросла дисперсия оценки по сравнению с простой случайной выборкой. Эффективный размер выборки равен n/DEFF, а MDE растёт как √DEFF.</span></div>
+
+  <div class="qa"><b>9. Почему ICC 5% приводит к потере 99% выборки?</b><span>Потому что важно произведение m·ICC. При кластере в 2 000 человек DEFF = 1 + 1999×0.05 = 100.95, и из 400 тыс. пользователей остаётся 3 962. Скромная корреляция при большом кластере убивает мощность так же, как большая при малом.</span></div>
+
+  <div class="qa"><b>10. Какой размер кластера выбрать?</b><span>Тот, где минимальна суммарная ошибка. Крупные кластеры честны, но неизмеримы; мелкие измеримы, но пропускают интерференцию через границу. В разобранном примере оптимум около 100 человек с RMSE 0.526% против 4.740% у кластеров по 20 000.</span></div>
+
+  <div class="qa"><b>11. Насколько важен размер кластера?</b><span>Критически. При тех же 400 тыс. пользователей и той же ICC переход с двадцати кластеров по 20 тыс. на сорок тысяч по десять человек меняет эффективную выборку с 400 до 275 862 — в 690 раз.</span></div>
+
+  <div class="qa"><b>12. Как выбрать, по чему кластеризовать?</b><span>По каналу интерференции, а не по тому, какое поле есть в таблице. Общий склад → кластер по складу, общий пул курьеров → по зоне, социальные связи → по сообществу графа, общий бюджет → по кампании.</span></div>
+
+  <div class="qa"><b>13. Что такое switchback?</b><span>Рандомизация по интервалам времени: вся система целиком попеременно работает в тестовом и контрольном режиме. Внутри интервала интерференции нет по построению, потому что групп в один момент времени просто нет.</span></div>
+
+  <div class="qa"><b>14. Когда switchback необходим?</b><span>Когда ресурс общий для всей системы и географически не разделяется: пул курьеров в одном городе, общий аукцион, общая модель ранжирования. Это самый дорогой дизайн по мощности и применяется, когда альтернативы дают заведомо неверный ответ.</span></div>
+
+  <div class="qa"><b>15. Какую длину интервала выбрать?</b><span>Ту, где минимальна суммарная ошибка. В примере: 15 минут дали RMSE 0.789% (смещение от переноса), сутки — 1.180% (разброс), часовые интервалы — 0.403%. Оптимум обычно ближе к коротким, чем подсказывает интуиция.</span></div>
+
+  <div class="qa"><b>16. Что такое washout и сколько он должен длиться?</b><span>Отбрасывание данных начала каждого интервала, пока система переключается. Оптимум примерно равен времени релаксации: в примере 10 минут, что снизило RMSE с 0.403% до 0.324% ценой шестой части данных.</span></div>
+
+  <div class="qa"><b>17. Как измерить время релаксации?</b><span>Построить кривую метрики по минутам от начала интервала после переключения. Момент выхода на плато и есть нужный washout. Для сервиса доставки это примерно среднее время доставки.</span></div>
+
+  <div class="qa"><b>18. Как измерить перенос между интервалами?</b><span>Разбить интервалы по типу перехода: CC, TC, CT, TT. При отсутствии переноса CC и TC совпадают. В примере TC − CC = +0.09 п.п. и TT − CT = +0.24 п.п., что дало занижение наивной оценки на 39%.</span></div>
+
+  <div class="qa"><b>19. Спасает ли switchback от интерференции через общую модель?</b><span>Не автоматически. Если модель обучается на общем потоке и не различает режимы, она переносит информацию из тестовых интервалов в контрольные. Нужны раздельные модели либо заморозка обучения на время эксперимента.</span></div>
+
+  <div class="qa"><b>20. Почему в switchback нельзя брать разность средних?</b><span>Из-за тренда и внутридневной сезонности. Случайная последовательность может дать тесту на 8 п.п. больше вечерних интервалов при вечерней конверсии выше дневной на 22%. В примере это завысило оценку с 2.1% до 3.4%.</span></div>
+
+  <div class="qa"><b>21. Почему стандартные ошибки нужно кластеризовать по дням?</b><span>Интервалы внутри дня коррелированы через погоду, акции конкурентов и новостной фон. Занижение se на 34.5% превращает заявленный уровень 5% в фактические 19.9% — вчетверо больше.</span></div>
+
+  <div class="qa"><b>22. Как строить последовательность переключений?</b><span>Чисто случайная может выдать длинную серию одного режима, и тренд попадёт в оценку. Практичный компромисс — случайная с ограничениями: не более трёх одинаковых подряд и равные доли режимов в каждом дне и в каждом часовом поясе суток.</span></div>
+
+  <div class="qa"><b>23. Что такое ego-кластеры?</b><span>Непересекающиеся окрестности в графе: каждое «эго» вместе со всеми соседями попадает в одну группу целиком, а метрика измеряется только на эго. У тестового эго все друзья тоже в тесте, то есть он находится ровно в условиях полного выката.</span></div>
+
+  <div class="qa"><b>24. Почему ego-кластеры лучше кластеризации по сообществам?</b><span>Меньший размер кластера даёт меньший DEFF (5.32 против 46.76), и это перевешивает вдвое меньшее покрытие: эффективная выборка 394 тыс. против 107 тыс. Плюс остаточное смещение −2% против −19%.</span></div>
+
+  <div class="qa"><b>25. В чём ограничения ego-кластеров?</b><span>Три: эго не являются случайной выборкой (алгоритм предпочитает менее центральных пользователей), друзья второго порядка остаются смешанными, граф меняется во время эксперимента — за месяц около 4% связей пересекают границы кластеров.</span></div>
+
+  <div class="qa"><b>26. Что такое дизайн с переменной долей?</b><span>Кластеры получают разные доли трафика в тесте (10%, 30%, 50%, 70%, 90%). Измеряются исходы тестовых и контрольных как функции этой доли, затем обе линии экстраполируются: тестовая к 100%, контрольная к 0%.</span></div>
+
+  <div class="qa"><b>27. Как этот приём восстанавливает истинный эффект?</b><span>В примере наклоны составили −0.30 и −0.40 п.п. на единицу доли; экстраполяция дала 10.20% и 10.00%, то есть эффект +2.000% — в точности истинное значение, восстановленное из замеров, каждый из которых по отдельности был смещён.</span></div>
+
+  <div class="qa"><b>28. Чем платим за экстраполяцию?</b><span>Шириной интервала: se выросла с 0.11 до 0.34 п.п., втрое. Экстраполяция всегда дороже интерполяции, потому что добавляется неопределённость наклона. Но 2.00% ± 0.34 полезнее, чем 5.61% ± 0.11.</span></div>
+
+  <div class="qa"><b>29. Как понять, что экстраполяция допустима?</b><span>По линейности: если точки при разных долях ложатся на прямую, продолжение до краёв оправдано. Изгиб означает нелинейный переток, и края экстраполировать опасно — нужна модель, соответствующая форме зависимости.</span></div>
+
+  <div class="qa"><b>30. Что делать, если ни один дизайн не даёт мощности?</b><span>Признать это. Честный вывод «вопрос нельзя решить экспериментом при нашем масштабе» экономит месяцы. Дальше — принимать решения по механистическим соображениям или симуляции, явно называя это решением без эксперимента, и оставить A/B в роли гардрейла для отлова поломок.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 4.3 опирается на расчёт мощности и MDE из <a href="block4_01_ab_testing.html">4.1</a> и на приёмы снижения дисперсии из <a href="block4_02_cuped.html">4.2</a> — они здесь особенно ценны, потому что мощности не хватает по построению. Оценка эффекта без рандомизации, когда эксперимент невозможен вовсе, — <a href="block4_04_causal_ml.html">4.4</a>. Корректная остановка при малом числе наблюдений — <a href="block4_05_sequential_testing.html">4.5</a>. Диагностика испорченных экспериментов, включая триггерный анализ, — <a href="block4_06_srm_diagnostics.html">4.6</a>. Петли обратной связи, из-за которых система меняет собственные данные, — <a href="block1_13_feedback_loops.html">1.13</a>.
+</div>
+
+<div class="pnav">
+  <a href="block4_02_cuped.html">← 4.2 · CUPED и снижение дисперсии</a>
+  <a class="next" href="block4_04_causal_ml.html">4.4 · Causal ML →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#581c87', AC2='#a855f7', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — два механизма убывания */
+mk('c_mech',{type:'line',data:{labels:['1','2','3','4','5','6'],
+ datasets:[
+  {label:'Новизна: существующие',data:[7.9,4.1,1.7,1.1,0.8,0.7],borderColor:OR,tension:.25,pointRadius:4},
+  {label:'Новизна: новые',data:[0.8,0.8,0.7,0.7,0.7,0.7],borderColor:'#fdba74',borderDash:[4,4],tension:.25,pointRadius:4},
+  {label:'Интерференция: существующие',data:[3.2,2.6,1.9,1.4,0.8,0.4],borderColor:AC,tension:.25,pointRadius:4},
+  {label:'Интерференция: новые',data:[3.1,2.5,1.8,1.3,0.8,0.4],borderColor:AC2,borderDash:[4,4],tension:.25,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:8.5,title:{display:true,text:'измеренный эффект, %'}},GRID),x:Object.assign({title:{display:true,text:'неделя эксперимента'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 2 — завышение по доле теста */
+mk('c_share',{type:'bar',data:{labels:['5%','10%','25%','50%','75%','90%','95%'],
+ datasets:[
+  {type:'bar',label:'Измеренный эффект, %',data:[2.69,3.30,4.71,5.61,4.71,3.30,2.69],backgroundColor:AC,borderRadius:4,order:2},
+  {type:'line',label:'Истинный эффект 2.00%',data:[2,2,2,2,2,2,2],borderColor:GR,borderDash:[4,4],pointRadius:0,order:1}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:6.5,title:{display:true,text:'эффект, %'}},GRID),x:Object.assign({title:{display:true,text:'доля трафика в тесте'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var d=[1.34,1.65,2.35,2.81,2.35,1.65,1.34];return 'завышение: '+d[it[0].dataIndex]+'×';}}}}}});
+
+/* 3 — типичные ICC */
+mk('c_icc',{type:'bar',data:{labels:['Случайные группы','Регион (крупный)','Город','Район доставки','Сообщество графа','Одна школа/офис'],
+ datasets:[{label:'Типичная ICC',data:[0.0002,0.010,0.050,0.080,0.110,0.220],
+  backgroundColor:[GR,'#a3e635',AC2,AC,'#7e22ce',RD],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.25,title:{display:true,text:'ICC'}},GRID),x:NOG},plugins:{legend:{display:false}}}});
+
+/* 4 — DEFF */
+mk('c_deff',{type:'line',data:{labels:['10','50','100','500','1 000','5 000','10 000'],
+ datasets:[
+  {label:'ICC = 0.001',data:[1.009,1.049,1.099,1.499,1.999,5.999,10.999],borderColor:GR,tension:.15,pointRadius:4},
+  {label:'ICC = 0.01',data:[1.09,1.49,1.99,5.99,10.99,50.99,100.99],borderColor:OR,tension:.15,pointRadius:4},
+  {label:'ICC = 0.05',data:[1.45,3.45,5.95,25.95,50.95,250.95,500.95],borderColor:AC,tension:.15,pointRadius:4},
+  {label:'ICC = 0.10',data:[1.90,5.90,10.90,50.90,100.90,500.90,1000.90],borderColor:RD,tension:.15,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'design effect (лог. шкала)'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'размер кластера m'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 5 — размер кластера: компромисс */
+mk('c_size',{type:'line',data:{labels:['10','100','1 000','2 000','20 000'],
+ datasets:[
+  {label:'Смещение, п.п.',data:[0.952,0.374,0.104,0.058,0.012],borderColor:RD,tension:.25,pointRadius:5},
+  {label:'Стандартная ошибка, п.п.',data:[0.18,0.37,1.07,1.50,4.74],borderColor:BL,tension:.25,pointRadius:5},
+  {label:'Суммарная ошибка RMSE, п.п.',data:[0.969,0.526,1.075,1.501,4.740],borderColor:AC,backgroundColor:'rgba(88,28,135,.08)',tension:.25,fill:true,pointRadius:6}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'ошибка, п.п. (лог. шкала)'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'размер кластера'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 6 — длина интервала */
+mk('c_interval',{type:'line',data:{labels:['15 мин','1 час','4 часа','12 часов','24 часа'],
+ datasets:[
+  {label:'Смещение от переноса, п.п.',data:[0.76,0.28,0.08,0.02,0.01],borderColor:RD,tension:.25,pointRadius:5},
+  {label:'Стандартная ошибка, п.п.',data:[0.21,0.29,0.52,0.86,1.18],borderColor:BL,tension:.25,pointRadius:5},
+  {label:'Суммарная ошибка RMSE, п.п.',data:[0.789,0.403,0.526,0.860,1.180],borderColor:AC,backgroundColor:'rgba(88,28,135,.08)',tension:.25,fill:true,pointRadius:6}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:1.3,title:{display:true,text:'п.п.'}},GRID),x:Object.assign({title:{display:true,text:'длина интервала'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 7 — washout */
+mk('c_wash',{type:'bar',data:{labels:['0 мин','5 мин','10 мин','15 мин','30 мин'],
+ datasets:[
+  {type:'bar',label:'Суммарная ошибка RMSE, п.п.',data:[0.403,0.330,0.324,0.336,0.410],backgroundColor:[RD,AC2,GR,AC2,RD],borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Потеря данных, %',data:[0,8.3,16.7,25.0,50.0],borderColor:OR,tension:.25,pointRadius:5,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0.28,max:0.45,position:'left',title:{display:true,text:'RMSE, п.п.'}},GRID),
+   y1:{min:0,max:60,position:'right',grid:{display:false},title:{display:true,text:'% данных'}},
+   x:Object.assign({title:{display:true,text:'длительность washout'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — перенос по типам переходов */
+mk('c_carry',{type:'bar',data:{labels:['CC','TC','CT','TT'],
+ datasets:[{label:'Конверсия, %',data:[10.00,10.09,10.18,10.42],
+  backgroundColor:[GY,'#c4b5fd',AC2,AC],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:9.8,max:10.6,title:{display:true,text:'конверсия, %'}},GRID),x:Object.assign({title:{display:true,text:'предыдущий → текущий интервал'}},NOG)},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['опорное значение','след теста: +0.09','недоразгон: до TT ещё 0.24','стационарный тест'];return t[it[0].dataIndex];}}}}}});
+
+/* 9 — путь к корректной оценке */
+mk('c_est',{type:'bar',data:{labels:['Разность средних','+ фикс. эффекты времени','+ кластерные se','Истина'],
+ datasets:[{label:'Оценка эффекта, %',data:[3.4,2.1,2.1,2.0],
+  backgroundColor:[RD,AC2,GR,GY],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:4.2,title:{display:true,text:'эффект, %'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['se 0.19% — занижена','se 0.19% — всё ещё занижена','se 0.29% — честная','—'];return t[it[0].dataIndex];}}}}}});
+
+/* 10 — ego-кластеры */
+mk('c_ego',{type:'bar',data:{labels:['Покрытие графа, %','Design effect','Эффективная выборка, тыс.','Смещение, %','RMSE, п.п.'],
+ datasets:[
+  {label:'Сообщества графа',data:[100,46.76,106.9,19,0.719],backgroundColor:GY,borderRadius:4},
+  {label:'Ego-кластеры',data:[42,5.32,394.7,2,0.322],backgroundColor:AC,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'значение (лог. шкала, разные единицы)'},grid:{color:'#eef2f7'}},x:NOG},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 11 — экстраполяция */
+mk('c_extra',{type:'line',data:{labels:['0%','10%','30%','50%','70%','90%','100%'],
+ datasets:[
+  {label:'Тестовые (замеры)',data:[null,10.47,10.41,10.35,10.29,10.23,null],borderColor:AC,pointRadius:6,showLine:false},
+  {label:'Тестовые (линия и экстраполяция)',data:[10.50,10.47,10.41,10.35,10.29,10.23,10.20],borderColor:AC,borderDash:[5,4],tension:0,pointRadius:0},
+  {label:'Контрольные (замеры)',data:[null,9.96,9.88,9.80,9.72,9.64,null],borderColor:BL,pointRadius:6,showLine:false},
+  {label:'Контрольные (линия и экстраполяция)',data:[10.00,9.96,9.88,9.80,9.72,9.64,9.60],borderColor:BL,borderDash:[5,4],tension:0,pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:9.5,max:10.6,title:{display:true,text:'конверсия, %'}},GRID),x:Object.assign({title:{display:true,text:'доля теста в кластере'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var i=it[0].dataIndex;if(i===0)return 'контроль при 0% = 10.00 — состояние «до»';if(i===6)return 'тест при 100% = 10.20 — состояние «после»';return '';}}}}}});
+
+/* 12 — сравнение дизайнов */
+mk('c_choice',{type:'bar',data:{labels:['Обычный A/B','Кластеры по 2 000','Кластеры по 100','Ego-кластеры','Switchback','Переменная доля'],
+ datasets:[
+  {label:'Смещение, п.п.',data:[0.722,0.058,0.374,0.040,0.056,0.020],backgroundColor:RD,borderRadius:4},
+  {label:'Стандартная ошибка, п.п.',data:[0.110,1.500,0.370,0.320,0.324,0.340],backgroundColor:BL,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:1.7,title:{display:true,text:'п.п.'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var r=[0.730,1.501,0.526,0.322,0.329,0.341];return 'RMSE: '+r[it[0].dataIndex].toFixed(3)+' п.п.';}}}}}});
+
+/* ИНТЕРАКТИВ */
+function updDeff(){
+  var icc = (+document.getElementById('sl_icc').value)/1000;
+  var mSlider = +document.getElementById('sl_m').value;
+  var m = Math.round(Math.pow(10, mSlider/50));
+  var n = (+document.getElementById('sl_n').value) * 1000;
+
+  document.getElementById('out_icc').textContent = icc.toFixed(3);
+  document.getElementById('out_m').textContent = m.toLocaleString('ru-RU');
+  document.getElementById('out_n').textContent = n.toLocaleString('ru-RU');
+
+  var deff = 1 + (m - 1) * icc;
+  var neff = n / deff;
+  var clusters = Math.floor(n / m);
+  var mdeMult = Math.sqrt(deff);
+  var mdeBase = 3.0;
+
+  var verdict;
+  if (deff < 2) verdict = 'кластеризация почти бесплатна — можно смело';
+  else if (deff < 10) verdict = 'приемлемо: теряется часть мощности, эксперимент выполним';
+  else if (deff < 50) verdict = 'дорого: нужен либо более мелкий кластер, либо втрое больше времени';
+  else verdict = 'НЕВЫПОЛНИМО при таком размере кластера — дробите кластеры или меняйте дизайн';
+
+  document.getElementById('out_deff').textContent =
+    'DEFF = 1 + (' + m.toLocaleString('ru-RU') + ' − 1) × ' + icc.toFixed(3) + ' = ' + deff.toFixed(2) + '\n' +
+    'кластеров: ' + clusters.toLocaleString('ru-RU') + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'эффективная выборка: ' + Math.round(neff).toLocaleString('ru-RU') +
+      '   (' + (100*neff/n).toFixed(1) + '% от исходной)\n' +
+    'MDE растёт в √DEFF = ' + mdeMult.toFixed(2) + ' раз\n' +
+    'было ' + mdeBase.toFixed(1) + '%  →  стало ' + (mdeBase*mdeMult).toFixed(1) + '%\n' +
+    '─────────────────────────────────────────────\n' +
+    'чтобы вернуть MDE ' + mdeBase.toFixed(1) + '%, нужно ' +
+      Math.round(n*deff).toLocaleString('ru-RU') + ' пользователей\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  ['sl_icc','sl_m','sl_n'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updDeff); });
+  if(document.getElementById('out_deff')) updDeff();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

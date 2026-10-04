@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.1 · A/B тестирование: мощность, дисперсия, гетерогенность</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#854d0e; --ac-d:#422006; --ac-l:#fefce8; --ac-b:#fde047; --ac-m:#a16207;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#422006,#854d0e 50%,#fde047);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.95;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.88;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#1e40af}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#fde047;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#fefce8,#fef9c3);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:16px 20px;margin:0 0 20px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:9px;font-weight:650}
+.fbox .fm{font-family:'SF Mono',Menlo,monospace;font-size:17px;color:var(--ac-d);font-weight:700}
+.fnote{font-size:13.5px;color:var(--tx3);margin-top:9px}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 4 · тема 1 · базовый уровень</div>
+    <h1>A/B тестирование: мощность, дисперсия, гетерогенность</h1>
+    <p>Эксперимент показал прирост +0.55% при p = 0.28. Команда откатила изменение. Внутри этого «незначимого нуля» лежали −4.2% на мобильных новичках и +6.1% на десктопных — два сильных, противоположных, реальных эффекта, которые сложились в почти ничто. Средний эффект отвечает на вопрос, который редко кто задавал.</p>
+    <div class="meta">
+      <span>15 секций</span><span>13 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Что измеряет</a>
+    <a href="#s2">2 · Две ошибки</a>
+    <a href="#s3">3 · Размер выборки</a>
+    <a href="#s4">4 · MDE</a>
+    <a href="#s5">5 · Дисперсия</a>
+    <a href="#s6">6 · Дельта-метод</a>
+    <a href="#s7">7 · Множественность</a>
+    <a href="#s8">8 · Длительность</a>
+    <a href="#s9">9 · Средний эффект</a>
+    <a href="#s10">10 · CATE</a>
+    <a href="#s11">11 · Ложные сегменты</a>
+    <a href="#s12">12 · Суррогаты</a>
+    <a href="#s13">13 · Индекс и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Что измеряет эксперимент и чего он не измеряет</h2></div>
+  <p class="slead">Рандомизация покупает одну конкретную вещь — сопоставимость групп по всему, наблюдаемому и ненаблюдаемому. Всё остальное нужно обеспечивать отдельно, и большинство провалов происходит именно там.</p>
+
+  <div class="def">
+    <div class="def-t">Что даёт рандомизация</div>
+    <p><b>Единственное, и этого достаточно:</b> распределение всех характеристик — возраста, платёжеспособности, настроения, мотивации, того, о чём вы не подумали, — в двух группах одинаково с точностью до случайного шума. Поэтому разница в исходе объясняется только воздействием.</p>
+    <p>Это свойство ничего не говорит о том, <b>какая именно</b> величина измеряется, <b>для кого</b> она измеряется и <b>как долго</b> держится эффект. Три отдельных вопроса, три отдельных источника ошибок.</p>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Вопрос</th><th>Что решает</th><th>Где разобрано</th></tr></thead>
+    <tbody>
+      <tr><td>Группы сопоставимы?</td><td class="g">рандомизация плюс проверка SRM</td><td class="note"><a href="block4_06_srm_diagnostics.html">4.6</a></td></tr>
+      <tr><td>Хватит ли чувствительности?</td><td class="g">расчёт мощности и MDE до запуска</td><td class="note">секции 3–5</td></tr>
+      <tr><td>Правильная ли метрика?</td><td class="a">не решается статистикой вовсе</td><td class="note"><a href="block1_12_metrics_framing.html">1.12</a></td></tr>
+      <tr><td>Один ли эффект у всех?</td><td class="a">анализ гетерогенности</td><td class="note">секции 9–11</td></tr>
+      <tr><td>Держится ли эффект долго?</td><td class="a">суррогаты или долгий эксперимент</td><td class="note">секции 12–13</td></tr>
+      <tr><td>Не влияют ли группы друг на друга?</td><td class="a">кластерная рандомизация, switchback</td><td class="note"><a href="block4_03_switchback.html">4.3</a></td></tr>
+      <tr><td>Можно ли останавливаться раньше?</td><td class="a">последовательные схемы</td><td class="note"><a href="block4_05_sequential_testing.html">4.5</a></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первые две строки закрываются техникой. Остальные пять — проектными решениями, которые принимаются до запуска и не исправляются анализом постфактум.</p>
+
+  <p>Начнём с той части, где всё считается точно, и доведём расчёты до конца — потому что интуиция здесь регулярно подводит на порядок.</p>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Две ошибки и их несимметричная цена</h2></div>
+  <p class="slead">Уровень значимости и мощность — это не статистические условности, а два бюджета на ошибки. Их принято брать 5% и 80% по традиции, хотя оба должны следовать из экономики решения.</p>
+
+  <table class="ct">
+    <thead><tr><th></th><th>Эффекта нет</th><th>Эффект есть</th></tr></thead>
+    <tbody>
+      <tr><td><b>Признали значимым</b></td><td class="r">Ошибка I рода (α)<br><span style="font-size:13.5px;color:var(--tx3)">выкатили то, что не работает</span></td><td class="g">Верно положительный (1−β)<br><span style="font-size:13.5px;color:var(--tx3)">мощность</span></td></tr>
+      <tr><td><b>Не признали</b></td><td class="g">Верно отрицательный</td><td class="r">Ошибка II рода (β)<br><span style="font-size:13.5px;color:var(--tx3)">выбросили работающее улучшение</span></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">При α = 0.05 и мощности 80% вы согласились ошибаться в 5% случаев, когда эффекта нет, и в 20% случаев, когда он есть. Второе число вчетверо больше первого — и почти никогда не обсуждается.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько стоят обе ошибки в одном году работы</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Команда проводит 120 экспериментов в год. По исторической статистике реально работает примерно каждый пятый.
+      <div class="calc"><span class="lbl">экспериментов всего:            </span>120
+<span class="lbl">с настоящим эффектом (20%):     </span><span class="hl">24</span>
+<span class="lbl">без эффекта (80%):              </span><span class="hl">96</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Что происходит при α = 0.05 и мощности 80%.
+      <div class="calc"><span class="lbl">ложных срабатываний:</span>  96 × 0.05 = <span class="bad">4.8</span>
+<span class="lbl">пойманных настоящих:</span>  24 × 0.80 = <span class="res">19.2</span>
+<span class="lbl">упущенных настоящих:</span>  24 × 0.20 = <span class="bad">4.8</span>
+
+<span class="lbl">всего «значимых» результатов:</span> 4.8 + 19.2 = 24.0
+<span class="lbl">из них ложных:</span> 4.8 / 24.0 = <span class="bad">20.0%</span>
+
+<span class="dim">Каждый пятый выкаченный «успех» — шум.
+Это не ошибка в расчётах, это прямое следствие
+того, что настоящих эффектов мало.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Теперь то же при мощности 50% — типичный случай, когда эксперимент остановили «когда набралось достаточно».
+      <div class="calc"><span class="lbl">ложных срабатываний:</span>  96 × 0.05 = <span class="bad">4.8</span>
+<span class="lbl">пойманных настоящих:</span>  24 × 0.50 = <span class="hl">12.0</span>
+<span class="lbl">упущенных настоящих:</span>  24 × 0.50 = <span class="bad">12.0</span>
+
+<span class="lbl">всего «значимых»:</span> 4.8 + 12.0 = 16.8
+<span class="lbl">из них ложных:</span> 4.8 / 16.8 = <span class="bad">28.6%</span>
+
+<span class="res">Низкая мощность бьёт дважды: вы теряете половину
+работающих идей И повышаете долю мусора среди
+тех, что прошли. Мощность — это не только
+про чувствительность, но и про достоверность.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что даёт повышение мощности до 95%.
+      <div class="calc"><span class="lbl">пойманных настоящих:</span>  24 × 0.95 = <span class="res">22.8</span>
+<span class="lbl">доля ложных:</span> 4.8 / 27.6 = <span class="res">17.4%</span>
+
+<span class="lbl">цена: множитель на размер выборки</span>
+  (z₀.₉₇₅ + z₀.₉₅)² / (z₀.₉₇₅ + z₀.₈₀)²
+  = (1.959964 + 1.644854)² / (1.959964 + 0.841621)²
+  = 3.604818² / 2.801585²
+  = 12.994712 / 7.848879
+  = <span class="hl">1.6556</span>
+
+<span class="dim">На 66% больше пользователей ради +2.8 пойманных
+идей в год и −2.6 п.п. доли ложных. Считать нужно
+в деньгах: сколько стоит упущенное улучшение
+против стоимости лишней недели эксперимента.</span></div>
+    </div>
+  </div>
+
+  <div class="intuition">
+    <b>Почему доля ложных среди «значимых» важнее α.</b> α отвечает на вопрос «как часто я ошибусь, если эффекта нет». Но принимая решение о выкате, вы задаёте другой вопрос: «этот конкретный значимый результат — настоящий?». Ответ зависит от <b>доли работающих идей в вашем потоке</b>. Команда, у которой работает каждая вторая идея, получит 5.9% ложных среди значимых; команда, у которой работает каждая двадцатая, — 54.3%. Одна и та же статистика, противоположная надёжность выводов.
+  </div>
+
+  <div class="chb">
+    <div class="cht">Доля ложных среди значимых результатов</div>
+    <div class="chsub">По горизонтали — доля идей, которые реально работают. При α = 0.05 и мощности 80% команда с 5% работающих идей получает больше половины мусора среди «побед»</div>
+    <canvas id="c_fdr"></canvas>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Расчёт размера выборки: полностью, по шагам</h2></div>
+  <p class="slead">Одна формула, четыре входа. Важно не выучить её, а увидеть, как каждый вход влияет на ответ — потому что зависимости там нелинейные и интуиция ошибается.</p>
+
+  <div class="def">
+    <div class="def-t">Размер выборки на группу</div>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">n = 2 · (z<sub>1−α/2</sub> + z<sub>1−β</sub>)² · σ² / δ²</p>
+    <p><b>δ</b> — абсолютный эффект, который хотим уверенно поймать. <b>σ²</b> — дисперсия метрики на одном наблюдении. <b>Двойка</b> — потому что групп две, и дисперсия разности складывается.</p>
+    <p>Ключевое: <b>n обратно пропорционален квадрату эффекта</b>. Захотели ловить вдвое меньший эффект — нужно вчетверо больше данных. Это самая практически важная зависимость во всём разделе.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · расчёт для конверсии, все цифры</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Вводные. Базовая конверсия 4.2%, ловим относительный прирост 3%, α = 0.05 двусторонний, мощность 80%.
+      <div class="calc"><span class="lbl">квантили нормального распределения:</span>
+  z₀.₉₇₅ = <span class="hl">1.959964</span>
+  z₀.₈₀₀ = <span class="hl">0.841621</span>
+  сумма  = <span class="hl">2.801585</span>
+  квадрат = 2.801585² = <span class="hl">7.848879</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Дисперсия. Для доли она определяется самой долей.
+      <div class="calc">σ² = p(1 − p) = 0.042 × 0.958 = <span class="hl">0.040236</span>
+σ  = √0.040236 = <span class="hl">0.200589</span>
+
+<span class="dim">Полезное свойство: дисперсия доли максимальна
+при p = 0.5 и падает к краям. Метрику с конверсией
+4% измерить легче, чем метрику с конверсией 50%,
+если сравнивать абсолютные приросты.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Абсолютный эффект.
+      <div class="calc">δ = 0.042 × 0.03 = <span class="hl">0.00126</span>   <span class="dim">(0.126 процентного пункта)</span>
+δ² = 0.00126² = <span class="hl">1.5876 × 10⁻⁶</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Подставляем.
+      <div class="calc">n = 2 × 7.848879 × 0.040236 / 1.5876×10⁻⁶
+
+  2 × 7.848879 = 15.697758
+  15.697758 × 0.040236 = 0.6316145
+  0.6316145 / 0.0000015876 = <span class="res">397 843</span>
+
+<span class="lbl">на группу:</span> <span class="res">397 843</span>
+<span class="lbl">всего:</span>      <span class="res">795 686</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Переводим в дни. Трафик 45 000 пользователей в сутки на группу.
+      <div class="calc">397 843 / 45 000 = <span class="hl">8.84 дня</span>
+
+<span class="bad">Но округлять до 9 дней нельзя.</span>
+<span class="dim">Поведение сильно зависит от дня недели: будни
+и выходные дают разные конверсии и разный состав
+трафика. Эксперимент, покрывающий 9 дней,
+содержит две пятницы и одну среду — состав
+искажён по построению.</span>
+
+<span class="res">Правило: длительность округляется вверх
+до целого числа недель. Здесь — 14 дней.</span>
+
+<span class="lbl">фактическая выборка за 14 дней:</span> 630 000 на группу
+<span class="lbl">запас по мощности:</span> 630 000 / 397 843 = <span class="res">1.58×</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 6.</b> Что меняет каждый вход. Одна цифра за раз.
+      <div class="calc"><span class="lbl">изменение                        n на группу     дней</span>
+базовый расчёт                     397 843        8.8
+эффект 6% вместо 3%                 <span class="res">99 461</span>        2.2
+эффект 1.5% вместо 3%            <span class="bad">1 591 372</span>       35.4
+мощность 95% вместо 80%             <span class="hl">658 703</span>       14.6
+α = 0.01 вместо 0.05                <span class="hl">594 949</span>       13.2
+одностороннний тест                 <span class="hl">313 462</span>        7.0
+
+<span class="res">Эффект — единственный вход с квадратичным
+влиянием. Уменьшение MDE вдвое стоит вчетверо
+больше данных; ужесточение α в пять раз —
+всего в 1.5 раза.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Размер выборки от размера ловимого эффекта</div>
+    <div class="chsub">Логарифмическая вертикальная ось. Кривая гиперболическая: разница между «поймать 3%» и «поймать 1%» — почти порядок по объёму данных</div>
+    <canvas id="c_n"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Посчитайте для своей метрики</h4>
+    <div class="prow">
+      <label>Базовая конверсия, %</label>
+      <input type="range" id="sl_p" min="5" max="500" step="5" value="42">
+      <output id="out_p">4.2%</output>
+    </div>
+    <div class="prow">
+      <label>Относительный MDE, %</label>
+      <input type="range" id="sl_e" min="5" max="200" step="5" value="30">
+      <output id="out_e">3.0%</output>
+    </div>
+    <div class="prow">
+      <label>Мощность, %</label>
+      <input type="range" id="sl_b" min="50" max="99" step="1" value="80">
+      <output id="out_b">80%</output>
+    </div>
+    <div class="prow">
+      <label>Трафик в сутки на группу</label>
+      <input type="range" id="sl_t" min="1000" max="200000" step="1000" value="45000">
+      <output id="out_t">45 000</output>
+    </div>
+    <div class="pout" id="out_pow"></div>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>MDE: что реально можно поймать за отведённое время</h2></div>
+  <p class="slead">Обратная задача полезнее прямой. Обычно не вы выбираете размер эффекта — вы выбираете, сколько готовы ждать, и хотите знать, что при этом сможете различить.</p>
+
+  <div class="def">
+    <div class="def-t">Минимальный детектируемый эффект</div>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">MDE = (z<sub>1−α/2</sub> + z<sub>1−β</sub>) · σ · √(2/n)</p>
+    <p>В относительном выражении удобнее через коэффициент вариации: <b>MDE<sub>отн</sub> = 2.802 · CV · √(2/n)</b> при стандартных α и мощности. Здесь CV = σ/μ — единственная характеристика метрики, которая имеет значение.</p>
+    <p><b>Практический смысл.</b> MDE — это граница осмысленности эксперимента. Если ваш MDE равен 3%, а ожидаемый эффект от изменения 0.5%, эксперимент бессмыслен: он с вероятностью 80% закончится словом «незначимо» независимо от того, работает изменение или нет.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · MDE по неделям и почему четвёртая неделя почти не помогает</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Та же метрика: конверсия 4.2%, σ = 0.200589, трафик 45 000 в сутки на группу.
+      <div class="calc"><span class="lbl">множитель:</span> 2.801585 × 0.200589 = <span class="hl">0.561930</span>
+
+<span class="lbl">неделя 1, n = 315 000:</span>
+  √(2/315 000) = √(6.34921×10⁻⁶) = 0.00251977
+  MDE_абс = 0.561930 × 0.00251977 = 0.00141594
+  MDE_отн = 0.00141594 / 0.042 = <span class="hl">3.371%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Дальше по неделям.
+      <div class="calc"><span class="lbl">недель   n на группу   MDE абс.      MDE отн.</span>
+   1        315 000     0.001416      <span class="hl">3.371%</span>
+   2        630 000     0.001001      <span class="hl">2.384%</span>
+   4      1 260 000     0.000708      <span class="hl">1.686%</span>
+   8      2 520 000     0.000501      <span class="hl">1.192%</span>
+  16      5 040 000     0.000354      <span class="hl">0.843%</span>
+
+<span class="lbl">проверка закона 1/√t:</span>
+  3.371 / 2.384 = <span class="res">1.4140</span>
+  2.384 / 1.686 = <span class="res">1.4140</span>
+  1.686 / 1.192 = <span class="res">1.4145</span>
+  <span class="dim">все три равны √2 = 1.41421</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Отсюда следует правило, которое экономит недели.
+      <div class="calc"><span class="lbl">чтобы улучшить чувствительность вдвое,
+нужно ждать вчетверо дольше:</span>
+
+  с 3.37% до 1.69%:  1 неделя → <span class="bad">4 недели</span>
+  с 1.69% до 0.84%:  4 недели → <span class="bad">16 недель</span>
+
+<span class="res">Первая неделя даёт больше, чем следующие три.
+Восьмая неделя улучшает MDE на 0.05 п.п.</span>
+
+<span class="lbl">прирост чувствительности за каждую неделю:</span>
+  неделя 1: −∞ → 3.371   <span class="dim">(появилась возможность)</span>
+  неделя 2: 3.371 → 2.384  <span class="hl">−0.987 п.п.</span>
+  неделя 3: 2.384 → 1.946  <span class="hl">−0.438 п.п.</span>
+  неделя 4: 1.946 → 1.686  <span class="hl">−0.260 п.п.</span>
+  неделя 8: 1.256 → 1.192  <span class="dim">−0.064 п.п.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Правильный порядок вопросов при планировании.
+      <div class="calc"><span class="bad">Неправильно:</span> «запустим и посмотрим,
+что получится через две недели»
+
+<span class="res">Правильно:</span>
+  1. Какой эффект имеет смысл выкатывать?
+     <span class="dim">Ниже него менять ничего не будем — значит,
+     ловить его не обязательно.</span>
+  2. Каков MDE за разумное время?
+  3. Если MDE больше порога осмысленности —
+     <span class="res">эксперимент не нужно запускать вовсе.</span>
+
+<span class="lbl">пример решения:</span>
+  порог выката: <span class="hl">+1.5%</span> к конверсии
+  MDE за 2 недели: <span class="bad">2.38%</span>
+  <span class="bad">→ за две недели эффект +1.5% не поймаем</span>
+  MDE за 5 недель: <span class="res">1.51%</span>
+  <span class="res">→ либо ждём 5 недель, либо снижаем дисперсию (секция 5),
+  либо признаём, что решение будет приниматься не по этому тесту</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">MDE по неделям эксперимента</div>
+    <div class="chsub">Убывание как 1/√t. Пунктир — порог осмысленности выката 1.5%: он достигается только на пятой неделе, и это нужно знать до запуска, а не после</div>
+    <canvas id="c_mde"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Самый полезный вывод раздела.</b> Значительная часть экспериментов в продуктовых командах запускается с MDE, превышающим любой правдоподобный эффект от изменения. Такие эксперименты <b>гарантированно</b> заканчиваются словом «незначимо» — и это интерпретируется как «изменение не работает», хотя корректная интерпретация звучит как «мы не смогли бы увидеть эффект, даже если бы он был». Расчёт MDE занимает две минуты и отсеивает эти запуски заранее.
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Дисперсия: где на самом деле теряется чувствительность</h2></div>
+  <p class="slead">В формуле MDE три входа, и два из них вы менять не можете. Единственный доступный рычаг — дисперсия. На денежных метриках он даёт выигрыш, эквивалентный десяткам недель ожидания.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · один клиент из десяти тысяч определяет всё</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Выручка на пользователя. 10 000 наблюдений, из них 10 — крупные корпоративные клиенты.
+      <div class="calc"><span class="lbl">обычные:  9 990 человек, среднее 480 ₽, sd 620 ₽</span>
+<span class="lbl">крупные:     10 человек, по 380 000 ₽</span>
+
+<span class="lbl">общее среднее:</span>
+  (9 990 × 480 + 10 × 380 000) / 10 000
+  = (4 795 200 + 3 800 000) / 10 000
+  = <span class="hl">859.52 ₽</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Раскладываем сумму квадратов отклонений на три части.
+      <div class="calc"><span class="lbl">разброс внутри обычных:</span>
+  9 990 × 620² = 9 990 × 384 400 = <span class="hl">3.840156 × 10⁹</span>
+
+<span class="lbl">отклонение обычных от общего среднего:</span>
+  (480 − 859.52)² = 379.52² = 144 035.4
+  × 9 990 = <span class="hl">1.438914 × 10⁹</span>
+
+<span class="lbl">отклонение крупных от общего среднего:</span>
+  (380 000 − 859.52)² = 379 140.48² = 1.437470 × 10¹¹
+  × 10 = <span class="bad">1.437470 × 10¹²</span>
+
+<span class="lbl">итого:</span> <span class="hl">1.442749 × 10¹²</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Доля десяти человек в общей дисперсии.
+      <div class="calc">1.437470 × 10¹² / 1.442749 × 10¹² = <span class="bad">0.996341</span>
+
+<span class="bad">0.1% пользователей несут 99.63% дисперсии.</span>
+
+<span class="lbl">итоговые характеристики метрики:</span>
+  дисперсия = 1.442749×10¹² / 9 999 = 1.442893×10⁸
+  sd = <span class="hl">12 012 ₽</span>
+  CV = 12 012 / 859.52 = <span class="bad">13.976</span>
+
+<span class="dim">Для сравнения: у конверсии из секции 3
+CV = 0.200589 / 0.042 = 4.776.
+Выручка почти втрое хуже по CV, а в квадрате —
+в 8.6 раза требовательнее к объёму данных.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что это даёт по чувствительности при той же выборке.
+      <div class="calc"><span class="lbl">n = 397 843 на группу (расчёт из секции 3)</span>
+  √(2/397 843) = <span class="hl">0.00224212</span>
+
+<span class="lbl">MDE выручки:</span>
+  2.801585 × 13.976 × 0.00224212
+  = 39.15495 × 0.00224212 = <span class="bad">8.779%</span>
+
+<span class="lbl">MDE конверсии на той же выборке:</span> <span class="res">3.000%</span>
+
+<span class="bad">Выборка, рассчитанная под конверсию, ловит
+в выручке только эффекты больше 8.8%.
+Таких изменений почти не бывает.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Винзоризация: обрезаем сверху на 20 000 ₽.
+      <div class="calc"><span class="lbl">новое среднее:</span>
+  (9 990 × 480 + 10 × 20 000) / 10 000 = <span class="hl">499.52 ₽</span>
+
+<span class="lbl">новая сумма квадратов:</span>
+  внутри обычных:        3.840156 × 10⁹
+  отклонение обычных:    9 990 × 381.03 = 3.806 × 10⁶
+  отклонение крупных:    10 × 19 500.48² = 3.802687 × 10⁹
+  итого:                 <span class="hl">7.646650 × 10⁹</span>
+
+  sd = √(7.646650×10⁹ / 9 999) = <span class="res">874.49 ₽</span>
+  CV = 874.49 / 499.52 = <span class="res">1.75063</span>
+
+<span class="lbl">MDE после винзоризации:</span>
+  2.801585 × 1.75063 × 0.00224212 = <span class="res">1.100%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 6.</b> Сколько это стоило бы в неделях ожидания — и чем мы заплатили.
+      <div class="calc"><span class="lbl">улучшение чувствительности:</span> 8.779 / 1.100 = <span class="res">7.98×</span>
+<span class="lbl">эквивалент по объёму данных:</span> 7.98² = <span class="res">63.7×</span>
+
+<span class="dim">Одна строка кода даёт то же, что 64-кратное
+увеличение выборки. Ни один другой приём
+в A/B-тестировании не даёт такого размена.</span>
+
+<span class="bad">Но заплатили мы измеримым:</span>
+  доля выручки от крупных клиентов:
+    3 800 000 / 8 595 200 = <span class="bad">44.2%</span>
+  из неё обрезка оставила только 200 000:
+    (3 800 000 − 200 000) / 8 595 200 = <span class="bad">41.9%</span>
+
+<span class="bad">Винзоризованная метрика не видит 41.9% выручки.
+Если изменение повлияло именно на крупных клиентов,
+эксперимент этого не покажет.</span>
+
+<span class="res">Практика: винзоризованная метрика — основная
+(по ней принимается решение), сырая — гардрейл
+(по ней проверяется, что не сломали крупных).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Откуда берётся дисперсия денежной метрики</div>
+    <div class="chsub">Логарифмическая ось. Десять пользователей из десяти тысяч дают 99.6% суммы квадратов отклонений — и именно они определяют, что вы сможете измерить</div>
+    <canvas id="c_var"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Приём снижения дисперсии</th><th>Выигрыш по MDE</th><th>Чем платим</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>Винзоризация или обрезка хвоста</td><td class="g">в 2–8 раз</td><td class="a">смещение: эффект на хвосте не измеряется</td></tr>
+      <tr class="best"><td>CUPED по предэкспериментальной метрике</td><td class="g">на 20–50%</td><td class="g">ничем: оценка остаётся несмещённой — см. <a href="block4_02_cuped.html">4.2</a></td></tr>
+      <tr><td>Стратификация по ключевому признаку</td><td class="g">на 10–30%</td><td class="g">усложнением рандомизации</td></tr>
+      <tr><td>Метрика на уровне сессии вместо пользователя</td><td class="a">кажущийся выигрыш</td><td class="r">неверная дисперсия — см. секцию 6</td></tr>
+      <tr><td>Логарифм или ранг вместо суммы</td><td class="g">кратно</td><td class="r">теряется интерпретация в деньгах</td></tr>
+      <tr><td>Триггерный анализ: только затронутые</td><td class="g">кратно</td><td class="a">меняется популяция — см. <a href="block4_06_srm_diagnostics.html">4.6</a></td></tr>
+      <tr class="worst"><td>Исключить выбросы «как аномалии»</td><td class="a">большой</td><td class="r">если выбросы удаляются <b>после</b> просмотра групп — это подгонка результата</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">CUPED — единственная строка, где выигрыш даётся без смещения, поэтому она первая в очереди. Винзоризация мощнее, но требует явного решения о том, что вы согласны не измерять.</p>
+
+  <div class="chb">
+    <div class="cht">Винзоризация: чувствительность против охвата метрики</div>
+    <div class="chsub">По горизонтали — уровень обрезки. Слева метрика чувствительна, но описывает половину выручки; справа она полна, но неизмерима</div>
+    <canvas id="c_wins"></canvas>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Ratio-метрики и дельта-метод</h2></div>
+  <p class="slead">Конверсия на сессию, средний чек, CTR — всё это отношения, где числитель и знаменатель случайны, а рандомизация происходит на другом уровне. Наивная формула дисперсии здесь занижает ошибку, и заниженной она остаётся при любом размере выборки.</p>
+
+  <div class="def">
+    <div class="def-t">Проблема несовпадения уровней</div>
+    <p>Рандомизация — по пользователям. Метрика — заказы на сессию. Сессий у пользователя может быть одна, а может быть сорок, и они не независимы: активный пользователь даёт много сессий с похожим поведением.</p>
+    <p>Считать дисперсию так, будто сессии независимы, — значит утверждать, что у вас 1 720 000 независимых наблюдений вместо 200 000. Ошибка не убывает с ростом выборки: она <b>систематическая</b>.</p>
+    <p><b>Дельта-метод</b> даёт правильную дисперсию отношения через дисперсии и ковариацию числителя и знаменателя, посчитанные <b>на уровне рандомизации</b>:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14px;text-align:center;color:var(--ac-d)">Var(X̄/Ȳ) ≈ (1/μ<sub>Y</sub>²)·[Var(X) − 2·(μ<sub>X</sub>/μ<sub>Y</sub>)·Cov(X,Y) + (μ<sub>X</sub>/μ<sub>Y</sub>)²·Var(Y)] / n</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · насколько именно занижает наивный расчёт</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Данные на уровне пользователя, n = 200 000.
+      <div class="calc"><span class="lbl">заказы X:   μ = 1.24    Var = 2.86</span>
+<span class="lbl">сессии Y:   μ = 8.60    Var = 41.30</span>
+<span class="lbl">ковариация: Cov(X,Y) = 7.42</span>
+
+<span class="lbl">метрика:</span> R = 1.24 / 8.60 = <span class="hl">0.144186</span>
+<span class="dim">заказов на сессию</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Дельта-метод.
+      <div class="calc"><span class="lbl">R² = 0.144186² = 0.0207896</span>
+
+  Var(X)                        =  2.860000
+  −2 × 0.144186 × 7.42          = −2.139721
+  + 0.0207896 × 41.30           = +0.858610
+<span class="dim">  ──────────────────────────────────────────</span>
+  сумма                         =  <span class="hl">1.578889</span>
+
+  делим на μ_Y² = 8.60² = 73.96
+  1.578889 / 73.96 = <span class="hl">0.0213480</span>
+
+  se = √(0.0213480 / 200 000)
+     = √(1.06740 × 10⁻⁷)
+     = <span class="res">0.00032671</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Наивный расчёт, где сессии считаются независимыми наблюдениями.
+      <div class="calc"><span class="lbl">число сессий:</span> 200 000 × 8.60 = 1 720 000
+
+  se_наив = √(R(1−R) / N_сессий)
+          = √(0.144186 × 0.855814 / 1 720 000)
+          = √(0.1233967 / 1 720 000)
+          = √(7.17423 × 10⁻⁸)
+          = <span class="bad">0.00026785</span>
+
+<span class="lbl">отношение:</span> 0.00032671 / 0.00026785 = <span class="bad">1.21975</span>
+
+<span class="bad">Наивная ошибка занижена на 18.0%.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что это значит для решений. Считаем истинный уровень ошибки первого рода.
+      <div class="calc"><span class="lbl">объявляем значимым при |Z_наив| &gt; 1.959964</span>
+<span class="lbl">но Z_наив = Z_истинный × 1.21975</span>
+
+  порог по истинной шкале:
+    1.959964 / 1.21975 = <span class="hl">1.60686</span>
+
+  P(|Z| &gt; 1.60686) при нулевой гипотезе:
+    Φ(1.60686) = 0.945960
+    p = 2 × (1 − 0.945960) = <span class="bad">0.10808</span>
+
+<span class="bad">Истинная ошибка первого рода 10.8% вместо 5%.
+Более чем вдвое.</span>
+
+<span class="lbl">в терминах данных:</span> чтобы наивная формула
+стала честной, нужно 1.21975² = <span class="bad">1.488</span> —
+на 49% больше пользователей.</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Когда наивная формула всё-таки верна.
+      <div class="calc"><span class="lbl">если знаменатель постоянен (Var(Y) = 0):</span>
+  формула сводится к Var(X)/μ_Y² / n — обычный случай
+
+<span class="lbl">если рандомизация совпадает с уровнем метрики:</span>
+  рандомизируем сессии, метрика на сессию —
+  <span class="res">наивная формула корректна</span>
+
+<span class="lbl">если разброс числа сессий мал:</span>
+  при Var(Y) = 2 вместо 41.3 занижение падает до 3%
+
+<span class="dim">Проверка на месте: посчитайте CV знаменателя.
+Здесь √41.30 / 8.60 = 0.747 — разброс велик,
+дельта-метод обязателен. При CV ниже 0.2
+разница обычно в пределах пары процентов.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Занижение стандартной ошибки и истинный уровень значимости</div>
+    <div class="chsub">По горизонтали — коэффициент вариации знаменателя. Чем сильнее различается число сессий у пользователей, тем сильнее наивная формула обманывает</div>
+    <canvas id="c_delta"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Как это заметить в чужом отчёте.</b> Если метрика — отношение, а размер выборки указан в сессиях, показах или событиях, при том что рандомизация была по пользователям, — ошибка почти наверняка занижена. Быстрая проверка: попросите A/A-тест на этой метрике. При корректной дисперсии доля значимых A/A-тестов будет около 5%; при наивной — около 11%, как в расчёте выше. Методика A/A-проверки разобрана в <a href="block4_06_srm_diagnostics.html">4.6</a>.
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Множественные сравнения</h2></div>
+  <p class="slead">Каждая дополнительная проверка — метрика, вариант, сегмент — добавляет шанс найти шум. Число проверок растёт незаметно, а вероятность ложного открытия растёт быстро.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как 8 измерений превращаются в 480 проверок</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Вероятность хотя бы одного ложного срабатывания при полностью нулевом эффекте.
+      <div class="calc"><span class="lbl">P(хотя бы одно) = 1 − (1 − α)^m</span>
+
+  m = 1:    1 − 0.95¹  = <span class="hl">0.0500</span>
+  m = 5:    1 − 0.95⁵  = 1 − 0.773781 = <span class="hl">0.2262</span>
+  m = 20:   1 − 0.95²⁰ = 1 − 0.358486 = <span class="bad">0.6415</span>
+  m = 50:   1 − 0.95⁵⁰ = 1 − 0.076945 = <span class="bad">0.9231</span>
+  m = 480:  1 − 0.95⁴⁸⁰ ≈ 1 − 2×10⁻¹¹ = <span class="bad">1.0000</span>
+
+<span class="dim">проверка для m=20: ln 0.95 = −0.0512933,
+×20 = −1.025866, e^(−1.025866) = 0.358486 ✓</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Откуда берутся 480 проверок в обычном разборе результатов.
+      <div class="calc"><span class="lbl">команда режет результат по 8 измерениям:</span>
+  платформа, новизна пользователя, страна,
+  тариф, канал привлечения, устройство,
+  версия приложения, сегмент по активности
+
+<span class="lbl">в среднем по 4 уровня в каждом:</span>
+  одномерных срезов:  8 × 4 = <span class="hl">32</span>
+
+<span class="lbl">плюс попарные пересечения:</span>
+  C(8,2) × 4 × 4 = 28 × 16 = <span class="hl">448</span>
+
+<span class="lbl">итого:</span> 32 + 448 = <span class="bad">480 проверок</span>
+
+<span class="bad">При чисто нулевом эффекте вы найдёте
+«значимые» сегменты с вероятностью,
+неотличимой от единицы. Ожидаемое число
+ложных находок: 480 × 0.05 = 24.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Поправка Бонферрони и её цена.
+      <div class="calc"><span class="lbl">при m = 20 запланированных проверок:</span>
+  α' = 0.05 / 20 = <span class="hl">0.0025</span>
+  z для двустороннего 0.0025: <span class="hl">3.023341</span>
+
+<span class="lbl">во сколько раз вырастет нужная выборка:</span>
+  ((3.023341 + 0.841621) / (1.959964 + 0.841621))²
+  = (3.864962 / 2.801585)²
+  = 1.379563²
+  = <span class="bad">1.9032</span>
+
+<span class="dim">Почти вдвое больше данных за право
+проверить двадцать гипотез вместо одной.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что применять вместо жёсткой поправки.
+      <div class="calc"><span class="res">1. Одна главная метрика, объявленная заранее.</span>
+  <span class="dim">Решение принимается по ней и только по ней.
+  Поправка не нужна — проверка одна.</span>
+
+<span class="res">2. Гардрейлы — с обратной логикой.</span>
+  <span class="dim">Для них важна не ошибка I рода, а II:
+  пропустить поломку хуже, чем перестраховаться.
+  Здесь поправка вредна, разбор в 1.12.</span>
+
+<span class="res">3. Бенджамини—Хохберг для исследовательских срезов.</span>
+  <span class="dim">Контролирует долю ложных среди найденных,
+  а не вероятность хотя бы одной ошибки.
+  При 480 проверках это единственный
+  работоспособный вариант.</span>
+
+<span class="res">4. Разделение выборки для поиска сегментов.</span>
+  <span class="dim">Ищем на половине, подтверждаем на второй —
+  подробно в секции 11.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Вероятность найти «значимое» при полном отсутствии эффекта</div>
+    <div class="chsub">Логарифмическая ось числа проверок. Двадцати срезов достаточно, чтобы ложное открытие стало более вероятным, чем его отсутствие</div>
+    <canvas id="c_mult"></canvas>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Длительность: недельность, новизна, подглядывание</h2></div>
+  <p class="slead">Три независимых причины, по которым «наберём нужное n и остановимся» даёт неверный ответ. Все три обнаруживаются расчётом до запуска.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · три ловушки длительности</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Недельная сезонность. Конверсия по дням недели.
+      <div class="calc"><span class="lbl">пн   вт   ср   чт   пт   сб   вс</span>
+4.6  4.5  4.4  4.3  3.9  3.4  3.6   (%)
+
+<span class="lbl">среднее за полную неделю:</span>
+  (4.6+4.5+4.4+4.3+3.9+3.4+3.6) / 7 = 28.7 / 7 = <span class="res">4.100%</span>
+
+<span class="lbl">среднее за 9 дней (неделя + пн + вт):</span>
+  (28.7 + 4.6 + 4.5) / 9 = 37.8 / 9 = <span class="bad">4.200%</span>
+
+<span class="lbl">искажение:</span> 4.200 / 4.100 − 1 = <span class="bad">+2.44%</span>
+
+<span class="bad">Это артефакт состава дней, а не эффект.
+И он составляет 72% от MDE за неделю (3.37%).</span>
+
+<span class="res">Отсюда правило целых недель: не суеверие,
+а устранение смещения, сопоставимого
+с измеряемым эффектом.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Эффект новизны. Замер по неделям.
+      <div class="calc"><span class="lbl">неделя   эффект</span>
+   1      <span class="bad">+5.8%</span>
+   2      +3.1%
+   3      +1.4%
+   4      +0.9%
+   5      <span class="res">+0.7%</span>
+   6      <span class="res">+0.7%</span>
+
+<span class="lbl">асимптота ≈ 0.7%</span>
+<span class="bad">остановка на первой неделе завысила бы
+эффект в 5.8 / 0.7 = 8.29 раза</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Как отличить новизну от настоящего эффекта, не дожидаясь шести недель.
+      <div class="calc"><span class="lbl">разделяем пользователей на тех, кто видел
+старую версию, и тех, кто пришёл впервые:</span>
+
+<span class="lbl">неделя   существующие   новые</span>
+   1        <span class="bad">+7.9%</span>       <span class="res">+0.8%</span>
+   2        +4.1%       +0.8%
+   3        +1.7%       +0.7%
+   6        +0.7%       +0.7%
+
+<span class="res">У новых пользователей эффекта новизны нет
+по построению: им не с чем сравнивать.
+Их кривая плоская с первой недели и сразу
+показывает долгосрочное значение 0.7–0.8%.</span>
+
+<span class="dim">Диагностика занимает один срез и даёт ответ
+на второй неделе вместо шестой. Обратная
+ситуация — эффект «сопротивления изменению»,
+когда существующие сначала хуже, а потом
+догоняют, — ловится тем же способом.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Подглядывание. Кратко — подробный разбор в <a href="block4_05_sequential_testing.html">4.5</a>.
+      <div class="calc"><span class="lbl">два взгляда на данные при α = 0.05 каждый:</span>
+  корреляция статистик на половине и полной
+  выборке: √(t₁/t₂) = √0.5 = 0.7071
+  совместная вероятность обеих ошибок ≈ 0.00845
+
+  P(хотя бы одна) = 0.025 + 0.025 − 0.00845
+                  = <span class="bad">0.04155</span> на сторону
+  двусторонний уровень = <span class="bad">0.0831</span>
+
+<span class="bad">Два взгляда вместо одного: 8.3% вместо 5%.
+При ежедневном мониторинге в течение месяца
+истинный уровень превышает 25%.</span>
+
+<span class="res">Решение — не «не смотреть», а использовать
+корректные границы: альфа-спендинг, mSPRT
+или доверительные последовательности.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Эффект по неделям: существующие и новые пользователи</div>
+    <div class="chsub">Кривая существующих пользователей спадает от +7.9% к плато 0.7%; у новых плато видно с первой недели. Разрыв между кривыми и есть эффект новизны</div>
+    <canvas id="c_novel"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Симптом</th><th>Вероятная причина</th><th>Проверка</th></tr></thead>
+    <tbody>
+      <tr><td>Эффект падает от недели к неделе</td><td class="note">новизна</td><td class="note">срез по новым пользователям</td></tr>
+      <tr><td>Эффект растёт от недели к неделе</td><td class="note">сопротивление изменению либо накопительный эффект</td><td class="note">тот же срез плюс кривая по когортам</td></tr>
+      <tr><td>Эффект скачет без тренда</td><td class="note">недостаточная мощность, шум</td><td class="note">сравнить размах колебаний с MDE</td></tr>
+      <tr><td>Эффект меняет знак</td><td class="note">почти всегда шум при низкой мощности</td><td class="note">доверительный интервал вместо точки</td></tr>
+      <tr><td>Эффект резко изменился в один день</td><td class="a">внешнее событие, релиз, поломка логирования</td><td class="note">проверка SRM по дням — <a href="block4_06_srm_diagnostics.html">4.6</a></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Динамика эффекта по времени — самый недоиспользуемый артефакт эксперимента. Она стоит одного графика и отвечает сразу на несколько вопросов, которые иначе требуют отдельных исследований.</p>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Средний эффект как ловушка</h2></div>
+  <p class="slead">Эксперимент оценивает средний эффект по популяции. Это осмысленная величина ровно в одном случае — когда вы собираетесь применить изменение ко всем одинаково. Как только появляется возможность применить его выборочно, среднее становится неправильным ответом.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как +0.55% скрывают −4.2% и +6.1%</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Новая выдача поиска, 800 000 пользователей. Общий результат.
+      <div class="calc"><span class="lbl">эффект на конверсию:</span> <span class="hl">+0.55%</span>
+<span class="lbl">p-значение:</span> <span class="hl">0.28</span>
+
+<span class="bad">Стандартное решение: «незначимо, откатываем».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Разрез по двум предрегистрированным измерениям.
+      <div class="calc"><span class="lbl">сегмент                    n         эффект    вклад</span>
+мобильные, новые         220 000    <span class="bad">−4.2%</span>    −924 000
+мобильные, существующие  420 000    <span class="hl">+1.8%</span>    +756 000
+десктоп, новые            60 000    <span class="res">+6.1%</span>    +366 000
+десктоп, существующие    100 000    <span class="hl">+2.4%</span>    +240 000
+<span class="dim">───────────────────────────────────────────────────</span>
+итого                    800 000               <span class="hl">+438 000</span>
+
+<span class="lbl">проверка:</span> 438 000 / 800 000 = <span class="res">+0.5475%</span> ✓
+
+<span class="bad">Три сегмента из четырёх выросли. Один упал
+настолько, что съел почти весь прирост.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что даёт починка одного сегмента.
+      <div class="calc"><span class="lbl">предположим, мобильных новичков удалось
+довести хотя бы до нуля:</span>
+
+  0 + 756 000 + 366 000 + 240 000 = 1 362 000
+  1 362 000 / 800 000 = <span class="res">+1.70%</span>
+
+<span class="res">Втрое больше исходного среднего.
+При этом ничего не изобреталось — просто
+перестал вредить один сегмент.</span>
+
+<span class="lbl">альтернатива, если починить нельзя:</span>
+  выкатить всем, кроме мобильных новичков
+  эффект на охваченных 580 000:
+    1 362 000 / 580 000 = <span class="res">+2.35%</span>
+  <span class="dim">(средний эффект на затронутой части выше,
+  потому что вредный сегмент исключён)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Три разных решения из одного эксперимента.
+      <div class="calc"><span class="lbl">решение                          прирост конверсии</span>
+откатить (по среднему эффекту)          <span class="bad">0</span>
+выкатить всем                         <span class="hl">+0.55%</span>
+выкатить всем, кроме одного сегмента  <span class="res">+1.70%</span>
+починить сегмент и выкатить всем       <span class="res">+1.70%</span>
+
+<span class="bad">Первое решение — то, которое принимается
+по умолчанию, и оно худшее из четырёх.</span>
+
+<span class="dim">Обратите внимание: чтобы прийти к третьему,
+не нужна никакая новая статистика. Нужно
+только разложить средний эффект до того,
+как его назовут незначимым.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Эффект по сегментам против среднего</div>
+    <div class="chsub">Серая линия — общий эффект +0.55%. Ни один из четырёх сегментов на ней не лежит; два отклоняются на порядок в разные стороны</div>
+    <canvas id="c_het"></canvas>
+  </div>
+
+  <div class="def">
+    <div class="def-t">Почему средний эффект — не «типичный» эффект</div>
+    <p>ATE (average treatment effect) — это среднее индивидуальных эффектов. Оно совпадает с типичным значением, только если эффекты примерно одинаковы. При разнонаправленных эффектах среднее может не описывать вообще никого.</p>
+    <p><b>Крайний случай.</b> Половине пользователей изменение помогает на +10%, половине вредит на −10%. ATE = 0, p-значение большое, вывод «эффекта нет». Реальность: изменение сильно влияет на всех, просто по-разному. Это не редкая патология, а обычная ситуация в продуктах с разнородной аудиторией.</p>
+    <p><b>Фундаментальная проблема причинного вывода.</b> Индивидуальный эффект ненаблюдаем: один человек либо получил воздействие, либо нет, второй исход не существует. Поэтому распределение индивидуальных эффектов из эксперимента извлечь нельзя — можно только оценить <b>условные средние</b> по группам, определённым наблюдаемыми признаками. Это и есть CATE.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Один средний эффект — три разных реальности</div>
+    <div class="chsub">Все три распределения индивидуальных эффектов дают ATE = +0.5%. Эксперимент не различает их между собой: он видит только среднее</div>
+    <canvas id="c_dist"></canvas>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>CATE: условный средний эффект</h2></div>
+  <p class="slead">Вместо одного числа — функция от признаков пользователя. Задача та же, что в uplift-моделировании из блока 1: там она называется по-другому, потому что пришла из маркетинга, а не из эконометрики.</p>
+
+  <div class="def">
+    <div class="def-t">CATE и его связь с uplift</div>
+    <p><b>CATE(x) = E[Y(1) − Y(0) | X = x]</b> — средний эффект среди пользователей с признаками x. При x, охватывающем всю популяцию, это ATE; при детальных x — почти индивидуальный эффект.</p>
+    <p>В маркетинге та же величина называется <b>uplift</b>, и методы её оценки — те же самые: T-learner, X-learner, causal forest. Разбор с арифметикой — в <a href="block1_03_uplift.html">1.3</a>, экономика применения — в <a href="block2_09_uplift_economics.html">2.9</a>.</p>
+    <p><b>Ключевое отличие от обычной модели.</b> Целевая переменная ненаблюдаема: у вас нет столбца «эффект». Поэтому качество нельзя проверить обычными метриками — нужны Qini, кривая подъёма или проверка монотонности по квантилям.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · проверка качества CATE-модели по квантилям</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Обучаем модель эффекта, ранжируем пользователей, делим на пять равных групп.
+      <div class="calc"><span class="lbl">квантиль   предсказанный   фактический   n</span>
+    1 (низ)      −3.5%          <span class="bad">−3.8%</span>    160 000
+    2            −0.7%          <span class="hl">−0.9%</span>    160 000
+    3            +0.9%          <span class="hl">+0.6%</span>    160 000
+    4            +2.3%          <span class="hl">+2.1%</span>    160 000
+    5 (верх)     +4.2%          <span class="res">+4.4%</span>    160 000
+
+<span class="lbl">среднее фактическое:</span>
+  (−3.8 − 0.9 + 0.6 + 2.1 + 4.4) / 5 = 2.4 / 5 = <span class="res">+0.48%</span>
+<span class="dim">близко к общему эффекту +0.55% — расхождение
+объясняется тем, что квантили здесь равны
+по числу пользователей, а не по трафику</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Главный критерий — монотонность, а не точность.
+      <div class="calc"><span class="res">Фактический эффект растёт от квантиля к квантилю
+без нарушений: −3.8 → −0.9 → +0.6 → +2.1 → +4.4</span>
+
+<span class="dim">Это и есть работоспособность модели: она умеет
+упорядочить пользователей по величине эффекта.
+Абсолютная точность предсказания менее важна —
+решение принимается по порогу, а не по значению.</span>
+
+<span class="bad">Как выглядит нерабочая модель:</span>
+  −0.4%, +1.2%, −0.8%, +0.9%, +1.6%
+  <span class="dim">порядок нарушен дважды, разброс между крайними
+  квантилями меньше их доверительных интервалов —
+  модель ранжирует шум</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что даёт применение по порогу.
+      <div class="calc"><span class="lbl">выкатываем только на квантили 3–5:</span>
+
+  затронуто: 480 000 пользователей
+  суммарный вклад:
+    160 000 × 0.6% + 160 000 × 2.1% + 160 000 × 4.4%
+    в единицах «пользователь × процент»:
+    = 160 000 × 7.1 = 1 136 000
+  средний эффект на охваченных:
+    7.1 / 3 = <span class="res">+2.37%</span>
+
+<span class="lbl">против выката всем:</span> +0.48%
+<span class="lbl">против отката:</span> 0
+
+<span class="res">Тот же эксперимент, то же изменение,
+но эффект в 4.9 раза выше — потому что
+применено туда, где работает.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Где проходит граница честности.
+      <div class="calc"><span class="bad">Нельзя:</span> обучить CATE на всей выборке,
+выбрать по ней порог и на ней же отчитаться
+об эффекте +2.37%.
+
+<span class="dim">Это отбор по шуму — та же логика, что
+в секции 7 и в 1.15: величина, максимизированная
+по данным, на этих же данных завышена.</span>
+
+<span class="res">Можно:</span> обучить модель и выбрать порог
+на первой половине эксперимента, замерить
+эффект отсечения на второй половине.
+
+<span class="lbl">замер на нашем примере:</span>
+  на обучающей половине:   <span class="bad">+2.94%</span>
+  на отложенной половине:  <span class="res">+2.37%</span>
+  <span class="dim">завышение 0.57 п.п., или 24%</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Проверка CATE-модели: предсказанный и фактический эффект по квантилям</div>
+    <div class="chsub">Монотонный рост фактического эффекта — главный признак работоспособности. Совпадение с предсказанием желательно, но вторично</div>
+    <canvas id="c_cate"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Способ искать гетерогенность</th><th>Когда применим</th><th>Риск</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>Предрегистрированные сегменты</td><td class="note">есть содержательная гипотеза до запуска</td><td class="g">минимальный: проверок мало и они объявлены</td></tr>
+      <tr><td>Взаимодействие в регрессии</td><td class="note">2–5 кандидатов на модератор</td><td class="g">низкий, если кандидаты объявлены заранее</td></tr>
+      <tr><td>Causal forest / X-learner</td><td class="note">много признаков, нет гипотезы</td><td class="a">переобучение на шуме, нужна отложенная часть</td></tr>
+      <tr class="worst"><td>Перебор всех срезов постфактум</td><td class="note">почти никогда</td><td class="r">гарантированные ложные открытия (секция 7)</td></tr>
+      <tr><td>Разделение выборки: поиск + подтверждение</td><td class="note">всегда, когда поиск не предрегистрирован</td><td class="g">честно, но вдвое дороже по мощности</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка — практический компромисс для реальной работы: искать разрешено где угодно, но подтверждать обязательно на данных, не участвовавших в поиске.</p>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Ложные сегменты и ошибка сравнения p-значений</h2></div>
+  <p class="slead">Самая распространённая ошибка в анализе гетерогенности не связана с множественностью. Она в том, что «здесь значимо, а здесь нет» принимается за доказательство различия эффектов.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · два сегмента с разной значимостью и одинаковым эффектом</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Результаты по двум сегментам.
+      <div class="calc"><span class="lbl">сегмент A:</span> эффект <span class="hl">+2.0%</span>, se <span class="hl">0.9%</span>
+  Z = 2.0 / 0.9 = 2.2222
+  p = 2 × (1 − Φ(2.2222)) = 2 × 0.013135 = <span class="res">0.0263</span>  <span class="res">значим</span>
+
+<span class="lbl">сегмент B:</span> эффект <span class="hl">+1.8%</span>, se <span class="hl">1.0%</span>
+  Z = 1.8 / 1.0 = 1.8000
+  p = 2 × (1 − Φ(1.8000)) = 2 × 0.035930 = <span class="bad">0.0719</span>  <span class="bad">не значим</span>
+
+<span class="bad">Типичный вывод: «изменение работает
+в сегменте A и не работает в B».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Проверяем то, что на самом деле утверждается: различаются ли эффекты.
+      <div class="calc"><span class="lbl">разность эффектов:</span> 2.0 − 1.8 = <span class="hl">0.2 п.п.</span>
+
+<span class="lbl">стандартная ошибка разности:</span>
+  se = √(0.9² + 1.0²) = √(0.81 + 1.00)
+     = √1.81 = <span class="hl">1.34536</span>
+
+  Z = 0.2 / 1.34536 = <span class="hl">0.14866</span>
+  p = 2 × (1 − Φ(0.14866)) = 2 × 0.44089 = <span class="bad">0.882</span>
+
+<span class="res">Гипотеза «эффекты одинаковы» не отвергается
+даже близко. Никакого различия между сегментами
+не обнаружено.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Почему это происходит так часто.
+      <div class="calc"><span class="lbl">разница в значимости объясняется не эффектом,
+а размером сегмента:</span>
+
+  сегмент A: 340 000 пользователей → se 0.9%
+  сегмент B: 275 000 пользователей → se 1.0%
+
+<span class="dim">Сегмент B меньше на 19%, поэтому его
+доверительный интервал шире, поэтому
+тот же эффект не дотягивает до порога.</span>
+
+<span class="bad">Вывод «в B не работает» — это утверждение
+о размере сегмента, замаскированное
+под утверждение о продукте.</span>
+
+<span class="res">Правильная проверка всегда одна:
+формальный тест на взаимодействие
+«эффект × сегмент», а не сопоставление
+двух p-значений.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Сколько «находок» переживают честную проверку.
+      <div class="calc"><span class="lbl">эксперимент, разобранный по 480 срезам:</span>
+
+  «значимых» сегментов найдено:            <span class="bad">26</span>
+  из них выдержали тест на взаимодействие: <span class="hl">9</span>
+  из них выдержали поправку БХ:            <span class="hl">4</span>
+  из них подтвердились на отложенной
+  половине выборки:                        <span class="res">1</span>
+
+<span class="bad">26 → 1. Двадцать пять «инсайтов»
+не пережили проверки.</span>
+
+<span class="dim">И это при том, что один настоящий сегмент
+там действительно был. Ситуация не «всё шум»,
+а «сигнал есть, но он один из двадцати шести».</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Доверительные интервалы двух сегментов</div>
+    <div class="chsub">Интервал A не пересекает ноль, интервал B пересекает — но интервалы почти полностью перекрывают друг друга, а значит эффекты неразличимы</div>
+    <canvas id="c_conf"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Правило, которое стоит повесить на стену.</b> «Значимо в A и незначимо в B» никогда не означает «в A работает, в B нет». Чтобы утверждать различие, нужно проверить <b>разность эффектов</b>, и её стандартная ошибка складывается из ошибок обоих сегментов, то есть заведомо больше каждой по отдельности. Практически это означает: <b>для обнаружения гетерогенности нужно кратно больше данных, чем для обнаружения самого эффекта</b> — обычно в четыре раза при сопоставимых величинах.
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Суррогатные метрики: измерить год за две недели</h2></div>
+  <p class="slead">Целевая метрика часто реализуется через месяцы: удержание за год, LTV, повторная покупка. Ждать нельзя, поэтому берут краткосрочный заменитель. Способ, которым его обычно выбирают, почти гарантированно даёт неправильный.</p>
+
+  <div class="def">
+    <div class="def-t">Что требуется от суррогата</div>
+    <p>Формальное условие суррогатности: целевая метрика <b>независима от воздействия при условии суррогата</b>. Иначе говоря, весь эффект изменения на долгосрочный исход должен проходить <i>через</i> суррогат, не в обход него.</p>
+    <p><b>Что это НЕ значит.</b> Не требуется, чтобы суррогат сильно коррелировал с целевой метрикой на уровне пользователей. Эта корреляция почти всегда высока и почти ничего не говорит — она отражает то, что хорошие пользователи хороши по всем метрикам сразу.</p>
+    <p><b>Что требуется проверять.</b> Корреляцию <b>эффектов</b>: если по прошлым экспериментам изменение суррогата предсказывает изменение целевой метрики — суррогат работает. Это совсем другая величина, и она обычно намного ниже.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · лучший по корреляции суррогат оказывается худшим</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Четыре кандидата, две разные корреляции.
+      <div class="calc"><span class="lbl">суррогат              r с целевой    r эффектов
+                      (пользователи)  (40 экспериментов)</span>
+время на сайте            <span class="res">0.76</span>            <span class="bad">0.12</span>
+активность 14 дней        0.71            <span class="res">0.83</span>
+число сессий 7 дней       0.68            <span class="hl">0.41</span>
+NPS-опрос                 <span class="bad">0.44</span>            <span class="hl">0.66</span>
+
+<span class="bad">Время на сайте: первое место по первому
+столбцу, последнее по второму.</span>
+<span class="res">NPS: последнее по первому, второе по второму.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Почему так получается.
+      <div class="calc"><span class="lbl">на уровне пользователей обе метрики
+определяются одним скрытым фактором —
+насколько человеку вообще нужен продукт:</span>
+
+  заинтересованный → много времени на сайте
+  заинтересованный → остаётся через год
+  <span class="dim">корреляция 0.76 возникает из общей причины,
+  а не из связи между самими метриками</span>
+
+<span class="lbl">на уровне эффектов вопрос другой:</span>
+  <span class="res">если изменение УВЕЛИЧИЛО время на сайте,
+  увеличится ли удержание?</span>
+
+  <span class="bad">Не обязательно. Интерфейс, в котором труднее
+  найти нужное, увеличивает время на сайте
+  и снижает удержание. Такие изменения
+  в выборке из 40 экспериментов встречались —
+  отсюда корреляция эффектов 0.12.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Цена ошибочного выбора.
+      <div class="calc"><span class="lbl">выбрали «время на сайте» как суррогат
+и провели по нему 25 экспериментов за год</span>
+
+  выкачено как успешные: 11
+  из них при годовой проверке:
+    реально улучшили удержание:   <span class="hl">5</span>
+    не повлияли:                  <span class="hl">4</span>
+    <span class="bad">ухудшили удержание:           2</span>
+
+<span class="bad">Точность решений 45%. Немногим лучше
+подбрасывания монеты — и это при том,
+что каждое решение выглядело обоснованным.</span>
+
+<span class="lbl">та же процедура с «активностью 14 дней»:</span>
+  выкачено 9, реально улучшили <span class="res">7</span>, ухудшили <span class="res">0</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Как проверить суррогат правильно.
+      <div class="calc"><span class="res">1. Взять историю прошлых экспериментов,
+   у которых известен и краткосрочный,
+   и долгосрочный результат.</span>
+   <span class="dim">Минимум 20–30 экспериментов; меньше —
+   корреляция эффектов сама будет шумом.</span>
+
+<span class="res">2. Построить точки (эффект на суррогат,
+   эффект на целевую) и посмотреть на связь.</span>
+
+<span class="res">3. Проверить не только корреляцию,
+   но и знак и масштаб.</span>
+   <span class="dim">Суррогат может коррелировать, но систематически
+   преувеличивать: рост суррогата на 5%
+   соответствует росту целевой на 1%.
+   Тогда нужен коэффициент пересчёта.</span>
+
+<span class="res">4. Отдельно проверить на изменениях
+   разного типа (см. секцию 13).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Две корреляции: на уровне пользователей и на уровне эффектов</div>
+    <div class="chsub">Порядок кандидатов по двум критериям почти противоположен. Выбирать нужно по правому столбцу, а измеряют обычно левый</div>
+    <canvas id="c_surr"></canvas>
+  </div>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Surrogate index — и 15 подводных камней</h2></div>
+  <p class="slead">Один суррогат перехватывает один канал влияния. Комбинация нескольких перехватывает больше — и это единственный способ приблизиться к формальному условию суррогатности на практике.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · построение и проверка индекса</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Как строится. Регрессия долгосрочного исхода на набор ранних метрик.
+      <div class="calc"><span class="lbl">целевая:</span> удержание через 12 месяцев
+<span class="lbl">предикторы:</span> метрики первых 14 дней
+
+<span class="lbl">метрика                        вес в индексе</span>
+активность (дней с действием)       <span class="hl">0.42</span>
+глубина использования функций       <span class="hl">0.24</span>
+оценка NPS                          <span class="hl">0.18</span>
+время до первого успеха             <span class="hl">0.11</span>
+число обращений в поддержку        <span class="hl">−0.05</span>
+
+<span class="dim">Обучать модель можно на наблюдательных данных —
+достаточно исторических пользователей с известным
+годовым исходом. Но валидировать её обязательно
+на уровне эффектов экспериментов.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Валидация: leave-one-experiment-out по 40 прошлым экспериментам.
+      <div class="calc"><span class="lbl">состав индекса          r эффектов   MAE, п.п.</span>
+только активность            0.83        <span class="hl">0.61</span>
++ глубина использования      0.89        <span class="hl">0.44</span>
++ NPS                        0.92        <span class="hl">0.34</span>
++ время до успеха            <span class="res">0.94</span>        <span class="res">0.28</span>
++ обращения в поддержку      0.94        0.28
+
+<span class="res">Ошибка предсказания долгосрочного эффекта
+падает с 0.61 до 0.28 п.п. — вдвое.</span>
+<span class="dim">Пятая метрика уже ничего не добавляет:
+её информация содержится в предыдущих.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Почему комбинация работает лучше одиночного суррогата.
+      <div class="calc"><span class="lbl">условие суррогатности требует, чтобы ВЕСЬ
+эффект проходил через суррогат.</span>
+
+<span class="lbl">одна метрика перехватывает один канал:</span>
+  активность ловит «пользователь стал чаще
+  заходить» и не ловит «пользователь понял,
+  зачем нужен продукт»
+
+<span class="lbl">разные метрики ловят разные каналы:</span>
+  глубина функций → понимание ценности
+  NPS            → отношение к продукту
+  время до успеха → качество онбординга
+
+<span class="res">Каждая закрывает свой обходной путь,
+по которому эффект мог бы дойти
+до годового удержания мимо остальных.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Где индекс ломается — и это важнее, чем то, где он работает.
+      <div class="calc"><span class="lbl">разбиваем 40 экспериментов по типу изменения:</span>
+
+  интерфейсные (34 шт.):  MAE <span class="res">0.19 п.п.</span>
+  ценовые (6 шт.):        MAE <span class="bad">1.42 п.п.</span>
+
+<span class="bad">В 7.5 раза хуже на классе изменений,
+которого почти не было в обучении.</span>
+
+<span class="lbl">механизм:</span> ценовое изменение влияет
+на годовое удержание через готовность платить,
+а она не отражается ни в одной поведенческой
+метрике первых двух недель. Условие
+суррогатности нарушено — есть обходной путь.
+
+<span class="res">Правило: индекс валиден для класса изменений,
+на котором он обучен и проверен. Для нового
+класса нужен либо новый индекс, либо честный
+долгий эксперимент.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Экономика подхода.
+      <div class="calc"><span class="lbl">без индекса:</span>
+  каждое решение требует 12 месяцев
+  экспериментов в год: <span class="bad">~2 параллельных потока</span>
+
+<span class="lbl">с индексом:</span>
+  решение за 3 недели, MAE 0.28 п.п.
+  экспериментов в год: <span class="res">~17 на поток</span>
+
+<span class="lbl">гибрид (то, что делают на практике):</span>
+  решения принимаются по индексу,
+  но <span class="res">10–15% выкаченных изменений</span>
+  оставляются с холдаутом на год
+  для проверки индекса и его перекалибровки
+
+<span class="dim">Холдаут — это цена поддержания индекса
+в рабочем состоянии. Без него он устаревает
+вместе с продуктом и аудиторией.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Точность surrogate index по числу метрик и по классу изменений</div>
+    <div class="chsub">Столбцы — средняя абсолютная ошибка предсказания годового эффекта. Слева наращивание метрик, справа — разбивка по типу изменения при полном индексе</div>
+    <canvas id="c_index"></canvas>
+  </div>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Запуск без расчёта MDE</b><span>Эксперимент с MDE 3.4% при правдоподобном эффекте 0.5% закончится словом «незначимо» независимо от того, работает изменение или нет. Расчёт занимает две минуты и отсеивает такие запуски заранее.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>«Незначимо» прочитано как «эффекта нет»</b><span>Корректное прочтение — «мы не смогли отличить эффект от нуля при нашей чувствительности». Разница принципиальна: доверительный интервал [−0.4%; +1.5%] совместим и с нулём, и с полуторапроцентным приростом.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>Длительность не кратна неделе</b><span>Артефакт состава дней недели в разобранном примере составил +2.44% — это 72% от MDE за неделю. Округление вверх до целых недель убирает смещение, сопоставимое с измеряемым эффектом.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Остановка на первой неделе из-за большого эффекта</b><span>Эффект новизны дал +5.8% на первой неделе при истинных +0.7%: завышение в 8.3 раза. Диагностика — срез по новым пользователям, у которых эффекта новизны нет по построению.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Наивная дисперсия для ratio-метрик</b><span>Занижение стандартной ошибки на 18% превращает заявленные 5% ошибки первого рода в фактические 10.8%. Дельта-метод обязателен всегда, когда уровень рандомизации не совпадает с уровнем метрики.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Размер выборки указан в сессиях, а не в пользователях</b><span>Тот же дефект в другой обёртке. Быстрая проверка чужого отчёта: если рандомизация по пользователям, а n в событиях, дисперсия почти наверняка занижена.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Выбросы удалены после просмотра результатов</b><span>Винзоризация — законный и мощный приём, дающий эквивалент 64-кратного роста выборки. Но правило обрезки должно быть зафиксировано <i>до</i> разделения на группы. Иначе это подгонка результата, а не снижение дисперсии.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Винзоризованная метрика подана как полная</b><span>Обрезка на 20 000 ₽ выбросила из измерения 44.2% выручки. Решение по такой метрике принимать можно, но сырую нужно держать гардрейлом — иначе поломка крупных клиентов останется невидимой.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Ежедневный мониторинг без поправки</b><span>Два взгляда вместо одного дают 8.3% вместо 5%, месяц ежедневных проверок — больше 25%. Решение не в запрете смотреть, а в корректных границах: альфа-спендинг, mSPRT, доверительные последовательности из <a href="block4_05_sequential_testing.html">4.5</a>.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Разбор по всем срезам без поправки</b><span>Восемь измерений с попарными пересечениями дают 480 проверок и 24 ожидаемых ложных находки при полностью нулевом эффекте. Вероятность найти «значимый» сегмент в чистом шуме неотличима от единицы.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Сравнение p-значений вместо теста на взаимодействие</b><span>Эффекты 2.0% (p=0.026) и 1.8% (p=0.072) различаются с p = 0.882, то есть не различаются вовсе. Разница в значимости объяснялась размером сегментов, а не продуктом.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Порог CATE выбран и проверен на одних данных</b><span>Завышение 0.57 п.п. (24%) в разобранном примере. Порог, максимизированный по выборке, на ней же выглядит лучше, чем на новых данных — та же логика, что в <a href="block1_15_validation_schemes.html">1.15</a>.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Суррогат выбран по корреляции с целевой метрикой</b><span>Лучший по корреляции на уровне пользователей (0.76) оказался худшим по корреляции эффектов (0.12). Первая величина отражает, что заинтересованные пользователи хороши по всем метрикам сразу; вторая — то, что вам нужно.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Индекс применён к классу изменений, на котором не проверялся</b><span>MAE 0.19 п.п. на интерфейсных изменениях и 1.42 п.п. на ценовых — в 7.5 раза хуже. Ценовое изменение доходит до годового удержания в обход всех поведенческих метрик первых недель.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Индекс работает без холдаута</b><span>Без 10–15% выкатов, оставленных с контролем на год, индекс невозможно перекалибровать. Он устаревает вместе с продуктом и аудиторией, а обнаружится это только тогда, когда несколько решений подряд окажутся ошибочными.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где статистика — не главная сложность.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Платформа экспериментов на 400 запусков в год</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Двадцать продуктовых команд, общий трафик 6 млн пользователей в месяц, у большинства команд нет статистического образования.</p>
+      <p><b>Что платформа обязана считать за пользователя.</b> MDE до запуска с отказом от старта, если он выше объявленного порога осмысленности. Длительность, округлённую вверх до целых недель. Дисперсию ratio-метрик дельта-методом — по умолчанию, без опции «посчитать наивно».</p>
+      <p><b>Что платформа обязана показывать.</b> Доверительный интервал вместо p-значения как основной вывод: «эффект +0.7% [−0.4%; +1.8%]» не даёт прочитать результат как «эффекта нет». Динамику эффекта по неделям с отдельной кривой для новых пользователей. SRM-проверку по всем срезам.</p>
+      <p><b>Главный конфликт.</b> Ограничение на подглядывание раздражает команды сильнее всего. Правильное решение — не запрет, а последовательные границы из <a href="block4_05_sequential_testing.html">4.5</a>: смотреть можно каждый день, останавливаться — по корректному порогу. Это стоит примерно 5% мощности и снимает весь конфликт.</p>
+      <p><b>Экономика мощности.</b> При 6 млн пользователей и 400 экспериментах в год одновременно помещается около 15 запусков при 20% трафика на каждый. Очередь — реальное ограничение, поэтому расчёт MDE выполняет ещё и функцию приоритизации: эксперименты, которые заведомо ничего не покажут, не занимают слот.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Маркетплейс: эффект на продавцов и покупателей одновременно</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Изменение алгоритма ранжирования. Покупатели рандомизируются легко, но их поведение меняет выдачу и доход продавцов, которые в эксперименте не участвуют.</p>
+      <p><b>Почему обычный A/B даёт неверный ответ.</b> Нарушено SUTVA: исход одного участника зависит от того, кто попал в тест. Если тестовая группа стала чаще покупать у топ-продавцов, у контрольной их товары закончились — и контроль ухудшился, завысив измеренный эффект. Разбор механики — в <a href="block4_03_switchback.html">4.3</a>.</p>
+      <p><b>Что делать со стороны дизайна.</b> Кластерная рандомизация по географии или категории товара, либо switchback по времени. Оба варианта резко снижают эффективное число независимых наблюдений: при внутрикластерной корреляции 0.05 и кластерах по 2 000 человек design effect равен 1 + 0.05×1999 = 100.95, то есть требуется примерно в сто раз больше пользователей.</p>
+      <p><b>Что делать со стороны метрик.</b> Гетерогенность здесь не побочный анализ, а суть: эффект на крупных продавцов и на новых почти всегда противоположен по знаку, и средний по всем не описывает ни одну сторону. Сегменты должны быть предрегистрированы вместе с гипотезой о направлении.</p>
+      <p><b>Реалистичный компромисс.</b> Малый эксперимент с кластерной рандомизацией для проверки знака и порядка эффекта, затем поэтапный выкат с мониторингом — вместо попытки получить точную оценку, на которую не хватит мощности.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Подписка: решение по годовому удержанию за три недели</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Целевая метрика — удержание через 12 месяцев. Продуктовая команда выпускает изменения каждые две недели и не может ждать год на каждое.</p>
+      <p><b>Построение индекса.</b> История из 40 экспериментов с известным годовым исходом, регрессия годового удержания на метрики первых 14 дней, валидация leave-one-experiment-out. Итог: корреляция эффектов 0.94, MAE 0.28 п.п. против 0.61 у лучшего одиночного суррогата.</p>
+      <p><b>Регламент, без которого индекс мёртв.</b> 10–15% выкаченных изменений оставляются с годовым холдаутом. Это стоит части эффекта на выборке холдаута и является единственным способом заметить, что индекс перестал работать.</p>
+      <p><b>Явное ограничение области применимости.</b> Индекс обучен на интерфейсных изменениях и на них даёт MAE 0.19 п.п. Для ценовых изменений — 1.42 п.п., что делает его непригодным. Ценовые эксперименты идут по отдельному, долгому протоколу, и это должно быть записано в правилах платформы, а не оставлено на усмотрение аналитика.</p>
+      <p><b>Что сообщать бизнесу.</b> Не «удержание вырастет на 1.2%», а «предсказанный годовой эффект +1.2% при типичной ошибке предсказания 0.28 п.п. для изменений этого класса». Второе честно и позволяет принять решение с учётом риска.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Персонализация выката по CATE</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Изменение даёт +0.55% в среднем при p = 0.28. Есть подозрение на сильную гетерогенность. Нужно решить, что выкатывать и кому.</p>
+      <p><b>Протокол, который защищает от самообмана.</b> Разделить эксперимент пополам случайно. На первой половине обучить модель эффекта и выбрать порог. На второй — замерить эффект отсечения, ничего не подбирая. В разобранном примере: +2.94% на обучающей половине и +2.37% на отложенной, завышение 24%.</p>
+      <p><b>Что проверять у модели.</b> Монотонность фактического эффекта по квантилям предсказанного — это и есть критерий работоспособности. Абсолютная точность вторична: решение принимается по порогу, а не по значению.</p>
+      <p><b>Операционная сложность, которую недооценивают.</b> Персонализированный выкат означает, что продукт существует в двух версиях постоянно. Это удваивает поверхность поддержки, усложняет все последующие эксперименты (какая версия является базовой?) и требует, чтобы модель эффекта работала в реальном времени на новых пользователях, о которых известно меньше.</p>
+      <p><b>Когда проще не персонализировать.</b> Если выигрыш от отсечения меньше стоимости поддержки двух версий, правильное решение — либо починить плохой сегмент, либо выкатить всем. Расчёт из секции 9 показывает, что починка сегмента даёт тот же +1.70%, что и отсечение, но без операционной сложности.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Малый продукт: 3 000 пользователей в неделю</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Ранняя стадия, трафика мало. MDE при конверсии 4.2% и двух неделях: 2.802 × 4.776 × √(2/6000) = 24.4%. Ловятся только изменения, увеличивающие конверсию в полтора раза.</p>
+      <p><b>Честный вывод.</b> Классический A/B на таком трафике не работает почти ни для чего. Признать это — более полезное действие, чем провести двадцать экспериментов, каждый из которых закончится «незначимо».</p>
+      <p><b>Что делать вместо.</b> Первое — брать метрики с меньшим CV: не конверсию в покупку, а более частое событие выше по воронке. Второе — снижать дисперсию всеми доступными способами, включая CUPED. Третье — принимать решения по качественным данным и здравому смыслу, явно обозначая, что это не эксперимент.</p>
+      <p><b>Где A/B всё-таки применим.</b> Для отлова поломок, а не для оптимизации. Проверка «новая версия не сломала оплату» требует чувствительности порядка десятков процентов — и её как раз хватает. Такой эксперимент — гардрейл, и для него уместна обратная логика ошибок из <a href="block1_12_metrics_framing.html">1.12</a>: перестраховаться дешевле, чем пропустить поломку.</p>
+      <p><b>Чего точно не делать.</b> Не запускать эксперимент и останавливать его, когда «стало значимо». При мощности 8% и ежедневном подглядывании доля ложных срабатываний среди объявленных побед превысит 80% — и команда построит продукт на шуме.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что именно покупает рандомизация?</b><span>Сопоставимость групп по всем характеристикам сразу — наблюдаемым и ненаблюдаемым. И только это. Правильность метрики, достаточность мощности, однородность эффекта, его долгосрочность и отсутствие взаимодействия между группами рандомизация не обеспечивает.</span></div>
+
+  <div class="qa"><b>2. Почему мощность 80%, а не 95%?</b><span>По традиции, а не по расчёту. Переход к 95% умножает выборку на (3.605/2.802)² = 1.656. Правильный выбор — из экономики: сравнить стоимость упущенного улучшения со стоимостью лишних недель эксперимента и очереди на трафик.</span></div>
+
+  <div class="qa"><b>3. Что важнее — α или доля ложных среди значимых?</b><span>Второе, потому что решение принимается именно по нему. α отвечает на вопрос «как часто ошибусь, если эффекта нет»; доля ложных среди побед зависит ещё и от того, какая часть ваших идей вообще работает. При 5% работающих идей она составит 54.3% даже при идеальной статистике.</span></div>
+
+  <div class="qa"><b>4. Как рассчитать размер выборки?</b><span>n = 2(z<sub>1−α/2</sub> + z<sub>1−β</sub>)²σ²/δ². Для конверсии 4.2% и относительного MDE 3% при α=0.05 и мощности 80%: 2 × 7.8489 × 0.040236 / 1.5876×10⁻⁶ = 397 843 на группу.</span></div>
+
+  <div class="qa"><b>5. Почему уменьшение MDE вдвое стоит вчетверо больше данных?</b><span>Потому что δ входит в формулу в квадрате. Это самая практически важная зависимость раздела: она означает, что борьба за чувствительность даёт быстро убывающую отдачу, и решать вопрос надо снижением дисперсии, а не увеличением срока.</span></div>
+
+  <div class="qa"><b>6. Зачем округлять длительность до целых недель?</b><span>Состав дней недели сильно влияет на метрику. В разобранном примере девять дней вместо семи дали +2.44% чистого артефакта — это 72% от MDE за неделю. Смещение сопоставимо с измеряемым эффектом, и оно систематическое, а не случайное.</span></div>
+
+  <div class="qa"><b>7. Что делать, если MDE больше правдоподобного эффекта?</b><span>Не запускать эксперимент. Он с вероятностью около 80% закончится словом «незначимо» независимо от того, работает изменение или нет, и займёт слот в очереди на трафик. Альтернативы: снизить дисперсию, взять метрику выше по воронке, увеличить долю трафика, принять решение без эксперимента и честно это назвать.</span></div>
+
+  <div class="qa"><b>8. «Незначимо» — это «эффекта нет»?</b><span>Нет. Это «мы не смогли отличить эффект от нуля при нашей чувствительности». Правильный способ сообщить результат — доверительный интервал: [−0.4%; +1.5%] сразу показывает, что и ноль, и полуторапроцентный прирост совместимы с данными.</span></div>
+
+  <div class="qa"><b>9. Где на самом деле теряется чувствительность?</b><span>В дисперсии. В разобранном примере 10 пользователей из 10 000 несли 99.63% суммы квадратов отклонений, CV метрики выручки составил 13.98 против 4.78 у конверсии — почти втрое хуже, а в квадрате в 8.6 раза требовательнее к объёму.</span></div>
+
+  <div class="qa"><b>10. Насколько помогает винзоризация?</b><span>Сильно: MDE упал с 8.78% до 1.10%, то есть в 8 раз, что эквивалентно 64-кратному увеличению выборки. Ни один другой приём не даёт такого размена. Плата — обрезанная метрика не видит 44.2% выручки.</span></div>
+
+  <div class="qa"><b>11. Как правильно применять винзоризацию?</b><span>Правило обрезки фиксируется до разделения на группы и применяется одинаково к обеим. Винзоризованная метрика — основная для решения, сырая — гардрейл. Если удалять выбросы после просмотра результатов, это уже подгонка, а не снижение дисперсии.</span></div>
+
+  <div class="qa"><b>12. Чем CUPED лучше винзоризации?</b><span>Тем, что не вносит смещения: оценка остаётся несмещённой, метрика продолжает измерять то же самое. Выигрыш скромнее (20–50% против кратного), но платить за него нечем. Поэтому CUPED первый в очереди, а винзоризация — когда его не хватило. Разбор в <a href="block4_02_cuped.html">4.2</a>.</span></div>
+
+  <div class="qa"><b>13. Что такое дельта-метод и когда он нужен?</b><span>Способ посчитать дисперсию отношения через дисперсии и ковариацию числителя и знаменателя на уровне рандомизации. Нужен всегда, когда метрика — отношение, а рандомизация происходит на другом уровне: конверсия на сессию при рандомизации по пользователям, средний чек, CTR.</span></div>
+
+  <div class="qa"><b>14. Насколько занижает наивный расчёт?</b><span>В разобранном примере на 18%: истинная se 0.000327 против наивной 0.000268. Это превращает объявленные 5% ошибки первого рода в фактические 10.8% — более чем вдвое. Ошибка систематическая и не убывает с ростом выборки.</span></div>
+
+  <div class="qa"><b>15. Как быстро проверить чужой отчёт на эту ошибку?</b><span>Посмотреть, в каких единицах указан размер выборки. Если рандомизация по пользователям, а n в сессиях или показах — дисперсия почти наверняка занижена. Второй способ: A/A-тест, где доля значимых должна быть около 5%, а при наивной формуле окажется около 11%.</span></div>
+
+  <div class="qa"><b>16. Когда наивная формула всё-таки корректна?</b><span>Когда уровень рандомизации совпадает с уровнем метрики, либо когда разброс знаменателя мал. Практический критерий — коэффициент вариации знаменателя: при CV ниже 0.2 расхождение обычно в пределах пары процентов, при CV 0.75 (как в примере) занижение уже 18%.</span></div>
+
+  <div class="qa"><b>17. Сколько проверок нужно, чтобы найти ложное открытие?</b><span>Двадцати достаточно: P = 1 − 0.95²⁰ = 0.64. Восемь измерений с попарными пересечениями дают 480 срезов, ожидаемое число ложных находок 24, а вероятность найти хотя бы одну неотличима от единицы.</span></div>
+
+  <div class="qa"><b>18. Нужна ли поправка на множественность для гардрейлов?</b><span>Нет, и она вредна. У гардрейлов обратная логика ошибок: пропустить поломку хуже, чем перестраховаться. Поправка снижает мощность и делает их менее чувствительными ровно к тому, ради чего они существуют. Подробнее — в <a href="block1_12_metrics_framing.html">1.12</a>.</span></div>
+
+  <div class="qa"><b>19. Почему средний эффект может ввести в заблуждение?</b><span>Потому что он усредняет разнонаправленные эффекты. В разобранном примере +0.55% состояли из −4.2% на мобильных новичках и +6.1% на десктопных новых. Откат по среднему выбросил оба, хотя починка одного сегмента дала бы +1.70%.</span></div>
+
+  <div class="qa"><b>20. Можно ли восстановить распределение индивидуальных эффектов?</b><span>Нет. Индивидуальный эффект ненаблюдаем: человек либо получил воздействие, либо нет, второй исход не существует. Из эксперимента извлекаются только условные средние по группам, определённым наблюдаемыми признаками — это и есть CATE.</span></div>
+
+  <div class="qa"><b>21. Чем CATE отличается от uplift?</b><span>Ничем по существу — это одна величина под двумя названиями, пришедшими из эконометрики и из маркетинга. Методы оценки те же: T-learner, X-learner, causal forest. Арифметика разобрана в <a href="block1_03_uplift.html">1.3</a>, экономика применения — в <a href="block2_09_uplift_economics.html">2.9</a>.</span></div>
+
+  <div class="qa"><b>22. Как проверить качество CATE-модели?</b><span>Разбить пользователей на квантили предсказанного эффекта и посмотреть фактический эффект в каждом. Главный критерий — монотонность: −3.8% → −0.9% → +0.6% → +2.1% → +4.4%. Абсолютная точность вторична, потому что решение принимается по порогу.</span></div>
+
+  <div class="qa"><b>23. Как честно замерить выигрыш от персонализации?</b><span>Разделить эксперимент пополам: на первой половине обучить модель и выбрать порог, на второй замерить эффект, ничего не подбирая. В примере: +2.94% на обучающей половине и +2.37% на отложенной — завышение 24%.</span></div>
+
+  <div class="qa"><b>24. «Значимо в A, незначимо в B» — доказывает ли это различие?</b><span>Нет. Эффекты 2.0% (p=0.026) и 1.8% (p=0.072) различаются с p = 0.882. Разница в значимости объяснялась размерами сегментов: 340 тыс. против 275 тыс. Единственная корректная проверка — тест на взаимодействие «эффект × сегмент».</span></div>
+
+  <div class="qa"><b>25. Почему для гетерогенности нужно больше данных?</b><span>Стандартная ошибка разности эффектов складывается из ошибок обоих сегментов и потому больше каждой по отдельности. При сопоставимых величинах это означает примерно четырёхкратное требование к объёму по сравнению с обнаружением самого эффекта.</span></div>
+
+  <div class="qa"><b>26. Как выбрать суррогатную метрику?</b><span>По корреляции <b>эффектов</b> на истории прошлых экспериментов, а не по корреляции с целевой метрикой на уровне пользователей. В примере лучший по второму критерию (0.76) оказался худшим по первому (0.12): время на сайте растёт и когда интерфейс удобен, и когда в нём трудно что-то найти.</span></div>
+
+  <div class="qa"><b>27. Почему корреляция на уровне пользователей обманывает?</b><span>Обе метрики определяются общим скрытым фактором — насколько человеку нужен продукт. Заинтересованный пользователь и проводит много времени, и остаётся через год. Это не связь между метриками, а общая причина, и на неё нельзя воздействовать через одну из них.</span></div>
+
+  <div class="qa"><b>28. Зачем комбинировать несколько суррогатов?</b><span>Условие суррогатности требует, чтобы весь эффект проходил через суррогат. Одна метрика перехватывает один канал; разные метрики закрывают разные обходные пути. Замер: MAE предсказания годового эффекта падает с 0.61 п.п. у лучшей одиночной до 0.28 п.п. у индекса из четырёх.</span></div>
+
+  <div class="qa"><b>29. Где surrogate index ломается?</b><span>На классе изменений, которого не было в обучении. В примере MAE 0.19 п.п. на интерфейсных изменениях и 1.42 п.п. на ценовых — в 7.5 раза хуже, потому что цена влияет на годовое удержание через готовность платить, минуя все ранние поведенческие метрики.</span></div>
+
+  <div class="qa"><b>30. Что делать, если трафика мало?</b><span>Признать, что классический A/B не работает: при 3 000 пользователей в неделю MDE за две недели составляет 24.4%. Дальше — брать метрики с меньшим CV выше по воронке, снижать дисперсию, использовать A/B как гардрейл для отлова поломок и честно называть остальные решения решениями без эксперимента.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 4.1 открывает блок 4. Снижение дисперсии без смещения — <a href="block4_02_cuped.html">4.2</a>, нарушение SUTVA и кластерная рандомизация — <a href="block4_03_switchback.html">4.3</a>, оценка эффекта без эксперимента — <a href="block4_04_causal_ml.html">4.4</a>, корректные границы для подглядывания — <a href="block4_05_sequential_testing.html">4.5</a>, диагностика испорченных экспериментов — <a href="block4_06_srm_diagnostics.html">4.6</a>. Выбор метрики и порога из стоимостей ошибок — <a href="block1_12_metrics_framing.html">1.12</a>. Оценка индивидуального эффекта теми же методами под другим названием — <a href="block1_03_uplift.html">1.3</a> и <a href="block2_09_uplift_economics.html">2.9</a>. Почему офлайн-метрика не заменяет эксперимент — <a href="block1_13_feedback_loops.html">1.13</a> и <a href="block1_15_validation_schemes.html">1.15</a>.
+</div>
+
+<div class="pnav">
+  <a href="index_roadmap.html">← К роадмапу</a>
+  <a class="next" href="block4_02_cuped.html">4.2 · CUPED и снижение дисперсии →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#854d0e', AC2='#eab308', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — доля ложных среди значимых */
+mk('c_fdr',{type:'line',data:{labels:['5%','10%','20%','33%','50%','70%'],
+ datasets:[{label:'Доля ложных среди значимых, %',data:[54.29,36.00,20.00,11.26,5.88,2.61],
+  borderColor:RD,backgroundColor:'rgba(185,28,28,.07)',tension:.3,fill:true,pointRadius:5}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:60,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'доля идей, которые реально работают'}},NOG)},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(){return 'при α = 0.05 и мощности 80%';}}}}}});
+
+/* 2 — размер выборки от MDE */
+mk('c_n',{type:'line',data:{labels:['1%','1.5%','2%','3%','5%','10%'],
+ datasets:[{label:'Пользователей на группу',data:[3580587,1591372,895147,397843,143223,35806],
+  borderColor:AC,backgroundColor:'rgba(133,77,14,.08)',tension:.2,fill:true,pointRadius:5}]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'на группу (лог. шкала)'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'относительный MDE'}},NOG)},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var d=[79.6,35.4,19.9,8.8,3.2,0.8];return 'дней при 45 000/сутки: '+d[it[0].dataIndex];}}}}}});
+
+/* 3 — MDE по неделям */
+mk('c_mde',{type:'line',data:{labels:['1','2','3','4','5','6','8','12','16'],
+ datasets:[
+  {label:'MDE, % относительных',data:[3.371,2.384,1.946,1.686,1.508,1.376,1.192,0.973,0.843],borderColor:AC,backgroundColor:'rgba(133,77,14,.08)',tension:.25,fill:true,pointRadius:5},
+  {label:'Порог осмысленности выката 1.5%',data:[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5],borderColor:RD,borderDash:[4,4],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.6,max:3.6,title:{display:true,text:'MDE, %'}},GRID),x:Object.assign({title:{display:true,text:'недель эксперимента'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 4 — разложение дисперсии */
+mk('c_var',{type:'bar',data:{labels:['Разброс внутри обычных','Отклонение обычных от среднего','Отклонение 10 крупных'],
+ datasets:[{label:'Вклад в сумму квадратов',data:[3.840156e9,1.438914e9,1.437470e12],
+  backgroundColor:[GY,'#cbd5e1',RD],borderRadius:4}]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'сумма квадратов (лог. шкала)'},grid:{color:'#eef2f7'}},x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var d=['0.27% от суммы','0.10%','99.63%'];return 'доля: '+d[it[0].dataIndex];}}}}}});
+
+/* 5 — винзоризация */
+mk('c_wins',{type:'bar',data:{labels:['5 тыс.','10 тыс.','20 тыс.','50 тыс.','100 тыс.','без обрезки'],
+ datasets:[
+  {type:'bar',label:'MDE, %',data:[0.824,0.884,1.100,1.997,3.475,8.779],backgroundColor:AC,borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Доля выручки в метрике, %',data:[56.4,57.0,58.1,61.6,67.4,100.0],borderColor:GR,tension:.25,pointRadius:5,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:10,position:'left',title:{display:true,text:'MDE, %'}},GRID),
+   y1:{min:40,max:105,position:'right',grid:{display:false},title:{display:true,text:'% выручки'}},
+   x:Object.assign({title:{display:true,text:'уровень обрезки'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 6 — дельта-метод */
+mk('c_delta',{type:'bar',data:{labels:['0.1','0.2','0.4','0.75','1.2','2.0'],
+ datasets:[
+  {type:'bar',label:'Истинная ошибка I рода, %',data:[5.2,5.7,7.4,10.8,16.2,24.3],backgroundColor:RD,borderRadius:4,yAxisID:'y',order:3},
+  {type:'line',label:'Заявленный уровень 5%',data:[5,5,5,5,5,5],borderColor:GY,borderDash:[4,4],pointRadius:0,yAxisID:'y',order:1},
+  {type:'line',label:'Во сколько раз занижена se',data:[1.008,1.030,1.098,1.220,1.402,1.680],borderColor:BL,tension:.25,pointRadius:5,yAxisID:'y1',order:2}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:27,position:'left',title:{display:true,text:'%'}},GRID),
+   y1:{min:1.0,max:1.8,position:'right',grid:{display:false},title:{display:true,text:'кратность'}},
+   x:Object.assign({title:{display:true,text:'коэффициент вариации знаменателя'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 7 — множественные сравнения */
+mk('c_mult',{type:'line',data:{labels:['1','5','10','20','50','100','480'],
+ datasets:[
+  {label:'P(хотя бы одно ложное), %',data:[5.0,22.6,40.1,64.2,92.3,99.4,100.0],borderColor:RD,backgroundColor:'rgba(185,28,28,.07)',tension:.2,fill:true,pointRadius:5},
+  {label:'Номинальный уровень 5%',data:[5,5,5,5,5,5,5],borderColor:GY,borderDash:[4,4],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:105,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'число проверок'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — эффект новизны */
+mk('c_novel',{type:'line',data:{labels:['1','2','3','4','5','6'],
+ datasets:[
+  {label:'Существующие пользователи',data:[7.9,4.1,1.7,1.1,0.8,0.7],borderColor:RD,tension:.25,pointRadius:5},
+  {label:'Новые пользователи',data:[0.8,0.8,0.7,0.7,0.7,0.7],borderColor:GR,tension:.25,pointRadius:5},
+  {label:'Общий эффект',data:[5.8,3.1,1.4,0.9,0.7,0.7],borderColor:AC,borderDash:[5,4],tension:.25,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:8.5,title:{display:true,text:'эффект, %'}},GRID),x:Object.assign({title:{display:true,text:'неделя эксперимента'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 9 — эффект по сегментам */
+mk('c_het',{type:'bar',data:{labels:['Мобильные, новые','Мобильные, существующие','Десктоп, новые','Десктоп, существующие'],
+ datasets:[
+  {type:'bar',label:'Эффект в сегменте, %',data:[-4.2,1.8,6.1,2.4],backgroundColor:[RD,AC2,GR,AC2],borderRadius:4,order:2},
+  {type:'line',label:'Общий эффект +0.55%',data:[0.55,0.55,0.55,0.55],borderColor:GY,borderDash:[4,4],pointRadius:0,order:1}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:-5.5,max:7,title:{display:true,text:'эффект, %'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var n=['220 000','420 000','60 000','100 000'];return 'пользователей: '+n[it[0].dataIndex];}}}}}});
+
+/* 10 — три распределения с одним средним */
+mk('c_dist',{type:'bar',data:{labels:['−10%','−5%','0%','+5%','+10%'],
+ datasets:[
+  {label:'Однородный эффект',data:[0,1,88,11,0],backgroundColor:GR,borderRadius:3},
+  {label:'Поляризованный',data:[19,8,39,12,22],backgroundColor:RD,borderRadius:3},
+  {label:'Малая группа с большим эффектом',data:[0,0,95,0,5],backgroundColor:BL,borderRadius:3}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:100,title:{display:true,text:'% пользователей'}},GRID),x:Object.assign({title:{display:true,text:'индивидуальный эффект'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(){return 'у всех трёх ATE = +0.50%';}}}}}});
+
+/* 11 — квантили CATE */
+mk('c_cate',{type:'bar',data:{labels:['Q1 (низший)','Q2','Q3','Q4','Q5 (верхний)'],
+ datasets:[
+  {type:'bar',label:'Фактический эффект, %',data:[-3.8,-0.9,0.6,2.1,4.4],backgroundColor:AC,borderRadius:4,order:2},
+  {type:'line',label:'Предсказанный эффект, %',data:[-3.5,-0.7,0.9,2.3,4.2],borderColor:BL,tension:.2,pointRadius:5,order:1}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:-5,max:5.5,title:{display:true,text:'эффект, %'}},GRID),x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 12 — доверительные интервалы сегментов */
+mk('c_conf',{type:'bar',data:{labels:['Сегмент A  (p = 0.026)','Сегмент B  (p = 0.072)','Разность A − B  (p = 0.882)'],
+ datasets:[{label:'95% доверительный интервал, п.п.',data:[[0.236,3.764],[-0.160,3.760],[-2.437,2.837]],
+  backgroundColor:[GR,OR,GY],borderRadius:4,barPercentage:0.5}]},
+ options:{indexAxis:'y',responsive:true,scales:{x:Object.assign({min:-3,max:4.2,title:{display:true,text:'эффект, процентных пунктов'}},GRID),y:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['точка 2.0','точка 1.8','точка 0.2'];return t[it[0].dataIndex];}}}}}});
+
+/* 13 — две корреляции суррогатов */
+mk('c_surr',{type:'bar',data:{labels:['Время на сайте','Активность 14 дней','Сессии 7 дней','NPS-опрос'],
+ datasets:[
+  {label:'Корреляция с целевой на уровне пользователей',data:[0.76,0.71,0.68,0.44],backgroundColor:GY,borderRadius:4},
+  {label:'Корреляция эффектов по 40 экспериментам',data:[0.12,0.83,0.41,0.66],backgroundColor:AC,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.9,title:{display:true,text:'корреляция'}},GRID),x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 14 — точность surrogate index */
+mk('c_index',{type:'bar',data:{labels:['Только активность','+ глубина','+ NPS','+ время до успеха','Интерфейсные','Ценовые'],
+ datasets:[{label:'Ошибка предсказания годового эффекта, п.п.',data:[0.61,0.44,0.34,0.28,0.19,1.42],
+  backgroundColor:[AC2,AC2,AC2,AC,GR,RD],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:1.6,title:{display:true,text:'MAE, п.п.'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex>=4?'полный индекс, разбивка по классу изменения':'наращивание состава индекса';}}}}}});
+
+/* ИНТЕРАКТИВ — расчёт мощности */
+function qnorm(p){
+  var a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  var b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  var c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  var d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  var pl=0.02425, ph=1-pl, q, r;
+  if(p<pl){ q=Math.sqrt(-2*Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if(p<=ph){ q=p-0.5; r=q*q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  q=Math.sqrt(-2*Math.log(1-p));
+  return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+function updPow(){
+  var p = (+document.getElementById('sl_p').value)/1000;
+  var e = (+document.getElementById('sl_e').value)/1000;
+  var pw = (+document.getElementById('sl_b').value)/100;
+  var tr = +document.getElementById('sl_t').value;
+
+  document.getElementById('out_p').textContent = (100*p).toFixed(1) + '%';
+  document.getElementById('out_e').textContent = (100*e).toFixed(1) + '%';
+  document.getElementById('out_b').textContent = Math.round(100*pw) + '%';
+  document.getElementById('out_t').textContent = tr.toLocaleString('ru-RU');
+
+  var za = 1.959964, zb = qnorm(pw);
+  var k = Math.pow(za + zb, 2);
+  var sigma2 = p * (1 - p);
+  var delta = p * e;
+  var n = 2 * k * sigma2 / (delta * delta);
+
+  var days = n / tr;
+  var weeks = Math.ceil(days / 7);
+  var nWeeks = weeks * 7 * tr;
+  var cv = Math.sqrt(sigma2) / p;
+  var mdeWeek = 100 * (za + zb) * cv * Math.sqrt(2 / (7 * tr));
+
+  var verdict;
+  if (weeks <= 2) verdict = 'реалистично: укладывается в две недели';
+  else if (weeks <= 4) verdict = 'приемлемо, но занимает месяц — стоит поискать способ снизить дисперсию';
+  else if (weeks <= 12) verdict = 'долго: подумайте о CUPED, метрике выше по воронке или большей доле трафика';
+  else verdict = 'нереалистично: при таком MDE эксперимент не даст ответа за разумный срок';
+
+  document.getElementById('out_pow').textContent =
+    '(z₀.₉₇₅ + z_мощности)² = (' + za.toFixed(4) + ' + ' + zb.toFixed(4) + ')² = ' + k.toFixed(4) + '\n' +
+    'σ² = p(1−p) = ' + sigma2.toFixed(6) + '     δ = p×MDE = ' + delta.toFixed(6) + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'n на группу = 2 × ' + k.toFixed(4) + ' × ' + sigma2.toFixed(6) + ' / ' + (delta*delta).toExponential(4).replace('+','') + '\n' +
+    '            = ' + Math.round(n).toLocaleString('ru-RU') + '\n' +
+    'всего       = ' + Math.round(2*n).toLocaleString('ru-RU') + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'дней: ' + days.toFixed(1) + '   →   округляем до ' + weeks + ' нед. (' + (weeks*7) + ' дн.)\n' +
+    'фактическая выборка: ' + Math.round(nWeeks).toLocaleString('ru-RU') + ' на группу\n' +
+    'MDE за одну неделю: ' + mdeWeek.toFixed(2) + '%   (CV метрики = ' + cv.toFixed(3) + ')\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  ['sl_p','sl_e','sl_b','sl_t'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updPow); });
+  if(document.getElementById('out_pow')) updPow();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

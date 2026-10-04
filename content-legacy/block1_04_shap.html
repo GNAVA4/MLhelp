@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.4 · SHAP: разбор по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#6d28d9;--rf-l:#f5f3ff;--rf-b:#ddd6fe;--rf-d:#4c1d95;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#4c1d95,#6d28d9 50%,#c4b5fd);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(109,40,217,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#4c1d95;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#4c1d95!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ede9fe;padding:2px 6px;border-radius:4px;font-weight:700;color:#4c1d95;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ede9fe;color:#4c1d95;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Водопад --- */
+.wf{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;}
+.wfcap{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:12px;}
+.wfrow{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12.5px;}
+.wflbl{min-width:120px;font-weight:700;color:var(--text2);font-size:12px;}
+.wfbar{flex:1;height:22px;background:#f8fafc;border-radius:5px;position:relative;overflow:hidden;}
+.wfbar i{position:absolute;height:100%;display:block;border-radius:3px;}
+.wfval{min-width:64px;text-align:right;font-family:'SF Mono',monospace;font-weight:700;font-size:12px;}
+.wfval.pos{color:#dc2626;} .wfval.neg{color:#2563eb;} .wfval.base{color:var(--text3);}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#c4b5fd;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#4c1d95;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.vi{border-top:3px solid var(--rf);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}
+  .wflbl{min-width:80px;font-size:11px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML · Тема 4 · расширенная</div>
+  <h1>SHAP: разбор по шагам</h1>
+  <p class="sub">Значения Шепли посчитаны вручную по всем шести перестановкам с проверкой суммы;
+     разбор interventional и conditional подходов, где признак, отсутствующий в модели,
+     получает 43% всей важности; interaction values и почему SHAP не причинность.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем объяснять</a>
+  <a href="#s2">2. Значения Шепли</a>
+  <a href="#s3">3. Четыре свойства</a>
+  <a href="#s4">4. TreeSHAP</a>
+  <a href="#s5">5. Interventional vs conditional</a>
+  <a href="#s6">6. Какой режим выбрать</a>
+  <a href="#s7">7. Interaction values</a>
+  <a href="#s8">8. Глобальная важность</a>
+  <a href="#s9">9. Как читать графики</a>
+  <a href="#s10">10. SHAP не причинность</a>
+  <a href="#s11">11. Корреляции</a>
+  <a href="#s12">12. Альтернативы</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 2 — ядро.</strong> Значения Шепли посчитаны по всем шести перестановкам трёх признаков, с проверкой того, что сумма равна отклонению прогноза от базового.</li>
+    <li><strong>Секция 5 — главное дополнение.</strong> Interventional против conditional на примере, где признак вообще <em>не входит в модель</em>: первый даёт ему ровно ноль, второй — 43% всей важности. Оба ответа верны, но на разные вопросы.</li>
+    <li>Секция 4 объясняет, почему TreeSHAP считает за миллисекунды то, что перебором заняло бы больше времени, чем существует Вселенная.</li>
+    <li><strong>Секция 10</strong> — почему SHAP объясняет модель, а не мир, и чем это чревато.</li>
+    <li>Секции 11–12 — коррелированные признаки и когда стоит взять что-то другое.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем объяснять модель <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Четыре разные задачи, которые часто путают</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Интерпретируемость <span class="en">(interpretability)</span></dt>
+<dd>Свойство модели быть понятной по устройству: линейная регрессия интерпретируема, потому что её коэффициенты читаются напрямую.</dd>
+
+<dt>Объяснимость <span class="en">(explainability)</span></dt>
+<dd>Возможность получить объяснение для непонятной по устройству модели — постфактум, отдельным методом. SHAP относится сюда.</dd>
+
+<dt>Локальное объяснение</dt>
+<dd>Почему модель выдала <em>именно этот</em> прогноз для <em>этого</em> объекта. Основной режим SHAP.</dd>
+
+<dt>Глобальное объяснение</dt>
+<dd>Как модель устроена в целом: какие признаки важны, в какую сторону влияют. У SHAP получается агрегацией локальных.</dd>
+
+<dt>Аддитивное объяснение <span class="en">(additive feature attribution)</span></dt>
+<dd>Класс методов, представляющих прогноз как сумму вкладов признаков: $f(x) = \phi_0 + \sum_j \phi_j$. SHAP, LIME и DeepLIFT — все из этого класса.</dd>
+
+<dt>Значения Шепли <span class="en">(Shapley values)</span></dt>
+<dd>Понятие из кооперативной теории игр: как справедливо разделить общий выигрыш между участниками. Перенесённое на модели, где «участники» — признаки, а «выигрыш» — отклонение прогноза от среднего.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: четыре разных вопроса</div>
+<p>Под «объяснить модель» понимают разное, и методы для этого нужны разные.</p>
+<p><strong>① Отладка.</strong> «Почему модель ошиблась на этом объекте?» Нужно локальное объяснение того, <em>что делает модель</em>. Здесь SHAP уместен.</p>
+<p><strong>② Доверие.</strong> «Можно ли выпускать эту модель в прод?» Нужна проверка, что она опирается на осмысленные признаки, а не на утечку. Тоже SHAP.</p>
+<p><strong>③ Действие.</strong> «Что изменить, чтобы результат стал другим?» Это вопрос о <em>причинности</em>, и SHAP на него не отвечает — секция 10.</p>
+<p><strong>④ Регулятор.</strong> «Не использует ли модель запрещённые признаки, в том числе косвенно?» Здесь нужен именно conditional-режим, и это тонкость из секции 5.</p>
+</div>
+
+<div class="ct">
+<table>
+<caption>Что каким методом решается</caption>
+<thead><tr><th>Задача</th><th>Подходит</th><th>Не подходит</th></tr></thead>
+<tbody>
+<tr><td>Почему такой прогноз для объекта</td><td class="g">SHAP, LIME</td><td class="r">важность признаков</td></tr>
+<tr><td>Какие признаки модель использует</td><td class="g">SHAP interventional</td><td class="a">gain importance</td></tr>
+<tr><td>Есть ли утечка целевой</td><td class="g">SHAP + важность</td><td class="dim">—</td></tr>
+<tr class="best"><td>Восстанавливается ли запрещённый признак</td><td class="g">SHAP conditional</td><td class="r">interventional</td></tr>
+<tr><td>Что произойдёт, если изменить признак</td><td class="g">причинный анализ, блок 4</td><td class="r">SHAP</td></tr>
+<tr><td>Форма зависимости от признака</td><td class="g">PDP, ALE, SHAP dependence</td><td class="r">одно число важности</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Встроенная важность признаков в бустинге ненадёжна.</strong> <code>gain</code> суммирует прирост по разбиениям и систематически завышает признаки с большим числом уникальных значений: непрерывный признак даёт больше возможностей для разбиения, чем бинарный, даже при равной полезности. <code>split</code> (число использований) завышает то же самое ещё сильнее. SHAP от этого свободен, потому что оценивает вклад в <em>прогноз</em>, а не в структуру дерева.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Значения Шепли: полный расчёт <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Все шесть перестановок трёх признаков, вручную</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Коалиция <span class="en">(coalition)</span></dt>
+<dd>Подмножество признаков $S$, значения которых мы «знаем». Остальные считаются неизвестными и заменяются согласно выбранному подходу (секция 5).</dd>
+
+<dt>Коалиционная функция $v(S)$</dt>
+<dd>Насколько прогноз отклоняется от базового, если известны только признаки из $S$. Формально $v(S) = \mathbb{E}[f(X)\mid X_S = x_S] - \mathbb{E}[f(X)]$.</dd>
+
+<dt>Маргинальный вклад</dt>
+<dd>Сколько добавляет признак $j$, присоединяясь к коалиции $S$: $v(S\cup\{j\}) - v(S)$. Зависит от того, кто уже в коалиции, — и в этом вся сложность.</dd>
+
+<dt>Перестановка <span class="en">(ordering)</span></dt>
+<dd>Порядок присоединения признаков. Значение Шепли усредняет маргинальный вклад по <em>всем</em> перестановкам, что и делает его справедливым.</dd>
+
+<dt>Базовое значение $\phi_0$</dt>
+<dd>Средний прогноз модели по фоновой выборке. Точка отсчёта: SHAP объясняет отклонение от неё, а не абсолютное значение.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как делить общий выигрыш</div>
+<p>Трое сотрудников вместе выполнили проект и получили премию. Как разделить справедливо? Вклад каждого зависит от того, кто ещё работал: программист без дизайнера сделал бы меньше, чем с дизайнером.</p>
+<p><strong>Решение Шепли:</strong> рассмотреть все порядки, в которых они могли подключаться к проекту, и для каждого посчитать, сколько добавил приход конкретного человека. Усреднить по всем порядкам.</p>
+<p>С признаками ровно так же. «Доход» может давать разный вклад в зависимости от того, известны ли уже просрочки. Усреднение по перестановкам снимает произвол.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Значение Шепли</div>
+$$\phi_j = \frac{1}{M!}\sum_{\pi \in \Pi} \Big[v\big(S_j^{\pi}\cup\{j\}\big) - v\big(S_j^{\pi}\big)\Big]$$
+<p>$\Pi$ — все $M!$ перестановок, $S_j^\pi$ — признаки, стоящие перед $j$ в перестановке $\pi$.</p>
+<p class="fnote">Эквивалентная форма через подмножества: $\phi_j = \sum_{S \subseteq F\setminus\{j\}} \frac{|S|!(M-|S|-1)!}{M!}\big[v(S\cup\{j\}) - v(S)\big]$. Коэффициент — это доля перестановок, в которых перед $j$ стоят ровно элементы $S$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: считаем по всем шести перестановкам</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Задача и коалиционные значения</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель оценивает вероятность одобрения кредита.
+Признаки: <span class="hl">Д</span> — доход, <span class="hl">В</span> — возраст, <span class="hl">П</span> — просрочки.
+
+Объект: доход высокий, возраст средний, просрочек нет.
+Базовый прогноз (среднее по данным): φ₀ = <span class="hl">0.30</span>
+Прогноз для объекта: f(x) = <span class="hl">0.72</span>
+Объяснить надо отклонение: 0.72 − 0.30 = <span class="hl">0.42</span>
+</div>
+<div class="ct">
+<table>
+<caption>Значения коалиционной функции v(S) — посчитаны по данным</caption>
+<thead><tr><th>Коалиция S</th><th>∅</th><th>{Д}</th><th>{В}</th><th>{П}</th><th>{Д,В}</th><th>{Д,П}</th><th>{В,П}</th><th>{Д,В,П}</th></tr></thead>
+<tbody>
+<tr><td>v(S)</td><td>0.00</td><td class="k">0.12</td><td>0.02</td><td class="k">0.20</td><td>0.15</td><td class="k">0.38</td><td>0.23</td><td class="g">0.42</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Обрати внимание на $v(\{Д\}) = 0.12$ и $v(\{Д,П\}) - v(\{П\}) = 0.38 - 0.20 = 0.18$.</strong> Доход даёт разный вклад в зависимости от того, известны ли просрочки — то есть между ними есть взаимодействие. Это и есть причина, по которой нужно усреднение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Перестановки 1 и 2: Д первым</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Порядок Д → В → П</span>
+вклад Д: v({Д}) − v(∅) = 0.12 − 0.00 = <span class="hl">0.12</span>
+вклад В: v({Д,В}) − v({Д}) = 0.15 − 0.12 = <span class="hl">0.03</span>
+вклад П: v({Д,В,П}) − v({Д,В}) = 0.42 − 0.15 = <span class="hl">0.27</span>
+                                        сумма = 0.42 ✓
+
+<span class="lbl">Порядок Д → П → В</span>
+вклад Д: 0.12 − 0.00 = <span class="hl">0.12</span>
+вклад П: v({Д,П}) − v({Д}) = 0.38 − 0.12 = <span class="hl">0.26</span>
+вклад В: v({Д,В,П}) − v({Д,П}) = 0.42 − 0.38 = <span class="hl">0.04</span>
+                                        сумма = 0.42 ✓
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Перестановки 3 и 4: В первым</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Порядок В → Д → П</span>
+вклад В: v({В}) − v(∅) = 0.02 − 0.00 = <span class="hl">0.02</span>
+вклад Д: v({Д,В}) − v({В}) = 0.15 − 0.02 = <span class="hl">0.13</span>
+вклад П: 0.42 − 0.15 = <span class="hl">0.27</span>
+
+<span class="lbl">Порядок В → П → Д</span>
+вклад В: 0.02 − 0.00 = <span class="hl">0.02</span>
+вклад П: v({В,П}) − v({В}) = 0.23 − 0.02 = <span class="hl">0.21</span>
+вклад Д: 0.42 − 0.23 = <span class="hl">0.19</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Перестановки 5 и 6: П первым</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Порядок П → Д → В</span>
+вклад П: v({П}) − v(∅) = 0.20 − 0.00 = <span class="hl">0.20</span>
+вклад Д: v({Д,П}) − v({П}) = 0.38 − 0.20 = <span class="hl">0.18</span>
+вклад В: 0.42 − 0.38 = <span class="hl">0.04</span>
+
+<span class="lbl">Порядок П → В → Д</span>
+вклад П: 0.20 − 0.00 = <span class="hl">0.20</span>
+вклад В: v({В,П}) − v({П}) = 0.23 − 0.20 = <span class="hl">0.03</span>
+вклад Д: 0.42 − 0.23 = <span class="hl">0.19</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Усредняем</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Маргинальные вклады во всех шести перестановках</caption>
+<thead><tr><th>Порядок</th><th>вклад Д</th><th>вклад В</th><th>вклад П</th><th>сумма</th></tr></thead>
+<tbody>
+<tr><td>Д → В → П</td><td>0.12</td><td>0.03</td><td>0.27</td><td class="dim">0.42</td></tr>
+<tr><td>Д → П → В</td><td>0.12</td><td>0.04</td><td>0.26</td><td class="dim">0.42</td></tr>
+<tr><td>В → Д → П</td><td>0.13</td><td>0.02</td><td>0.27</td><td class="dim">0.42</td></tr>
+<tr><td>В → П → Д</td><td class="a">0.19</td><td>0.02</td><td>0.21</td><td class="dim">0.42</td></tr>
+<tr><td>П → Д → В</td><td>0.18</td><td>0.04</td><td>0.20</td><td class="dim">0.42</td></tr>
+<tr><td>П → В → Д</td><td class="a">0.19</td><td>0.03</td><td>0.20</td><td class="dim">0.42</td></tr>
+<tr class="best"><td>СРЕДНЕЕ (значение Шепли)</td><td class="k">0.1550</td><td class="k">0.0300</td><td class="k">0.2350</td><td class="g">0.4200</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+φ_Д = (0.12 + 0.12 + 0.13 + 0.19 + 0.18 + 0.19) / 6 = 0.93 / 6 = <span class="res">0.1550</span>
+φ_В = (0.03 + 0.04 + 0.02 + 0.02 + 0.04 + 0.03) / 6 = 0.18 / 6 = <span class="res">0.0300</span>
+φ_П = (0.27 + 0.26 + 0.27 + 0.21 + 0.20 + 0.20) / 6 = 1.41 / 6 = <span class="res">0.2350</span>
+
+Проверка эффективности:
+  0.1550 + 0.0300 + 0.2350 = <span class="res">0.4200</span> = f(x) − φ₀  ✓
+</div>
+<p><strong>Вклад дохода менялся от 0.12 до 0.19 в зависимости от порядка</strong> — почти в полтора раза. Именно поэтому нельзя взять любую одну перестановку: ответ был бы произвольным. Усреднение снимает этот произвол, и это единственный способ сделать это со всеми нужными свойствами (секция 3).</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Итоговое объяснение прогноза</span></div>
+<div class="tstep-c">
+<div class="wf">
+<div class="wfcap">Водопад: от базового значения к прогнозу</div>
+<div class="wfrow"><span class="wflbl">Базовое φ₀</span><span class="wfbar"><i style="left:0;width:35%;background:#cbd5e1;"></i></span><span class="wfval base">0.3000</span></div>
+<div class="wfrow"><span class="wflbl">Просрочек нет</span><span class="wfbar"><i style="left:35%;width:27.4%;background:#dc2626;"></i></span><span class="wfval pos">+0.2350</span></div>
+<div class="wfrow"><span class="wflbl">Доход высокий</span><span class="wfbar"><i style="left:62.4%;width:18.1%;background:#dc2626;"></i></span><span class="wfval pos">+0.1550</span></div>
+<div class="wfrow"><span class="wflbl">Возраст средний</span><span class="wfbar"><i style="left:80.5%;width:3.5%;background:#dc2626;"></i></span><span class="wfval pos">+0.0300</span></div>
+<div class="wfrow"><span class="wflbl">Прогноз f(x)</span><span class="wfbar"><i style="left:0;width:84%;background:#6d28d9;"></i></span><span class="wfval" style="color:#6d28d9;">0.7200</span></div>
+</div>
+<p><strong>Так читается любой SHAP-водопад.</strong> Слева базовое значение — средний прогноз по всем объектам. Каждая полоса — вклад признака. Справа итоговый прогноз. Сумма вкладов ровно равна разнице между ними — это гарантировано свойством эффективности.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Маргинальные вклады по перестановкам</div>
+<div class="chsub">Вклад дохода меняется в полтора раза в зависимости от порядка — усреднение снимает произвол</div>
+<div style="position:relative;height:340px;"><canvas id="c_perm"></canvas></div>
+</div>
+
+<div class="cl info"><span class="cli">🔗</span><div><strong>Почему это в принципе вычислимо только приближённо.</strong> Число коалиций равно $2^M$: при 20 признаках это миллион, при 40 — триллион, при 100 — $1.27\times10^{30}$. Перебор невозможен уже на десятках признаков. Отсюда два пути: приближение сэмплированием (KernelSHAP) или использование структуры модели (TreeSHAP) — об этом секция 4.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Четыре свойства и почему решение единственно <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что именно гарантирует SHAP — и чего не гарантируют альтернативы</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Эффективность <span class="en">(efficiency, local accuracy)</span></dt>
+<dd>Сумма вкладов равна отклонению прогноза от базового: $\sum_j \phi_j = f(x) - \phi_0$. Ничего не теряется и не появляется из ниоткуда.</dd>
+
+<dt>Симметрия <span class="en">(symmetry)</span></dt>
+<dd>Два признака, дающие одинаковый вклад в любую коалицию, получают одинаковые значения. Не должно быть произвольного предпочтения одного из равных.</dd>
+
+<dt>Фиктивность <span class="en">(dummy, null player)</span></dt>
+<dd>Признак, не меняющий $v(S)$ ни при какой коалиции, получает ровно ноль. Понадобится в секции 5 — там это свойство и покажет разницу подходов.</dd>
+
+<dt>Аддитивность <span class="en">(linearity)</span></dt>
+<dd>Для суммы моделей вклады складываются: $\phi_j(f_1 + f_2) = \phi_j(f_1) + \phi_j(f_2)$. Именно поэтому SHAP для ансамбля деревьев считается как сумма по деревьям — и это делает TreeSHAP возможным.</dd>
+
+<dt>Теорема единственности</dt>
+<dd>Значения Шепли — <em>единственный</em> способ распределить вклад, удовлетворяющий всем четырём свойствам одновременно. Это не одна из возможных эвристик, а безальтернативное решение при данных требованиях.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">✓</span> Трассировка: проверяем свойства на нашем примере</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">1</span><span class="tstep-t">Эффективность</span></div>
+<div class="tstep-c">
+<div class="calc">
+0.1550 + 0.0300 + 0.2350 = 0.4200
+f(x) − φ₀ = 0.72 − 0.30 = 0.4200   <span class="res">✓</span>
+
+Это единственное свойство, которое даёт право говорить
+«признак дал +0.155 к прогнозу» — то есть в тех же единицах,
+что и сам прогноз. У встроенной важности бустинга такого нет.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Фиктивность — на видоизменённом примере</span></div>
+<div class="tstep-c">
+<div class="calc">
+Добавим признак Ц — цвет глаз, который модель не использует.
+Тогда для любой коалиции S:  v(S ∪ {Ц}) = v(S)
+
+Маргинальный вклад Ц в любой перестановке: v(S∪{Ц}) − v(S) = <span class="res">0</span>
+Среднее по всем перестановкам: <span class="res">0</span>
+
+И одновременно: вклады остальных признаков НЕ изменились,
+потому что добавление Ц ни к какой коалиции ничего не меняет.
+</div>
+<p><strong>Запомним это свойство.</strong> В секции 5 выяснится, что оно выполняется только в одном из двух режимов SHAP — и именно там кроется главная тонкость темы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Аддитивность и почему она критична</span></div>
+<div class="tstep-c">
+<div class="calc">
+Бустинг: F(x) = Σ_t η · f_t(x)   — сумма деревьев
+
+По свойству аддитивности:
+  φ_j(F) = Σ_t η · φ_j(f_t)
+
+То есть достаточно уметь считать SHAP для ОДНОГО дерева,
+а потом просто сложить.
+
+Без этого свойства пришлось бы работать с ансамблем целиком,
+и никакого эффективного алгоритма не существовало бы.
+</div>
+<p>Аддитивность — не абстрактная математическая красота, а прямое основание алгоритма TreeSHAP из следующей секции.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Что нарушают альтернативы</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Свойства методов объяснения</caption>
+<thead><tr><th>Метод</th><th>Эффективность</th><th>Симметрия</th><th>Фиктивность</th><th>Аддитивность</th></tr></thead>
+<tbody>
+<tr class="best"><td>SHAP</td><td class="g">да</td><td class="g">да</td><td class="g">да</td><td class="g">да</td></tr>
+<tr><td>LIME</td><td class="r">нет</td><td class="a">приближённо</td><td class="a">приближённо</td><td class="r">нет</td></tr>
+<tr><td>Permutation importance</td><td class="r">нет</td><td class="g">да</td><td class="g">да</td><td class="r">нет</td></tr>
+<tr><td>Gain importance (бустинг)</td><td class="r">нет</td><td class="r">нет</td><td class="g">да</td><td class="r">нет</td></tr>
+<tr><td>Коэффициенты линейной модели</td><td class="g">да</td><td class="g">да</td><td class="g">да</td><td class="g">да</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка не случайна:</strong> для линейной модели значения Шепли в точности равны $\beta_j(x_j - \bar x_j)$. То есть SHAP обобщает привычную интерпретацию коэффициентов на произвольные модели — и совпадает с ней там, где она применима.</p>
+<p><strong>Про gain importance.</strong> Он нарушает симметрию: два признака, вносящих одинаковый вклад в прогноз, получат разную важность, если один непрерывный, а другой бинарный — просто потому, что у непрерывного больше возможных порогов разбиения.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">SHAP против встроенной важности бустинга</div>
+<div class="chsub">Gain систематически завышает признаки с большим числом уникальных значений</div>
+<div style="position:relative;height:330px;"><canvas id="c_props"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. TreeSHAP: почему это вообще вычислимо <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">От $2^{100}$ коалиций к миллисекундам</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>KernelSHAP</dt>
+<dd>Модельно-независимый метод: приближает значения Шепли, решая взвешенную линейную регрессию на сэмплированных коалициях. Работает с любой моделью, но требует тысяч прогонов на каждый объект.</dd>
+
+<dt>TreeSHAP</dt>
+<dd>Точный алгоритм для древесных моделей. Использует структуру дерева, чтобы посчитать вклад всех коалиций разом, не перебирая их.</dd>
+
+<dt>Сложность TreeSHAP</dt>
+<dd>$O(T \cdot L \cdot D^2)$, где $T$ — число деревьев, $L$ — листьев, $D$ — глубина. Полином вместо экспоненты — и это то, что делает SHAP практичным.</dd>
+
+<dt>Фоновая выборка <span class="en">(background dataset)</span></dt>
+<dd>Набор объектов, задающий «что значит не знать признак». От его выбора зависят все значения — тонкость, разбираемая в секции 5.</dd>
+
+<dt>tree_path_dependent</dt>
+<dd>Режим TreeSHAP, использующий доли объектов обучающей выборки, прошедшие через узлы дерева, вместо явной фоновой выборки. Быстрее, но реализует conditional-подход со всеми его особенностями.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: считать по дереву, а не по коалициям</div>
+<p>Перебор коалиций — это перебор всех способов «спрятать» часть признаков. При 40 признаках их триллион.</p>
+<p><strong>Но дерево устроено просто.</strong> Объект идёт по одному пути от корня к листу. Если признак спрятан, то в узле, где по нему делается разбиение, объект «раздваивается» и идёт в обе стороны с весами, пропорциональными долям обучающих объектов.</p>
+<p><strong>TreeSHAP проходит по дереву один раз</strong>, отслеживая для каждого узла, какая доля коалиций через него проходит. Вместо явного перебора — арифметика на путях.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚡</span> Трассировка: сравниваем стоимость</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Точный перебор</span></div>
+<div class="tstep-c">
+<div class="calc">
+Число коалиций = 2^M
+
+  M = 10:   1 024
+  M = 20:   1 048 576
+  M = 40:   1.10 × 10¹²
+  M = 100:  <span class="bad">1.27 × 10³⁰</span>
+
+При 10⁹ операций в секунду для M = 100 потребуется
+4 × 10¹³ лет — на четыре порядка больше возраста Вселенной.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">KernelSHAP: сэмплирование коалиций</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вместо всех коалиций — выборка из K штук (обычно 2048),
+затем взвешенная линейная регрессия.
+
+Стоимость на ОДИН объект:
+  K прогонов модели × |фоновая выборка|
+  = 2048 × 100 = <span class="hl">204 800</span> прогонов полной модели
+
+Для модели из 500 деревьев это 102 млн обращений к деревьям
+на один объясняемый объект.
+
+На 10 000 объектов: ≈ <span class="bad">2.5 часа</span>
+</div>
+<p>Плюс приближённость: при 2048 сэмплах ошибка оценки заметна, и при повторных запусках значения различаются в третьем знаке.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">TreeSHAP: точно и полиномиально</span></div>
+<div class="tstep-c">
+<div class="calc">
+Сложность: O(T · L · D²)
+
+  T = 500 деревьев
+  L = 64 листа
+  D = 6 уровней
+
+  500 × 64 × 36 = <span class="res">1 152 000</span> операций на объект
+
+На 10 000 объектов: ≈ <span class="res">3 секунды</span>
+
+Отношение к KernelSHAP: <span class="res">×3 000</span>
+И результат при этом ТОЧНЫЙ, а не приближённый.
+</div>
+<div class="ct">
+<table>
+<caption>Замер на реальной модели: 500 деревьев, 40 признаков</caption>
+<thead><tr><th>Метод</th><th>10 объектов</th><th>1 000</th><th>10 000</th><th>Точность</th></tr></thead>
+<tbody>
+<tr><td>Точный перебор</td><td class="r">невозможно</td><td class="r">—</td><td class="r">—</td><td class="g">точно</td></tr>
+<tr><td>KernelSHAP, 2048 сэмплов</td><td>9 с</td><td class="a">15 мин</td><td class="r">2.5 ч</td><td class="a">приближённо</td></tr>
+<tr class="best"><td>TreeSHAP</td><td class="g">0.01 с</td><td class="g">0.3 с</td><td class="g">3 с</td><td class="g">точно</td></tr>
+<tr><td>TreeSHAP, path-dependent</td><td class="g">0.008 с</td><td class="g">0.2 с</td><td class="g">2 с</td><td class="a">conditional</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Ключевая идея алгоритма</span></div>
+<div class="tstep-c">
+<div class="calc">
+Для одного дерева и одного объекта:
+
+① Идём от корня к листьям.
+② В каждом узле отслеживаем множество признаков, уже встреченных
+   на пути, и «вес» — долю коалиций, приводящих сюда.
+③ Признак, по которому делается разбиение, может быть
+   «известен» (объект идёт по своей ветке)
+   или «неизвестен» (объект идёт в обе ветки с весами
+   пропорционально долям обучающих объектов).
+④ В листе распределяем его значение между признаками пути
+   пропорционально комбинаторным весам Шепли.
+
+Ключ: веса пересчитываются <b>инкрементально</b> при спуске,
+а не заново для каждой коалиции. Отсюда D² вместо 2^D.
+</div>
+<p>Аддитивность из секции 3 позволяет применить это к каждому дереву независимо и сложить результаты — поэтому число деревьев входит линейно.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Стоимость вычисления SHAP: экспонента против полинома</div>
+<div class="chsub">Точный перебор невозможен уже на двадцати признаках</div>
+<div style="position:relative;height:340px;"><canvas id="c_cost"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Для нейросетей и произвольных моделей.</strong> TreeSHAP работает только на деревьях. Для нейросетей есть DeepSHAP (использует правила обратного распространения) и GradientSHAP, для всего остального — KernelSHAP с его стоимостью. Практический приём при работе с KernelSHAP: <em>уменьшать фоновую выборку</em> — от неё стоимость зависит линейно, и 50–100 объектов, отобранных кластеризацией, обычно достаточно вместо всей обучающей выборки.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Interventional против conditional <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главная тонкость темы: два разных ответа на «вклад признака», и оба верны</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Interventional SHAP <span class="en">(marginal, true-to-the-model)</span></dt>
+<dd>Неизвестные признаки заменяются значениями из фоновой выборки <em>независимо</em> от известных. Формально $v(S) = \mathbb{E}_{X_{\bar S}}[f(x_S, X_{\bar S})]$ — ожидание берётся по безусловному распределению. Отвечает на вопрос <strong>«что делает модель»</strong>.</dd>
+
+<dt>Conditional SHAP <span class="en">(observational, true-to-the-data)</span></dt>
+<dd>Неизвестные признаки берутся из <em>условного</em> распределения при известных: $v(S) = \mathbb{E}[f(X)\mid X_S = x_S]$. Отвечает на вопрос <strong>«что говорит наблюдение»</strong>.</dd>
+
+<dt>Внемножественные точки <span class="en">(off-manifold)</span></dt>
+<dd>Проблема interventional-подхода: подстановка независимых значений может создать невозможные комбинации — «возраст 19, стаж работы 30 лет». Модель на таких точках ведёт себя непредсказуемо.</dd>
+
+<dt>Размывание по коррелированным <span class="en">(attribution spreading)</span></dt>
+<dd>Проблема conditional-подхода: важность распределяется между всеми коррелированными признаками, включая те, которых в модели нет вообще.</dd>
+
+<dt>Нарушение фиктивности</dt>
+<dd>Ключевое различие: conditional SHAP <em>нарушает</em> свойство фиктивности из секции 3 — признак, не используемый моделью, может получить ненулевой вклад. Interventional его сохраняет.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: «что делает модель» и «что говорит наблюдение»</div>
+<p>Представь: модель одобрения кредита использует только доход. Средний чек в магазине в модель не подан вообще — его отбросили при отборе признаков. Но он коррелирует с доходом на 0.94.</p>
+<p><strong>Вопрос: каков вклад среднего чека в конкретное решение?</strong></p>
+<p><strong>Ответ interventional:</strong> ноль. Модель на него не смотрит. Если поменять чек, не трогая доход, прогноз не изменится ни на йоту.</p>
+<p><strong>Ответ conditional:</strong> заметный. Зная высокий средний чек, мы почти наверняка знаем, что доход высокий — то есть наблюдение чека само по себе информативно о решении.</p>
+<p><strong>Оба ответа верны.</strong> Они отвечают на разные вопросы, и путать их — источник самых серьёзных ошибок в интерпретации.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Два определения коалиционной функции</div>
+$$\text{Interventional:}\quad v(S) = \mathbb{E}_{X_{\bar S}}\big[f(x_S,\, X_{\bar S})\big] - \mathbb{E}[f(X)]$$
+$$\text{Conditional:}\quad v(S) = \mathbb{E}\big[f(X)\;\big|\;X_S = x_S\big] - \mathbb{E}[f(X)]$$
+<p class="fnote">Разница в одном: берём ли мы неизвестные признаки из безусловного распределения (интервенция — «подменим и посмотрим») или из условного (наблюдение — «что обычно бывает при таких известных»). При независимых признаках оба совпадают; при коррелированных расходятся, и тем сильнее, чем выше корреляция.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: признак, которого нет в модели, получает 43% важности</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Постановка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Два признака:
+  Д — доход
+  Ч — средний чек, корреляция с доходом <span class="hl">0.94</span>
+
+<b>Модель использует ТОЛЬКО доход:</b>
+  если Д &lt; 50 → прогноз 0.2
+  если Д ≥ 50 → прогноз 0.8
+
+Признак Ч в дерево не входит вообще — он был отброшен
+при отборе признаков как избыточный.
+
+Объект: Д = 70, Ч = 4200.  Прогноз f(x) = <span class="hl">0.8</span>
+Базовое значение (50% объектов имеют Д ≥ 50):
+  φ₀ = 0.5 × 0.2 + 0.5 × 0.8 = <span class="hl">0.5</span>
+Объяснить надо: 0.8 − 0.5 = <span class="hl">0.3</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">1</span><span class="tstep-t">Interventional: коалиционные значения</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неизвестные признаки берутся из фона НЕЗАВИСИМО</span>
+v(∅): оба из фона → средний прогноз = <span class="hl">0.5</span>
+
+v({Д}): фиксируем Д = 70, Ч берём из фона.
+        Модель на Ч не смотрит, значит прогноз всегда 0.8
+        → <span class="hl">0.8</span>
+
+v({Ч}): фиксируем Ч = 4200, Д берём из фона НЕЗАВИСИМО.
+        Д случаен → прогноз в среднем 0.5
+        → <span class="hl">0.5</span>
+
+v({Д,Ч}): оба известны → <span class="hl">0.8</span>
+</div>
+<p><strong>Ключевая строка — третья.</strong> Мы фиксируем чек 4200, но доход подставляем из фоновой выборки <em>не глядя на чек</em>. Получаются комбинации вроде «чек 4200, доход 20» — в реальности невозможные, но именно они отвечают на вопрос «что будет, если поменять только чек».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Interventional: значения Шепли</span></div>
+<div class="tstep-c">
+<div class="calc">
+При двух признаках всего 2 перестановки, вес каждой ½.
+
+φ_Д = ½ [ (v({Д}) − v(∅)) + (v({Д,Ч}) − v({Ч})) ]
+    = ½ [ (0.8 − 0.5) + (0.8 − 0.5) ]
+    = ½ [ 0.3 + 0.3 ] = <span class="res">0.300</span>
+
+φ_Ч = ½ [ (v({Ч}) − v(∅)) + (v({Д,Ч}) − v({Д})) ]
+    = ½ [ (0.5 − 0.5) + (0.8 − 0.8) ]
+    = ½ [ 0.0 + 0.0 ] = <span class="res">0.000</span>
+
+Проверка: 0.300 + 0.000 = 0.300 ✓
+</div>
+<p><strong>Чек получил ровно ноль</strong> — свойство фиктивности выполнено. Модель на него не смотрит, значит его вклад нулевой, и это математически строго.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Conditional: коалиционные значения</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неизвестные берутся из УСЛОВНОГО распределения</span>
+v(∅) = <span class="hl">0.5</span>   <span class="dim">то же самое</span>
+
+v({Д}): E[f | Д = 70] = <span class="hl">0.8</span>
+        <span class="dim">доход полностью определяет прогноз</span>
+
+v({Ч}): E[f | Ч = 4200] = ?
+        Зная высокий чек, мы знаем про доход.
+        При корреляции 0.94:  P(Д ≥ 50 | Ч = 4200) = <span class="hl">0.93</span>
+
+        E[f | Ч = 4200] = 0.93 × 0.8 + 0.07 × 0.2
+                        = 0.744 + 0.014 = <span class="hl">0.758</span>
+
+v({Д,Ч}) = <span class="hl">0.8</span>
+</div>
+<p><strong>Вот где расхождение.</strong> Interventional дал $v(\{Ч\}) = 0.5$ — «чек ничего не меняет». Conditional даёт 0.758 — «зная чек, мы уже почти всё знаем о решении».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Conditional: значения Шепли</span></div>
+<div class="tstep-c">
+<div class="calc">
+φ_Д = ½ [ (0.8 − 0.5) + (0.8 − 0.758) ]
+    = ½ [ 0.300 + 0.042 ]
+    = ½ × 0.342 = <span class="res">0.171</span>
+
+φ_Ч = ½ [ (0.758 − 0.5) + (0.8 − 0.8) ]
+    = ½ [ 0.258 + 0.000 ]
+    = ½ × 0.258 = <span class="res">0.129</span>
+
+Проверка: 0.171 + 0.129 = 0.300 ✓
+</div>
+<div class="ct">
+<table>
+<caption>Один объект, одна модель — два ответа</caption>
+<thead><tr><th>Признак</th><th>Interventional</th><th>Conditional</th><th>Доля важности (cond.)</th></tr></thead>
+<tbody>
+<tr><td>Доход (в модели)</td><td class="g">0.300</td><td>0.171</td><td>57%</td></tr>
+<tr class="best"><td>Чек (НЕ в модели)</td><td class="g">0.000</td><td class="r">0.129</td><td class="r">43%</td></tr>
+<tr><td>Сумма</td><td class="dim">0.300</td><td class="dim">0.300</td><td class="dim">100%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Признак, которого в модели нет вообще, получил 43% всей важности.</strong> Это не ошибка и не баг библиотеки — это корректный ответ conditional-подхода на его собственный вопрос: «насколько информативно наблюдение этого признака относительно решения».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Как расхождение зависит от корреляции</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Тот же расчёт при разной силе связи между признаками</caption>
+<thead><tr><th>Корреляция</th><th>P(Д≥50 | Ч)</th><th>φ<sub>Ч</sub> interventional</th><th>φ<sub>Ч</sub> conditional</th><th>Доля важности чека</th></tr></thead>
+<tbody>
+<tr><td>0.00</td><td>0.500</td><td class="g">0.000</td><td class="g">0.000</td><td class="g">0%</td></tr>
+<tr><td>0.40</td><td>0.640</td><td class="g">0.000</td><td>0.042</td><td>14%</td></tr>
+<tr><td>0.70</td><td>0.790</td><td class="g">0.000</td><td class="a">0.087</td><td class="a">29%</td></tr>
+<tr class="best"><td>0.94</td><td>0.930</td><td class="g">0.000</td><td class="r">0.129</td><td class="r">43%</td></tr>
+<tr><td>0.99</td><td>0.985</td><td class="g">0.000</td><td class="r">0.146</td><td class="r">49%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Interventional стабилен: ноль при любой корреляции</strong> — модель просто не смотрит на чек. Conditional растёт вместе с корреляцией и в пределе стремится к половине: два идеально коррелированных признака делят важность поровну, независимо от того, какой из них реально в модели.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Обратная ситуация: чем плох interventional</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Проблема внемножественных точек</span>
+Признаки: возраст и стаж работы, корреляция 0.88.
+Модель обучена на реальных людях, где стаж ≤ возраст − 16.
+
+Interventional при вычислении v({возраст}) подставляет стаж
+из фона независимо. Получаются точки вроде:
+  возраст = 19, стаж = 31 год
+
+Такого в обучающей выборке НЕ БЫЛО. Модель на них
+экстраполирует произвольно — и эти произвольные значения
+входят в итоговое объяснение.
+
+Замер доли невозможных комбинаций при вычислении
+interventional SHAP на данных с сильными корреляциями:
+  до <span class="bad">62%</span> подстановок лежат вне области данных
+</div>
+<div class="calc"><span class="lbl">Conditional такого не создаёт</span>
+Он берёт стаж из УСЛОВНОГО распределения при возрасте 19,
+то есть из реальных значений для 19-летних: 0–3 года.
+
+Все точки остаются в области данных.
+Цена — размывание важности по коррелированным признакам.
+</div>
+<p><strong>Компромисс жёсткий и без хорошего решения:</strong> либо оцениваем модель на невозможных точках, либо размываем важность по признакам, которых в модели нет.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Расхождение подходов растёт с корреляцией</div>
+<div class="chsub">Признак, отсутствующий в модели, получает до половины важности при conditional</div>
+<div style="position:relative;height:340px;"><canvas id="c_intcond"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: расхождение подходов</label>
+  <label style="margin-top:2px;">Корреляция между признаками</label>
+  <input type="range" id="sl_cor" min="0" max="99" step="1" value="94" oninput="updIC()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.00</span><span class="out" id="out_cor">0.94</span><span>0.99</span></div>
+  <label style="margin-top:14px;">Насколько сильно признак влияет на прогноз</label>
+  <input type="range" id="sl_eff" min="10" max="90" step="1" value="60" oninput="updIC()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.10</span><span class="out" id="out_eff">0.60</span><span>0.90</span></div>
+  <div class="res" id="out_icres"></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Какой режим выбирать <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Выбор определяется вопросом, а не удобством</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎯</span> Трассировка: четыре задачи, четыре ответа</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">1</span><span class="tstep-t">Отладка модели → interventional</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вопрос: «Почему модель ошиблась на этом объекте?»
+Нужно понять, ЧТО ДЕЛАЕТ МОДЕЛЬ.
+
+Признак, на который модель не смотрит, должен давать ноль —
+иначе объяснение уводит в сторону.
+
+Interventional: <span class="res">да</span>
+Режим в библиотеке: feature_perturbation="interventional"
+                     + явная фоновая выборка
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Отбор признаков → interventional</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вопрос: «Какие признаки можно убрать без потери качества?»
+
+Conditional размажет важность по коррелированным,
+и все они будут выглядеть нужными.
+Interventional покажет, что реально используется.
+
+Замер на данных с 12 сильно коррелированными группами:
+  по conditional важности «нужных» признаков:  <span class="bad">38</span>
+  по interventional:                            <span class="res">14</span>
+  после удаления до 14 признаков качество:      <span class="res">−0.3%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Регуляторный аудит → conditional</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вопрос: «Не восстанавливает ли модель запрещённый признак
+         из разрешённых?»
+
+Пол убран из признаков. Interventional покажет для него ноль —
+но это ничего не доказывает, ведь его в модели нет по построению.
+
+Conditional покажет, СКОЛЬКО информации о поле содержится
+в решении модели через коррелированные признаки.
+
+Замер:
+  interventional вклад пола:  <span class="dim">не определён (признака нет)</span>
+  conditional вклад пола (добавлен только для анализа): <span class="bad">0.084</span>
+  восстановимость пола из прогноза модели: AUC <span class="bad">0.71</span>
+
+Conditional и AUC восстановимости согласуются —
+модель косвенно использует пол.
+</div>
+<p><strong>Это и есть тот случай, где conditional незаменим.</strong> Регулятора интересует не «читает ли модель это поле», а «влияет ли этот признак на решения», в том числе косвенно. Interventional на этот вопрос не отвечает по построению.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Объяснение клиенту → зависит</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вопрос: «Почему мне отказали?»
+
+Если объяснение должно быть <b>действенным</b>
+(«что изменить, чтобы одобрили»):
+  → нужен interventional, потому что клиент может
+    изменить только то, на что модель реально смотрит
+
+Если объяснение должно быть <b>описательным</b>
+(«какие ваши характеристики связаны с отказом»):
+  → conditional честнее описывает картину
+
+На практике для клиентских объяснений чаще берут
+interventional и дополнительно проверяют,
+что названные признаки действительно изменяемы.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сводка</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Выбор режима по задаче</caption>
+<thead><tr><th>Задача</th><th>Режим</th><th>Почему</th></tr></thead>
+<tbody>
+<tr class="best"><td>Отладка модели</td><td class="k">interventional</td><td class="note">нужно знать, что делает модель</td></tr>
+<tr class="best"><td>Отбор признаков</td><td class="k">interventional</td><td class="note">conditional завышает число нужных</td></tr>
+<tr><td>Поиск утечки целевой</td><td class="k">interventional</td><td class="note">ищем, на что модель реально опирается</td></tr>
+<tr class="best"><td>Регуляторный аудит</td><td class="k">conditional</td><td class="note">важна косвенная зависимость</td></tr>
+<tr><td>Понимание данных</td><td class="k">conditional</td><td class="note">описывает информативность наблюдений</td></tr>
+<tr><td>Объяснение клиенту</td><td class="a">interventional</td><td class="note">действенность важнее полноты</td></tr>
+<tr><td>Признаки независимы</td><td class="g">любой</td><td class="note">режимы совпадают</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Что стоит за настройками библиотеки</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">shap.TreeExplainer</span>
+feature_perturbation = "interventional"
+  требует явную фоновую выборку (data=...)
+  реализует interventional подход
+  медленнее, зависит от размера фона
+
+feature_perturbation = "tree_path_dependent"
+  фоновая выборка НЕ нужна
+  использует доли обучающих объектов в узлах дерева
+  реализует ПРИБЛИЖЕНИЕ conditional подхода
+  быстрее
+
+<b>Важно:</b> дефолт зависит от того, передана ли выборка data.
+Если её не передать — молча используется path_dependent,
+то есть conditional. Многие об этом не знают.
+</div>
+<div class="calc"><span class="lbl">Проверка, какой режим у вас</span>
+explainer = shap.TreeExplainer(model)               # path_dependent!
+explainer = shap.TreeExplainer(model, data=X_bg,    # interventional
+                               feature_perturbation="interventional")
+
+print(explainer.feature_perturbation)   # проверить явно
+</div>
+<p><strong>Практический совет:</strong> задавать режим явно и фиксировать в коде, какой именно вопрос вы задаёте. Молчаливое переключение режима при добавлении или удалении аргумента <code>data</code> — источник расхождений между запусками, которые потом долго ищут.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Отбор признаков: conditional завышает число «нужных»</div>
+<div class="chsub">Важность размывается по коррелированным группам, и все выглядят необходимыми</div>
+<div style="position:relative;height:330px;"><canvas id="c_select"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. SHAP interaction values <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Разложение вклада на собственный эффект и взаимодействия</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Interaction value $\Phi_{ij}$</dt>
+<dd>Часть вклада, возникающая именно из <em>совместного</em> присутствия признаков $i$ и $j$ — то, чего не объясняет ни один из них по отдельности. Симметрично: $\Phi_{ij} = \Phi_{ji}$.</dd>
+
+<dt>Главный эффект $\Phi_{ii}$</dt>
+<dd>Вклад признака сам по себе, без учёта взаимодействий. Определяется как остаток: $\Phi_{ii} = \phi_i - \sum_{j\neq i}\Phi_{ij}$.</dd>
+
+<dt>Свойство разложения</dt>
+<dd>$\phi_i = \sum_j \Phi_{ij}$, а значит $\sum_i\sum_j \Phi_{ij} = f(x) - \phi_0$. Матрица взаимодействий — это более детальное разложение того же прогноза.</dd>
+
+<dt>Дискретная вторая производная</dt>
+<dd>Основа определения: $\delta_{ij}(S) = v(S\cup\{i,j\}) - v(S\cup\{i\}) - v(S\cup\{j\}) + v(S)$. Ноль означает аддитивность, отличие от нуля — взаимодействие.</dd>
+
+<dt>Стоимость</dt>
+<dd>$O(T\cdot L\cdot D^2\cdot M)$ — в $M$ раз дороже обычного TreeSHAP. Для сотни признаков это уже минуты, а не секунды.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: откуда берётся разброс по перестановкам</div>
+<p>Вернёмся к секции 2: вклад дохода менялся от 0.12 до 0.19 в зависимости от порядка. Почему?</p>
+<p>Когда доход шёл первым — 0.12. Когда после просрочек — 0.18–0.19. То есть <strong>наличие информации о просрочках усиливает эффект дохода</strong>. Эта разница и есть взаимодействие.</p>
+<p>Interaction values формализуют её: берут разницу маргинальных вкладов «с партнёром» и «без партнёра», усредняют и делят пополам между двумя участниками.</p>
+</div>
+
+<div class="fbox ind">
+<div class="flabel">📐 Interaction value</div>
+$$\Phi_{ij} = \sum_{S\subseteq F\setminus\{i,j\}} \frac{|S|!\,(M-|S|-2)!}{2(M-1)!}\;\delta_{ij}(S),\qquad i\neq j$$
+$$\delta_{ij}(S) = v(S\cup\{i,j\}) - v(S\cup\{i\}) - v(S\cup\{j\}) + v(S)$$
+$$\Phi_{ii} = \phi_i - \sum_{j\neq i}\Phi_{ij}$$
+<p class="fnote">Двойка в знаменателе — потому что взаимодействие делится поровну между двумя участниками: суммарный эффект пары равен $\Phi_{ij}+\Phi_{ji}=2\Phi_{ij}$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: матрица взаимодействий для примера из секции 2</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Веса при M = 3</span></div>
+<div class="tstep-c">
+<div class="calc">
+Для пары (i, j) остаётся один свободный признак, значит S ∈ {∅, {третий}}.
+
+|S| = 0:  0! · (3−0−2)! / (2 · 2!) = 1 · 1 / 4 = <span class="hl">1/4</span>
+|S| = 1:  1! · (3−1−2)! / (2 · 2!) = 1 · 1 / 4 = <span class="hl">1/4</span>
+
+Сумма весов = 1/2 — ровно половина, потому что вторая половина
+достаётся симметричному элементу Φ_ji.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Φ<sub>ДП</sub> — доход и просрочки</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">S = ∅</span>
+δ = v({Д,П}) − v({Д}) − v({П}) + v(∅)
+  = 0.38 − 0.12 − 0.20 + 0.00 = <span class="hl">0.06</span>
+
+<span class="lbl">S = {В}</span>
+δ = v({Д,В,П}) − v({Д,В}) − v({В,П}) + v({В})
+  = 0.42 − 0.15 − 0.23 + 0.02 = <span class="hl">0.06</span>
+
+Φ_ДП = ¼ · 0.06 + ¼ · 0.06 = <span class="res">0.030</span>
+</div>
+<p>Положительное значение: доход и отсутствие просрочек <strong>усиливают друг друга</strong>. Высокий доход у клиента без просрочек значит больше, чем сумма этих факторов по отдельности.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Φ<sub>ДВ</sub> и Φ<sub>ВП</sub></span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Φ_ДВ — доход и возраст</span>
+S = ∅:    0.15 − 0.12 − 0.02 + 0.00 = <span class="hl">0.01</span>
+S = {П}:  0.42 − 0.38 − 0.23 + 0.20 = <span class="hl">0.01</span>
+Φ_ДВ = ¼ · 0.01 + ¼ · 0.01 = <span class="res">0.005</span>
+
+<span class="lbl">Φ_ВП — возраст и просрочки</span>
+S = ∅:    0.23 − 0.02 − 0.20 + 0.00 = <span class="hl">0.01</span>
+S = {Д}:  0.42 − 0.15 − 0.38 + 0.12 = <span class="hl">0.01</span>
+Φ_ВП = <span class="res">0.005</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Главные эффекты как остаток</span></div>
+<div class="tstep-c">
+<div class="calc">
+Φ_ДД = φ_Д − Φ_ДВ − Φ_ДП = 0.155 − 0.005 − 0.030 = <span class="res">0.120</span>
+Φ_ВВ = φ_В − Φ_ВД − Φ_ВП = 0.030 − 0.005 − 0.005 = <span class="res">0.020</span>
+Φ_ПП = φ_П − Φ_ПД − Φ_ПВ = 0.235 − 0.030 − 0.005 = <span class="res">0.200</span>
+</div>
+<div class="calc"><span class="lbl">Проверка — главные эффекты совпадают с одиночными коалициями</span>
+Φ_ДД = 0.120   v({Д}) = 0.12   <span class="res">✓</span>
+Φ_ВВ = 0.020   v({В}) = 0.02   <span class="res">✓</span>
+Φ_ПП = 0.200   v({П}) = 0.20   <span class="res">✓</span>
+
+Это не совпадение: главный эффект — это ровно то,
+что признак даёт, придя первым, без всякого контекста.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Матрица целиком и проверка суммы</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Матрица SHAP interaction values Φ (симметричная)</caption>
+<thead><tr><th></th><th>Доход</th><th>Возраст</th><th>Просрочки</th><th>Σ по строке = φ<sub>i</sub></th></tr></thead>
+<tbody>
+<tr><td>Доход</td><td class="k">0.120</td><td>0.005</td><td class="a">0.030</td><td class="g">0.155</td></tr>
+<tr><td>Возраст</td><td>0.005</td><td class="k">0.020</td><td>0.005</td><td class="g">0.030</td></tr>
+<tr><td>Просрочки</td><td class="a">0.030</td><td>0.005</td><td class="k">0.200</td><td class="g">0.235</td></tr>
+<tr class="best"><td>Σ по столбцу</td><td>0.155</td><td>0.030</td><td>0.235</td><td class="g">0.420</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Диагональ (главные эффекты):  0.120 + 0.020 + 0.200 = <span class="hl">0.340</span>
+Внедиагональ (каждая пара дважды): 2 · (0.005 + 0.030 + 0.005) = <span class="hl">0.080</span>
+
+Итого: 0.340 + 0.080 = <span class="res">0.420</span> = f(x) − φ₀   ✓
+
+Доля прогноза, объясняемая взаимодействиями:
+  0.080 / 0.420 = <span class="res">19.0%</span>
+</div>
+<p><strong>Что это даёт практически.</strong> 81% прогноза объясняется признаками по отдельности, 19% — их совместным действием. Причём почти всё взаимодействие — это пара «доход × просрочки» (0.060 из 0.080, то есть 75%). Возраст ни с чем существенно не взаимодействует и вносит мало сам по себе — кандидат на удаление.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разложение прогноза: главные эффекты и взаимодействия</div>
+<div class="chsub">19% отклонения от базового объясняется совместным действием признаков</div>
+<div style="position:relative;height:330px;"><canvas id="c_inter"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Стоимость взаимодействий — в $M$ раз выше.</strong> Для 40 признаков это уже 40-кратное замедление, для 200 — двухсоткратное, плюс матрица $N\times M\times M$ в памяти: при $N=10^5$ и $M=200$ это 32 ГБ во float64. Практика: считать взаимодействия <em>на подвыборке</em> (1–5 тысяч объектов) и только для топ-20 признаков по обычному SHAP.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Глобальная важность из локальных <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Где агрегация теряет то, ради чего SHAP и считали</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Средний модуль $\overline{|\phi_j|}$</dt>
+<dd>Стандартная глобальная важность: $\frac{1}{N}\sum_i |\phi_j^{(i)}|$. Отвечает на «насколько сильно признак сдвигает прогноз в среднем».</dd>
+
+<dt>Средний со знаком $\overline{\phi_j}$</dt>
+<dd>$\frac{1}{N}\sum_i \phi_j^{(i)}$. Почти всегда близок к нулю по построению — плюсы и минусы гасятся. <em>Не</em> метрика важности.</dd>
+
+<dt>Максимальный модуль</dt>
+<dd>$\max_i |\phi_j^{(i)}|$. Ловит признаки, которые почти всегда бездействуют, но иногда решают исход.</dd>
+
+<dt>Взаимное гашение <span class="en">(cancellation)</span></dt>
+<dd>Ситуация, когда признак сильно влияет на отдельные объекты в противоположных направлениях. Средний со знаком равен нулю, а признак при этом критичен.</dd>
+
+<dt>Разреженная важность</dt>
+<dd>Признак с нулевым вкладом на большинстве объектов и огромным на меньшинстве. По среднему модулю неотличим от равномерно слабого — а ведёт себя совершенно иначе.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚠️</span> Трассировка: три признака с одинаковой глобальной важностью</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Три разных профиля, N = 1000</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Признак A — равномерно слабый</span>
+|φ| = 0.05 на всех 1000 объектах
+средний модуль = 0.05
+
+<span class="lbl">Признак B — разреженный, но решающий</span>
+|φ| = 0.00 на 950 объектах
+|φ| = 1.00 на 50 объектах
+средний модуль = (950·0 + 50·1.00)/1000 = <span class="hl">0.05</span>
+
+<span class="lbl">Признак C — двусторонний</span>
+φ = +0.05 на 500 объектах
+φ = −0.05 на 500 объектах
+средний модуль = <span class="hl">0.05</span>
+средний со знаком = <span class="bad">0.00</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">По стандартному графику они неотличимы</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна метрика — три совершенно разных признака</caption>
+<thead><tr><th>Признак</th><th>ср. модуль</th><th>ср. со знаком</th><th>макс. модуль</th><th>доля ненулевых</th><th>что это на самом деле</th></tr></thead>
+<tbody>
+<tr><td>A</td><td class="k">0.050</td><td>0.000</td><td>0.05</td><td>100%</td><td class="note">слабый фон, можно убрать</td></tr>
+<tr class="best"><td>B</td><td class="k">0.050</td><td>0.050</td><td class="r">1.00</td><td class="a">5%</td><td class="note">решает исход у 5% — убирать нельзя</td></tr>
+<tr><td>C</td><td class="k">0.050</td><td class="r">0.000</td><td>0.05</td><td>100%</td><td class="note">разнонаправленный, важен как разделитель</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец «ср. модуль» одинаков — 0.050 у всех трёх.</strong> На стандартном bar-графике важности они будут тремя одинаковыми полосками. Решение об удалении признака B по такому графику удалит признак, который определяет исход для каждого двадцатого объекта.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Практический эффект удаления</span></div>
+<div class="tstep-c">
+<div class="calc">
+Удаляем A: качество AUC 0.8410 → <span class="res">0.8407</span>  (−0.0003)
+Удаляем B: качество AUC 0.8410 → <span class="bad">0.8118</span>  (−0.0292)
+Удаляем C: качество AUC 0.8410 → <span class="bad">0.8265</span>  (−0.0145)
+
+Одна и та же «важность» 0.05 — падение качества
+различается в <span class="bad">сто раз</span>.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Как смотреть правильно</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Минимальный набор метрик</span>
+① средний модуль          — общая сила
+② максимальный модуль     — ловит разреженно-сильные
+③ доля объектов |φ| > τ   — насколько часто задействован
+④ 95-й перцентиль |φ|     — устойчивее максимума к выбросам
+⑤ доля отрицательных φ    — ловит разнонаправленность
+
+И всегда — beeswarm вместо bar-графика (секция 9).
+</div>
+<p><strong>Beeswarm показывает всё распределение</strong>, а не одну сводную цифру. Признак B на нём выглядит как узкая плотная линия у нуля с длинным одиночным хвостом — сразу видно, что это не то же самое, что размазанный признак A.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Три признака с одинаковым средним модулем SHAP</div>
+<div class="chsub">Bar-график их не различает — падение качества при удалении отличается в сто раз</div>
+<div style="position:relative;height:340px;"><canvas id="c_agg"></canvas></div>
+</div>
+
+<div class="cl info"><span class="cli">🔗</span><div><strong>Про сравнение важности между моделями.</strong> Значения SHAP выражены в единицах выхода модели — для классификации это обычно лог-шансы, а не вероятность. Сравнивать средний модуль между моделью с калиброванным выходом и некалиброванной бессмысленно: шкалы разные. Внутри одной модели сравнение корректно, между моделями — только после приведения к общей шкале.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Как читать графики <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Четыре стандартных визуализации и что в каждой видно</div>
+
+<div class="def">
+<div class="def-t">📖 Типы графиков</div>
+<dl>
+<dt>Waterfall</dt>
+<dd>Один объект: от базового значения через вклады признаков к прогнозу. Единственный график, где видно эффективность — сумма сходится точно.</dd>
+
+<dt>Beeswarm <span class="en">(summary plot)</span></dt>
+<dd>Все объекты сразу: по горизонтали значение SHAP, цвет — величина самого признака. Показывает и силу, и направление, и форму распределения.</dd>
+
+<dt>Dependence plot</dt>
+<dd>По горизонтали значение признака, по вертикали его SHAP. Показывает форму зависимости. Вертикальный разброс при фиксированном $x$ — это взаимодействия.</dd>
+
+<dt>Force plot</dt>
+<dd>Компактный вариант waterfall: силы, толкающие прогноз влево и вправо. Читается быстрее, но труднее для многих признаков.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">👁</span> Трассировка: что видно на dependence plot и чего нет на bar</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Признак «возраст», bar-график</span></div>
+<div class="tstep-c">
+<div class="calc">
+средний модуль SHAP = 0.14   →   пятое место по важности
+
+Всё. Больше bar-график ничего не сообщает.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Тот же признак, dependence plot</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Средний SHAP возраста по группам</caption>
+<thead><tr><th>Возраст</th><th>ср. SHAP</th><th>разброс (σ)</th><th>что видно</th></tr></thead>
+<tbody>
+<tr><td>18–24</td><td class="r">−0.31</td><td>0.04</td><td class="note">сильно вниз, стабильно</td></tr>
+<tr><td>25–34</td><td>−0.05</td><td>0.06</td><td class="note">почти нейтрально</td></tr>
+<tr><td>35–49</td><td class="g">+0.18</td><td class="a">0.21</td><td class="note">вверх, но разброс огромный</td></tr>
+<tr><td>50–64</td><td class="g">+0.16</td><td class="a">0.19</td><td class="note">то же</td></tr>
+<tr><td>65+</td><td class="r">−0.12</td><td>0.05</td><td class="note">снова вниз</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Первое, что видно: зависимость немонотонна.</strong> Растёт до 35–49, потом падает. Bar-график с одной цифрой 0.14 этого не показывал бы никогда.</p>
+<p><strong>Второе, важнее: в группах 35–64 разброс в четыре раза больше</strong>, чем в остальных. Один и тот же возраст даёт SHAP от −0.2 до +0.6 у разных людей. Это признак сильного взаимодействия с чем-то ещё — и повод посчитать interaction values для этой пары.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Находим партнёра по взаимодействию</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Разбиваем группу 35–49 по признаку «есть ипотека»</span>
+ипотека есть (n = 1840):  ср. SHAP возраста = <span class="hl">+0.41</span>, σ = 0.05
+ипотеки нет (n = 2610):   ср. SHAP возраста = <span class="hl">−0.02</span>, σ = 0.06
+
+Внутри каждой подгруппы разброс упал с 0.21 до 0.05–0.06 —
+почти весь разброс объяснялся именно этим взаимодействием.
+
+Проверка по interaction values:
+  Φ(возраст, ипотека) = <span class="res">0.086</span>  — крупнейшее взаимодействие в модели
+  Φ(возраст, доход)   = 0.011
+  Φ(возраст, регион)  = 0.004
+</div>
+<p><strong>Диагностика работает так:</strong> увидели вертикальный разброс на dependence plot → раскрасили точки по подозреваемому признаку → разброс распался на две чистые полосы → подтвердили через interaction values. Это стандартный рабочий цикл.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Чего не показывает ни один график</span></div>
+<div class="tstep-c">
+<div class="calc">
+Ни waterfall, ни beeswarm, ни dependence не показывают:
+
+× какой РЕЖИМ использован (interventional или conditional) —
+  а от этого значения меняются кардинально (секция 5)
+× попадают ли подстановки в область данных
+× причинное направление (секция 10)
+× устойчивость: при пересборке модели на другом сиде
+  порядок признаков в топе может измениться
+
+Первый пункт особенно коварен: два одинаково выглядящих
+beeswarm-графика могут быть построены в разных режимах,
+и различить их по картинке невозможно.
+</div>
+<p><strong>Практика:</strong> подписывать режим прямо в заголовке графика. <code>plt.title("SHAP (interventional, bg=2000)")</code> — тридцать секунд работы, которые снимают целый класс споров.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Dependence plot: немонотонность и взаимодействие</div>
+<div class="chsub">Вертикальный разброс в средних группах распадается на две полосы при разделении по ипотеке</div>
+<div style="position:relative;height:340px;"><canvas id="c_dep"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. SHAP объясняет модель, а не мир <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Где интерпретация SHAP как причины приводит к прямому вреду</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Ассоциация <span class="en">(association)</span></dt>
+<dd>Статистическая связь: при таком значении признака прогноз в среднем такой. Это то, что измеряет SHAP.</dd>
+
+<dt>Причинный эффект <span class="en">(causal effect)</span></dt>
+<dd>Насколько изменится исход, если <em>вмешаться</em> и изменить признак, всё остальное оставив как есть. Это то, чего SHAP <strong>не</strong> измеряет.</dd>
+
+<dt>Конфаундер <span class="en">(confounder)</span></dt>
+<dd>Общая причина признака и исхода. Создаёт ассоциацию без причинной связи — и может вывернуть знак наизнанку.</dd>
+
+<dt>Коллайдер <span class="en">(collider)</span></dt>
+<dd>Общее следствие двух переменных. Включение его в модель создаёт ложную связь между ними там, где её не было.</dd>
+
+<dt>Обратная причинность</dt>
+<dd>Признак — не причина, а следствие исхода. Классика утечки: «отправлено уведомление о просрочке» предсказывает просрочку идеально, потому что появляется после неё.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: астма спасает от пневмонии</div>
+<p>Известный случай: модель предсказания смертности от пневмонии выучила, что <strong>астма снижает риск смерти</strong>. SHAP честно показал бы для астмы отрицательный вклад.</p>
+<p>Причина: астматиков с пневмонией сразу отправляли в реанимацию, и они получали интенсивное лечение. Выживаемость у них действительно оказывалась выше.</p>
+<p><strong>Объяснение модели верно.</strong> Модель действительно снижает прогноз риска при астме, и SHAP это точно отражает. Причинная интерпретация — «астма защищает, астматиков можно отправлять домой» — убийственно неверна.</p>
+<p>SHAP описывает модель. Модель описывает корреляции в данных. Корреляции в данных отражают в том числе то, как эти данные собирались.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🚨</span> Трассировка: SHAP и причинный эффект имеют противоположный знак</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Задача: отток клиентов</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель предсказывает отток. Признак «звонил в поддержку»
+получает крупный положительный SHAP: звонок → выше риск оттока.
+
+Напрашивающийся вывод менеджера:
+  «Звонки в поддержку связаны с оттоком.
+   Сократим нагрузку на поддержку — снизим отток.»
+
+Проверим, что происходит на самом деле.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Истинная структура: скрытая проблема с продуктом</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Скрытый конфаундер П — проблема с продуктом</span>
+P(П) = 0.25
+
+<span class="lbl">П влияет на звонок З</span>
+P(З = 1 | П = 1) = 0.80
+P(З = 1 | П = 0) = 0.05
+
+<span class="lbl">Отток О зависит от обоих</span>
+П=1, З=1:  отток 0.30   <span class="dim">проблема есть, но помогли</span>
+П=1, З=0:  отток 0.55   <span class="dim">проблема есть, не помогли</span>
+П=0, З=1:  отток 0.04
+П=0, З=0:  отток 0.06
+
+Поддержка СНИЖАЕТ отток в обеих группах.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Что видит модель (и SHAP)</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Отток среди звонивших</span>
+P(П=1 | З=1) = 0.25·0.80 / (0.25·0.80 + 0.75·0.05)
+             = 0.2000 / (0.2000 + 0.0375)
+             = 0.2000 / 0.2375 = <span class="hl">0.8421</span>
+
+отток = 0.8421 · 0.30 + 0.1579 · 0.04
+      = 0.25263 + 0.00632 = <span class="hl">0.2589</span>
+
+<span class="lbl">Отток среди не звонивших</span>
+P(П=1 | З=0) = 0.25·0.20 / (0.25·0.20 + 0.75·0.95)
+             = 0.0500 / (0.0500 + 0.7125)
+             = 0.0500 / 0.7625 = <span class="hl">0.0656</span>
+
+отток = 0.0656 · 0.55 + 0.9344 · 0.06
+      = 0.03607 + 0.05607 = <span class="hl">0.0921</span>
+
+<span class="lbl">Наблюдаемая разница</span>
+0.2589 − 0.0921 = <span class="bad">+0.1668</span>  →  +16.7 п.п.
+
+SHAP признака «звонил» будет заметно ПОЛОЖИТЕЛЬНЫМ.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Настоящий причинный эффект</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Фиксируем проблему, меняем только звонок</span>
+При П = 1:  0.30 − 0.55 = <span class="res">−0.25</span>
+При П = 0:  0.04 − 0.06 = <span class="res">−0.02</span>
+
+<span class="lbl">Средний причинный эффект</span>
+ATE = 0.25 · (−0.25) + 0.75 · (−0.02)
+    = −0.0625 − 0.0150 = <span class="res">−0.0775</span>  →  −7.75 п.п.
+</div>
+<div class="ct">
+<table>
+<caption>Ассоциация и причинность расходятся не в величине, а в знаке</caption>
+<thead><tr><th>Величина</th><th>Значение</th><th>Направление</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td>Наблюдаемая связь (SHAP)</td><td class="r">+16.7 п.п.</td><td class="r">↑ отток</td><td class="note">звонившие уходят чаще</td></tr>
+<tr class="best"><td>Причинный эффект (ATE)</td><td class="g">−7.75 п.п.</td><td class="g">↓ отток</td><td class="note">звонок удерживает клиента</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>SHAP не ошибся.</strong> Он верно описал модель, а модель верно описала данные: звонившие действительно уходят чаще. Ошибка возникает на шаге интерпретации — при переходе от «связано» к «вызывает».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Цена ошибки</span></div>
+<div class="tstep-c">
+<div class="calc">
+Действие по наивной интерпретации:
+  сократили доступность поддержки для тестовой группы
+
+A/B-тест, 40 000 клиентов, 3 месяца:
+  контроль (поддержка как была):  отток <span class="hl">12.0%</span>
+  тест (поддержка сокращена):     отток <span class="bad">19.2%</span>
+
+Разница: <span class="bad">+7.2 п.п.</span> — близко к предсказанному ATE −7.75 п.п.
+с обратным знаком, как и должно быть при снятии воздействия.
+
+При выручке 2400 ₽ с клиента в месяц и 20 000 в тестовой группе:
+  дополнительный отток 1 440 клиентов
+  потери за квартал ≈ <span class="bad">10.4 млн ₽</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Что делать вместо этого</span></div>
+<div class="tstep-c">
+<div class="calc">
+① Если нужен вопрос «что изменится, если вмешаться» —
+   SHAP не инструмент. Нужен A/B-тест или причинный вывод
+   (uplift-модели, DoubleML, инструментальные переменные).
+
+② SHAP хорош ровно для одного: понять, ЧТО ДЕЛАЕТ МОДЕЛЬ.
+   «Модель повышает риск при звонке» — верное утверждение.
+   «Звонок повышает риск» — уже нет.
+
+③ Формулировать выводы на языке модели, а не мира:
+   ✗ «Звонки в поддержку увеличивают отток»
+   ✓ «Модель повышает оценку риска для клиентов,
+      звонивших в поддержку»
+
+④ Признак-симптом полезен для ПРОГНОЗА и бесполезен
+   для ДЕЙСТВИЯ. Это разные задачи и разные модели.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Ассоциация против причинного эффекта</div>
+<div class="chsub">Внутри каждой группы звонок снижает отток; в среднем по всем — повышает</div>
+<div style="position:relative;height:340px;"><canvas id="c_causal"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Правило формулировки.</strong> Любое утверждение по итогам SHAP должно начинаться со слова «модель». «Модель снижает прогноз при астме» — проверяемое и полезное. «Астма снижает риск» — причинное утверждение, для которого нужны совсем другие данные. Разница в одном слове, а цена ошибки — от бесполезной фичи в бэклоге до вреда пациентам.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Коррелированные признаки: расщепление важности <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Почему важный признак может выглядеть неважным</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Расщепление важности <span class="en">(importance dilution)</span></dt>
+<dd>Когда информативный сигнал представлен несколькими коррелированными признаками, бустинг случайно распределяет разбиения между ними, и важность делится. Каждый по отдельности выглядит слабым.</dd>
+
+<dt>Групповой SHAP <span class="en">(group SHAP)</span></dt>
+<dd>Значения Шепли считаются для <em>групп</em> признаков как для единых «игроков». Снимает расщепление: группа получает суммарный вклад.</dd>
+
+<dt>Нестабильность по сидам</dt>
+<dd>Порядок признаков в топе важности меняется при переобучении на другом случайном сиде. Чем сильнее корреляции, тем сильнее скачки.</dd>
+
+<dt>Ловушка последовательного удаления</dt>
+<dd>Удаление признаков по одному «снизу вверх» безопасно на каждом шаге, но может суммарно обрушить качество, если удаляется целая коррелированная группа.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: один сигнал, шесть его копий</div>
+<p>Есть признак, который объясняет 40% прогноза. Продублируем его шесть раз с небольшим шумом — корреляция между копиями 0.9.</p>
+<p>Дерево при построении выбирает признак для разбиения; из шести почти одинаковых кандидатов оно каждый раз берёт случайный. Разбиения распределяются примерно поровну.</p>
+<p><strong>В итоге каждая копия получает важность около 0.07</strong> — ниже порога отсечения. Все шесть выглядят кандидатами на удаление. Удалять их по одной безопасно; удалить все — потерять 40% сигнала.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: как дублирование убивает важность</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Базовая модель, один признак</span></div>
+<div class="tstep-c">
+<div class="calc">
+Признак X, средний модуль SHAP = <span class="hl">0.400</span>
+Место в рейтинге важности: <span class="hl">1-е из 12</span>
+Порог отсечения при отборе признаков: 0.10
+Проходит с большим запасом.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">2</span><span class="tstep-t">Добавляем копии</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Один и тот же сигнал, разное число представляющих его признаков</caption>
+<thead><tr><th>Число копий</th><th>ср. модуль каждой</th><th>сумма по группе</th><th>место в топе</th><th>проходит порог 0.10?</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="g">0.400</td><td class="g">0.400</td><td>1-е</td><td class="g">да</td></tr>
+<tr><td>2</td><td class="g">0.205 / 0.195</td><td class="g">0.400</td><td>1–2-е</td><td class="g">да</td></tr>
+<tr><td>3</td><td>0.139 / 0.134 / 0.127</td><td class="g">0.400</td><td>2–4-е</td><td class="g">да</td></tr>
+<tr><td>4</td><td class="a">0.104 / 0.101 / 0.099 / 0.096</td><td class="g">0.400</td><td>4–7-е</td><td class="a">на грани</td></tr>
+<tr class="best"><td>6</td><td class="r">≈ 0.067 каждая</td><td class="g">0.400</td><td class="r">7–12-е</td><td class="r">НЕТ</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Сумма по группе всегда 0.400</strong> — сигнал никуда не делся. Но при шести копиях каждая по отдельности ниже порога, и автоматический отбор признаков выбросит их все.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Ловушка последовательного удаления</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Удаляем по одному, каждый раз проверяя качество</span>
+исходное AUC:                        <span class="hl">0.8410</span>
+удалили копию 1 → AUC 0.8409   (−0.0001)  <span class="dim">безопасно</span>
+удалили копию 2 → AUC 0.8408   (−0.0001)  <span class="dim">безопасно</span>
+удалили копию 3 → AUC 0.8405   (−0.0003)  <span class="dim">безопасно</span>
+удалили копию 4 → AUC 0.8399   (−0.0006)  <span class="dim">безопасно</span>
+удалили копию 5 → AUC 0.8371   (−0.0028)  <span class="dim">ещё терпимо</span>
+удалили копию 6 → AUC <span class="bad">0.7920</span>   (<span class="bad">−0.0451</span>)  <span class="bad">обвал</span>
+
+Каждый шаг казался безопасным. Итог: −0.049 AUC.
+</div>
+<p><strong>Механизм прост:</strong> пока хоть одна копия остаётся, сигнал доступен, и остальные действительно избыточны. Обвал происходит на последней. Пошаговая проверка качества этого не ловит, потому что смотрит только на один шаг вперёд.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Решение: групповой SHAP</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Считаем Шепли для групп, а не отдельных признаков</span>
+① Кластеризуем признаки по корреляции
+   (иерархическая кластеризация, порог |r| > 0.8)
+② Каждый кластер — один «игрок» в игре Шепли
+③ Коалиция включает или исключает кластер целиком
+
+Результат на нашем примере:
+  кластер {копии 1–6}:  <span class="res">0.400</span>   ← сигнал виден
+  прочие признаки:      как были
+
+Стоимость: 2^(число кластеров) вместо 2^(число признаков) —
+обычно ещё и дешевле.
+</div>
+<div class="ct">
+<table>
+<caption>Способы борьбы с расщеплением</caption>
+<thead><tr><th>Способ</th><th>Что даёт</th><th>Цена</th></tr></thead>
+<tbody>
+<tr class="best"><td>Групповой SHAP</td><td class="g">суммарная важность группы</td><td class="note">нужна кластеризация признаков</td></tr>
+<tr><td>Удалять группами, а не по одному</td><td class="g">ловит обвал сразу</td><td class="note">больше переобучений</td></tr>
+<tr><td>Interventional вместо conditional</td><td class="a">не помогает от расщепления</td><td class="note">это другая проблема</td></tr>
+<tr><td>Оставить по одному из кластера</td><td class="g">убирает расщепление в корне</td><td class="note">теряется усреднение шума</td></tr>
+<tr><td>Усреднить SHAP по нескольким сидам</td><td class="a">стабилизирует рейтинг</td><td class="note">×5–10 времени</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Нестабильность рейтинга по сидам</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Пять переобучений одной модели с разными сидами</span>
+Слабо коррелированные признаки (|r| &lt; 0.3):
+  позиция признака в топе-10 меняется на ±<span class="res">0–1</span>
+
+Сильно коррелированная группа (|r| &gt; 0.85):
+  сид 1:  копия_3 (2-е), копия_1 (5-е), копия_6 (9-е)
+  сид 2:  копия_1 (2-е), копия_5 (4-е), копия_3 (11-е)
+  сид 3:  копия_6 (3-е), копия_2 (6-е), копия_1 (10-е)
+
+Разброс позиций: до <span class="bad">±9 мест</span>
+
+Вывод: обсуждать «какой признак важнее» внутри
+коррелированной группы бессмысленно — ответ определяется
+случайным сидом, а не данными.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Расщепление важности при дублировании признака</div>
+<div class="chsub">Сумма по группе неизменна, но каждый признак по отдельности уходит под порог</div>
+<div style="position:relative;height:330px;"><canvas id="c_dilute"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Ловушка последовательного удаления</div>
+<div class="chsub">Каждый шаг безопасен, последний обрушивает качество</div>
+<div style="position:relative;height:320px;"><canvas id="c_drop"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Альтернативы и когда они лучше <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">SHAP не всегда правильный инструмент</div>
+
+<div class="def">
+<div class="def-t">📖 Альтернативные методы</div>
+<dl>
+<dt>Permutation importance</dt>
+<dd>Перемешать значения признака и замерить падение качества. Отвечает на «насколько модель зависит от этого признака», а не «как он повлиял на конкретный прогноз». Дёшево и глобально.</dd>
+
+<dt>LIME</dt>
+<dd>Локальная линейная аппроксимация модели в окрестности объекта. Быстрее KernelSHAP, но не даёт гарантий эффективности и заметно нестабилен при повторных запусках.</dd>
+
+<dt>PDP <span class="en">(Partial Dependence Plot)</span></dt>
+<dd>Средний прогноз как функция одного признака при остальных из фона. По сути глобальный аналог interventional-подхода — и наследует его проблему невозможных комбинаций.</dd>
+
+<dt>ALE <span class="en">(Accumulated Local Effects)</span></dt>
+<dd>Тот же вопрос, что у PDP, но эффект накапливается по <em>локальным</em> разностям внутри узких окон признака. Не создаёт невозможных комбинаций — правильная замена PDP при коррелированных признаках.</dd>
+
+<dt>Контрфактические объяснения <span class="en">(counterfactuals)</span></dt>
+<dd>«Что минимально изменить, чтобы решение стало другим». Единственный формат, напрямую отвечающий на вопрос о действии.</dd>
+
+<dt>EBM <span class="en">(Explainable Boosting Machine)</span></dt>
+<dd>Обобщённая аддитивная модель с попарными взаимодействиями, обучаемая бустингом. Интерпретируема <em>по устройству</em> — объяснение не нужно приближать, оно и есть модель.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: одна задача, четыре инструмента</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">PDP против ALE на коррелированных данных</span></div>
+<div class="tstep-c">
+<div class="calc">
+Признаки: площадь квартиры и число комнат, корреляция 0.91.
+Модель предсказывает цену.
+
+<span class="lbl">PDP для площади</span>
+Для каждого значения площади усредняет прогноз,
+подставляя число комнат из фона НЕЗАВИСИМО.
+Появляются точки «30 м², 6 комнат» и «200 м², 1 комната».
+
+PDP при 30 м²:  <span class="bad">6.9 млн</span>   <span class="dim">завышено: усреднено с 5-комнатными</span>
+PDP при 200 м²: <span class="bad">11.2 млн</span>  <span class="dim">занижено: усреднено с однушками</span>
+Наклон PDP: <span class="bad">выглядит пологим</span>
+
+<span class="lbl">ALE для площади</span>
+Разбивает площадь на окна, внутри каждого считает
+локальную разность прогноза — комнаты берутся
+из РЕАЛЬНЫХ объектов этого окна.
+
+ALE при 30 м²:  <span class="res">4.1 млн</span>
+ALE при 200 м²: <span class="res">19.8 млн</span>
+Наклон ALE: <span class="res">крутой, как и должно быть</span>
+
+Разница на краях диапазона: до <span class="bad">2.4 раза</span>
+</div>
+<p><strong>PDP систематически сглаживает зависимость</strong> при коррелированных признаках. Это не редкий крайний случай, а норма для табличных данных, где признаки почти всегда связаны.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">LIME: скорость против стабильности</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Пять запусков LIME на одном и том же объекте</span>
+запуск 1: доход +0.31, стаж +0.18, возраст −0.09
+запуск 2: доход +0.27, стаж +0.22, возраст −0.04
+запуск 3: доход +0.35, стаж +0.11, возраст −0.13
+запуск 4: доход +0.24, стаж +0.25, возраст −0.06
+запуск 5: доход +0.33, стаж +0.14, возраст −0.11
+
+разброс по доходу: 0.24 … 0.35 — <span class="bad">±23%</span>
+порядок стажа и возраста в запуске 4 отличается
+
+<span class="lbl">TreeSHAP на том же объекте</span>
+все пять запусков: доход +0.29, стаж +0.17, возраст −0.08
+разброс: <span class="res">0.000</span> — алгоритм детерминирован
+</div>
+<p>Причина: LIME сэмплирует окрестность объекта случайно и подгоняет линейную модель. При малом числе сэмплов подгонка шумная. Увеличение числа сэмплов помогает, но убивает единственное преимущество LIME — скорость.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Контрфактическое объяснение</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">SHAP говорит</span>
+«Отказ. Вклады: просрочки −0.34, доход +0.12, стаж −0.08»
+→ Клиенту непонятно, что делать.
+
+<span class="lbl">Контрфактическое объяснение говорит</span>
+«Для одобрения достаточно одного из:
+   • погасить просрочку по карте (сумма 18 400 ₽), ИЛИ
+   • увеличить подтверждённый доход до 95 000 ₽, ИЛИ
+   • дождаться, пока стаж достигнет 14 месяцев (осталось 3)»
+→ Клиент понимает, что делать.
+
+Формально: ищем ближайшую точку x' с f(x') &gt; порог
+при ограничениях на изменяемость признаков
+(возраст менять нельзя, доход можно, историю нельзя).
+</div>
+<p><strong>Это разные жанры.</strong> SHAP отвечает «почему», контрфактические — «что делать». Для клиентских коммуникаций и регуляторных требований о разъяснении отказа второй жанр обычно уместнее.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сводная таблица</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Выбор инструмента объяснения</caption>
+<thead><tr><th>Метод</th><th>Отвечает на</th><th>Локально</th><th>Стоимость</th><th>Детерминирован</th></tr></thead>
+<tbody>
+<tr class="best"><td>TreeSHAP</td><td class="note">вклад в конкретный прогноз</td><td class="g">да</td><td class="g">низкая</td><td class="g">да</td></tr>
+<tr><td>KernelSHAP</td><td class="note">то же для любой модели</td><td class="g">да</td><td class="r">очень высокая</td><td class="r">нет</td></tr>
+<tr><td>LIME</td><td class="note">локальное приближение</td><td class="g">да</td><td class="a">средняя</td><td class="r">нет</td></tr>
+<tr><td>Permutation importance</td><td class="note">зависимость качества</td><td class="r">нет</td><td class="g">низкая</td><td class="a">почти</td></tr>
+<tr><td>PDP</td><td class="note">форма зависимости</td><td class="r">нет</td><td class="g">низкая</td><td class="g">да</td></tr>
+<tr class="best"><td>ALE</td><td class="note">форма зависимости, корректно</td><td class="r">нет</td><td class="g">низкая</td><td class="g">да</td></tr>
+<tr class="best"><td>Контрфактические</td><td class="note">что изменить</td><td class="g">да</td><td class="a">средняя</td><td class="a">зависит</td></tr>
+<tr><td>EBM / GAM</td><td class="note">модель = объяснение</td><td class="g">да</td><td class="g">бесплатно</td><td class="g">да</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Радикальный вариант: интерпретируемая модель</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Замер на задаче кредитного скоринга, 180 тыс. объектов</span>
+CatBoost, 1000 деревьев:      AUC <span class="hl">0.8412</span>
+EBM (GA²M):                    AUC <span class="hl">0.8367</span>   (−0.0045)
+Логистическая регрессия:       AUC 0.8021   (−0.0391)
+
+Разница между бустингом и EBM: <span class="res">0.45% AUC</span>
+
+При этом EBM даёт:
+  ✓ точные вклады без всякого приближения
+  ✓ график формы для каждого признака напрямую
+  ✓ явный список попарных взаимодействий
+  ✓ ноль вопросов про interventional/conditional
+  ✓ объяснение за микросекунды, а не миллисекунды
+</div>
+<p><strong>Вопрос, который стоит задать до того, как строить SHAP-пайплайн:</strong> нужен ли вообще бустинг? Если интерпретируемость — жёсткое требование (регулируемая отрасль, медицина, кредитование), а разница в качестве полпроцента, то интерпретируемая по устройству модель снимает целый класс проблем: и выбор режима, и коррелированные признаки, и приближённость.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">PDP против ALE при коррелированных признаках</div>
+<div class="chsub">PDP сглаживает зависимость, усредняя по невозможным комбинациям</div>
+<div style="position:relative;height:330px;"><canvas id="c_ale"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество против интерпретируемости</div>
+<div class="chsub">Разница между бустингом и EBM — 0.45% AUC</div>
+<div style="position:relative;height:320px;"><canvas id="c_ebm"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пятнадцать ошибок, каждая из которых встречалась в проде</div>
+
+<div class="pitfalls">
+<div class="pf"><span class="pfn">1</span><span class="pfc"><b>Не знать, какой режим используется.</b> <code>TreeExplainer(model)</code> без аргумента <code>data</code> молча включает <code>tree_path_dependent</code>, то есть conditional. Добавили <code>data</code> — переключились на interventional, и все значения изменились. Задавайте режим явно и подписывайте на графиках.</span></div>
+
+<div class="pf"><span class="pfn">2</span><span class="pfc"><b>Интерпретировать SHAP как причинность.</b> Секция 10: наблюдаемая связь +16.7 п.п. при причинном эффекте −7.75 п.п. Знак противоположный. Всегда формулируйте выводы через «модель делает», а не «признак вызывает».</span></div>
+
+<div class="pf"><span class="pfn">3</span><span class="pfc"><b>Отбирать признаки по conditional SHAP.</b> Важность размывается по коррелированным, число «нужных» признаков завышается втрое. Для отбора нужен interventional, а лучше — групповой.</span></div>
+
+<div class="pf"><span class="pfn">4</span><span class="pfc"><b>Судить о признаке по одному среднему модулю.</b> Три признака с одинаковым 0.05 дают падение AUC от 0.0003 до 0.0292 при удалении — разница в сто раз. Смотрите распределение, а не сводку.</span></div>
+
+<div class="pf"><span class="pfn">5</span><span class="pfc"><b>Удалять признаки по одному до обвала.</b> Каждый шаг безопасен, потому что копии подстраховывают друг друга. Обвал на последней. Проверяйте удаление коррелированных групп целиком.</span></div>
+
+<div class="pf"><span class="pfn">6</span><span class="pfc"><b>Забыть про шкалу выхода.</b> Для классификации SHAP по умолчанию в лог-шансах, а не в вероятностях. Вклад +0.5 в лог-шансах означает совершенно разное при базовой вероятности 0.02 и 0.5. Для клиентских объяснений переводите в вероятности через <code>model_output="probability"</code>.</span></div>
+
+<div class="pf"><span class="pfn">7</span><span class="pfc"><b>Слишком большая фоновая выборка.</b> Для interventional стоимость линейна по её размеру. Полная обучающая выборка на 500 тысяч объектов превращает секунды в часы. 100–1000 объектов, отобранных <code>shap.kmeans</code>, дают практически тот же результат.</span></div>
+
+<div class="pf"><span class="pfn">8</span><span class="pfc"><b>Фоновая выборка не из того распределения.</b> Базовое значение $\phi_0$ — это средний прогноз по фону. Взяли фон только из одобренных заявок — все объяснения смещены относительно неправильной точки отсчёта, и водопады читаются неверно.</span></div>
+
+<div class="pf"><span class="pfn">9</span><span class="pfc"><b>Считать SHAP на трейне и удивляться.</b> На обучающей выборке модель переобучена, и SHAP отражает запомненный шум. Утечка целевой видна на трейне как совершенно нормальный признак. Считайте на отложенной.</span></div>
+
+<div class="pf"><span class="pfn">10</span><span class="pfc"><b>Сравнивать средний модуль между моделями.</b> Значения в единицах выхода модели. Модель с более уверенными прогнозами даст бо́льшие SHAP при том же качестве. Сравнение корректно только внутри одной модели.</span></div>
+
+<div class="pf"><span class="pfn">11</span><span class="pfc"><b>Игнорировать разброс на dependence plot.</b> Вертикальный разброс при фиксированном $x$ — это не шум, а взаимодействия. Раскрасьте точки по подозреваемому признаку: разброс распадётся на полосы, и вы найдёте пару.</span></div>
+
+<div class="pf"><span class="pfn">12</span><span class="pfc"><b>Считать interaction values на всём.</b> Стоимость в $M$ раз выше плюс матрица $N\times M^2$ в памяти: 10⁵ объектов × 200 признаков = 32 ГБ. Считайте на подвыборке и только для топ-20 признаков.</span></div>
+
+<div class="pf"><span class="pfn">13</span><span class="pfc"><b>Обсуждать порядок признаков внутри коррелированной группы.</b> Позиции скачут на ±9 мест между сидами. «Доход важнее стажа» — утверждение о случайном сиде, а не о данных, если корреляция между ними 0.9.</span></div>
+
+<div class="pf"><span class="pfn">14</span><span class="pfc"><b>Показывать клиенту сырые SHAP.</b> «Ваш вклад признака f_37 равен −0.184» — бесполезно. Клиенту нужны контрфактические объяснения: что конкретно изменить. И названия признаков на человеческом языке.</span></div>
+
+<div class="pf"><span class="pfn">15</span><span class="pfc"><b>Строить SHAP-инфраструктуру там, где хватило бы EBM.</b> Разница в качестве 0.45% AUC, а интерпретируемая по устройству модель снимает и вопрос режима, и корреляции, и приближённость. Проверьте это до, а не после.</span></div>
+</div>
+
+<div class="chb">
+<div class="cht">Стоимость SHAP в зависимости от размера фоновой выборки</div>
+<div class="chsub">Линейная зависимость: 100 объектов вместо 500 тысяч дают тот же результат в тысячи раз быстрее</div>
+<div style="position:relative;height:320px;"><canvas id="c_bg"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев, где объяснимость — часть требований</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏦</span><div><div class="sysname">Кредитный скоринг с обязательным разъяснением отказа</div><div class="syssub">Регуляторное требование: назвать основные причины отказа</div></div></div>
+<div class="sysbody">
+<p><strong>Требование.</strong> При отказе клиенту сообщаются главные причины. Формулировки должны быть понятны и по возможности действенны.</p>
+<p><strong>Режим — interventional.</strong> Причина должна быть та, на которую модель реально смотрит. Если назвать признак, который модель не использует (а conditional такие выдаёт), клиент изменит его и получит второй отказ — это прямая жалоба.</p>
+<p><strong>Архитектура.</strong> TreeSHAP считается синхронно при вынесении решения: 500 деревьев, 40 признаков — 0.3 мс, укладывается в бюджет ответа. Фоновая выборка фиксирована на 1000 объектах, версионируется вместе с моделью и хранится в реестре: <em>объяснения должны воспроизводиться через два года при разборе жалобы</em>.</p>
+<p><strong>Поверх SHAP — контрфактический слой.</strong> Топ-3 отрицательных вклада конвертируются в конкретные действия. Признаки помечены как изменяемые и неизменяемые: возраст в объяснение не попадает никогда, даже если его вклад крупнейший.</p>
+<p><strong>Отдельно — аудит на дискриминацию.</strong> Раз в квартал считается <em>conditional</em> SHAP для защищённых признаков (пол, возраст), которых в модели нет. Порог тревоги: вклад выше 0.05 или восстановимость признака из прогноза с AUC выше 0.65.</p>
+<p><strong>Хранение.</strong> Значения SHAP для всех решений пишутся в отдельное хранилище с TTL 5 лет. Объём: 40 float32 на решение, при 200 тыс. решений в день это 32 МБ в сутки — <em>дешевле, чем один разбор жалобы вручную</em>.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🔍</span><div><div class="sysname">Поиск утечки целевой перед выкатом</div><div class="syssub">Автоматический гейт в CI перед деплоем модели</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Модель показала AUC 0.97 против 0.84 у предыдущей. Слишком хорошо — почти наверняка утечка.</p>
+<p><strong>Гейт в пайплайне.</strong> После обучения автоматически считается interventional SHAP на отложенной выборке и проверяются три условия. Первое: доля прогноза, объясняемая одним признаком, выше 60%. Второе: у признака подозрительно резкая ступенчатая форма на dependence plot. Третье: признак появился в топ-3 по сравнению с предыдущей версией модели.</p>
+<p><strong>Что нашлось.</strong> Признак <code>days_since_last_contact</code> давал 71% вклада с резкой ступенькой на нуле. Разбор: у ушедших клиентов поле заполняется датой закрытия договора — <em>то есть значением, известным только после наступления события</em>.</p>
+<p><strong>Почему именно interventional.</strong> Ищем, на что модель реально опирается. Conditional размазал бы 71% по коррелированной группе временны́х признаков, и один яркий виновник не выделился бы.</p>
+<p><strong>Диффы между версиями.</strong> Хранится вектор средних модулей SHAP по каждой версии. При выкате считается корреляция рангов со старой моделью: падение ниже 0.7 — обязательный ручной разбор. Ловит и утечки, и молчаливое изменение семантики признака в источнике данных.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏥</span><div><div class="sysname">Медицинская модель: врач должен согласиться</div><div class="syssub">Модель предлагает, решение принимает человек</div></div></div>
+<div class="sysbody">
+<p><strong>Требование.</strong> Модель оценивает риск осложнения. Врач видит прогноз и объяснение и принимает решение сам. Ключевое: объяснение должно позволить врачу <em>не согласиться</em> обоснованно.</p>
+<p><strong>Решение — не бустинг.</strong> Взяли EBM: разница в качестве 0.9% AUC, зато врач видит не «вклад признака 0.34», а <em>кривую зависимости риска от уровня креатинина целиком</em> и может сопоставить её с клиническими знаниями. Приближённое объяснение чёрного ящика здесь проиграло по принятию, а не по метрикам.</p>
+<p><strong>Что осталось от SHAP.</strong> Локальные вклады из EBM считаются точно и бесплатно — модель аддитивна по построению. Никакого выбора режима, никаких фоновых выборок.</p>
+<p><strong>Проверка на медицинскую осмысленность.</strong> Перед выкатом каждая кривая просматривается врачом-экспертом. На первой итерации нашли ровно ту самую «астму»: у пациентов с сопутствующим диагнозом риск падал, потому что их вели интенсивнее. Признак убрали и добавили <em>явный признак интенсивности наблюдения</em>.</p>
+<p><strong>Монотонные ограничения.</strong> Для признаков с известным направлением (возраст, уровень лактата) направление зафиксировано принудительно — см. тему 1.1. Модель, у которой риск немонотонно скачет по возрасту, не пройдёт врачебное ревью, даже если так лучше по метрике.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⚡</span><div><div class="sysname">Объяснения в реальном времени под нагрузкой</div><div class="syssub">50 000 запросов в секунду, бюджет 8 мс на запрос</div></div></div>
+<div class="sysbody">
+<p><strong>Проблема.</strong> Прогноз занимает 0.9 мс, TreeSHAP с interventional и фоном 1000 — 14 мс. Не укладываемся втрое.</p>
+<p><strong>Мера 1: уменьшить фон.</strong> <code>shap.kmeans(X, 100)</code> вместо 1000 объектов. Время падает до 1.6 мс, средняя абсолютная разница значений — 0.004, что ниже разрешающей способности объяснения. <em>Основной выигрыш достигается здесь</em>.</p>
+<p><strong>Мера 2: считать не всем.</strong> Объяснение нужно только при отказе и при пограничных решениях — это 12% трафика. Для остальных SHAP не считается вовсе. Средняя нагрузка падает в восемь раз.</p>
+<p><strong>Мера 3: асинхронно, где можно.</strong> Для аналитики и мониторинга SHAP считается батчами ночью на полном логе. В синхронный путь попадает только то, что показывается пользователю немедленно.</p>
+<p><strong>Мера 4: не считать заново.</strong> Значения кэшируются по хешу вектора признаков. Для повторных заявок одного клиента в течение дня попадание в кэш — 34%.</p>
+<p><strong>Итог.</strong> p99 полного пути 6.1 мс при бюджете 8 мс. <em>Важно: сокращали фон, а не переходили на path_dependent</em> — смена режима поменяла бы смысл объяснений, а это не оптимизация, а подмена.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📉</span><div><div class="sysname">Мониторинг дрейфа через SHAP</div><div class="syssub">Ловить деградацию до того, как придут метки</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Метки приходят с задержкой 45 дней. Нужно понять, что модель поехала, раньше.</p>
+<p><strong>Идея.</strong> Дрейф входного распределения сам по себе не означает деградацию — модель может быть к нему нечувствительна. А вот сдвиг <em>распределения вкладов</em> означает, что модель стала опираться на другое.</p>
+<p><strong>Метрика.</strong> Для каждого признака считается расстояние Вассерштейна между распределением его SHAP на эталонном окне и на текущем. Тревога при превышении порога, откалиброванного по историческому разбросу.</p>
+<p><strong>Что это поймало.</strong> Распределение самого признака <code>channel</code> почти не изменилось (PSI 0.04, ниже любого порога), а распределение его SHAP сдвинулось резко. Разбор: партнёр начал передавать другой набор значений под теми же кодами. Поймано <em>за 31 день до появления меток</em>, показавших падение AUC на 0.06.</p>
+<p><strong>Стоимость.</strong> Батчевый расчёт на подвыборке 20 тыс. объектов в сутки, path_dependent для скорости — здесь режим не критичен, потому что сравниваются распределения между собой, а не интерпретируются абсолютные значения.</p>
+<p><strong>Ограничение.</strong> Метод ловит изменение <em>поведения модели</em>, но не изменение связи признаков с целевой при неизменных входах. Против последнего помогают только метки — или прокси вроде ранних индикаторов.</p>
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Мониторинг: сдвиг SHAP опережает падение качества</div>
+<div class="chsub">Распределение самого признака стабильно, распределение его вкладов — нет</div>
+<div style="position:relative;height:330px;"><canvas id="c_drift"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы</div>
+<div class="sdesc">Тридцать вопросов — от базовых до собеседовательных</div>
+
+<h3>Основы</h3>
+
+<div class="qa"><div class="q">1. Что такое значение Шепли одним предложением?</div><div class="a">Средний по всем порядкам присоединения вклад признака в отклонение прогноза от базового значения. <em>Ключевое слово — «по всем порядкам»</em>: вклад зависит от того, какие признаки уже известны, и усреднение снимает произвол выбора одного порядка.</div></div>
+
+<div class="qa"><div class="q">2. Почему нельзя взять один порядок?</div><div class="a">В примере из секции 2 вклад дохода менялся от 0.12 до 0.19 в зависимости от порядка — разница в полтора раза. Любой конкретный порядок дал бы произвольный ответ.</div></div>
+
+<div class="qa"><div class="q">3. Что означает базовое значение $\phi_0$?</div><div class="a">Средний прогноз модели по фоновой выборке. SHAP объясняет <b>отклонение</b> от него, а не абсолютное значение. Меняете фон — меняется $\phi_0$ и все вклады.</div></div>
+
+<div class="qa"><div class="q">4. Какие четыре свойства гарантирует SHAP?</div><div class="a">Эффективность (сумма равна разнице прогноза и базового), симметрия (равные признаки получают равное), фиктивность (неиспользуемый получает ноль), аддитивность (для суммы моделей вклады складываются). <em>Значения Шепли — единственный способ удовлетворить все четыре одновременно.</em></div></div>
+
+<div class="qa"><div class="q">5. Чем SHAP лучше встроенной важности бустинга?</div><div class="a">Gain нарушает симметрию: систематически завышает признаки с большим числом уникальных значений, потому что у них больше возможных порогов разбиения. SHAP оценивает вклад в прогноз, а не в структуру дерева.</div></div>
+
+<div class="qa"><div class="q">6. Сколько коалиций нужно перебрать точно?</div><div class="a">$2^M$. При $M=20$ это миллион, при $M=100$ — $1.27\times10^{30}$, что при миллиарде операций в секунду заняло бы $4\times10^{13}$ лет.</div></div>
+
+<h3>TreeSHAP и вычисления</h3>
+
+<div class="qa"><div class="q">7. Как TreeSHAP обходит экспоненту?</div><div class="a">Использует структуру дерева: один проход от корня к листьям с инкрементальным пересчётом весов коалиций вместо явного перебора. Сложность $O(T\cdot L\cdot D^2)$ вместо $O(2^M)$.</div></div>
+
+<div class="qa"><div class="q">8. Почему аддитивность критична для TreeSHAP?</div><div class="a">Она позволяет считать SHAP для каждого дерева независимо и складывать. Без неё пришлось бы работать с ансамблем целиком, и эффективного алгоритма не существовало бы.</div></div>
+
+<div class="qa"><div class="q">9. Насколько TreeSHAP быстрее KernelSHAP?</div><div class="a">На 500 деревьях и 10 000 объектов: 3 секунды против 2.5 часов, то есть примерно в три тысячи раз. Плюс TreeSHAP точен, а KernelSHAP приближён.</div></div>
+
+<div class="qa"><div class="q">10. Что делать для нейросети?</div><div class="a">DeepSHAP (правила обратного распространения) или GradientSHAP. KernelSHAP работает с чем угодно, но дорог; главный рычаг оптимизации — <em>уменьшить фоновую выборку</em>, стоимость по ней линейна.</div></div>
+
+<h3>Interventional и conditional</h3>
+
+<div class="qa"><div class="q">11. В чём разница между режимами одним предложением?</div><div class="a">Interventional подставляет неизвестные признаки из фона независимо («что делает модель»), conditional — из условного распределения при известных («что говорит наблюдение»).</div></div>
+
+<div class="qa"><div class="q">12. Может ли признак, отсутствующий в модели, получить ненулевой SHAP?</div><div class="a">При conditional — да. В примере секции 5 он получил <b>43% всей важности</b> при корреляции 0.94 с используемым признаком. При interventional — строго ноль, свойство фиктивности сохраняется.</div></div>
+
+<div class="qa"><div class="q">13. Какой режим для отбора признаков?</div><div class="a">Interventional. Conditional размазывает важность по коррелированным группам, и число «нужных» признаков завышается — в замере из секции 6 с 14 до 38.</div></div>
+
+<div class="qa"><div class="q">14. Какой режим для регуляторного аудита?</div><div class="a">Conditional — и это единственный случай, где он строго необходим. Регулятора интересует, влияет ли защищённый признак на решения, в том числе <em>косвенно, через коррелированные</em>. Interventional на этот вопрос не отвечает по построению.</div></div>
+
+<div class="qa"><div class="q">15. Чем плох interventional?</div><div class="a">Создаёт невозможные комбинации признаков — «возраст 19, стаж 31 год». На данных с сильными корреляциями до 62% подстановок лежат вне области обучающих данных, и модель на них экстраполирует произвольно.</div></div>
+
+<div class="qa"><div class="q">16. Как понять, какой режим используется у вас?</div><div class="a"><code>TreeExplainer(model)</code> без <code>data</code> — это <code>tree_path_dependent</code>, то есть conditional. С <code>data</code> и <code>feature_perturbation="interventional"</code> — interventional. <em>Молчаливое переключение при добавлении аргумента — частый источник необъяснимых расхождений.</em></div></div>
+
+<div class="qa"><div class="q">17. Когда режимы совпадают?</div><div class="a">При независимых признаках — тождественно. Расхождение растёт с корреляцией: доля важности, уходящая на неиспользуемый коррелированный признак, стремится к 50% при корреляции, стремящейся к единице.</div></div>
+
+<h3>Взаимодействия и агрегация</h3>
+
+<div class="qa"><div class="q">18. Что такое SHAP interaction value?</div><div class="a">Часть вклада, возникающая из совместного присутствия двух признаков — то, чего не объясняет ни один по отдельности. Выполняется $\phi_i = \sum_j\Phi_{ij}$, а главный эффект $\Phi_{ii}$ равен вкладу признака, пришедшего первым.</div></div>
+
+<div class="qa"><div class="q">19. Сколько стоит их посчитать?</div><div class="a">В $M$ раз дороже обычного SHAP плюс матрица $N\times M^2$ в памяти: $10^5$ объектов на 200 признаков — 32 ГБ. Практика: подвыборка 1–5 тысяч объектов и топ-20 признаков.</div></div>
+
+<div class="qa"><div class="q">20. Как заметить взаимодействие без их вычисления?</div><div class="a">По вертикальному разбросу на dependence plot при фиксированном значении признака. Раскрасьте точки по подозреваемому партнёру: если разброс распадается на чистые полосы — взаимодействие найдено.</div></div>
+
+<div class="qa"><div class="q">21. Почему средний SHAP со знаком бесполезен?</div><div class="a">Плюсы и минусы гасятся. Признак с $+0.05$ на половине объектов и $-0.05$ на другой половине даёт средний ноль, хотя удаление роняет AUC на 0.0145. Используйте средний <b>модуль</b>.</div></div>
+
+<div class="qa"><div class="q">22. Достаточно ли среднего модуля?</div><div class="a">Нет. Три признака с одинаковым 0.05 давали падение AUC от 0.0003 до 0.0292 — разница в сто раз. Нужны ещё максимум модуля (ловит разреженно-сильные) и доля объектов с ненулевым вкладом.</div></div>
+
+<h3>Причинность и ограничения</h3>
+
+<div class="qa"><div class="q">23. Можно ли по SHAP решать, что менять в продукте?</div><div class="a">Нет. В примере секции 10 наблюдаемая связь была $+16.7$ п.п., причинный эффект $-7.75$ п.п. — <b>противоположный знак</b>. Действие по SHAP обошлось в 10.4 млн ₽ за квартал.</div></div>
+
+<div class="qa"><div class="q">24. SHAP тогда ошибся?</div><div class="a">Нет. Он верно описал модель, модель верно описала данные. Ошибка возникает на шаге интерпретации — при переходе от «связано» к «вызывает». <em>Формулируйте выводы через «модель делает».</em></div></div>
+
+<div class="qa"><div class="q">25. Что использовать для вопроса «что изменить»?</div><div class="a">A/B-тест, uplift-модели, DoubleML, инструментальные переменные — методы причинного вывода. Для клиентских объяснений — контрфактические: «погасите просрочку 18 400 ₽» вместо «вклад признака −0.34».</div></div>
+
+<div class="qa"><div class="q">26. Пример из практики, где причинная интерпретация навредила?</div><div class="a">Модель смертности от пневмонии выучила, что астма <em>снижает</em> риск — потому что астматиков сразу отправляли в реанимацию. Объяснение модели корректно, вывод «астматиков можно отправлять домой» смертельно опасен.</div></div>
+
+<h3>Коррелированные признаки и альтернативы</h3>
+
+<div class="qa"><div class="q">27. Почему важный признак может выглядеть неважным?</div><div class="a">Расщепление: шесть коррелированных копий одного сигнала делят важность 0.400 на шесть частей по 0.067 — все ниже порога отсечения 0.10. Сумма по группе неизменна, но автоотбор выбросит их все.</div></div>
+
+<div class="qa"><div class="q">28. Почему опасно удалять признаки по одному?</div><div class="a">Пока хоть одна копия остаётся, сигнал доступен, и каждый шаг выглядит безопасным. В замере секции 11 первые пять удалений дали суммарно $-0.004$ AUC, шестое — $-0.045$.</div></div>
+
+<div class="qa"><div class="q">29. Чем ALE лучше PDP?</div><div class="a">PDP усредняет по независимым подстановкам и создаёт невозможные комбинации — та же проблема, что у interventional. ALE накапливает <em>локальные</em> разности внутри узких окон. В примере с площадью квартиры PDP занизил наклон в 2.4 раза.</div></div>
+
+<div class="qa"><div class="q">30. Когда вообще не стоит использовать SHAP?</div><div class="a">Когда интерпретируемость — жёсткое требование, а разница в качестве мала. EBM проиграл бустингу 0.45% AUC, но даёт точные вклады без приближения, готовые графики формы, явные взаимодействия и <em>ноль вопросов про режим</em>. Стоит проверить до, а не после постройки SHAP-пайплайна.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block1_02_class_imbalance.html">← 1.2 · Дисбаланс классов</a>
+  <a href="index_roadmap.html" class="next">К содержанию курса →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---- 1. Маргинальные вклады по перестановкам ---- */
+mk('c_perm', {type:'bar', data:{
+  labels:['Д→В→П','Д→П→В','В→Д→П','В→П→Д','П→Д→В','П→В→Д','СРЕДНЕЕ'],
+  datasets:[
+   {label:'Доход', data:[0.12,0.12,0.13,0.19,0.18,0.19,0.155], backgroundColor:'#6d28d9'},
+   {label:'Возраст', data:[0.03,0.04,0.02,0.02,0.04,0.03,0.030], backgroundColor:'#c4b5fd'},
+   {label:'Просрочки', data:[0.27,0.26,0.27,0.21,0.20,0.20,0.235], backgroundColor:'#0891b2'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({stacked:true},NOG), y:Object.assign({stacked:true,title:{display:true,text:'вклад'}},GRID)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{footer:function(it){return 'сумма = 0.42';}}}}}});
+
+/* ---- 2. SHAP против gain importance ---- */
+mk('c_props', {type:'bar', data:{
+  labels:['ID клиента\n(180к значений)','Сумма\n(непрерывный)','Возраст\n(60 значений)','Регион\n(12 категорий)','Флаг подписки\n(бинарный)'],
+  datasets:[
+   {label:'gain importance (норм.)', data:[0.41,0.27,0.18,0.09,0.05], backgroundColor:'#fca5a5'},
+   {label:'SHAP (средний модуль, норм.)', data:[0.02,0.24,0.21,0.23,0.30], backgroundColor:'#6d28d9'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+  scales:{x:Object.assign({title:{display:true,text:'нормированная важность'}},GRID), y:NOG},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'gain завышает признаки с большим числом уникальных значений',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 3. Стоимость вычисления ---- */
+mk('c_cost', {type:'line', data:{
+  labels:['5','10','15','20','25','30','40','60','80','100'],
+  datasets:[
+   {label:'точный перебор 2^M (операций)', data:[32,1024,32768,1048576,3.36e7,1.07e9,1.10e12,1.15e18,1.21e24,1.27e30],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.5, tension:.1, pointRadius:3},
+   {label:'KernelSHAP (2048 сэмплов)', data:[204800,204800,204800,204800,204800,204800,204800,204800,204800,204800],
+    borderColor:'#d97706', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0},
+   {label:'TreeSHAP O(T·L·D²)', data:[1152000,1152000,1152000,1152000,1152000,1152000,1152000,1152000,1152000,1152000],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.5, tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'число признаков M'}},NOG),
+          y:Object.assign({type:'logarithmic',title:{display:true,text:'операций (лог. шкала)'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'при M=20 точный перебор уже проигрывает TreeSHAP',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 4. Interventional vs conditional ---- */
+mk('c_intcond', {type:'line', data:{
+  labels:['0.00','0.20','0.40','0.60','0.70','0.80','0.90','0.94','0.97','0.99'],
+  datasets:[
+   {label:'φ признака НЕ в модели — conditional', data:[0.000,0.020,0.042,0.070,0.087,0.104,0.121,0.129,0.139,0.146],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.3, fill:true, pointRadius:3},
+   {label:'φ признака НЕ в модели — interventional', data:[0,0,0,0,0,0,0,0,0,0],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:3, tension:0, pointRadius:3},
+   {label:'φ признака В модели — conditional', data:[0.300,0.280,0.258,0.230,0.213,0.196,0.179,0.171,0.161,0.154],
+    borderColor:'#6d28d9', backgroundColor:'transparent', borderWidth:2, borderDash:[5,4], tension:.3, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'корреляция между признаками'}},NOG),
+          y:Object.assign({min:0,max:0.32,title:{display:true,text:'значение Шепли'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'interventional стабилен на нуле; conditional растёт до половины важности',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 5. Отбор признаков ---- */
+mk('c_select', {type:'bar', data:{
+  labels:['всего признаков','выше порога:\nconditional','выше порога:\ninterventional','реально нужны\n(проверено удалением)'],
+  datasets:[{label:'число признаков', data:[64,38,14,14],
+    backgroundColor:['#cbd5e1','#fca5a5','#6d28d9','#16a34a']}]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'число признаков'}},GRID)},
+  plugins:{legend:{display:false},title:{display:true,text:'после сокращения до 14 признаков качество упало на 0.3%',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 6. Interaction values ---- */
+mk('c_inter', {type:'bar', data:{
+  labels:['Доход','Возраст','Просрочки'],
+  datasets:[
+   {label:'главный эффект Φ_ii', data:[0.120,0.020,0.200], backgroundColor:'#6d28d9'},
+   {label:'взаимодействие с доходом', data:[0,0.005,0.030], backgroundColor:'#a78bfa'},
+   {label:'взаимодействие с возрастом', data:[0.005,0,0.005], backgroundColor:'#c4b5fd'},
+   {label:'взаимодействие с просрочками', data:[0.030,0.005,0], backgroundColor:'#0891b2'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({stacked:true},NOG), y:Object.assign({stacked:true,title:{display:true,text:'вклад φ_i'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'высота столбца = значение Шепли; сумма всех = 0.420',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 7. Агрегация ---- */
+mk('c_agg', {type:'bar', data:{
+  labels:['A: равномерно слабый','B: разреженный, сильный','C: двусторонний'],
+  datasets:[
+   {label:'средний модуль |φ|', data:[0.05,0.05,0.05], backgroundColor:'#cbd5e1'},
+   {label:'максимальный модуль', data:[0.05,1.00,0.05], backgroundColor:'#6d28d9'},
+   {label:'падение AUC при удалении ×10', data:[0.003,0.292,0.145], backgroundColor:'#dc2626'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'серые столбцы одинаковы — по ним признаки неразличимы',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 8. Dependence plot ---- */
+mk('c_dep', {type:'scatter', data:{datasets:[
+  {label:'есть ипотека', backgroundColor:'#dc2626', pointRadius:3.5, data:[
+   {x:20,y:-0.30},{x:22,y:-0.32},{x:24,y:-0.29},{x:27,y:-0.03},{x:30,y:-0.06},{x:33,y:-0.04},
+   {x:36,y:0.40},{x:39,y:0.43},{x:42,y:0.41},{x:45,y:0.38},{x:47,y:0.42},{x:49,y:0.44},
+   {x:52,y:0.38},{x:56,y:0.36},{x:60,y:0.37},{x:63,y:0.35},{x:67,y:-0.11},{x:72,y:-0.13}]},
+  {label:'нет ипотеки', backgroundColor:'#2563eb', pointRadius:3.5, data:[
+   {x:19,y:-0.32},{x:21,y:-0.31},{x:23,y:-0.30},{x:26,y:-0.05},{x:29,y:-0.07},{x:32,y:-0.05},
+   {x:35,y:-0.02},{x:38,y:0.01},{x:41,y:-0.03},{x:44,y:-0.01},{x:46,y:0.02},{x:48,y:-0.02},
+   {x:53,y:-0.01},{x:57,y:0.01},{x:61,y:-0.02},{x:64,y:0.00},{x:68,y:-0.12},{x:74,y:-0.11}]}
+ ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'возраст'}},GRID),
+          y:Object.assign({title:{display:true,text:'SHAP признака «возраст»'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'разброс в группе 35–64 распадается на две чистые полосы',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 9. Причинность ---- */
+mk('c_causal', {type:'bar', data:{
+  labels:['проблема есть','проблемы нет','ВСЕ КЛИЕНТЫ\n(наблюдаемое)'],
+  datasets:[
+   {label:'звонил в поддержку', data:[30.0,4.0,25.9], backgroundColor:'#dc2626'},
+   {label:'не звонил', data:[55.0,6.0,9.2], backgroundColor:'#2563eb'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'отток, %'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'в обеих группах звонок снижает отток; в среднем — «повышает» на 16.7 п.п.',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 10. Расщепление важности ---- */
+mk('c_dilute', {type:'bar', data:{
+  labels:['1 копия','2 копии','3 копии','4 копии','6 копий'],
+  datasets:[
+   {label:'важность одной копии', data:[0.400,0.200,0.133,0.100,0.067], backgroundColor:'#6d28d9'},
+   {label:'сумма по группе', data:[0.400,0.400,0.400,0.400,0.400], type:'line',
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.5, tension:0, pointRadius:4},
+   {label:'порог отсечения 0.10', data:[0.10,0.10,0.10,0.10,0.10], type:'line',
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'средний модуль SHAP'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'при шести копиях каждая уходит под порог, а сигнал никуда не делся',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 11. Последовательное удаление ---- */
+mk('c_drop', {type:'line', data:{
+  labels:['исходно','−1','−2','−3','−4','−5','−6'],
+  datasets:[
+   {label:'AUC после удаления', data:[0.8410,0.8409,0.8408,0.8405,0.8399,0.8371,0.7920],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.15, fill:true, pointRadius:5},
+   {label:'порог допустимой просадки', data:[0.8360,0.8360,0.8360,0.8360,0.8360,0.8360,0.8360],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'удалено копий признака'}},NOG),
+          y:Object.assign({min:0.78,max:0.85,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'шесть «безопасных» шагов дают суммарно −0.049 AUC',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 12. PDP vs ALE ---- */
+mk('c_ale', {type:'line', data:{
+  labels:['30','50','70','90','110','130','150','175','200'],
+  datasets:[
+   {label:'ALE (корректно)', data:[4.1,6.0,7.8,9.5,11.4,13.6,15.7,17.8,19.8],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:3, tension:.2, pointRadius:3},
+   {label:'PDP (сглажен корреляцией)', data:[6.9,7.4,8.0,8.6,9.2,9.8,10.3,10.8,11.2],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:3, borderDash:[6,4], tension:.2, pointRadius:3}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'площадь квартиры, м²'}},NOG),
+          y:Object.assign({title:{display:true,text:'предсказанная цена, млн ₽'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'на краях диапазона расхождение достигает 2.4 раза',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 13. EBM ---- */
+mk('c_ebm', {type:'bar', data:{
+  labels:['CatBoost, 1000 деревьев','EBM (GA²M)','Логистическая регрессия'],
+  datasets:[
+   {label:'AUC', data:[0.8412,0.8367,0.8021], backgroundColor:['#6d28d9','#16a34a','#cbd5e1'], yAxisID:'y'},
+   {label:'точность объяснения (1 = точное)', data:[0.85,1.00,1.00], backgroundColor:['#c4b5fd','#86efac','#e2e8f0'], yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.75,max:1.02,title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'разница в качестве 0.45% AUC при точном объяснении вместо приближённого',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 14. Фоновая выборка ---- */
+mk('c_bg', {type:'line', data:{
+  labels:['10','50','100','500','1000','5000','50000','500000'],
+  datasets:[
+   {label:'время расчёта, мс на объект', data:[0.16,0.8,1.6,7.9,14.0,79,790,7900],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:3, tension:.15, pointRadius:4, yAxisID:'y'},
+   {label:'ср. отклонение значений от эталона ×1000', data:[42,11,4,1.2,0.6,0.2,0.05,0],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.5, borderDash:[5,4], tension:.2, pointRadius:4, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'размер фоновой выборки'}},NOG),
+          y:Object.assign({type:'logarithmic',title:{display:true,text:'лог. шкала'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'после 100 объектов точность почти не растёт, а время растёт линейно',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 15. Мониторинг дрейфа ---- */
+mk('c_drift', {type:'line', data:{
+  labels:['−60д','−50д','−40д','−31д','−20д','−10д','0д','+10д','+20д','+31д','+45д'],
+  datasets:[
+   {label:'PSI самого признака', data:[0.02,0.02,0.03,0.04,0.04,0.05,0.05,0.05,0.06,0.05,0.06],
+    borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2, tension:.3, pointRadius:3, yAxisID:'y'},
+   {label:'сдвиг распределения SHAP (Вассерштейн)', data:[0.03,0.04,0.06,0.28,0.34,0.37,0.39,0.41,0.40,0.42,0.41],
+    borderColor:'#6d28d9', backgroundColor:'rgba(109,40,217,.10)', borderWidth:3, tension:.25, pointRadius:4, fill:true, yAxisID:'y'},
+   {label:'падение AUC (метки приходят с задержкой)', data:[null,null,null,null,null,null,null,null,null,0.01,0.06],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:3, tension:.2, pointRadius:6, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'дни относительно момента поломки источника данных'}},NOG),
+          y:Object.assign({title:{display:true,text:'значение метрики'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'сигнал по SHAP на 31 день раньше, чем метки покажут падение',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- Интерактив: interventional vs conditional ---- */
+function updIC(){
+  var r = parseFloat(document.getElementById('sl_cor').value)/100;
+  var e = parseFloat(document.getElementById('sl_eff').value)/100;
+  document.getElementById('out_cor').textContent = r.toFixed(2);
+  document.getElementById('out_eff').textContent = e.toFixed(2);
+  /* p — доля, восстановимая при наблюдении коррелированного признака выше медианы */
+  var p = 0.5 + Math.asin(Math.min(r,0.999))/Math.PI;
+  var half = e/2;                       /* f(x) − φ₀ */
+  var phiCcond = e*(p-0.5)/2;
+  var phiDcond = half - phiCcond;
+  var share = half>0 ? phiCcond/half : 0;
+  document.getElementById('out_icres').innerHTML =
+    '<b>Объяснить надо:</b> f(x) − φ₀ = ' + half.toFixed(4) + '<br>' +
+    '<b>Interventional:</b> признак в модели ' + half.toFixed(4) +
+    ', признак НЕ в модели <b style="color:#16a34a">0.0000</b><br>' +
+    '<b>Conditional:</b> признак в модели ' + phiDcond.toFixed(4) +
+    ', признак НЕ в модели <b style="color:#dc2626">' + phiCcond.toFixed(4) + '</b><br>' +
+    '<b>Доля важности у признака, которого нет в модели: <span style="color:#dc2626">' +
+    (share*100).toFixed(1) + '%</span></b><br>' +
+    '<span style="font-size:12.5px;color:#6b7280">Доля равна arcsin(r)/π и <b>не зависит</b> от силы влияния признака — ' +
+    'её определяет только корреляция. При r → 1 она стремится к 50%: два идеально коррелированных признака ' +
+    'делят важность поровну, независимо от того, какой из них реально в модели.</span>';
+}
+updIC();
+
+/* ---- Подсветка секции в навигации ---- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

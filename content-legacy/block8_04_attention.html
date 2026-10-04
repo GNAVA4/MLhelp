@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.4 · Attention и Transformer под капотом</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0e7490 45%,#22d3ee);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.88;max-width:720px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);} .nb.pk{background:var(--pk);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+/* ---------- Уровневые метки ---------- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- Матрицы ---------- */
+.mtx{display:inline-block;vertical-align:middle;margin:6px 8px;}
+.mtx table{border-collapse:separate;border-spacing:3px;width:auto;}
+.mtx td{padding:6px 9px;border-radius:5px;font-family:'SF Mono',monospace;font-size:12px;text-align:center;
+        border:none;background:#f1f5f9;color:#0f172a;min-width:44px;}
+.mtx .lbl{background:none;color:var(--text3);font-size:11px;font-family:inherit;font-weight:700;}
+.mtx-cap{font-size:12px;color:var(--text3);text-align:center;margin-top:4px;}
+.mrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin:14px 0;}
+.mop{font-size:19px;color:var(--cy);font-weight:700;}
+/* ---------- Тепловая карта внимания ---------- */
+.hm{display:inline-block;margin:8px 0;}
+.hm table{border-collapse:separate;border-spacing:2px;width:auto;}
+.hm td{width:44px;height:32px;border-radius:4px;font-size:10.5px;text-align:center;color:#fff;
+       font-family:'SF Mono',monospace;border:none;vertical-align:middle;}
+.hm td.hd{background:none;color:var(--text3);font-size:11px;font-weight:700;font-family:inherit;width:auto;padding:0 7px;}
+.hm td.masked{background:repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 4px,#e2e8f0 4px,#e2e8f0 8px);color:#94a3b8;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes dash{to{stroke-dashoffset:0;}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(8,145,178,.4);}50%{box-shadow:0 0 0 9px rgba(8,145,178,0);}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes scanCell{0%,100%{outline-color:transparent;}50%{outline-color:var(--cy);}}
+@keyframes growCache{from{width:8%;}to{width:100%;}}
+.draw path,.draw line,.draw circle,.draw polyline,.draw rect{stroke-dasharray:2400;stroke-dashoffset:2400;animation:dash 2.8s ease-out forwards;}
+.draw .d2{animation-delay:.4s;} .draw .d3{animation-delay:.8s;} .draw .d4{animation-delay:1.2s;} .draw .d5{animation-delay:1.6s;}
+.draw text{animation:fadeUp .8s ease 1s both;stroke:none;}
+/* Поток данных в блоке */
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--pur-l);border-color:var(--pur);color:#4c1d95;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--cy);}
+/* KV-cache рост */
+.kvbar{height:26px;border-radius:6px;background:linear-gradient(90deg,var(--cy),#67e8f9);
+       animation:growCache 3.5s ease-in-out infinite alternate;display:flex;align-items:center;
+       padding-left:10px;color:#fff;font-size:11.5px;font-weight:700;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .hm td{width:34px;height:27px;font-size:9px;}.mtx td{min-width:36px;padding:5px 6px;font-size:11px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 4 из 6 · расширенная</div>
+  <h1>Attention и Transformer под капотом</h1>
+  <p class="sub">Полный разбор от «зачем вообще понадобилось внимание» до KV-cache, FlashAttention и Mixture of Experts.
+     Каждая формула выводится и объясняется на пальцах, каждый механизм показан на конкретных числах.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–5</span>
+    <span>🔵 средний — секции 6–11</span>
+    <span>🟣 продвинутый — секции 12–16</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем внимание</a>
+  <a href="#s2">2. Идея на пальцах</a>
+  <a href="#s3">3. Q, K, V</a>
+  <a href="#s4">4. Формула</a>
+  <a href="#s5">5. Разбор на числах</a>
+  <a href="#s6">6. Почему √d</a>
+  <a href="#s7">7. Маски</a>
+  <a href="#s8">8. Multi-head</a>
+  <a href="#s9">9. Блок целиком</a>
+  <a href="#s10">10. Позиции и RoPE</a>
+  <a href="#s11">11. Типы архитектур</a>
+  <a href="#s12">12. KV-cache</a>
+  <a href="#s13">13. FlashAttention</a>
+  <a href="#s14">14. MQA / GQA</a>
+  <a href="#s15">15. MoE</a>
+  <a href="#s16">16. System Design</a>
+  <a href="#qa">17. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–5</strong> — механика внимания с абсолютного нуля. Если ты никогда не видел формулу attention, начинай отсюда и не пропускай числовой разбор в секции 5.</li>
+<li><strong>Секции 6–11</strong> — детали, из которых собран настоящий трансформер: масштабирование, маски, головы, позиционные кодировки, три типа архитектур.</li>
+<li><strong>Секции 12–15</strong> — то, что определяет экономику инференса в проде: KV-cache, FlashAttention, GQA, Mixture of Experts.</li>
+<li><strong>Секция 16 и Q&A</strong> — системный дизайн и 32 вопроса уровня собеседования.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Проблема, ради которой придумали внимание <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Чтобы понять решение, надо сначала прочувствовать боль</div>
+
+<p>До 2014 года последовательности обрабатывали рекуррентными сетями. Модель читала предложение слово за словом, поддерживая <strong>вектор состояния</strong> — сжатую память о прочитанном.</p>
+
+<div class="flow">
+  <div class="fn d"><strong>«Кот»</strong>h₁</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>«сидел»</strong>h₂</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>«на»</strong>h₃</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>«ковре»</strong>h₄</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>h₄</strong>всё предложение<br>в одном векторе</div>
+</div>
+
+<h3>Три беды рекуррентного подхода</h3>
+<div class="grid3">
+<div class="card rd"><h5>① Бутылочное горлышко</h5><p>Предложение из 100 слов должно поместиться в один вектор фиксированной длины. Информация о начале неизбежно теряется к концу.</p></div>
+<div class="card rd"><h5>② Затухание градиента</h5><p>Чтобы связать слово 1 со словом 100, градиент должен пройти 100 шагов рекуррентности. Мы уже знаем из темы 8.1, чем это кончается: $c^{100}$.</p></div>
+<div class="card rd"><h5>③ Нельзя распараллелить</h5><p>$h_t$ зависит от $h_{t-1}$. Слова обрабатываются строго по очереди — GPU с тысячами ядер простаивает.</p></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь, что тебе диктуют текст на 500 слов, а ты можешь записать <strong>только одно предложение-конспект</strong>. Потом по этому конспекту нужно ответить на любой вопрос о тексте.</p>
+<p>Именно это делает RNN. Конспект получается всё более размытым, детали начала стираются, а перечитать оригинал нельзя — он не сохранён.</p>
+<p><strong>Идея внимания:</strong> а давайте не будем сжимать. Оставим <em>все</em> слова в памяти, а когда понадобится ответить на вопрос — <strong>вернёмся и посмотрим на нужные</strong>. Это не улучшение конспекта, это отказ от конспекта.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Как это развивалось исторически.</strong> Bahdanau et al. (2014) добавили attention <em>поверх</em> RNN: рекуррентность осталась, но декодер мог «оглядываться» на все скрытые состояния энкодера. Качество перевода резко выросло. Затем Vaswani et al. (2017) сделали радикальный шаг с говорящим названием статьи — <em>«Attention Is All You Need»</em>: <strong>выбросили рекуррентность целиком</strong>, оставив только внимание. Это и убрало третью беду — параллелизм, что и позволило обучать модели на порядки большего размера.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Идея внимания на пальцах <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Библиотека, поиск и взвешенное среднее</div>
+
+<p>Прежде чем смотреть на формулы, построим правильную интуицию. Внимание — это <strong>механизм поиска по мягкому совпадению</strong>.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 Аналогия: библиотечный поиск</div>
+<p>Ты приходишь в библиотеку с <strong>запросом</strong> (query): «хочу что-нибудь про космос».</p>
+<p>У каждой книги есть <strong>ключ</strong> (key) — название на корешке: «Астрономия», «Кулинария», «Физика звёзд», «Садоводство».</p>
+<p>И есть <strong>содержимое</strong> (value) — собственно текст книги.</p>
+<p><strong>Обычный поиск</strong> вернул бы одну книгу — самую подходящую. <strong>Внимание работает иначе:</strong> оно оценивает, насколько каждый ключ подходит запросу, превращает эти оценки в проценты (в сумме 100%), и возвращает <em>смесь содержимого</em> всех книг с этими весами.</p>
+<p>«Астрономия» — 55%, «Физика звёзд» — 40%, «Кулинария» — 3%, «Садоводство» — 2%. Результат — взвешенный микс, где доминируют релевантные книги, но и остальные вносят крошечный вклад.</p>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Почему «мягкий» поиск, а не жёсткий выбор одной книги.</strong> Две причины. <strong>Практическая:</strong> релевантной может быть не одна книга, а несколько — смесь богаче. <strong>Техническая и более важная:</strong> жёсткий выбор (argmax) <em>недифференцируем</em> — через него не пройдёт градиент, и модель нельзя обучить. Softmax — это гладкая, дифференцируемая версия argmax. Тот же приём мы видели в TabNet и NODE (блок 7): всюду, где нужно «выбрать», в глубоком обучении делают «выбрать мягко».</div></div>
+
+<h3>Тот же механизм на языке предложения</h3>
+<p>Возьмём фразу: <strong>«Кот сидел на ковре, потому что он был мягкий»</strong>. Вопрос: к чему относится «он» — к коту или к ковру?</p>
+
+<div class="flow">
+  <div class="fn a"><strong>«он»</strong>запрос:<br>«кого я описываю?»</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>сравнение</strong>с ключами всех<br>слов фразы</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>веса</strong>ковёр 0.61<br>кот 0.24<br>прочие 0.15</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>результат</strong>смесь значений<br>с этими весами</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что здесь произошло</div>
+<p>Слово «он» сформировало <strong>запрос</strong>, который примерно означает «я местоимение мужского рода, ищу подходящее существительное неподалёку, к которому применимо прилагательное “мягкий”».</p>
+<p>Слова «кот» и «ковёр» предъявили свои <strong>ключи</strong>: «я одушевлённое существительное м.р.», «я неодушевлённый предмет м.р., бывает мягким».</p>
+<p>Ключ «ковра» лучше совпал с запросом — он получил вес 0.61. Представление слова «он» обогатилось информацией о ковре.</p>
+<p><strong>Ключевой момент, который надо усвоить:</strong> attention <em>не выбирает и не решает</em>. Он <strong>перемешивает представления слов</strong> так, чтобы каждое слово вобрало в себя контекст релевантных соседей. После слоя внимания вектор слова «он» уже содержит «ковровость». Это и называется <em>контекстуализацией</em>.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Главная мысль темы, если запоминать одну.</strong> Attention — это <strong>обучаемое взвешенное среднее по последовательности</strong>, где веса вычисляются из самих данных. Всё остальное — техника: как считать веса (скалярное произведение), как их нормировать (softmax с $\sqrt{d}$), как делать это несколько раз параллельно (головы) и как не платить за это квадратичную цену (FlashAttention, GQA).</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Q, K, V: откуда берутся три матрицы <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Самое частое место, где теряются при первом знакомстве</div>
+
+<p>В формуле внимания фигурируют три матрицы: $Q$, $K$, $V$. Все три получаются <strong>из одного и того же входа</strong> тремя разными линейными проекциями.</p>
+
+<div class="fbox">
+<div class="flabel">📐 Получение Q, K, V</div>
+$$Q = X W_Q, \qquad K = X W_K, \qquad V = X W_V$$
+<p class="fnote">$X \in \mathbb{R}^{n \times d}$ — матрица представлений $n$ токенов размерности $d$. $W_Q, W_K, W_V \in \mathbb{R}^{d\times d_k}$ — <strong>обучаемые</strong> матрицы весов. Это обычные линейные слои, ничего больше.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем три проекции, а не одна</div>
+<p>Могли бы сравнивать векторы слов напрямую, без всяких $W$. Но тогда «похожесть» была бы фиксированной и симметричной: если A похоже на B, то B похоже на A с той же силой.</p>
+<p>А нам нужно другое. Слово «он» должно <em>искать</em> существительные, но само не должно <em>быть найденным</em> как существительное. То есть роль «ищущего» и роль «находимого» — <strong>разные</strong>.</p>
+<p>Три проекции дают три роли:</p>
+<p style="margin-left:14px"><strong>$W_Q$ — «что я ищу».</strong> Проекция в пространство запросов.<br>
+<strong>$W_K$ — «чем я могу быть найден».</strong> Проекция в пространство ключей.<br>
+<strong>$W_V$ — «что я передам тому, кто меня нашёл».</strong> Проекция в пространство содержимого.</p>
+<p>Все три матрицы обучаются градиентным спуском. Модель <em>сама</em> решает, какие аспекты слова важны для поиска, какие для нахождения, а какие для передачи.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ключевое различие: self-attention и cross-attention.</strong> В <strong>self-attention</strong> все три матрицы строятся из <em>одного</em> входа $X$ — последовательность смотрит сама на себя. В <strong>cross-attention</strong> запросы берутся из одной последовательности, а ключи и значения из другой: $Q = X_{\text{decoder}}W_Q$, но $K = X_{\text{encoder}}W_K$, $V = X_{\text{encoder}}W_V$. Так декодер в переводчике «смотрит» на исходное предложение. Формула внимания при этом <strong>абсолютно та же</strong> — меняется только источник входов.</div></div>
+
+<h3>Почему $W_V$ отдельная от $W_K$</h3>
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Можно было бы обойтись двумя проекциями, взяв $V = K$. Но подумай о библиотеке: <em>название книги</em> (по чему ищем) и <em>текст книги</em> (что получаем) — разные вещи. Название короткое и предназначено для сопоставления; текст длинный и содержит собственно информацию.</p>
+<p>Точно так же в языке: слово «ковёр» находится по признакам «существительное, неодушевлённое, м.р.», но передаёт совсем другое — «мягкий, напольный, текстильный, в помещении». Разделение $K$ и $V$ позволяет оптимизировать эти две функции независимо.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное: размерности $K$ и $V$ могут отличаться.</strong> $W_Q$ и $W_K$ обязаны проецировать в одинаковое пространство размерности $d_k$ — иначе скалярное произведение $q\cdot k$ не определено. А вот $W_V$ может давать любую размерность $d_v$. На практике почти всегда берут $d_k = d_v = d/h$, но это соглашение, а не требование. В некоторых архитектурах (в том числе в MQA, секция 14) эта свобода используется.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Формула внимания, разобранная по частям <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Четыре шага, каждый со своим смыслом</div>
+
+<div class="fbox pk">
+<div class="flabel">📐 Scaled Dot-Product Attention</div>
+$$\operatorname{Attention}(Q,K,V) = \underbrace{\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)}_{\text{матрица весов } A \;\in\; \mathbb{R}^{n\times n}} V$$
+<p class="fnote">$Q \in \mathbb{R}^{n\times d_k}$, $K \in \mathbb{R}^{m\times d_k}$, $V \in \mathbb{R}^{m\times d_v}$. Результат: $\mathbb{R}^{n\times d_v}$.</p>
+</div>
+
+<h3>Разбираем по одному действию</h3>
+
+<div class="numex">
+<div class="numex-title">🔍 Четыре шага формулы, каждый отдельно</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>$S = QK^\top$ — считаем совместимость.</strong> Элемент $S_{ij} = q_i \cdot k_j$ — скалярное произведение запроса токена $i$ и ключа токена $j$. Большое значение = «токен $j$ хорошо отвечает на запрос токена $i$». Результат — квадратная матрица $n\times n$: <em>каждый с каждым</em>.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>$S/\sqrt{d_k}$ — масштабируем.</strong> Делим на корень из размерности. Зачем именно так — целиком разберём в секции 6, это важный отдельный вопрос.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>$A = \operatorname{softmax}(\cdot)$ — превращаем в веса.</strong> Softmax применяется <strong>по строкам</strong>: каждая строка становится распределением вероятностей, сумма = 1. Строка $i$ отвечает на вопрос «как токен $i$ распределяет своё внимание между всеми токенами».</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>$\operatorname{out} = AV$ — собираем результат.</strong> Строка $i$ результата = взвешенная сумма всех строк $V$ с весами из строки $i$ матрицы $A$. То самое «взвешенное среднее», о котором говорили в секции 2.</div></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему скалярное произведение измеряет похожесть</div>
+<p>$q \cdot k = \|q\|\,\|k\|\cos\theta$. При фиксированных длинах векторов скалярное произведение тем больше, чем меньше угол между ними — то есть чем более сонаправлены векторы.</p>
+<p>Модель обучает $W_Q$ и $W_K$ так, чтобы «запрос местоимения» и «ключ подходящего существительного» смотрели примерно в одну сторону в $d_k$-мерном пространстве. Тогда их скалярное произведение велико, softmax даёт большой вес, и информация перетекает.</p>
+<p><strong>Важная деталь:</strong> длины векторов тоже влияют. Токен с большой нормой ключа получает высокие оценки от <em>всех</em> запросов — это иногда используется как «attention sink», куда сливается лишнее внимание. Мы вернёмся к этому в секции 13.</p>
+</div>
+
+<h3>Размерности: сверяемся по формам</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Величина</th><th>Форма</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td>$X$</td><td>$(n, d)$</td><td>$n$ токенов, каждый вектор размерности $d$</td></tr>
+<tr><td>$W_Q, W_K$</td><td>$(d, d_k)$</td><td>обучаемые проекции в пространство поиска</td></tr>
+<tr><td>$W_V$</td><td>$(d, d_v)$</td><td>обучаемая проекция в пространство содержимого</td></tr>
+<tr><td>$Q$</td><td>$(n, d_k)$</td><td>по запросу на токен</td></tr>
+<tr><td>$K$</td><td>$(n, d_k)$</td><td>по ключу на токен</td></tr>
+<tr><td>$V$</td><td>$(n, d_v)$</td><td>по значению на токен</td></tr>
+<tr class="trh"><td>$QK^\top$</td><td>$(n, n)$</td><td><strong>квадрат по длине</strong> — вот источник всех проблем масштабирования</td></tr>
+<tr><td>$A = \operatorname{softmax}$</td><td>$(n, n)$</td><td>каждая строка суммируется в 1</td></tr>
+<tr><td>$AV$</td><td>$(n, d_v)$</td><td>обновлённые представления токенов</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Ошибка №1 в самописном attention: softmax по неправильной оси.</strong> Правильно <code>softmax(scores, dim=-1)</code> — нормируем каждую строку, то есть распределяем внимание <em>одного запроса по всем ключам</em>. Если написать <code>dim=-2</code>, ты пронормируешь столбцы — получится «сколько внимания досталось каждому ключу от всех запросов», что не имеет смысла в этой конструкции. Модель обучится, но плохо, и ошибка ничем себя не выдаст. Проверка: <code>attn.sum(dim=-1)</code> должно давать вектор из единиц.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Полный числовой разбор на 4 токенах <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Считаем внимание руками, от матриц до результата</div>
+
+<p>Возьмём игрушечный пример: 4 токена, $d = 4$, $d_k = 2$. Все числа подобраны так, чтобы считать в уме.</p>
+
+<div class="numex">
+<div class="numex-title">🔢 Шаг 1. Входные представления и проекции</div>
+<div class="numex-step"><span class="nb">1</span><div>Фраза: <strong>«кот» «сидел» «на» «ковре»</strong>. Каждое слово уже представлено вектором длины 4 (после embedding-слоя).</div></div>
+</div>
+
+<div class="mrow">
+<div class="mtx">
+<table>
+<tr><td class="lbl"></td><td class="lbl">e₁</td><td class="lbl">e₂</td><td class="lbl">e₃</td><td class="lbl">e₄</td></tr>
+<tr><td class="lbl">кот</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+<tr><td class="lbl">сидел</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+<tr><td class="lbl">на</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+<tr><td class="lbl">ковре</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+</table>
+<div class="mtx-cap">X — вход, (4×4)</div>
+</div>
+<div class="mop">×</div>
+<div class="mtx">
+<table>
+<tr><td>1</td><td>0</td></tr>
+<tr><td>0</td><td>1</td></tr>
+<tr><td>1</td><td>0</td></tr>
+<tr><td>0</td><td>1</td></tr>
+</table>
+<div class="mtx-cap">W<sub>Q</sub> (4×2)</div>
+</div>
+<div class="mop">=</div>
+<div class="mtx">
+<table>
+<tr><td class="lbl">кот</td><td>2</td><td>0</td></tr>
+<tr><td class="lbl">сидел</td><td>0</td><td>2</td></tr>
+<tr><td class="lbl">на</td><td>1</td><td>1</td></tr>
+<tr><td class="lbl">ковре</td><td>1</td><td>1</td></tr>
+</table>
+<div class="mtx-cap">Q (4×2)</div>
+</div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Шаг 2. Считаем матрицу совместимости S = QKᵀ</div>
+<div class="numex-step"><span class="nb">1</span><div>Возьмём $W_K = W_Q$ для простоты, тогда $K = Q$. Это упрощение только для примера — в реальной модели матрицы разные.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>$S_{11} = q_{\text{кот}}\cdot k_{\text{кот}} = (2,0)\cdot(2,0) = 4$. &nbsp; $S_{12} = (2,0)\cdot(0,2) = 0$. &nbsp; $S_{13} = (2,0)\cdot(1,1) = 2$. &nbsp; $S_{14} = (2,0)\cdot(1,1) = 2$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Аналогично для остальных строк. Получаем матрицу $4\times4$.</div></div>
+</div>
+
+<div class="mrow">
+<div class="mtx">
+<table>
+<tr><td class="lbl"></td><td class="lbl">кот</td><td class="lbl">сидел</td><td class="lbl">на</td><td class="lbl">ковре</td></tr>
+<tr><td class="lbl">кот</td><td>4</td><td>0</td><td>2</td><td>2</td></tr>
+<tr><td class="lbl">сидел</td><td>0</td><td>4</td><td>2</td><td>2</td></tr>
+<tr><td class="lbl">на</td><td>2</td><td>2</td><td>2</td><td>2</td></tr>
+<tr><td class="lbl">ковре</td><td>2</td><td>2</td><td>2</td><td>2</td></tr>
+</table>
+<div class="mtx-cap">S = QKᵀ — сырые оценки совместимости</div>
+</div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Шаг 3. Масштабирование и softmax по строкам</div>
+<div class="numex-step"><span class="nb">1</span><div>Делим на $\sqrt{d_k} = \sqrt{2} \approx 1.414$. Первая строка: $[4,0,2,2] \to [2.83,\;0,\;1.41,\;1.41]$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Экспоненты: $e^{2.83}=16.9$, $e^{0}=1.0$, $e^{1.41}=4.1$, $e^{1.41}=4.1$. Сумма $= 26.1$.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div>Делим каждую на сумму: $[0.648,\;0.038,\;0.157,\;0.157]$. Проверка: сумма = 1.000 ✓</div></div>
+<div class="numex-step"><span class="nb">4</span><div>Третья строка была $[2,2,2,2]$ — все оценки равны, значит после softmax получим <strong>равномерное</strong> распределение $[0.25, 0.25, 0.25, 0.25]$. Токен «на» не выделяет никого конкретно.</div></div>
+</div>
+
+<div style="text-align:center;">
+<div class="hm">
+<table>
+<tr><td class="hd"></td><td class="hd">кот</td><td class="hd">сидел</td><td class="hd">на</td><td class="hd">ковре</td></tr>
+<tr><td class="hd">кот</td><td style="background:rgba(8,145,178,0.95)">0.65</td><td style="background:rgba(8,145,178,0.12)">0.04</td><td style="background:rgba(8,145,178,0.32)">0.16</td><td style="background:rgba(8,145,178,0.32)">0.16</td></tr>
+<tr><td class="hd">сидел</td><td style="background:rgba(8,145,178,0.12)">0.04</td><td style="background:rgba(8,145,178,0.95)">0.65</td><td style="background:rgba(8,145,178,0.32)">0.16</td><td style="background:rgba(8,145,178,0.32)">0.16</td></tr>
+<tr><td class="hd">на</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td></tr>
+<tr><td class="hd">ковре</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td><td style="background:rgba(8,145,178,0.45)">0.25</td></tr>
+</table>
+<div class="mtx-cap">Матрица внимания A. Насыщенность цвета = вес. Каждая строка суммируется в 1</div>
+</div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Шаг 4. Финальное взвешенное среднее out = AV</div>
+<div class="numex-step"><span class="nb">1</span><div>Пусть $V = X$ (снова упрощение). Строка «кот» результата: $0.648\cdot v_{\text{кот}} + 0.038\cdot v_{\text{сидел}} + 0.157\cdot v_{\text{на}} + 0.157\cdot v_{\text{ковре}}$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>По первой компоненте: $0.648\cdot1 + 0.038\cdot0 + 0.157\cdot0 + 0.157\cdot1 = 0.805$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>По второй: $0.648\cdot0 + 0.038\cdot1 + 0.157\cdot0 + 0.157\cdot1 = 0.195$. И так далее.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Итог: <code>out[кот] = [0.805, 0.195, 0.805, 0.195]</code>. Вектор слова «кот» <strong>изменился</strong> — он вобрал в себя понемногу от соседей. Это и есть контекстуализация: на выходе слоя каждое слово представлено с учётом окружения.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Что стоит вынести из этого разбора.</strong> ① Attention — это буквально три матричных умножения и один softmax, никакой магии. ② Матрица $A$ квадратная по числу токенов — <em>именно отсюда растут все проблемы с длинным контекстом</em>. ③ Если все оценки в строке равны, внимание становится равномерным — модель «не знает, на что смотреть». ④ Выход имеет ту же форму, что вход ($n$ векторов), поэтому блоки можно ставить друг на друга.</div></div>
+
+<pre><code># Ровно эта формула в коде — 5 строк
+import torch, math
+import torch.nn.functional as F
+
+def attention(Q, K, V, mask=None):
+    d_k = Q.size(-1)
+    scores = Q @ K.transpose(-2, -1) / math.sqrt(d_k)   # (n, m)
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, float("-inf"))
+    A = F.softmax(scores, dim=-1)                        # ПО СТРОКАМ!
+    return A @ V, A                                      # (n, d_v)
+</code></pre>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Почему делим именно на √d<sub>k</sub> <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Один из самых частых вопросов на собеседовании — и на него есть строгий вывод</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Дисперсия скалярного произведения</div>
+<p>Пусть компоненты $q$ и $k$ независимы, с нулевым средним и единичной дисперсией. Тогда:</p>
+$$q\cdot k = \sum_{i=1}^{d_k} q_i k_i, \qquad \mathbb{E}[q\cdot k] = 0, \qquad \operatorname{Var}(q\cdot k) = \sum_{i=1}^{d_k}\operatorname{Var}(q_i k_i) = d_k$$
+<p>Стандартное отклонение $= \sqrt{d_k}$. Деление на $\sqrt{d_k}$ возвращает дисперсию к единице:</p>
+$$\operatorname{Var}\!\left(\frac{q\cdot k}{\sqrt{d_k}}\right) = \frac{d_k}{d_k} = 1$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: тот же приём, что в инициализации</div>
+<p>Это ровно та же логика, что при выводе He-инициализации в теме 8.3: <strong>при суммировании $d$ независимых слагаемых дисперсия растёт как $d$</strong>, а разброс — как $\sqrt{d}$.</p>
+<p>При $d_k = 64$ типичное скалярное произведение имеет разброс ±8. При $d_k = 128$ — уже ±11.3. Чем больше размерность, тем «резче» разлетаются оценки — и без нормировки поведение softmax зависело бы от выбора $d_k$.</p>
+</div>
+
+<h3>Что происходит без деления: конкретные числа</h3>
+
+<div class="numex">
+<div class="numex-title">🔢 Softmax при разном масштабе логитов</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Логиты малого масштаба</strong> $[1.0,\;0.5,\;0.2,\;0.1]$: softmax $\to [0.38,\;0.23,\;0.17,\;0.16]$. Распределение мягкое, внимание размазано.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Умножим на 8</strong> (что соответствует $d_k=64$ без нормировки): $[8,\;4,\;1.6,\;0.8]$ → softmax $\to [0.96,\;0.018,\;0.016,\;0.007]$. Внимание почти полностью схлопнулось на первом токене.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Умножим на 30</strong>: $[30,\;15,\;6,\;3]$ → softmax $\to [0.9999997,\;\approx 0,\;\approx 0,\;\approx 0]$. Это уже практически argmax.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Главная проблема — градиент.</strong> Производная softmax: $\frac{\partial p_i}{\partial z_j} = p_i(\delta_{ij}-p_j)$. При $p_1 = 0.9999997$ получаем $p_1(1-p_1) \approx 3\times10^{-7}$. Градиент практически нулевой — <strong>слой перестаёт обучаться</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Деление на $\sqrt{d_k}$ удерживает логиты в диапазоне, где softmax остаётся «мягким», а его градиент — существенным. Без этого модель либо не обучается, либо обучается крайне медленно.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Как масштаб логитов убивает градиент softmax</div>
+<div class="chsub">Синяя линия — максимальная вероятность, красная — градиент. При большом масштабе обучение останавливается</div>
+<div style="position:relative;height:310px;"><canvas id="c_scale"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: размерность d<sub>k</sub> и поведение softmax</label>
+  <input type="range" id="sl_dk" min="4" max="512" step="4" value="64" oninput="updScale()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>d<sub>k</sub>=4</span><span class="out" id="out_dk">64</span><span>512</span></div>
+  <label style="margin-top:14px;">Делить на √d<sub>k</sub>?</label>
+  <div style="display:flex;gap:16px;margin-top:4px;">
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="scale_on" value="1" checked onchange="updScale()"> да (правильно)</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="scale_on" value="0" onchange="updScale()"> нет</label>
+  </div>
+  <div class="res" id="out_scale"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Почему не делят на $d_k$ или на что-то ещё.</strong> Деление на $d_k$ (без корня) пересжало бы логиты: их разброс стал бы $1/\sqrt{d_k}$, softmax дал бы почти равномерное распределение, и внимание перестало бы что-либо выделять. $\sqrt{d_k}$ — это <em>единственный</em> множитель, приводящий дисперсию ровно к единице. Не эвристика, а следствие того, как складываются дисперсии.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Продвинутое: почему $\sqrt{d_k}$ перестаёт хватать на больших моделях.</strong> Вывод предполагал единичную дисперсию компонент $q$ и $k$. Но по мере обучения нормы $Q$ и $K$ растут — и логиты снова разъезжаются, вызывая loss spikes на больших прогонах. Отсюда <strong>QK-Norm</strong>: применять LayerNorm/RMSNorm к $Q$ и $K$ <em>перед</em> скалярным произведением. Это принудительно возвращает предпосылку вывода и заметно стабилизирует обучение крупных моделей. Приём используется в ViT-22B, Gemma и ряде современных LLM.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Маски: causal, padding и почему −∞ <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Место, где допускают ошибку, дающую подозрительно низкий loss</div>
+
+<h3>Causal-маска: запрет смотреть в будущее</h3>
+<p>Языковая модель предсказывает следующий токен. Если при обучении токен на позиции 3 сможет посмотреть на токен 5, он просто «спишет ответ» — и на инференсе, где будущего нет, модель развалится.</p>
+
+<div style="text-align:center;">
+<div class="hm">
+<table>
+<tr><td class="hd"></td><td class="hd">t₁</td><td class="hd">t₂</td><td class="hd">t₃</td><td class="hd">t₄</td><td class="hd">t₅</td></tr>
+<tr><td class="hd">t₁</td><td style="background:rgba(8,145,178,0.9)">1.00</td><td class="masked">−∞</td><td class="masked">−∞</td><td class="masked">−∞</td><td class="masked">−∞</td></tr>
+<tr><td class="hd">t₂</td><td style="background:rgba(8,145,178,0.6)">0.42</td><td style="background:rgba(8,145,178,0.75)">0.58</td><td class="masked">−∞</td><td class="masked">−∞</td><td class="masked">−∞</td></tr>
+<tr><td class="hd">t₃</td><td style="background:rgba(8,145,178,0.4)">0.21</td><td style="background:rgba(8,145,178,0.5)">0.31</td><td style="background:rgba(8,145,178,0.65)">0.48</td><td class="masked">−∞</td><td class="masked">−∞</td></tr>
+<tr><td class="hd">t₄</td><td style="background:rgba(8,145,178,0.3)">0.14</td><td style="background:rgba(8,145,178,0.35)">0.19</td><td style="background:rgba(8,145,178,0.5)">0.29</td><td style="background:rgba(8,145,178,0.6)">0.38</td><td class="masked">−∞</td></tr>
+<tr><td class="hd">t₅</td><td style="background:rgba(8,145,178,0.25)">0.11</td><td style="background:rgba(8,145,178,0.28)">0.13</td><td style="background:rgba(8,145,178,0.38)">0.20</td><td style="background:rgba(8,145,178,0.48)">0.26</td><td style="background:rgba(8,145,178,0.58)">0.30</td></tr>
+</table>
+<div class="mtx-cap">Causal-маска: нижнетреугольная. Заштрихованное — запрещено, там ставится −∞ до softmax</div>
+</div>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Почему именно −∞, а не 0</div>
+$$\operatorname{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}, \qquad e^{-\infty} = 0$$
+<p class="fnote">Маскирование применяется <strong>к логитам до softmax</strong>. Значение $-\infty$ (на практике $-10^{9}$ или <code>float('-inf')</code>) даёт нулевую экспоненту, и токен полностью исключается из распределения.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя занулить после softmax</div>
+<p>Соблазн: посчитать softmax, потом умножить запрещённые позиции на ноль. <strong>Так делать нельзя.</strong></p>
+<p>Softmax нормирует так, чтобы сумма была 1. Если сначала посчитать его по всем позициям, а потом занулить часть — <strong>сумма перестанет равняться единице</strong>. Веса оставшихся токенов окажутся заниженными, причём по-разному для разных строк.</p>
+<p>Маскирование <em>до</em> softmax решает это автоматически: запрещённые слагаемые вообще не попадают в знаменатель, и нормировка идёт только по разрешённым.</p>
+</div>
+
+<h3>Padding-маска: разные длины в одном батче</h3>
+<p>В батче предложения разной длины дополняются служебными токенами <code>&lt;pad&gt;</code> до одинаковой длины. Эти токены — мусор, и внимание к ним нужно запретить.</p>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Забытая causal-маска — самый коварный баг в трансформерах.</strong> Симптом: <em>подозрительно низкий training loss</em>, часто ниже, чем у любых опубликованных моделей. Причина: модель видит будущие токены и просто копирует ответ. На валидации с той же ошибкой loss тоже низкий (маски нет и там), и проблема обнаруживается только при генерации — модель выдаёт бессмыслицу. <strong>Правило проверки:</strong> если твой loss на языковом моделировании существенно ниже 2.0 на обычном тексте — почти наверняка утечка через маску.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ловушка: строка целиком из −∞.</strong> Если padding-токен окажется запросом, все его ключи могут быть замаскированы. Тогда softmax считает $e^{-\infty}/\sum e^{-\infty} = 0/0 = $ <code>NaN</code>, который через backward расползётся по всей модели. Защиты две: использовать $-10^{9}$ вместо настоящей бесконечности, либо явно исключать padding-строки из вычисления лосса. Современные реализации <code>scaled_dot_product_attention</code> обрабатывают это корректно.</div></div>
+
+<pre><code># Комбинирование двух масок — типовой код
+def make_mask(seq_len, pad_mask, causal=True, device="cuda"):
+    # pad_mask: (B, L), True = настоящий токен, False = <pad>
+    mask = pad_mask[:, None, None, :]                       # (B,1,1,L) по ключам
+    if causal:
+        tri = torch.tril(torch.ones(seq_len, seq_len,
+                                    dtype=torch.bool, device=device))
+        mask = mask & tri[None, None]                       # (B,1,L,L)
+    return mask
+
+scores = scores.masked_fill(~mask, -1e9)   # -1e9, а не -inf: безопаснее
+attn   = scores.softmax(dim=-1)
+</code></pre>
+
+<h3>Другие виды масок</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Маска</th><th>Что разрешает</th><th>Где применяется</th></tr></thead>
+<tbody>
+<tr><td><b>Causal (треугольная)</b></td><td>только прошлое и себя</td><td>GPT, все авторегрессивные модели</td></tr>
+<tr><td><b>Padding</b></td><td>только реальные токены</td><td>Везде, где батчи переменной длины</td></tr>
+<tr><td><b>Bidirectional (нет маски)</b></td><td>всё</td><td>BERT, энкодеры</td></tr>
+<tr><td><b>Sliding window</b></td><td>окно $w$ соседей</td><td>Longformer, Mistral — снижает сложность до $O(nw)$</td></tr>
+<tr><td><b>Block-diagonal</b></td><td>внутри своего документа</td><td>Упаковка нескольких документов в одну последовательность</td></tr>
+<tr><td><b>Prefix-LM</b></td><td>префикс двунаправленно, продолжение causal</td><td>T5, UL2</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное: block-diagonal маска и упаковка примеров.</strong> При обучении LLM короткие документы «упаковывают» несколько штук в одну последовательность длины 4096, чтобы не тратить вычисления на padding. Но тогда <strong>обязательна block-diagonal маска</strong>, иначе конец одного документа будет «видеть» начало следующего — модель выучит несуществующие связи между независимыми текстами. Это тонкий баг: loss выглядит нормально, а качество генерации на границах ухудшается.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Multi-head attention: зачем несколько голов <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">И почему это не увеличивает стоимость</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Multi-Head Attention</div>
+$$\operatorname{head}_i = \operatorname{Attention}(XW_Q^{(i)},\; XW_K^{(i)},\; XW_V^{(i)})$$
+$$\operatorname{MHA}(X) = \operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)\,W_O$$
+<p class="fnote">Обычно $d_k = d_v = d/h$. При $d=512$ и $h=8$ каждая голова работает в пространстве размерности 64.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: одна голова — один тип связи</div>
+<p>Одна голова умеет искать <strong>один вид отношений</strong>. Её $W_Q$ и $W_K$ настроены на конкретную «тему поиска».</p>
+<p>Но в языке отношений много: синтаксическая связь подлежащее-сказуемое, разрешение местоимений, согласование по роду, семантическая близость, ближайший сосед, начало предложения. Одна голова физически не может отслеживать всё это — её матрицы настроились бы на компромисс.</p>
+<p>Восемь голов — восемь параллельных «поисковых систем» с разными критериями. Каждая строит свою матрицу внимания, каждая извлекает свой срез информации. Затем результаты конкатенируются и смешиваются через $W_O$.</p>
+<p><strong>Ключевая экономия:</strong> при $d_k = d/h$ каждая голова работает в <em>меньшей</em> размерности. Суммарная стоимость восьми голов по 64 измерения равна стоимости одной головы на 512 — <strong>многоголовость бесплатна</strong>. Мы не платим больше, мы иначе тратим тот же бюджет.</p>
+</div>
+
+<h3>Что реально выучивают головы</h3>
+<div class="grid3">
+<div class="card bl"><h5>Позиционные головы</h5><p>Смотрят строго на предыдущий или следующий токен. Часто встречаются в нижних слоях — по сути имитируют свёртку.</p></div>
+<div class="card pu"><h5>Синтаксические</h5><p>Связывают глагол с подлежащим, предлог с существительным. Матрица внимания коррелирует с деревом разбора.</p></div>
+<div class="card gr"><h5>Разрешение кореференций</h5><p>Связывают местоимение с существительным, к которому оно относится — тот самый пример с «он» и «ковром».</p></div>
+<div class="card am"><h5>Attention sink</h5><p>Смотрят почти целиком на первый токен. Не баг, а способ «слить» лишнее внимание, когда голове нечего искать.</p></div>
+<div class="card rd"><h5>Избыточные</h5><p>Michel et al. (2019): значительную часть голов можно удалить без потери качества. Многоголовость избыточна по построению.</p></div>
+<div class="card cy"><h5>Индукционные головы</h5><p>Находят повтор паттерна «A B ... A» и предсказывают «B». Считаются механической основой in-context learning.</p></div>
+</div>
+
+<div class="chb">
+<div class="cht">Три головы на одном предложении — разные паттерны внимания</div>
+<div class="chsub">Каждая голова специализировалась на своём типе связи</div>
+<div style="position:relative;height:320px;"><canvas id="c_heads"></canvas></div>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Индукционные головы — важный сюжет.</strong> Olsson et al. (2022) обнаружили, что за способность модели к обучению «по примерам в промпте» (in-context learning) отвечает конкретный механизм: пара голов, где первая копирует информацию о предыдущем токене, а вторая ищет прошлое вхождение текущего токена и копирует то, что за ним следовало. Момент появления индукционных голов при обучении совпадает с резким скачком качества few-shot — это один из редких случаев, когда удалось связать <em>конкретную схему внутри модели</em> с наблюдаемой способностью.</div></div>
+
+<h3>Реализация: почему на практике это одна матрица</h3>
+<pre><code>class MultiHeadAttention(nn.Module):
+    def __init__(self, d, n_heads, dropout=0.0):
+        super().__init__()
+        assert d % n_heads == 0
+        self.h, self.dk = n_heads, d // n_heads
+        # ОДНА матрица вместо h отдельных — эффективнее на GPU
+        self.qkv  = nn.Linear(d, 3 * d, bias=False)
+        self.proj = nn.Linear(d, d, bias=False)
+        self.drop = dropout
+
+    def forward(self, x, mask=None):
+        B, L, D = x.shape
+        qkv = self.qkv(x).view(B, L, 3, self.h, self.dk).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]        # (B, h, L, dk)
+
+        # FlashAttention под капотом, если доступна
+        out = F.scaled_dot_product_attention(
+            q, k, v, attn_mask=mask,
+            dropout_p=self.drop if self.training else 0.0,
+            is_causal=(mask is None),
+        )                                        # (B, h, L, dk)
+
+        out = out.transpose(1, 2).reshape(B, L, D)   # склеиваем головы
+        return self.proj(out)
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Почему $W_Q$, $W_K$, $W_V$ объединяют в одну матрицу <code>qkv</code>.</strong> Три отдельных <code>nn.Linear</code> — это три запуска GEMM-ядра, три обращения к памяти за одним и тем же входом $X$. Объединённая матрица $(d, 3d)$ делает всё за один вызов: вход читается один раз, ядро запускается один раз. На больших моделях это даёт 5–15% ускорения буквально бесплатно. Тот же принцип — <em>fusion операций</em> — мы видели при слиянии BatchNorm со свёрткой в теме 8.3.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Зачем нужна выходная проекция $W_O$.</strong> Без неё конкатенация голов давала бы «слоёный пирог»: первые 64 измерения от головы 1, следующие 64 от головы 2 и так далее — головы никогда не взаимодействовали бы между собой. $W_O$ <strong>смешивает</strong> информацию всех голов, позволяя следующему слою работать с их комбинацией. Именно эту матрицу обычно инициализируют нулями (zero-init из темы 8.3), чтобы на старте вся ветка внимания была тождественно нулевой.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Блок трансформера целиком <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Attention — только половина. Вторая половина считает больше</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Pre-LN блок — современный стандарт</div>
+$$x' = x + \operatorname{MHA}\big(\operatorname{Norm}(x)\big)$$
+$$x'' = x' + \operatorname{FFN}\big(\operatorname{Norm}(x')\big)$$
+<p>где FFN — двухслойный перцептрон с расширением:</p>
+$$\operatorname{FFN}(z) = W_2\,\phi(W_1 z + b_1) + b_2, \qquad W_1 \in \mathbb{R}^{d\times 4d},\; W_2 \in \mathbb{R}^{4d\times d}$$
+</div>
+
+<div class="flow">
+  <div class="fn d"><strong>x</strong>вход</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Norm</strong>RMSNorm</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>MHA</strong>смешивание<br>МЕЖДУ токенами</div>
+  <div class="farr">⊕</div>
+  <div class="fn a"><strong>Norm</strong>RMSNorm</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>FFN</strong>обработка<br>ВНУТРИ токена</div>
+  <div class="farr">⊕</div>
+  <div class="fn d"><strong>выход</strong></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: разделение труда между MHA и FFN</div>
+<p>Это фундаментальное разделение, которое стоит запомнить.</p>
+<p><strong>Attention смешивает информацию МЕЖДУ токенами.</strong> Он не делает никаких нелинейных преобразований содержимого — только перераспределяет. Работает «поперёк» последовательности.</p>
+<p><strong>FFN обрабатывает каждый токен НЕЗАВИСИМО.</strong> Он применяется к каждой позиции отдельно, одними и теми же весами, и вообще не знает о существовании соседей. Работает «вглубь» одного вектора.</p>
+<p>Метафора: attention — это <em>совещание</em>, где все обмениваются информацией. FFN — это время, когда каждый участник <em>обдумывает услышанное в одиночку</em>. Блок трансформера чередует эти две фазы, слой за слоем.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Контринтуитивный факт: FFN содержит примерно ⅔ всех параметров блока.</strong> Посчитаем при $d=4096$. Attention: четыре матрицы $d\times d$ ($W_Q,W_K,W_V,W_O$) = $4d^2 = 67$M. FFN: две матрицы $d\times 4d$ = $8d^2 = 134$M. То есть <strong>FFN вдвое больше всего механизма внимания</strong>. Многие исследования указывают, что именно FFN хранит фактические знания модели (работает как ассоциативная память ключ-значение), а attention отвечает за маршрутизацию информации. Attention — знаменитая часть, но «объём мозга» находится в FFN.</div></div>
+
+<h3>Почему расширение именно в 4 раза</h3>
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>FFN сначала расширяет вектор с $d$ до $4d$, применяет нелинейность, затем сжимает обратно. Зачем такой «пузырь»?</p>
+<p>Расширение даёт нелинейности <strong>больше места для работы</strong>. В узком пространстве ReLU/GELU может «отсечь» лишь несколько направлений; в четырёхкратно расширенном — гораздо более богатый набор паттернов, которые затем проецируются обратно.</p>
+<p>Множитель 4 — эмпирический компромисс из оригинальной статьи, который прижился. Меньше (2×) — заметная потеря качества; больше (8×) — рост стоимости без пропорционального выигрыша. В современных моделях с SwiGLU используют ≈2.67× — но там три матрицы вместо двух, и итоговое число параметров остаётся примерно тем же.</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 SwiGLU — современная замена ReLU в FFN</div>
+$$\operatorname{SwiGLU}(z) = \big(\operatorname{Swish}(zW_1) \odot zW_3\big)W_2, \qquad \operatorname{Swish}(x) = x\,\sigma(x)$$
+<p class="fnote">Три матрицы вместо двух. Чтобы сохранить число параметров, скрытую размерность берут $\tfrac83 d$ вместо $4d$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что даёт «гейт»</div>
+<p>Обычный FFN: посчитал $\phi(zW_1)$ и передал дальше. SwiGLU: посчитал <em>две</em> проекции и <strong>перемножил их поэлементно</strong>.</p>
+<p>Вторая ветвь $zW_3$ работает как <strong>вентиль</strong>: она решает, какие компоненты первой ветви пропустить, а какие приглушить. Это мультипликативное взаимодействие, которого нет в обычном MLP — там всё аддитивно.</p>
+<p>Эмпирически даёт стабильный прирост около 1% перплексии при том же числе параметров. Используется в Llama, PaLM, Mistral и почти всех современных LLM.</p>
+</div>
+
+<h3>Полный подсчёт параметров и вычислений</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Компонент</th><th>Параметры</th><th>При d=4096</th><th>FLOPs на токен</th></tr></thead>
+<tbody>
+<tr><td>$W_Q, W_K, W_V, W_O$</td><td>$4d^2$</td><td>67M</td><td>$8d^2$</td></tr>
+<tr><td>Матрица внимания $QK^\top$ и $AV$</td><td>0</td><td>—</td><td>$4nd$ (зависит от длины!)</td></tr>
+<tr class="trh"><td>FFN ($4\times$)</td><td>$8d^2$</td><td><strong>134M</strong></td><td>$16d^2$</td></tr>
+<tr><td>Нормализации</td><td>$\approx 4d$</td><td>16K</td><td>малозначимо</td></tr>
+<tr><td><b>Блок целиком</b></td><td>$12d^2$</td><td><b>201M</b></td><td>$24d^2 + 4nd$</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Полезная формула для оценок «на салфетке»: инференс трансформера стоит примерно $2N$ FLOPs на токен</strong>, где $N$ — число параметров. Обучение — примерно $6N$ на токен (forward $2N$ + backward $4N$). Отсюда сразу: обучение модели на 7B параметров на 2 триллионах токенов требует $6\times7\times10^9\times2\times10^{12} = 8.4\times10^{22}$ FLOPs. При эффективной производительности карты 4×10¹⁴ FLOPS это ≈2.1×10⁸ секунд, то есть <strong>около 2400 GPU-суток</strong>. Эту оценку стоит уметь делать за 30 секунд — её спрашивают на System Design секциях.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Обрати внимание на слагаемое $4nd$.</strong> Оно единственное зависит от длины последовательности. При $n \ll d$ им можно пренебречь — доминируют матричные умножения. Но при $n \sim d$ (например, $n=4096$, $d=4096$) внимание начинает вносить сопоставимый вклад, а при $n \gg d$ — <strong>доминирует</strong>. Именно этот переход объясняет, почему длинный контекст резко дорожает, и почему FlashAttention (секция 13) оказался настолько важен.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Позиционные кодировки: от синусов до RoPE <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Attention сам по себе не знает порядка слов — вообще</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Фундаментальное свойство, которое надо осознать.</strong> Attention <strong>перестановочно-инвариантен</strong>. Если переставить токены во входе, выход переставится точно так же — и ничего больше не изменится. Для механизма внимания фразы «кот съел мышь» и «мышь съела кота» <em>абсолютно идентичны</em>. Без позиционной информации трансформер работает с последовательностью как с <em>множеством</em>.</div></div>
+
+<h3>Три поколения решений</h3>
+
+<div class="fbox blue">
+<div class="flabel">📐 ① Sinusoidal — оригинальный Transformer</div>
+$$PE_{(pos,\,2i)} = \sin\!\left(\frac{pos}{10000^{2i/d}}\right), \qquad PE_{(pos,\,2i+1)} = \cos\!\left(\frac{pos}{10000^{2i/d}}\right)$$
+<p class="fnote">Вектор позиции <strong>прибавляется</strong> к эмбеддингу токена: $x = \operatorname{emb}(t) + PE(pos)$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему синусы разной частоты</div>
+<p>Это по сути <strong>двоичная запись позиции, но непрерывная</strong>. В двоичном числе младший бит меняется каждый шаг, следующий — каждые два, потом каждые четыре. Здесь то же самое: первые компоненты вектора колеблются быстро (различают соседние позиции), последние — медленно (различают начало и конец текста).</p>
+<p>Ключевое свойство, ради которого выбрана именно такая форма: <strong>$PE(pos+k)$ выражается через $PE(pos)$ линейным преобразованием</strong> — это просто поворот, по формулам синуса суммы. Значит модель может выучить «сдвиг на $k$ позиций» как фиксированную матрицу, и относительные расстояния становятся доступны.</p>
+<p>Бонус: формула не обучается, поэтому теоретически работает на любой длине, включая невиданные при обучении.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 ② Learned positional embeddings</div>
+$$x = \operatorname{emb}(t) + P[pos], \qquad P \in \mathbb{R}^{L_{\max}\times d}\;\text{— обучаемая таблица}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Просто заводим обучаемый вектор для каждой позиции — как embedding для слов, только для номеров позиций. Модель сама выучит, что нужно.</p>
+<p>Работает не хуже синусов на длинах, встречавшихся при обучении. Но есть жёсткий недостаток: <strong>для позиции 5000 при $L_{\max}=4096$ вектора просто не существует</strong>. Модель физически не может обработать более длинный вход. Так устроены BERT и GPT-2.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 ③ RoPE — Rotary Position Embedding</div>
+<p>Позиция кодируется <strong>поворотом</strong> пар компонент векторов $q$ и $k$ (не прибавлением!):</p>
+$$\tilde q_m = R_{\Theta,m}\,q_m, \qquad \tilde k_n = R_{\Theta,n}\,k_n$$
+<p>где $R_{\Theta,m}$ — блочно-диагональная матрица поворотов на углы $m\theta_i$, $\;\theta_i = 10000^{-2i/d}$. Ключевое свойство:</p>
+$$\tilde q_m^\top \tilde k_n = q_m^\top R_{\Theta,\,n-m}\, k_n = f(q, k,\; n-m)$$
+<p class="fnote">Скалярное произведение зависит <strong>только от разности позиций</strong> $n-m$, а не от абсолютных значений.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: главная идея RoPE</div>
+<p>Представь каждую пару координат вектора как точку на плоскости, то есть как комплексное число. RoPE <strong>поворачивает</strong> эту точку на угол, пропорциональный позиции токена.</p>
+<p>Токен на позиции 5 повёрнут на $5\theta$, токен на позиции 8 — на $8\theta$. Когда мы считаем их скалярное произведение, углы <strong>вычитаются</strong>: результат зависит только от разности $8-5=3$.</p>
+<p>Это и есть магия RoPE: <em>абсолютные позиции применяются к каждому вектору отдельно, но в скалярном произведении автоматически превращаются в относительные</em>. Мы получаем относительное кодирование, не строя явную матрицу расстояний.</p>
+<p>Ещё одно важное отличие: RoPE применяется <strong>к $q$ и $k$ внутри каждого слоя внимания</strong>, а не прибавляется к эмбеддингам один раз на входе. Поэтому позиционная информация не «размывается» по мере прохода через слои.</p>
+</div>
+
+<div class="chb">
+<div class="cht">RoPE: разные частоты поворота по парам компонент</div>
+<div class="chsub">Быстрые частоты различают соседние позиции, медленные — далёкие. Ось X — позиция токена</div>
+<div style="position:relative;height:310px;"><canvas id="c_rope"></canvas></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Sinusoidal</th><th>Learned</th><th>RoPE</th><th>ALiBi</th></tr></thead>
+<tbody>
+<tr><td>Как применяется</td><td>+ к эмбеддингу</td><td>+ к эмбеддингу</td><td>поворот $q$, $k$</td><td>штраф к логитам</td></tr>
+<tr><td>Тип информации</td><td>абсолютная</td><td>абсолютная</td><td><strong>относительная</strong></td><td>относительная</td></tr>
+<tr><td>Обучаемая</td><td>нет</td><td>да</td><td>нет</td><td>нет</td></tr>
+<tr><td>Экстраполяция длины</td><td>слабая</td><td><strong>невозможна</strong></td><td>средняя (чинится интерполяцией)</td><td>хорошая</td></tr>
+<tr><td>Где применяется</td><td>оригинальный Transformer</td><td>BERT, GPT-2</td><td><strong>Llama, GPT-NeoX, почти все LLM</strong></td><td>BLOOM, MPT</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="fbox org">
+<div class="flabel">📐 ALiBi — линейный штраф за расстояние</div>
+$$\operatorname{scores}_{ij} \leftarrow q_i\cdot k_j - m_h\,|i-j|$$
+<p class="fnote">$m_h$ — фиксированный наклон, свой для каждой головы (геометрическая прогрессия). Никаких эмбеддингов вообще.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>ALiBi — самое простое решение из всех: <strong>просто штрафуем внимание за расстояние</strong>. Чем дальше токен, тем сильнее вычитаем из его оценки. Никаких векторов позиций не существует вовсе.</p>
+<p>Разные головы получают разный наклон $m_h$: у одних штраф крутой (смотрят только на ближайших соседей), у других пологий (видят далеко). Модель получает набор «дальнозорких» и «близоруких» голов.</p>
+<p>Главное достоинство — <strong>экстраполяция</strong>: формула $-m|i-j|$ осмысленна при любом расстоянии, поэтому модель, обученная на 2k, разумно работает на 8k. У RoPE с этим сложнее.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Проблема экстраполяции RoPE и как её решают.</strong> Модель, обученная на контексте 4k, при подаче 32k резко деградирует: углы поворота $m\theta$ выходят за диапазон, виденный при обучении, и внимание разваливается. Три решения: <strong>Position Interpolation</strong> — сжать позиции в обученный диапазон ($m \to m\cdot 4096/32768$), просто и требует лишь короткого дообучения; <strong>NTK-aware scaling</strong> — менять базу 10000 неравномерно по частотам, сохраняя разрешение для близких токенов; <strong>YaRN</strong> — комбинация обоих с температурной поправкой. Практический вывод: заявленная длина контекста у моделей часто достигнута именно интерполяцией, и <em>эффективная</em> длина может быть заметно меньше.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Три архитектуры: encoder, decoder, encoder-decoder <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Одинаковые блоки, разные маски — принципиально разные модели</div>
+
+<div class="grid3">
+<div class="card bl"><h5>Encoder-only (BERT)</h5><p><strong>Маска:</strong> нет, внимание двунаправленное.<br><strong>Обучение:</strong> masked language modeling — маскируем 15% токенов и восстанавливаем.<br><strong>Задачи:</strong> классификация, NER, эмбеддинги, ранжирование.<br><strong>Не умеет:</strong> генерировать текст.</p></div>
+<div class="card gr"><h5>Decoder-only (GPT)</h5><p><strong>Маска:</strong> causal.<br><strong>Обучение:</strong> предсказание следующего токена.<br><strong>Задачи:</strong> генерация, чат, few-shot — фактически всё.<br><strong>Слабость:</strong> каждый токен видит только прошлое, что теоретически ограничивает понимание.</p></div>
+<div class="card pu"><h5>Encoder-Decoder (T5)</h5><p><strong>Маска:</strong> энкодер двунаправленный, декодер causal + cross-attention к энкодеру.<br><strong>Обучение:</strong> span corruption.<br><strong>Задачи:</strong> перевод, суммаризация — всё, где есть чёткий вход и выход.</p></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему победил decoder-only</div>
+<p>Логически encoder-decoder кажется правильнее для перевода: энкодер «понимает» исходный текст двунаправленно, декодер генерирует. Так почему все современные LLM — decoder-only?</p>
+<p><strong>① Простота обучения.</strong> Задача «предскажи следующий токен» применима к <em>любому</em> тексту без разметки. Не нужно придумывать пары вход-выход, не нужны специальные схемы порчи текста.</p>
+<p><strong>② Универсальность через промпт.</strong> Оказалось, что перевод можно сформулировать как продолжение: «Переведи на английский: кот → cat». Отдельный энкодер не нужен — вход просто становится префиксом.</p>
+<p><strong>③ Эффективность инференса.</strong> Causal-маска позволяет использовать KV-cache (секция 12): при генерации каждого нового токена не нужно пересчитывать предыдущие. У энкодера с двунаправленным вниманием такой возможности нет — добавление токена меняет представления всех остальных.</p>
+<p><strong>④ Масштабирование.</strong> Одна стопка блоков проще шардировать и параллелить, чем две связанные части.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Encoder-only</th><th>Decoder-only</th><th>Encoder-Decoder</th></tr></thead>
+<tbody>
+<tr><td>Внимание</td><td>двунаправленное</td><td>causal</td><td>bi + causal + cross</td></tr>
+<tr><td>Задача претрейна</td><td>MLM</td><td>next token</td><td>span corruption</td></tr>
+<tr><td>KV-cache при генерации</td><td>неприменим</td><td><strong>да</strong></td><td>частично (энкодер считается один раз)</td></tr>
+<tr><td>Типичный размер</td><td>0.1–1B</td><td><strong>1B–1T+</strong></td><td>0.2–20B</td></tr>
+<tr><td>Примеры</td><td>BERT, RoBERTa, DeBERTa, E5</td><td>GPT, Llama, Mistral, Claude</td><td>T5, BART, Flan-T5</td></tr>
+<tr class="trh"><td>Где всё ещё лучший выбор</td><td><strong>эмбеддинги и классификация</strong> — дешевле и точнее</td><td>всё генеративное</td><td>жёсткие seq2seq задачи с фиксированным форматом</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический вывод, который часто упускают.</strong> Для получения <em>эмбеддингов текста</em> (поиск, кластеризация, дедупликация) encoder-only модели остаются лучшим выбором: они на порядок меньше, быстрее, и их двунаправленное внимание даёт более качественное представление всего текста. Использовать 7B decoder-only модель там, где справляется 100M энкодер, — типичная ошибка «взять то, что на слуху». Мы вернёмся к этому в блоке 9.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. KV-cache: почему генерация без него невозможна <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главная структура данных LLM-инференса</div>
+
+<h3>Проблема: наивная генерация квадратична</h3>
+<p>Модель сгенерировала 100 токенов и генерирует 101-й. Наивно — прогнать все 100 токенов через все слои заново. Но токены 1–100 <strong>не изменились</strong>, их $K$ и $V$ будут в точности теми же, что и на прошлом шаге.</p>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько работы экономит кэш</div>
+<div class="numex-step"><span class="nb red">1</span><div><strong>Без кэша.</strong> Для генерации $n$-го токена пересчитываем всю последовательность: $O(n)$ работы. Суммарно за $N$ токенов: $\sum_{n=1}^{N} n = O(N^2)$.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div><strong>С кэшем.</strong> На каждом шаге считаем $K$, $V$ только для <em>одного</em> нового токена: $O(1)$ вычислений плюс $O(n)$ на само внимание. Суммарно: $O(N^2)$ по вниманию, но проекции — линейны.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Практический выигрыш.</strong> Проекции $QKV$ и FFN — самые дорогие части. Без кэша они пересчитываются для всех токенов на каждом шаге, с кэшем — только для одного. При генерации 1000 токенов это <strong>ускорение примерно в 500 раз</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Именно поэтому KV-cache — не оптимизация, а <em>обязательное условие</em> практичной генерации.</div></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему кэшируем K и V, но не Q</div>
+<p>Ключевой момент, который часто путают.</p>
+<p><strong>$K$ и $V$ старых токенов нужны снова и снова.</strong> Новый токен должен посмотреть на все предыдущие — значит нужны их ключи и значения. Они не меняются, поэтому их кэшируют.</p>
+<p><strong>$Q$ старых токенов больше не нужен.</strong> Запрос токена 5 использовался ровно один раз — когда вычислялся выход для позиции 5. Благодаря causal-маске токен 5 никогда не будет смотреть на будущее, и его запрос никогда не понадобится снова.</p>
+<p>Отсюда название: кэш <em>KV</em>, а не <em>QKV</em>. И отсюда же — <strong>KV-cache возможен только при causal-маске</strong>. В двунаправленном энкодере добавление токена меняет представления всех остальных, кэшировать нечего.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Размер KV-cache</div>
+$$M_{\text{KV}} = 2 \cdot B \cdot L \cdot n_{\text{layers}} \cdot n_{\text{heads}} \cdot d_{\text{head}} \cdot \text{bytes}$$
+<p class="fnote">Двойка — за $K$ и $V$. $B$ — размер батча, $L$ — длина контекста. Заметь: <strong>линейно по длине И по батчу</strong>, и это произведение растёт очень быстро.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем KV-cache для Llama-подобной модели 70B</div>
+<div class="numex-step"><span class="nb">1</span><div>Параметры: 80 слоёв, 64 головы, $d_{\text{head}}=128$, fp16 (2 байта).</div></div>
+<div class="numex-step"><span class="nb">2</span><div>На <strong>один токен</strong>: $2\times80\times64\times128\times2 = 2\,621\,440$ байт ≈ <strong>2.6 МБ</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Контекст 4096 токенов, батч 1: $2.6\text{ МБ}\times4096 = \mathbf{10.7\ ГБ}$.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div>Контекст 4096, <strong>батч 32</strong>: $10.7\times32 = \mathbf{343\ ГБ}$. Сама модель в fp16 занимает 140 ГБ. То есть <strong>кэш в 2.5 раза больше модели</strong>.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div>Контекст 128k, батч 1: $2.6\text{ МБ}\times131072 = \mathbf{341\ ГБ}$. Одна длинная сессия не влезает даже на 4×H100.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод, определяющий всю экономику LLM-сервинга:</strong> при генерации узкое место — не вычисления, а <em>память под KV-cache</em>. Именно он ограничивает максимальный батч, а значит и пропускную способность сервиса. Отсюда GQA (секция 14) и PagedAttention.</div></div>
+</div>
+
+<div style="margin:18px 0;">
+<div style="font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:7px;">Рост KV-cache по мере генерации</div>
+<div class="kvbar">KV-cache растёт линейно с каждым новым токеном →</div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор KV-cache</label>
+  <input type="range" id="sl_ctx" min="512" max="131072" step="512" value="4096" oninput="updKV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>512 токенов</span><span class="out" id="out_ctx">4096</span><span>128k</span></div>
+  <label style="margin-top:14px;">Размер батча (одновременных запросов)</label>
+  <input type="range" id="sl_b" min="1" max="64" step="1" value="8" oninput="updKV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_b">8</span><span>64</span></div>
+  <label style="margin-top:14px;">Схема внимания</label>
+  <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap;">
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="kvmode" value="mha" checked onchange="updKV()"> MHA (64 KV-головы)</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="kvmode" value="gqa" onchange="updKV()"> GQA (8 KV-голов)</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="kvmode" value="mqa" onchange="updKV()"> MQA (1 KV-голова)</label>
+  </div>
+  <div class="res" id="out_kv"></div>
+</div>
+
+<h3>Prefill и decode — две разные фазы</h3>
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Prefill (обработка промпта)</th><th>Decode (генерация)</th></tr></thead>
+<tbody>
+<tr><td>Что происходит</td><td>Все токены промпта проходят через модель разом</td><td>По одному токену за шаг</td></tr>
+<tr><td>Параллелизм</td><td>Полный — все позиции сразу</td><td>Нулевой — строго последовательно</td></tr>
+<tr><td>Упирается в</td><td><strong>Вычисления</strong> (compute-bound)</td><td><strong>Пропускную способность памяти</strong> (memory-bound)</td></tr>
+<tr><td>Утилизация GPU</td><td>высокая, 40–70%</td><td>низкая, 5–20%</td></tr>
+<tr><td>Метрика</td><td>Time To First Token (TTFT)</td><td>токенов в секунду на запрос</td></tr>
+<tr><td>Как ускорять</td><td>тензорный параллелизм, chunked prefill</td><td>батчинг, GQA, квантование, speculative decoding</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему decode упирается в память, а не в вычисления</div>
+<p>При генерации одного токена нужно прочитать <strong>все веса модели</strong> из памяти (для 70B в fp16 это 140 ГБ) и выполнить с ними умножение на <em>один</em> вектор.</p>
+<p>Арифметическая интенсивность — отношение операций к байтам — получается ужасной: примерно 2 операции на байт. Современная карта способна на сотни операций на байт. То есть <strong>GPU почти всё время ждёт данные из памяти</strong>, а её вычислительные блоки простаивают.</p>
+<p>Отсюда главный вывод для сервинга: <strong>батчинг почти бесплатен на стадии decode</strong>. Веса читаются один раз для всего батча, а вычислений добавляется пропорционально. Обработать 32 запроса одновременно стоит почти столько же, сколько один. Именно на этом построен весь современный LLM-сервинг — continuous batching в vLLM и TGI.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>PagedAttention — приём, заимствованный у операционных систем.</strong> Обычно под KV-cache выделяют непрерывный блок памяти на максимальную длину. Но реальные ответы разной длины, и до 60–80% выделенной памяти пропадает впустую. vLLM применил идею <strong>виртуальной памяти со страницами</strong>: кэш хранится блоками по 16 токенов, блоки выделяются по мере необходимости и не обязаны лежать подряд. Таблица страниц связывает логические позиции с физическими блоками. Результат — утилизация памяти выше 90% и рост пропускной способности в 2–4 раза. Бонус: несколько запросов с общим префиксом (одинаковый системный промпт) могут <em>разделять</em> одни и те же физические блоки.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. FlashAttention: та же математика, другая работа с памятью <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пример того, как понимание железа даёт больше, чем новая архитектура</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Главное, что нужно понять про FlashAttention:</strong> он <strong>не уменьшает число операций</strong>. FLOPs остаются точно теми же, результат <strong>математически идентичен</strong> обычному attention до последнего бита. Ускорение в 2–4 раза достигается исключительно за счёт того, что данные меньше гоняются между медленной и быстрой памятью GPU.</div></div>
+
+<h3>Иерархия памяти GPU</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Уровень</th><th>Объём (A100)</th><th>Пропускная способность</th><th>Относительная скорость</th></tr></thead>
+<tbody>
+<tr><td><b>SRAM</b> (on-chip, shared memory)</td><td>~20 МБ суммарно</td><td>~19 ТБ/с</td><td><strong>×13</strong></td></tr>
+<tr><td><b>HBM</b> (видеопамять)</td><td>40–80 ГБ</td><td>~1.5 ТБ/с</td><td>×1</td></tr>
+<tr><td>CPU RAM</td><td>сотни ГБ</td><td>~30 ГБ/с</td><td>×0.02</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: где обычный attention теряет время</div>
+<p>Стандартная реализация делает так:</p>
+<p style="margin-left:14px">① посчитать $S = QK^\top$ → <strong>записать матрицу $n\times n$ в HBM</strong><br>
+② прочитать $S$ из HBM → применить softmax → <strong>записать $A$ обратно в HBM</strong><br>
+③ прочитать $A$ из HBM → умножить на $V$ → записать результат</p>
+<p>При $n = 4096$ матрица $S$ содержит 16.7 млн чисел = 33 МБ в fp16. Мы записываем и читаем её <strong>несколько раз</strong>. В SRAM (20 МБ) она не помещается, поэтому каждое обращение идёт в медленную HBM.</p>
+<p><strong>FlashAttention</strong> разбивает $Q$, $K$, $V$ на блоки такого размера, чтобы блок помещался в SRAM. Для каждой пары блоков он считает частичное внимание <em>целиком внутри быстрой памяти</em> и сразу накапливает результат. <strong>Матрица $n\times n$ никогда не материализуется в HBM вообще.</strong></p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Online softmax — техническое сердце метода</div>
+<p>Проблема: softmax требует знать сумму по <em>всей</em> строке, а мы обрабатываем блоками. Решение — инкрементальная формула:</p>
+$$m^{(j)} = \max\big(m^{(j-1)},\; \max(S^{(j)})\big)$$
+$$\ell^{(j)} = e^{m^{(j-1)} - m^{(j)}}\,\ell^{(j-1)} + \sum e^{S^{(j)} - m^{(j)}}$$
+$$O^{(j)} = \frac{\ell^{(j-1)}\,e^{m^{(j-1)}-m^{(j)}}}{\ell^{(j)}}\,O^{(j-1)} + \frac{e^{S^{(j)}-m^{(j)}}}{\ell^{(j)}}\,V^{(j)}$$
+<p class="fnote">При обработке нового блока мы <strong>пересчитываем масштаб</strong> уже накопленного результата под новый максимум. Итог в точности равен обычному softmax.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как считать softmax, не видя всех чисел сразу</div>
+<p>Представь, что тебе диктуют числа по одному, и надо посчитать softmax. Проблема: нужен максимум для численной стабильности (тема 8.1), но ты не знаешь его заранее.</p>
+<p>Решение: <strong>веди текущий максимум и текущую сумму</strong>. Когда приходит число больше текущего максимума — <em>пересчитай накопленную сумму под новый максимум</em>, домножив её на $e^{m_{\text{старый}} - m_{\text{новый}}}$.</p>
+<p>Пример: накопил сумму относительно $m=5$. Пришло число 8. Домножаем сумму на $e^{5-8} = e^{-3}$ — теперь она выражена относительно $m=8$. Добавляем новый член. Всё корректно.</p>
+<p>Та же поправка применяется к уже накопленному <em>выходу</em> $O$. Именно это позволяет обрабатывать внимание блоками, не храня всю матрицу.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Что меняется в сложности</div>
+<div class="tw" style="margin:8px 0 0;">
+<table>
+<thead><tr><th></th><th>Обычный attention</th><th>FlashAttention</th></tr></thead>
+<tbody>
+<tr><td>FLOPs</td><td>$O(n^2 d)$</td><td>$O(n^2 d)$ — <strong>то же самое</strong></td></tr>
+<tr><td>Обращений к HBM</td><td>$O(n^2 + nd)$</td><td>$\mathbf{O(n^2 d^2 / M)}$, где $M$ — размер SRAM</td></tr>
+<tr><td>Память под активации</td><td>$O(n^2)$</td><td>$\mathbf{O(n)}$</td></tr>
+<tr><td>Скорость на $n$=4096</td><td>×1</td><td><strong>×2–4</strong></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как получить FlashAttention бесплатно.</strong> В PyTorch 2.0+ функция <code>F.scaled_dot_product_attention</code> автоматически выбирает лучшую доступную реализацию (FlashAttention, memory-efficient или обычную) в зависимости от формы входа, dtype и типа маски. Если ты пишешь attention вручную через <code>@</code> и <code>softmax</code> — ты <strong>теряешь эту оптимизацию</strong>. Единственная причина писать вручную — если нужна сама матрица внимания для анализа или визуализации.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ограничение, о котором стоит знать.</strong> FlashAttention не материализует матрицу внимания — значит, <strong>её нельзя получить на выходе</strong>. Если тебе нужны веса внимания для интерпретируемости, визуализации или для attention-based метрик, придётся использовать обычную реализацию и мириться с потерей скорости. Также произвольные маски поддерживаются хуже, чем causal: сложные block-diagonal паттерны могут откатить реализацию на медленный путь.</div></div>
+
+<div class="chb">
+<div class="cht">Время attention от длины последовательности</div>
+<div class="chsub">FLOPs одинаковы, разница целиком в обращениях к памяти</div>
+<div style="position:relative;height:300px;"><canvas id="c_flash"></canvas></div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Общий инженерный урок</div>
+<h4>Почему FlashAttention — важнее многих новых архитектур</h4>
+<p>С 2018 по 2022 год вышли десятки статей про «эффективный attention» с субквадратичной сложностью: Linformer, Performer, Reformer, Longformer, Nyströmformer. Почти все они <strong>приближали</strong> внимание, жертвуя качеством ради асимптотики.</p>
+<p>FlashAttention не изменил ни асимптотику по FLOPs, ни результат — но дал в 2–4 раза больше практического ускорения, чем большинство этих методов. Причина: <strong>узким местом было не число операций, а обращения к памяти</strong>, и никто на это не смотрел.</p>
+<p><strong>Урок, применимый далеко за пределами attention:</strong> прежде чем оптимизировать асимптотику, измерь, во что программа реально упирается. Roofline-анализ (память против вычислений) часто показывает, что «очевидное» узкое место — не то, которое ограничивает на самом деле. Мы вернёмся к этому в блоке 11.</p>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. MQA и GQA: как ужать KV-cache <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Небольшая жертва качеством ради кратного роста пропускной способности</div>
+
+<p>Из секции 12 мы знаем: KV-cache — главное ограничение пропускной способности сервиса. Его размер пропорционален числу голов. Идея MQA и GQA: <strong>у запросов оставить много голов, а у ключей и значений — мало</strong>.</p>
+
+<div class="grid3">
+<div class="card bl"><h5>MHA — Multi-Head</h5><p>$h$ голов $Q$, $h$ голов $K$, $h$ голов $V$.<br><strong>Кэш:</strong> ×1 (базовый)<br><strong>Качество:</strong> эталон</p></div>
+<div class="card gr"><h5>GQA — Grouped-Query</h5><p>$h$ голов $Q$, но $g$ групп $K,V$ (обычно $g = h/8$).<br><strong>Кэш:</strong> ÷8<br><strong>Качество:</strong> потеря в пределах шума</p></div>
+<div class="card am"><h5>MQA — Multi-Query</h5><p>$h$ голов $Q$, но <strong>одна</strong> голова $K,V$ на всех.<br><strong>Кэш:</strong> ÷$h$ (÷64!)<br><strong>Качество:</strong> заметная просадка</p></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Вернёмся к аналогии с библиотекой. В MHA у нас 64 читателя, и <strong>у каждого свой каталог</strong> — свой набор ключей и своя копия содержимого книг. Это дорого хранить.</p>
+<p><strong>MQA:</strong> оставляем <em>один общий каталог</em> на всех 64 читателей. Каждый по-прежнему задаёт свой запрос (свои $Q$), но ищет в одном и том же наборе ключей. Экономия памяти в 64 раза. Проблема: разные читатели искали разное, и общий каталог — компромисс, который никому не подходит идеально.</p>
+<p><strong>GQA:</strong> 8 каталогов на 64 читателя, по 8 читателей на каталог. Читатели с похожими интересами делят каталог. Экономия в 8 раз, а качество почти не страдает — потому что головы внутри группы действительно часто ищут схожие вещи.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Размер KV-cache для трёх схем</div>
+$$M_{\text{MHA}} = 2BLn_l\,h\,d_h\,b, \qquad M_{\text{GQA}} = 2BLn_l\,g\,d_h\,b, \qquad M_{\text{MQA}} = 2BLn_l\,d_h\,b$$
+<p class="fnote">Сокращение ровно в $h/g$ раз для GQA и в $h$ раз для MQA. Число параметров при этом меняется незначительно — $W_K$ и $W_V$ становятся меньше, но они и так составляли малую долю.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что даёт GQA на практике: Llama-2 70B</div>
+<div class="numex-step"><span class="nb">1</span><div>MHA: 64 KV-головы. Кэш на токен $= 2\times80\times64\times128\times2 = 2.6$ МБ.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div>GQA с 8 группами: кэш на токен $= 2\times80\times8\times128\times2 = \mathbf{0.33}$ МБ. <strong>В 8 раз меньше.</strong></div></div>
+<div class="numex-step"><span class="nb grn">3</span><div>При бюджете памяти 60 ГБ под кэш и контексте 4096: MHA позволяет батч $\approx 5$, GQA — батч $\approx \mathbf{44}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Поскольку decode упирается в память, а не в вычисления, <strong>батч 44 обслуживается почти за то же время, что батч 5</strong>. Пропускная способность сервиса вырастает примерно в 8 раз при потере качества в пределах шума. Это одно из самых выгодных решений в современном LLM-инференсе — поэтому GQA есть в Llama-2/3, Mistral и большинстве новых моделей.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">MHA vs GQA vs MQA: компромисс память ↔ качество</div>
+<div class="chsub">GQA с 8 группами — точка, где экономия почти бесплатна</div>
+<div style="position:relative;height:300px;"><canvas id="c_gqa"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Продвинутое: MLA в DeepSeek.</strong> Multi-head Latent Attention идёт дальше GQA: вместо хранения $K$ и $V$ хранится их <strong>низкоранговая сжатая проекция</strong>, а полные $K$, $V$ восстанавливаются на лету умножением на матрицу. Кэш сокращается ещё сильнее, чем при GQA, а качество заявляется <em>лучше</em>, чем у MHA — потому что низкоранговое сжатие работает как дополнительная регуляризация. Плата — усложнение реализации и дополнительные вычисления при восстановлении, что приемлемо, поскольку decode всё равно упирается в память.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Как GQA появляется в уже обученных моделях.</strong> Переобучать с нуля дорого, поэтому применяют <strong>uptraining</strong>: берут обученную MHA-модель, усредняют $K$ и $V$ внутри каждой группы голов, и дообучают полученную GQA-модель на ~5% исходного бюджета токенов. Качество восстанавливается почти полностью. Именно так GQA-версии часто и получают.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Mixture of Experts: больше параметров без роста вычислений <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как модель на 400B параметров работает со скоростью 40B</div>
+
+<div class="fbox org">
+<div class="flabel">📐 Sparse MoE слой</div>
+<p>FFN заменяется на набор из $N$ экспертов и роутер, выбирающий top-$k$ из них:</p>
+$$y = \sum_{i \in \operatorname{TopK}(g(x))} g_i(x)\cdot E_i(x), \qquad g(x) = \operatorname{softmax}(x W_g)$$
+<p class="fnote">Обычно $N = 8$–256 экспертов, $k = 1$–2. Каждый эксперт $E_i$ — обычный FFN.</p>
+</div>
+
+<div class="flow">
+  <div class="fn d"><strong>токен</strong>x</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Router</strong>softmax(xW<sub>g</sub>)<br>оценка всех экспертов</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>Top-2</strong>выбираем двух<br>лучших</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>E₃, E₇</strong>считаются только<br>они</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>Σ</strong>взвешенная<br>сумма</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>В обычном трансформере <strong>каждый</strong> токен проходит через <strong>весь</strong> FFN. Параметры и вычисления связаны жёстко: хочешь больше знаний — плати больше вычислений.</p>
+<p>MoE разрывает эту связь. У модели 64 «специалиста», но каждый токен идёт только к двум. Токен про программирование пойдёт к экспертам, специализировавшимся на коде; токен про биологию — к другим.</p>
+<p><strong>Арифметика выгоды:</strong> модель хранит $64\times$ параметров FFN, но считает только $2/64 = 3\%$ из них на каждый токен. Общее число параметров растёт в 32 раза, вычисления — почти не растут.</p>
+<p><strong>Плата:</strong> вся модель должна помещаться в памяти, даже если 97% параметров на данном шаге не используются. MoE меняет <em>вычисления</em> на <em>память</em> — что выгодно, когда вычисления дороже.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Load balancing loss — без него MoE не работает</div>
+$$\mathcal{L}_{\text{aux}} = \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i$$
+<p class="fnote">$f_i$ — доля токенов, попавших к эксперту $i$; $P_i$ — средняя вероятность, назначенная эксперту $i$ роутером. Минимум достигается при равномерном распределении. Типично $\alpha = 0.01$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: проблема схлопывания роутера</div>
+<p>Без балансировки происходит вырождение. Роутер случайно отдал чуть больше токенов эксперту №3. Тот получил больше градиентов, стал лучше. Роутер заметил, что №3 лучше, и стал отдавать ему ещё больше. <strong>Положительная обратная связь</strong> — через несколько тысяч шагов 90% токенов идут к трём экспертам, остальные 61 не обучаются вообще.</p>
+<p>Это ровно та же петля, что exposure bias в рекомендациях (блок 6) и feedback loop в MLOps (блок 7). Одна и та же структурная проблема в трёх разных областях.</p>
+<p>Auxiliary loss штрафует за неравномерность: произведение $f_i P_i$ минимально, когда нагрузка распределена ровно. Дополнительно применяют <strong>capacity factor</strong> — жёсткий лимит на число токенов на эксперта, сверх которого токены «выбрасываются» (проходят через residual без обработки).</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Аспект</th><th>Плотная модель</th><th>MoE</th></tr></thead>
+<tbody>
+<tr><td>Параметры</td><td>$N$</td><td>$\approx N \times$ (число экспертов), но активны $k/N_{\text{exp}}$</td></tr>
+<tr><td>FLOPs на токен</td><td>$2N$</td><td>$\approx 2N_{\text{активных}}$</td></tr>
+<tr><td>Память под веса</td><td>$N\times b$</td><td><strong>вся модель</strong>, включая неактивных экспертов</td></tr>
+<tr><td>Качество при равных FLOPs</td><td>базовое</td><td><strong>заметно выше</strong></td></tr>
+<tr><td>Качество при равной памяти</td><td>выше</td><td>ниже</td></tr>
+<tr><td>Сложность обучения</td><td>стандартная</td><td>нестабильность роутера, нужен aux loss</td></tr>
+<tr><td>Сложность сервинга</td><td>стандартная</td><td>экспертный параллелизм, дисбаланс нагрузки</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная сложность MoE в проде — не обучение, а сервинг.</strong> Эксперты обычно разложены по разным GPU (expert parallelism). Каждый токен маршрутизируется на свою карту, что порождает коллективную операцию all-to-all на каждом MoE-слое. При неравномерной нагрузке одни карты простаивают, другие в очереди. Плюс: латентность становится <em>переменной</em> и зависит от содержания запроса — а это ломает предсказуемость p99. Поэтому MoE-модели требуют существенно более сложной инфраструктуры, чем плотные того же качества.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Когда MoE — правильный выбор.</strong> Когда <em>вычисления дороже памяти</em>: большой объём обучения, много GPU, есть куда разложить экспертов. Когда память дороже вычислений (edge, одна карта, ограниченный бюджет) — плотная модель лучше. Практическое правило: MoE даёт качество плотной модели примерно вчетверо большего размера при тех же FLOPs, но требует примерно вчетверо больше памяти.</div></div>
+</div>
+
+<!-- ================= S16 ================= -->
+<div class="sec" id="s16">
+<div class="stitle">16. System Design: собираем всё вместе <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как решения из этой темы определяют архитектуру LLM-сервиса</div>
+
+<div class="sysbox">
+<h4>🏗 Полный путь запроса через LLM-сервис</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Запрос</strong>промпт +<br>параметры</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Токенизация</strong>текст → ID</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Prefix cache</strong>системный промпт<br>уже посчитан?</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Очередь</strong>continuous<br>batching</div>
+</div>
+<div class="sys-row">
+  <div class="syshighlight"><strong>Prefill</strong>compute-bound<br>chunked по 512</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>KV-cache</strong>PagedAttention,<br>блоки по 16</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Decode</strong>memory-bound<br>батч 32–128</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Стриминг</strong>токен за токеном<br>клиенту</div>
+</div>
+<div class="sysnote"><strong>Где какая идея из этой темы работает:</strong><br>
+① <strong>Prefix caching</strong> — тысячи запросов делят один системный промпт; его KV-cache считается один раз и переиспользуется. Экономия 20–50% prefill-вычислений на типичной нагрузке. Возможно только благодаря causal-маске: префикс не зависит от того, что идёт после.<br>
+② <strong>Chunked prefill</strong> — длинный промпт режется на куски и перемежается с decode-шагами других запросов. Иначе один запрос на 32k токенов «замораживает» всех остальных на секунды.<br>
+③ <strong>Continuous batching</strong> — завершившийся запрос немедленно освобождает слот, туда встаёт новый. В отличие от статического батчинга, не нужно ждать самого длинного ответа в батче.<br>
+④ <strong>GQA</strong> — уменьшает KV-cache в 8 раз, что напрямую переводится в 8× больший батч и, значит, 8× пропускную способность на стадии decode.<br>
+⑤ <strong>FlashAttention</strong> — ускоряет prefill в 2–4 раза, что сокращает TTFT.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Две метрики, которые оптимизируются по-разному</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>TTFT</strong>Time To First Token<br>определяется prefill</div>
+  <div class="sysarrow">≠</div>
+  <div class="sysblock"><strong>TPOT</strong>Time Per Output Token<br>определяется decode</div>
+</div>
+<div class="sysnote"><strong>Почему их нельзя оптимизировать одновременно.</strong> Увеличение батча улучшает пропускную способность и почти не вредит TPOT (decode упирается в память, веса читаются один раз на батч), но <strong>ухудшает TTFT</strong> — запрос дольше ждёт в очереди на формирование батча.<br><br>
+<strong>Как это разруливают:</strong> ① раздельные SLA — TTFT p95 &lt; 500 мс, TPOT p95 &lt; 50 мс; ② приоритетные очереди для интерактивных запросов против батчевых; ③ <strong>disaggregated serving</strong> — prefill и decode выполняются на <em>разных пулах GPU</em>, потому что у них принципиально разные профили нагрузки: prefill compute-bound, decode memory-bound. Это одна из главных архитектурных идей современного LLM-сервинга.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Сквозная связь</div>
+<h4>Как одна формула определила экономику целой индустрии</h4>
+<p>Проследим цепочку от математики до денег:</p>
+<ul>
+<li><strong>$QK^\top$ даёт матрицу $n\times n$</strong> → внимание квадратично по длине → длинный контекст дорог → появились FlashAttention, sliding window, linear attention.</li>
+<li><strong>Causal-маска</strong> → возможен KV-cache → генерация линейна вместо квадратичной → LLM вообще практичны.</li>
+<li><strong>KV-cache пропорционален числу голов</strong> → он ограничивает батч → батч ограничивает пропускную способность → появились MQA и GQA → стоимость обслуживания упала в разы.</li>
+<li><strong>Decode упирается в память, а не в вычисления</strong> → батчинг почти бесплатен → continuous batching → рост пропускной способности в 2–4 раза без нового железа.</li>
+<li><strong>FFN содержит ⅔ параметров</strong> → именно его заменяют на MoE → больше знаний при тех же вычислениях.</li>
+</ul>
+<p>Ни одно из этих решений не было бы найдено без понимания того, что происходит внутри формулы внимания. <strong>Это и есть практическая ценность «теории под капотом»</strong> — она не про эрудицию, а про способность увидеть, где именно система упирается и что с этим делать.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">17. Вопросы и ответы</div>
+<div class="sdesc">32 вопроса — от базовых до уровня senior-собеседования</div>
+
+<div class="qah">🟢 База: как устроено внимание</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Объясни attention одним предложением, без формул.<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p><strong>Attention — это обучаемое взвешенное среднее по последовательности, где веса вычисляются из самих данных.</strong></p><p>Каждый токен формирует «запрос», сравнивает его с «ключами» всех токенов, превращает степени совпадения в проценты (softmax), и забирает взвешенную смесь их «содержимого».</p><p>Результат: представление каждого токена обогащается информацией о релевантных соседях. Это называется контекстуализацией — после слоя внимания вектор слова «он» уже содержит информацию о том, к чему это местоимение относится.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Зачем нужны три матрицы Q, K, V, если все они делаются из одного входа?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>Потому что у токена <strong>три разные роли</strong>, и их нельзя выразить одним вектором.</p><p><strong>$W_Q$ — «что я ищу»</strong>: местоимение «он» ищет подходящее существительное.</p><p><strong>$W_K$ — «чем я могу быть найден»</strong>: «ковёр» предъявляет признаки «неодушевлённое, м.р.».</p><p><strong>$W_V$ — «что я передам»</strong>: «ковёр» передаёт семантику «мягкий, напольный, текстильный».</p><p>Без разделения похожесть была бы симметричной: если A ищет B, то и B искал бы A с той же силой. Это неверно — роли «ищущего» и «находимого» асимметричны. Все три матрицы обучаются градиентным спуском, модель сама решает, какие аспекты слова важны для каждой роли.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Почему используется softmax, а не просто выбор максимума?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p><strong>Главная причина техническая:</strong> argmax недифференцируем. Через него не пройдёт градиент, и модель нельзя обучить. Softmax — гладкая, дифференцируемая версия argmax.</p><p><strong>Вторая причина содержательная:</strong> релевантным может быть не один токен, а несколько. Смесь информации от трёх релевантных соседей богаче, чем копия одного.</p><p>Это общий паттерн в глубоком обучении: всюду, где нужно «выбрать», делают «выбрать мягко». Мы видели это в TabNet (sparsemax) и NODE (entmax) в блоке 7 — та же идея.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Какая форма у матрицы внимания и почему это важно?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>$(n, n)$ — квадратная по числу токенов. Элемент $A_{ij}$ = сколько внимания токен $i$ уделяет токену $j$.</p><p><strong>Почему это критично:</strong> отсюда растут все проблемы масштабирования. При $n=4096$ это 16.7 млн чисел на голову на слой. Память $O(n^2)$, вычисления $O(n^2 d)$.</p><p>Удвоение длины контекста учетверяет стоимость внимания. Именно поэтому длинный контекст дорог, и именно поэтому появились FlashAttention, sliding window attention и linear attention.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. По какой оси применяется softmax и как проверить, что не ошибся?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>По <strong>последней оси</strong>: <code>softmax(scores, dim=-1)</code>. Нормируем каждую <em>строку</em> — распределяем внимание одного запроса по всем ключам.</p><p>Если написать <code>dim=-2</code>, пронормируются столбцы: «сколько внимания досталось каждому ключу от всех запросов». Это не имеет смысла в данной конструкции.</p><p><strong>Проверка:</strong> <code>attn.sum(dim=-1)</code> должно давать тензор из единиц. Если единицы получаются при суммировании по <code>dim=-2</code> — ось перепутана.</p><p>Коварство ошибки: модель обучится, loss будет падать, ничего не упадёт. Просто качество будет хуже, и причину будут искать в архитектуре.</p></div></details>
+
+<div class="qah">🔵 Средний: детали механизма</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Выведи, почему делят именно на √d_k.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Пусть компоненты $q$ и $k$ независимы, с нулевым средним и единичной дисперсией. Тогда $q\cdot k = \sum_{i=1}^{d_k} q_i k_i$ — сумма $d_k$ независимых слагаемых с единичной дисперсией.</p><p>Дисперсии складываются: $\operatorname{Var}(q\cdot k) = d_k$, стандартное отклонение $= \sqrt{d_k}$.</p><p>Деление на $\sqrt{d_k}$ возвращает дисперсию к единице — независимо от размерности.</p><p><strong>Почему не на $d_k$:</strong> тогда разброс стал бы $1/\sqrt{d_k}$, softmax дал бы почти равномерное распределение, и внимание перестало бы что-либо выделять. $\sqrt{d_k}$ — единственный множитель, дающий ровно единичную дисперсию.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Что конкретно сломается без масштабирования? Покажи на числах.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>При $d_k=64$ логиты имеют разброс ±8. Возьмём $[8, 4, 1.6, 0.8]$ → softmax $= [0.96, 0.018, 0.016, 0.007]$ — внимание схлопнулось на одном токене.</p><p><strong>Главная проблема — градиент.</strong> Производная softmax: $\frac{\partial p_i}{\partial z_j} = p_i(\delta_{ij}-p_j)$. При $p_1 = 0.96$: $p_1(1-p_1) = 0.038$. При $p_1 = 0.9999997$: $\approx 3\times10^{-7}$.</p><p>Градиент практически нулевой — <strong>слой перестаёт обучаться</strong>. Softmax в режиме насыщения ведёт себя как argmax: он что-то выбирает, но не может научиться выбирать лучше.</p><p>Масштабирование удерживает логиты в диапазоне, где softmax мягкий, а градиент существенный.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Что такое QK-Norm и зачем он нужен, если уже есть √d?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Вывод масштабирования предполагал, что компоненты $q$ и $k$ имеют единичную дисперсию. Но <strong>по мере обучения нормы $Q$ и $K$ растут</strong> — веса $W_Q$, $W_K$ увеличиваются, и предпосылка нарушается.</p><p>Логиты снова разъезжаются, softmax насыщается, появляются loss spikes на длинных прогонах больших моделей.</p><p><strong>QK-Norm:</strong> применять LayerNorm или RMSNorm к $Q$ и $K$ <em>перед</em> скалярным произведением. Это принудительно возвращает единичный масштаб и восстанавливает предпосылку вывода.</p><p>Используется в ViT-22B, Gemma и ряде современных LLM. Стоит почти ничего, заметно стабилизирует обучение на большом масштабе.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Почему маска применяется до softmax, а не после?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Softmax нормирует так, чтобы сумма равнялась 1. Если посчитать его по всем позициям, а потом занулить часть — <strong>сумма перестанет быть единицей</strong>, и веса оставшихся токенов окажутся заниженными, причём по-разному для разных строк.</p><p>Маскирование до softmax решает это автоматически: запрещённые слагаемые не попадают в знаменатель, нормировка идёт только по разрешённым.</p><p>Технически: ставим $-\infty$ в логиты, тогда $e^{-\infty}=0$ и токен полностью исключается.</p><p><strong>На практике используют $-10^9$, а не настоящую бесконечность</strong> — чтобы строка, целиком состоящая из масок, дала не $0/0 = $ <code>NaN</code>, а равномерное распределение.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Как понять, что забыл causal-маску?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Главный симптом: подозрительно низкий training loss.</strong> Часто ниже, чем у любых опубликованных моделей сопоставимого размера.</p><p>Причина: модель видит будущие токены и просто копирует ответ вместо предсказания. Задача становится тривиальной.</p><p>Коварство в том, что на валидации с той же ошибкой loss тоже низкий — маски нет и там. Проблема обнаруживается только при генерации, где модель выдаёт бессмыслицу.</p><p><strong>Правило проверки:</strong> loss на языковом моделировании существенно ниже 2.0 на обычном тексте — почти наверняка утечка через маску. Второй способ: подать одну последовательность, обрезать её на позиции $k$ и убедиться, что выход на позициях $1..k$ не изменился.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Что такое block-diagonal маска и когда она обязательна?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>При обучении LLM короткие документы «упаковывают» по несколько штук в одну последовательность длиной 4096, чтобы не тратить вычисления на padding.</p><p>Без block-diagonal маски конец одного документа будет «видеть» начало следующего — модель выучит несуществующие связи между независимыми текстами.</p><p><strong>Коварство:</strong> loss выглядит совершенно нормально, а качество генерации на границах документов деградирует. Баг обнаруживается только при внимательной оценке.</p><p>Маска разрешает внимание только внутри своего документа, комбинируясь с causal-маской через логическое И.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Зачем несколько голов, если стоимость та же?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Одна голова умеет искать <strong>один вид отношений</strong> — её $W_Q$ и $W_K$ настроены на конкретную «тему поиска».</p><p>В языке отношений много: синтаксическая связь, разрешение местоимений, согласование по роду, семантическая близость, позиционная близость. Одна голова настроилась бы на компромисс между ними.</p><p><strong>Про стоимость:</strong> при $d_k = d/h$ каждая голова работает в меньшей размерности. Восемь голов по 64 измерения стоят столько же, сколько одна на 512. Многоголовость <em>бесплатна</em> — мы не платим больше, а иначе тратим тот же бюджет.</p><p>Michel et al. (2019) показали, что значительную часть голов можно удалить без потери качества — многоголовость избыточна, но эта избыточность и есть источник надёжности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Зачем нужна выходная проекция W_O?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Без неё конкатенация голов была бы «слоёным пирогом»: первые 64 измерения от головы 1, следующие 64 от головы 2 и так далее. <strong>Головы никогда бы не взаимодействовали.</strong></p><p>$W_O$ смешивает информацию всех голов, позволяя следующему слою работать с их комбинацией, а не с изолированными блоками.</p><p><strong>Дополнительно:</strong> именно $W_O$ обычно инициализируют нулями (zero-init из темы 8.3), чтобы на старте вся ветка внимания давала ноль и residual-связь делала блок тождественным. Это заметно стабилизирует начало обучения глубоких моделей.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Почему Q, K, V вычисляют одной матрицей, а не тремя?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Три отдельных <code>nn.Linear</code> — это три запуска GEMM-ядра и три обращения к памяти за одним и тем же входом $X$.</p><p>Объединённая матрица $(d, 3d)$ делает всё за один вызов: вход читается один раз, ядро запускается один раз, результат режется на три части.</p><p>На больших моделях это даёт 5–15% ускорения буквально бесплатно.</p><p>Это частный случай <strong>fusion операций</strong> — того же принципа, по которому BatchNorm сливается со свёрткой на инференсе (тема 8.3). Общая идея: на современных GPU обращения к памяти часто дороже арифметики, поэтому объединение операций выгодно даже без сокращения вычислений.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Что делает FFN и почему в нём больше параметров, чем в attention?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Разделение труда:</strong> attention смешивает информацию <em>между</em> токенами, FFN обрабатывает каждый токен <em>независимо</em>, одними и теми же весами.</p><p>Метафора: attention — совещание, где все обмениваются информацией; FFN — время, когда каждый обдумывает услышанное в одиночку.</p><p><strong>Подсчёт параметров при $d$=4096:</strong> attention — четыре матрицы $d\times d$ = $4d^2$ = 67M. FFN — две матрицы $d\times 4d$ = $8d^2$ = 134M. FFN <strong>вдвое больше</strong>.</p><p>Исследования указывают, что именно FFN хранит фактические знания модели, работая как ассоциативная память ключ-значение, а attention отвечает за маршрутизацию. Attention — знаменитая часть, но «объём мозга» в FFN.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Что такое SwiGLU и чем он лучше обычного FFN?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>$\operatorname{SwiGLU}(z) = (\operatorname{Swish}(zW_1)\odot zW_3)W_2$ — три матрицы вместо двух, и результаты двух ветвей <strong>перемножаются поэлементно</strong>.</p><p>Вторая ветвь работает как <strong>вентиль</strong>: решает, какие компоненты первой пропустить, а какие приглушить. Это мультипликативное взаимодействие, которого нет в обычном MLP — там всё аддитивно.</p><p>Чтобы сохранить число параметров при трёх матрицах, скрытую размерность берут $\tfrac83 d$ вместо $4d$.</p><p>Эмпирически даёт стабильный прирост около 1% перплексии при тех же параметрах. Используется в Llama, PaLM, Mistral.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Attention перестановочно-инвариантен. Что это значит и чем чревато?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Если переставить токены во входе, выход переставится точно так же — и <strong>ничего больше не изменится</strong>. Для механизма внимания «кот съел мышь» и «мышь съела кота» абсолютно идентичны.</p><p>Без позиционной информации трансформер работает с последовательностью как с <em>множеством</em>. Для языка это катастрофа.</p><p>Отсюда необходимость позиционных кодировок. Заметь: у RNN и CNN такой проблемы нет — порядок встроен в саму операцию. Трансформер получил параллелизм ценой потери информации о порядке, и её приходится возвращать явно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Объясни RoPE и почему он даёт относительные позиции.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>RoPE <strong>поворачивает</strong> пары компонент векторов $q$ и $k$ на угол, пропорциональный позиции токена: $\tilde q_m = R_{\Theta,m}q_m$.</p><p>Ключевое свойство: при скалярном произведении углы <strong>вычитаются</strong>:</p><p>$$\tilde q_m^\top\tilde k_n = q_m^\top R_{\Theta,n-m}k_n$$</p><p>Результат зависит <em>только от разности позиций</em> $n-m$, а не от абсолютных значений. Абсолютные позиции применяются к каждому вектору отдельно, но в скалярном произведении автоматически превращаются в относительные.</p><p><strong>Второе важное отличие от sinusoidal:</strong> RoPE применяется к $q$ и $k$ <em>внутри каждого слоя внимания</em>, а не прибавляется к эмбеддингам один раз. Позиционная информация не размывается по мере прохода через слои.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Почему модель с RoPE ломается на контексте длиннее обученного и как это чинят?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Углы поворота $m\theta$ при $m$ больше обученного диапазона выходят в область, которую модель никогда не видела. Внимание разваливается, качество резко падает.</p><p><strong>Три решения:</strong></p><p>① <strong>Position Interpolation</strong> — сжать позиции в обученный диапазон ($m \to m\cdot L_{\text{train}}/L_{\text{new}}$). Просто, требует лишь короткого дообучения. Плата — снижение разрешения между близкими токенами.</p><p>② <strong>NTK-aware scaling</strong> — менять базу 10000 неравномерно по частотам: высокие частоты (для близких токенов) почти не трогать, низкие растянуть.</p><p>③ <strong>YaRN</strong> — комбинация обоих с температурной поправкой softmax.</p><p><strong>Практический вывод:</strong> заявленная длина контекста часто достигнута интерполяцией, и <em>эффективная</em> длина может быть заметно меньше. Всегда проверяй качество на реально длинных входах, а не верь спецификации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. В чём разница между encoder-only, decoder-only и encoder-decoder?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Блоки одинаковые, отличаются <strong>маски и задача обучения</strong>.</p><p><strong>Encoder-only (BERT):</strong> маски нет, внимание двунаправленное, обучение через masked language modeling. Задачи: классификация, NER, эмбеддинги. Не умеет генерировать.</p><p><strong>Decoder-only (GPT):</strong> causal-маска, предсказание следующего токена. Умеет всё генеративное.</p><p><strong>Encoder-Decoder (T5):</strong> энкодер двунаправленный, декодер causal плюс cross-attention к энкодеру. Для задач с чётким входом и выходом.</p><p><strong>Практическое замечание:</strong> для эмбеддингов текста encoder-only модели остаются лучшим выбором — они на порядок меньше и точнее. Использовать 7B decoder там, где справляется 100M энкодер, — частая ошибка.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Почему победили decoder-only модели?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>① Простота обучения.</strong> «Предскажи следующий токен» применимо к любому тексту без разметки — не нужны пары вход-выход или схемы порчи текста.</p><p><strong>② Универсальность через промпт.</strong> Любую задачу можно сформулировать как продолжение текста. Отдельный энкодер не нужен — вход становится префиксом.</p><p><strong>③ Эффективность инференса.</strong> Causal-маска делает возможным KV-cache. У двунаправленного энкодера добавление токена меняет представления всех остальных — кэшировать нечего.</p><p><strong>④ Масштабирование.</strong> Одну стопку блоков проще шардировать, чем две связанные части.</p><p>Пункт ③ особенно важен: без KV-cache генерация была бы квадратичной, и LLM просто не были бы практичны в текущем виде.</p></div></details>
+
+<div class="qah">🟣 Продвинутый: инференс и масштаб</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Почему кэшируют K и V, но не Q?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>$K$ и $V$ старых токенов нужны снова и снова</strong> — каждый новый токен должен посмотреть на всех предыдущих. Они не меняются, поэтому кэшируются.</p><p><strong>$Q$ старого токена использовался ровно один раз</strong> — когда вычислялся выход для его позиции. Благодаря causal-маске токен 5 никогда не будет смотреть на будущее, и его запрос больше не понадобится.</p><p>Отсюда название «KV-cache», а не «QKV-cache».</p><p><strong>Важное следствие:</strong> KV-cache возможен <em>только при causal-маске</em>. В двунаправленном энкодере добавление токена меняет представления всех остальных — кэширование теряет смысл.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>23. Посчитай размер KV-cache для модели 70B при контексте 4096 и батче 32.<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Формула: $2\cdot B\cdot L\cdot n_{\text{layers}}\cdot n_{\text{heads}}\cdot d_{\text{head}}\cdot$ bytes.</p><p>Параметры: 80 слоёв, 64 головы, $d_h$=128, fp16.</p><p><strong>На один токен:</strong> $2\times80\times64\times128\times2 = 2.6$ МБ.</p><p><strong>Контекст 4096, батч 1:</strong> 10.7 ГБ.</p><p><strong>Контекст 4096, батч 32:</strong> <strong>343 ГБ</strong>. Сама модель в fp16 занимает 140 ГБ — <em>кэш в 2.5 раза больше модели</em>.</p><p><strong>Вывод, определяющий экономику сервинга:</strong> при генерации узкое место — не вычисления, а память под KV-cache. Он ограничивает максимальный батч, а батч определяет пропускную способность. Отсюда GQA и PagedAttention.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>24. Чем prefill отличается от decode и почему их оптимизируют по-разному?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Prefill</strong> обрабатывает весь промпт разом — все позиции параллельно. Упирается в <strong>вычисления</strong> (compute-bound), утилизация GPU 40–70%. Метрика — TTFT.</p><p><strong>Decode</strong> генерирует по одному токену. При этом нужно прочитать <em>все веса модели</em> из памяти ради умножения на один вектор. Арифметическая интенсивность около 2 операций на байт при возможностях карты в сотни — <strong>GPU почти всё время ждёт память</strong> (memory-bound), утилизация 5–20%. Метрика — TPOT.</p><p><strong>Ключевое следствие:</strong> на стадии decode батчинг почти бесплатен — веса читаются один раз для всего батча. Обработать 32 запроса стоит почти столько же, сколько один. На этом построен весь современный LLM-сервинг.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>25. Что такое PagedAttention и какую проблему он решает?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Обычно под KV-cache выделяют непрерывный блок памяти на <em>максимальную</em> длину ответа. Но реальные ответы разной длины, и 60–80% выделенной памяти пропадает.</p><p>vLLM применил идею <strong>виртуальной памяти со страницами</strong> из операционных систем: кэш хранится блоками по 16 токенов, блоки выделяются по мере необходимости и не обязаны лежать подряд. Таблица страниц связывает логические позиции с физическими блоками.</p><p><strong>Результат:</strong> утилизация памяти выше 90%, пропускная способность выше в 2–4 раза.</p><p><strong>Бонус:</strong> запросы с общим префиксом (одинаковый системный промпт) могут <em>разделять</em> одни физические блоки — это и есть prefix caching, экономящий 20–50% prefill-вычислений на типичной нагрузке.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>26. FlashAttention уменьшает число операций?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Нет.</strong> FLOPs остаются точно теми же, результат математически идентичен обычному attention.</p><p>Ускорение в 2–4 раза достигается за счёт <strong>сокращения обращений к памяти</strong>. Обычная реализация записывает матрицу $n\times n$ в медленную HBM и читает её несколько раз. При $n$=4096 это 33 МБ, которые не помещаются в быструю SRAM (20 МБ).</p><p>FlashAttention разбивает $Q,K,V$ на блоки, помещающиеся в SRAM, и считает частичное внимание целиком в быстрой памяти. <strong>Матрица $n\times n$ никогда не материализуется.</strong></p><p>Дополнительно память под активации падает с $O(n^2)$ до $O(n)$ — это позволяет обучать на существенно более длинном контексте.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>27. Как FlashAttention считает softmax, не видя всей строки сразу?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Через <strong>online softmax</strong>: ведём текущий максимум $m$ и текущую сумму $\ell$, и при обработке нового блока пересчитываем накопленное под новый максимум.</p><p>Если накопил сумму относительно $m=5$, а пришло значение 8 — домножаем накопленное на $e^{5-8}=e^{-3}$, и теперь всё выражено относительно $m=8$. Добавляем новый член.</p><p>Та же поправка применяется к уже накопленному <em>выходу</em> $O$, а не только к сумме — именно это позволяет не хранить промежуточную матрицу.</p><p>Результат в точности равен обычному softmax, включая численную стабилизацию через вычитание максимума (тема 8.1).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>28. Какое ограничение есть у FlashAttention?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Матрица внимания не материализуется — значит, её нельзя получить на выходе.</strong></p><p>Если нужны веса внимания для интерпретируемости, визуализации или attention-based метрик, придётся использовать обычную реализацию и потерять скорость.</p><p>Второе ограничение: произвольные маски поддерживаются хуже causal. Сложные block-diagonal паттерны могут откатить реализацию на медленный путь.</p><p><strong>Практический совет:</strong> используй <code>F.scaled_dot_product_attention</code> — он сам выбирает лучшую доступную реализацию. Ручная реализация через <code>@</code> и <code>softmax</code> теряет эту оптимизацию.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>29. Объясни MQA и GQA. Что теряем и что выигрываем?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Идея: у запросов оставить много голов, а у ключей и значений — мало.</p><p><strong>MHA:</strong> $h$ голов $Q$, $h$ голов $K,V$. Базовый вариант.</p><p><strong>MQA:</strong> $h$ голов $Q$, но <strong>одна</strong> голова $K,V$ на всех. Кэш меньше в $h$ раз (до 64!), но качество заметно проседает — все головы вынуждены искать в одном каталоге.</p><p><strong>GQA:</strong> $h$ голов $Q$, $g$ групп $K,V$ (обычно $g = h/8$). Кэш меньше в 8 раз, качество почти не страдает — головы внутри группы действительно часто ищут схожее.</p><p><strong>Практический эффект для Llama-2 70B:</strong> при бюджете 60 ГБ под кэш MHA даёт батч ≈5, GQA — батч ≈44. Поскольку decode упирается в память, батч 44 обслуживается почти за то же время — <strong>пропускная способность растёт примерно в 8 раз</strong>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>30. Как получают GQA-версию уже обученной MHA-модели?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Переобучать с нуля дорого, поэтому применяют <strong>uptraining</strong>:</p><p>① Берут обученную MHA-модель.<br>② <strong>Усредняют</strong> матрицы $W_K$ и $W_V$ внутри каждой группы голов — из 8 голов получается одна.<br>③ Дообучают полученную GQA-модель на примерно 5% исходного бюджета токенов.</p><p>Качество восстанавливается почти полностью. Именно так GQA-версии обычно и получают — это на порядки дешевле полного переобучения.</p><p>Приём иллюстрирует общий принцип: <em>структурные упрощения модели часто можно внедрить постфактум с коротким дообучением</em>, а не только при проектировании с нуля.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>31. Как работает MoE и зачем нужен load balancing loss?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>MoE:</strong> FFN заменяется на $N$ экспертов и роутер, выбирающий top-$k$ (обычно 2 из 8–64). Модель хранит все параметры, но считает только активных экспертов.</p><p>Разрывается связь «больше знаний = больше вычислений»: параметры растут в 32 раза, FLOPs почти не растут.</p><p><strong>Зачем aux loss.</strong> Без него происходит схлопывание: роутер случайно отдал больше токенов эксперту №3, тот получил больше градиентов и стал лучше, роутер стал отдавать ему ещё больше. <strong>Положительная обратная связь</strong> — через тысячи шагов 90% токенов идут к трём экспертам, остальные не обучаются.</p><p>$\mathcal{L}_{\text{aux}} = \alpha N\sum f_i P_i$ минимален при равномерном распределении. Дополнительно применяют capacity factor — жёсткий лимит токенов на эксперта.</p><p>Заметь: это ровно та же петля, что exposure bias в рекомендациях (блок 6) и feedback loop в MLOps (блок 7).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>32. Когда MoE — правильный выбор, а когда нет?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>MoE меняет вычисления на память.</strong> Правильный выбор, когда вычисления дороже памяти: большой объём обучения, много GPU, есть куда разложить экспертов.</p><p><strong>Не подходит,</strong> когда память дороже вычислений: edge-устройства, одна карта, ограниченный бюджет памяти. Вся модель должна помещаться в памяти, даже если 97% параметров на данном шаге не используются.</p><p><strong>Правило оценки:</strong> MoE даёт качество плотной модели примерно вчетверо большего размера при тех же FLOPs, но требует примерно вчетверо больше памяти.</p><p><strong>Главная сложность — не обучение, а сервинг.</strong> Эксперты разложены по GPU, каждый токен маршрутизируется на свою карту, что даёт all-to-all на каждом MoE-слое. При дисбалансе одни карты простаивают. Плюс латентность становится переменной и зависит от содержания запроса — это ломает предсказуемость p99.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block8_03_normalization.html" class="btn prev">← Нормализация</a>
+  <a href="block8_05_scaling.html" class="btn">Обучение больших моделей →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Масштаб логитов: max prob и градиент ---
+(function(){
+  const scales=[]; for(let s=0.25;s<=16;s*=1.18) scales.push(s);
+  const base=[3,1.5,0.6,0.3];
+  const maxp=[], grad=[];
+  scales.forEach(s=>{
+    const z=base.map(v=>v*s), m=Math.max(...z);
+    const e=z.map(v=>Math.exp(v-m)), sum=e.reduce((a,b)=>a+b,0);
+    const p=e.map(v=>v/sum);
+    maxp.push(p[0]); grad.push(p[0]*(1-p[0]));
+  });
+  new Chart(document.getElementById('c_scale'), {
+    type:'line',
+    data:{labels:scales.map(s=>s.toFixed(1)),datasets:[
+      {label:'максимальная вероятность softmax',data:maxp,borderColor:'#0891b2',pointRadius:0,borderWidth:3,tension:.25,yAxisID:'y'},
+      {label:'градиент p(1−p) — обучающий сигнал',data:grad,borderColor:'#dc2626',pointRadius:0,borderWidth:3,tension:.25,yAxisID:'y'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'масштаб логитов (растёт как √d_k без нормировки)'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'значение'},min:0,max:1.05}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(' —')[0]+': '+c.parsed.y.toFixed(4)}}}}
+  });
+})();
+
+// --- Три головы: паттерны внимания ---
+(function(){
+  const toks=['Кот','сидел','на','ковре','потому','что','он','мягкий'];
+  const n=toks.length;
+  const prev=[],syn=[],coref=[];
+  for(let i=0;i<n;i++){
+    prev.push({x:i,y:Math.max(0,i-1)});
+    syn.push({x:i,y:i<2?0:(i<4?1:(i<6?3:1))});
+    coref.push({x:i,y:i===6?3:(i===7?6:i)});
+  }
+  new Chart(document.getElementById('c_heads'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'Голова A — смотрит на предыдущий токен',data:prev,backgroundColor:'#0891b2',pointRadius:9,pointStyle:'rect'},
+      {label:'Голова B — синтаксическая связь с глаголом',data:syn,backgroundColor:'#7c3aed',pointRadius:9,pointStyle:'triangle'},
+      {label:'Голова C — разрешение кореференции («он»→«ковре»)',data:coref,backgroundColor:'#db2777',pointRadius:9,pointStyle:'circle'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'токен-запрос'},min:-0.5,max:n-0.5,
+                 ticks:{stepSize:1,callback:v=>toks[v]||''}},
+              y:{title:{display:true,text:'на какой токен смотрит'},min:-0.5,max:n-0.5,
+                 ticks:{stepSize:1,callback:v=>toks[v]||''}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- RoPE: частоты поворота ---
+(function(){
+  const xs=[]; for(let p=0;p<=64;p++) xs.push(p);
+  const f=i=>xs.map(p=>Math.cos(p*Math.pow(10000,-2*i/64)));
+  new Chart(document.getElementById('c_rope'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'пара 0 — самая высокая частота (различает соседей)',data:f(0),borderColor:'#0891b2',pointRadius:0,borderWidth:2.4,tension:.25},
+      {label:'пара 8',data:f(8),borderColor:'#7c3aed',pointRadius:0,borderWidth:2.4,tension:.25},
+      {label:'пара 16',data:f(16),borderColor:'#db2777',pointRadius:0,borderWidth:2.4,tension:.25},
+      {label:'пара 28 — низкая частота (различает далёкие позиции)',data:f(28),borderColor:'#16a34a',pointRadius:0,borderWidth:2.4,tension:.25}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'позиция токена'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'cos(m·θᵢ)'},min:-1.15,max:1.15}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- FlashAttention: время от длины ---
+(function(){
+  const ns=[512,1024,2048,4096,8192,16384];
+  const std  = ns.map(n=>Math.pow(n/512,2)*1.0);
+  const flash= ns.map(n=>Math.pow(n/512,2)*0.30);
+  new Chart(document.getElementById('c_flash'), {
+    type:'line',
+    data:{labels:ns,datasets:[
+      {label:'обычный attention',data:std,borderColor:'#dc2626',pointRadius:4,borderWidth:2.8,tension:.2},
+      {label:'FlashAttention (те же FLOPs)',data:flash,borderColor:'#16a34a',pointRadius:4,borderWidth:2.8,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'длина последовательности n'}},
+              y:{type:'logarithmic',title:{display:true,text:'относительное время'}}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>'Разница целиком в обращениях к памяти, не в вычислениях'}}}}
+  });
+})();
+
+// --- MHA / GQA / MQA ---
+new Chart(document.getElementById('c_gqa'), {
+  type:'bar',
+  data:{labels:['MHA (64 KV)','GQA-16','GQA-8','GQA-4','MQA (1 KV)'],
+    datasets:[
+      {label:'размер KV-cache (относительно MHA), %',data:[100,25,12.5,6.25,1.6],
+       backgroundColor:'#0891b2',borderRadius:5,yAxisID:'y'},
+      {label:'качество (перплексия, ниже = лучше), отн. ед.',data:[100,100.1,100.3,101.0,102.4],
+       backgroundColor:'#db2777',borderRadius:5,yAxisID:'y1',type:'line',
+       borderColor:'#db2777',pointRadius:6,borderWidth:3,tension:.2}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'KV-cache, % от MHA'},max:110,position:'left'},
+            y1:{title:{display:true,text:'перплексия, % от MHA'},min:99.5,max:103,position:'right',
+                grid:{drawOnChartArea:false}}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{afterBody:i=>i[0].dataIndex===2?'👍 GQA-8 — стандартный выбор: −87% памяти при +0.3% перплексии':''}}}}
+});
+
+// --- Интерактив: масштабирование ---
+function updScale(){
+  const dk = +document.getElementById('sl_dk').value;
+  const on = document.querySelector('input[name=scale_on]:checked').value === '1';
+  document.getElementById('out_dk').textContent = dk;
+  const sd = Math.sqrt(dk);
+  const eff = on ? 1 : sd;
+  const base=[3,1.5,0.6,0.3].map(v=>v*eff);
+  const m=Math.max(...base);
+  const e=base.map(v=>Math.exp(v-m)), sum=e.reduce((a,b)=>a+b,0);
+  const p=e.map(v=>v/sum);
+  const g=p[0]*(1-p[0]);
+  let verdict;
+  if (g > 0.15) verdict = '✅ Softmax мягкий, градиент здоровый — слой нормально обучается.';
+  else if (g > 0.02) verdict = '⚠️ Softmax начинает насыщаться, обучающий сигнал ослаб.';
+  else verdict = '🚨 Softmax насыщен, градиент ≈0 — слой практически не обучается.';
+  document.getElementById('out_scale').innerHTML =
+    'Разброс логитов: <strong>±' + (on ? '1.00' : sd.toFixed(1)) + '</strong>' +
+    ' &nbsp;·&nbsp; распределение внимания: <strong>[' + p.map(v=>v.toFixed(3)).join(', ') + ']</strong>' +
+    '<br>Градиент softmax p(1−p) = <strong>' + g.toFixed(5) + '</strong>' +
+    '<br>' + verdict;
+}
+updScale();
+
+// --- Интерактив: KV-cache ---
+function updKV(){
+  const L = +document.getElementById('sl_ctx').value;
+  const B = +document.getElementById('sl_b').value;
+  const mode = document.querySelector('input[name=kvmode]:checked').value;
+  document.getElementById('out_ctx').textContent = L.toLocaleString('ru-RU');
+  document.getElementById('out_b').textContent = B;
+  const layers=80, dh=128, bytes=2;
+  const kvHeads = mode==='mha' ? 64 : mode==='gqa' ? 8 : 1;
+  const perTok = 2*layers*kvHeads*dh*bytes;          // байт
+  const total  = perTok * L * B / (1024**3);          // ГБ
+  const modelGB = 140;
+  const budget = 160;                                  // 2×H100 80GB
+  const fits = total + modelGB <= budget;
+  const maxBatch = Math.max(1, Math.floor((budget - modelGB)*(1024**3) / (perTok*L)));
+  document.getElementById('out_kv').innerHTML =
+    'На токен: <strong>' + (perTok/1024).toFixed(0) + ' КБ</strong>' +
+    ' &nbsp;·&nbsp; всего KV-cache: <strong>' + total.toFixed(1) + ' ГБ</strong>' +
+    ' &nbsp;(модель 70B fp16 = 140 ГБ)' +
+    '<br>Итого нужно: <strong>' + (total+modelGB).toFixed(0) + ' ГБ</strong> — ' +
+    (fits ? '✅ влезает в 2×H100 (160 ГБ)' : '🚨 НЕ влезает в 2×H100, нужно больше карт') +
+    '<br>Максимальный батч при этом контексте: <strong>' + maxBatch + '</strong> запросов' +
+    (mode!=='mha' ? ' <em style="color:#0e7490">(благодаря ' + mode.toUpperCase() + ')</em>' : '');
+}
+updKV();
+</script>
+</body>
+</html>

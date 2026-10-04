@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.2 · Оптимизаторы: от SGD до AdamW</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0e7490,#0891b2);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.68;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.85;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes dash{to{stroke-dashoffset:0;}}
+@keyframes rollBall{0%{offset-distance:0%;}100%{offset-distance:100%;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes growW{from{width:0;}}
+.draw path,.draw line,.draw circle,.draw polyline{stroke-dasharray:2000;stroke-dashoffset:2000;animation:dash 2.6s ease-out forwards;}
+.draw .d2{animation-delay:.45s;} .draw .d3{animation-delay:.9s;} .draw .d4{animation-delay:1.35s;}
+.draw text{animation:fadeUp .8s ease 1s both;stroke:none;}
+/* Эволюция оптимизаторов */
+.evo{display:flex;flex-direction:column;gap:6px;margin:18px 0;}
+.evorow{display:flex;align-items:center;gap:12px;padding:12px 15px;border-radius:10px;background:#fff;border:1px solid var(--border);
+        animation:fadeUp .5s ease both;}
+.evorow:nth-child(2){animation-delay:.08s;} .evorow:nth-child(3){animation-delay:.16s;}
+.evorow:nth-child(4){animation-delay:.24s;} .evorow:nth-child(5){animation-delay:.32s;}
+.evorow:nth-child(6){animation-delay:.4s;}
+.evoyear{font-size:12px;font-weight:900;color:var(--cy);min-width:52px;}
+.evoname{font-size:14px;font-weight:750;min-width:104px;color:var(--text);}
+.evodesc{font-size:13px;color:var(--text2);line-height:1.6;flex:1;}
+.evoadd{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:var(--cy-l);color:#083344;flex-shrink:0;}
+/* Схема состояний оптимизатора */
+.states{display:flex;gap:6px;margin:14px 0;flex-wrap:wrap;}
+.st{flex:1;min-width:120px;border-radius:10px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:#fff;text-align:center;}
+.st strong{display:block;font-size:15px;margin-bottom:3px;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}
+  .evorow{flex-wrap:wrap;}.evoname{min-width:auto;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 2 из 6</div>
+  <h1>Оптимизаторы: от SGD до AdamW</h1>
+  <p class="sub">Почему Adam победил, где он проигрывает, и почему learning rate schedule важнее выбора оптимизатора</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Задача оптимизации</a>
+  <a href="#s2">2. SGD и momentum</a>
+  <a href="#s3">3. Адаптивные методы</a>
+  <a href="#s4">4. Adam изнутри</a>
+  <a href="#s5">5. AdamW</a>
+  <a href="#s6">6. Learning rate schedules</a>
+  <a href="#s7">7. Подбор lr</a>
+  <a href="#s8">8. Новое поколение</a>
+  <a href="#s9">9. Подводные камни</a>
+  <a href="#s10">10. System Design</a>
+  <a href="#qa">11. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что вообще решает оптимизатор</div>
+<div class="sdesc">И почему это принципиально сложнее, чем «идти против градиента»</div>
+
+<p>Градиент даёт <strong>направление</strong> наискорейшего роста loss. Оптимизатор решает, <strong>насколько далеко</strong> шагнуть против него и как учесть историю прошлых шагов. Звучит просто — но именно здесь скрыто больше всего практических проблем.</p>
+
+<div class="fbox">
+<div class="flabel">📐 Базовая задача</div>
+$$\theta^* = \arg\min_\theta \; \mathbb{E}_{(x,y)\sim \mathcal{D}}\big[\ell(f_\theta(x), y)\big] \;+\; \lambda R(\theta)$$
+<p>На практике мы оптимизируем не это, а <strong>эмпирическое среднее по минибатчу</strong>:</p>
+$$\hat g_t = \frac{1}{B}\sum_{i \in \mathcal{B}_t} \nabla_\theta \ell(f_\theta(x_i), y_i), \qquad \mathbb{E}[\hat g_t] = \nabla_\theta \mathcal{L}(\theta)$$
+<p class="fnote">$\hat g_t$ — <strong>несмещённая, но шумная</strong> оценка настоящего градиента. Дисперсия падает как $1/B$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Ты спускаешься с горы в густом тумане. Настоящий градиент — истинный уклон под ногами. Но у тебя есть только <strong>оценка по нескольким шагам</strong> (минибатч), и она шумит: иногда покажет уклон влево, хотя на самом деле склон идёт вправо.</p>
+<p>Отсюда две стратегии, из которых выросли все оптимизаторы:</p>
+<p>① <strong>Усреднять по времени</strong> — если несколько шагов подряд показывают «вправо», значит там действительно склон. Это <em>momentum</em>.</p>
+<p>② <strong>Адаптировать шаг по направлениям</strong> — по одним осям склон крутой и надо идти мелко, по другим пологий и можно широко. Это <em>адаптивные методы</em>.</p>
+<p>Adam делает и то, и другое одновременно. Вся его формула — это буквально эти две идеи, записанные символами.</p>
+</div>
+
+<h3>Четыре свойства ландшафта, которые всё усложняют</h3>
+<div class="grid2">
+<div class="card rd"><h5>Овраги (ill-conditioning)</h5><p>По одной оси кривизна в 1000 раз больше, чем по другой. Шаг, безопасный для крутой оси, слишком мал для пологой. Классическая причина медленной сходимости SGD.</p></div>
+<div class="card rd"><h5>Плато и седловые точки</h5><p>В высоких размерностях локальных минимумов мало, а <strong>седловых точек</strong> экспоненциально много. Градиент около нуля, но это не минимум.</p></div>
+<div class="card rd"><h5>Шум минибатча</h5><p>Оценка градиента шумная. Слишком большой шаг усиливает шум, слишком малый — обучение не сдвигается.</p></div>
+<div class="card rd"><h5>Разный масштаб градиентов</h5><p>У embedding-слоя градиенты редкие и большие, у нормализации — плотные и малые. Один общий lr для всех подходит плохо.</p></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Важная поправка к интуиции.</strong> Долгое время считалось, что главная проблема обучения — застревание в локальных минимумах. Работы Dauphin et al. (2014) и последующие показали: в пространстве с миллионами измерений <strong>подавляющее большинство критических точек — сёдла, а не минимумы</strong>. Чтобы точка была локальным минимумом, все миллион собственных значений гессиана должны быть положительны — вероятность этого исчезающе мала. Практический вывод: оптимизаторы проектируют не для «выпрыгивания из ям», а для <em>быстрого прохождения плато и оврагов</em>.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. SGD, momentum и Nesterov</div>
+<div class="sdesc">Три формулы, которые надо уметь выписать по памяти</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Ванильный SGD</div>
+$$\theta_{t+1} = \theta_t - \eta\, g_t$$
+<p class="fnote">Один гиперпараметр, ноль состояния, ноль дополнительной памяти.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 SGD с momentum</div>
+$$v_t = \mu\, v_{t-1} + g_t, \qquad \theta_{t+1} = \theta_t - \eta\, v_t$$
+<p>Эквивалентная форма через экспоненциальное скользящее среднее:</p>
+$$v_t = \sum_{k=0}^{t} \mu^{k} g_{t-k} \quad\Rightarrow\quad \text{эффективное усреднение по } \frac{1}{1-\mu} \text{ шагам}$$
+<p class="fnote">$\mu = 0.9$ → усреднение примерно по 10 последним градиентам. $\mu = 0.99$ → по 100.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Momentum — это <strong>инерция шарика</strong>. Без него ты на каждом шаге заново решаешь, куда идти, и в овраге начинаешь скакать между стенками. С инерцией колебания поперёк оврага гасят друг друга (шаг влево + шаг вправо ≈ ноль), а движение вдоль оврага накапливается.</p>
+<p>Формула $\frac{1}{1-\mu}$ — самая полезная в этой теме. Она отвечает на вопрос «сколько прошлых градиентов реально влияют на текущий шаг»: при $\mu=0.9$ это примерно 10, при $\mu=0.95$ — 20, при $\mu=0.99$ — 100.</p>
+<p><strong>Побочный эффект, о котором забывают:</strong> momentum увеличивает эффективный размер шага примерно в $\frac{1}{1-\mu}$ раз. Переходя с SGD на SGD+momentum с тем же lr, ты фактически увеличил шаг в 10 раз — и обучение может разойтись. Это не баг momentum, это забытая перенастройка lr.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Овраг: как momentum гасит колебания</div>
+<div class="chsub">Траектории на вытянутой квадратичной функции. SGD скачет поперёк, momentum движется вдоль</div>
+<div style="position:relative;height:330px;"><canvas id="c_traj"></canvas></div>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Nesterov Accelerated Gradient</div>
+$$v_t = \mu\, v_{t-1} + \nabla_\theta \mathcal{L}(\theta_t - \eta\,\mu\, v_{t-1}), \qquad \theta_{t+1} = \theta_t - \eta\, v_t$$
+<p class="fnote">Градиент считается не в текущей точке, а в точке, куда инерция и так нас принесёт.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Обычный momentum: «посмотрел под ноги, добавил инерцию, поехал». Nesterov: «прикинул, куда меня и так занесёт инерцией, посмотрел <strong>там</strong>, и уже с учётом этого скорректировал».</p>
+<p>Разница практическая: если впереди стена (loss начинает расти), Nesterov это <em>увидит заранее</em> и притормозит, а обычный momentum влетит в неё и только потом развернётся. Отсюда — меньше перелётов около минимума и обычно чуть более стабильная сходимость.</p>
+<p>В PyTorch включается одним флагом: <code>SGD(..., momentum=0.9, nesterov=True)</code>. Выигрыш небольшой, но бесплатный.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Почему SGD+momentum до сих пор используют в компьютерном зрении.</strong> На свёрточных сетях SGD с momentum и хорошим расписанием часто даёт <em>лучшее итоговое качество</em>, чем Adam — при том что сходится медленнее. Гипотеза: адаптивные методы находят более «острые» минимумы, которые хуже обобщают, тогда как SGD с большим шумом склонен к более плоским. Практика ResNet, EfficientNet и большинства CV-бенчмарков: SGD momentum=0.9, weight decay 1e-4, cosine schedule.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Адаптивные методы: AdaGrad → RMSProp</div>
+<div class="sdesc">Идея «свой learning rate для каждого параметра»</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 AdaGrad (Duchi et al., 2011)</div>
+$$G_t = G_{t-1} + g_t^2, \qquad \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{G_t} + \epsilon}\, g_t$$
+<p class="fnote">Все операции поэлементные. $G_t$ — накопленная сумма квадратов градиентов по каждому параметру отдельно.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Логика: если по какой-то координате градиенты давно и стабильно большие — мы туда уже много прошли, надо сбавить шаг. Если координата почти не обновлялась (редкий признак) — дадим ей большой шаг, чтобы догнала.</p>
+<p>Это гениально решает проблему <strong>разреженных признаков</strong>: слово, встретившееся в корпусе 3 раза, получит крупные обновления, а частотное слово — мелкие. Именно поэтому AdaGrad долго был стандартом в NLP и рекламе.</p>
+<p><strong>Фатальный дефект:</strong> $G_t$ только <em>растёт</em>. Знаменатель монотонно увеличивается, эффективный шаг монотонно падает и в какой-то момент становится настолько мал, что обучение просто останавливается — независимо от того, сошлись мы или нет.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 RMSProp (Hinton, 2012)</div>
+$$v_t = \beta\, v_{t-1} + (1-\beta)\, g_t^2, \qquad \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{v_t} + \epsilon}\, g_t$$
+<p class="fnote">Одна замена: накопленная сумма → <strong>экспоненциальное скользящее среднее</strong>. $\beta = 0.999$ по умолчанию.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>RMSProp — это AdaGrad, который <strong>забывает</strong>. Вместо «сколько всего градиента прошло за всю историю» он спрашивает «какого масштаба градиенты <em>в последнее время</em>».</p>
+<p>Знаменатель теперь может как расти, так и падать. Если модель вышла на новый участок ландшафта, где градиенты стали крупнее, RMSProp это заметит и сбавит шаг; если градиенты успокоились — снова разгонится. AdaGrad такого не умеет в принципе.</p>
+<p>Забавный факт: RMSProp никогда не публиковался как статья. Хинтон представил его на слайде онлайн-курса, и все ссылаются именно на слайд.</p>
+</div>
+
+<div class="chb">
+<div class="cht">AdaGrad vs RMSProp: эффективный learning rate по шагам</div>
+<div class="chsub">AdaGrad монотонно затухает и останавливает обучение; RMSProp адаптируется к текущему масштабу градиентов</div>
+<div style="position:relative;height:300px;"><canvas id="c_adalr"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Что именно означает «адаптивный».</strong> Частое заблуждение: «адаптивные методы сами подбирают learning rate, значит его не надо тюнить». Неверно. Они адаптируют <em>относительный</em> масштаб шага между параметрами, но <strong>глобальный множитель $\eta$ остаётся вашим гиперпараметром</strong> и остаётся одним из самых важных. Adam с lr=1e-1 разойдётся ровно так же, как SGD.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Adam изнутри</div>
+<div class="sdesc">Momentum + RMSProp + одна неочевидная поправка</div>
+
+<div class="fbox">
+<div class="flabel">📐 Adam (Kingma & Ba, 2015) — полный алгоритм</div>
+$$m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t \qquad \text{(первый момент — momentum)}$$
+$$v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2 \qquad \text{(второй момент — RMSProp)}$$
+$$\hat m_t = \frac{m_t}{1-\beta_1^t}, \qquad \hat v_t = \frac{v_t}{1-\beta_2^t} \qquad \text{(bias correction)}$$
+$$\theta_{t+1} = \theta_t - \eta\,\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon}$$
+<p class="fnote">Дефолты: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-8}$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три строчки, три идеи</div>
+<p><strong>$m_t$ — «куда мы в среднем движемся».</strong> Экспоненциальное среднее самих градиентов, то есть обычный momentum. Гасит шум минибатча.</p>
+<p><strong>$v_t$ — «какого масштаба здесь градиенты».</strong> Экспоненциальное среднее квадратов, то есть RMSProp. Оценка «типичной величины» градиента по каждой координате.</p>
+<p><strong>Деление $\hat m/\sqrt{\hat v}$ — нормировка шага.</strong> Это ключевой момент: числитель и знаменатель имеют одинаковую размерность градиента, поэтому <strong>отношение безразмерно и лежит примерно в диапазоне ±1</strong>. Шаг Adam по каждой координате ≈ $\eta$ независимо от того, какого масштаба там градиенты.</p>
+<p>Отсюда главное практическое свойство Adam: <em>lr=1e-3 работает на очень разных задачах</em>. Не потому что Adam «умный», а потому что он нормирует градиент, и $\eta$ означает буквально «размер шага в пространстве параметров».</p>
+</div>
+
+<h3>Bias correction: зачем нужен и что будет без него</h3>
+<div class="fbox red">
+<div class="flabel">📐 Откуда берётся смещение</div>
+<p>Раскроем рекурсию при $m_0 = 0$:</p>
+$$m_t = (1-\beta_1)\sum_{k=1}^{t}\beta_1^{t-k} g_k$$
+<p>Если градиенты стационарны, $\mathbb{E}[g_k] = g$, то:</p>
+$$\mathbb{E}[m_t] = g\,(1-\beta_1)\sum_{k=1}^{t}\beta_1^{t-k} = g\,(1 - \beta_1^{t})$$
+<p class="fnote">То есть $m_t$ систематически <strong>занижен</strong> в $(1-\beta_1^t)$ раз. Деление на этот множитель убирает смещение точно.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: во сколько раз промахнётся Adam без bias correction</div>
+<div class="numex-step"><span class="nb">1</span><div>Шаг $t=1$, градиент $g_1 = 1$. Тогда $m_1 = 0.9\cdot 0 + 0.1\cdot 1 = 0.1$ и $v_1 = 0.999\cdot 0 + 0.001\cdot 1 = 0.001$.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Без коррекции:</strong> шаг $= \eta\cdot\dfrac{0.1}{\sqrt{0.001}} = \eta\cdot\dfrac{0.1}{0.0316} = \mathbf{3.16\,\eta}$. При $\eta=10^{-3}$ шаг равен $3.2\times10^{-3}$ — <strong>втрое больше номинального</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>С коррекцией:</strong> $\hat m_1 = 0.1/(1-0.9) = 1.0$, $\hat v_1 = 0.001/(1-0.999) = 1.0$. Шаг $= \eta\cdot\dfrac{1}{1} = \mathbf{\eta}$. Ровно как задумано.</div></div>
+<div class="numex-step"><span class="nb">4</span><div>К шагу $t=1000$: $\beta_1^{1000}\approx 0$, $\beta_2^{1000}\approx 0.37$. Коррекция для $m$ уже не нужна, для $v$ ещё заметна — потому что $\beta_2$ близка к 1 и «разогревается» дольше.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод.</strong> Без bias correction первые ~1000 шагов Adam делает шаги <em>непредсказуемого масштаба</em>, обычно завышенного. Ровно тогда, когда модель наиболее хрупкая. Это одна из причин, почему трансформерам нужен warmup — он страхует от той же проблемы с другой стороны.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Bias correction: множитель шага в первые итерации</div>
+<div class="chsub">Без коррекции шаг Adam на старте завышен в 3+ раз, коррекция выводит его ровно на η</div>
+<div style="position:relative;height:300px;"><canvas id="c_bias"></canvas></div>
+</div>
+
+<h3>Что означают $\beta_1$, $\beta_2$ и $\epsilon$ на практике</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Параметр</th><th>Дефолт</th><th>Смысл</th><th>Когда менять</th></tr></thead>
+<tbody>
+<tr><td>$\beta_1$</td><td>0.9</td><td>Усреднение направления по ~10 шагам</td><td>0.95–0.98 при очень шумных градиентах; 0.8 при быстро меняющемся ландшафте</td></tr>
+<tr><td>$\beta_2$</td><td>0.999</td><td>Усреднение масштаба по ~1000 шагам</td><td><strong>0.95–0.98 для больших LLM</strong> — уменьшает нестабильность на длинных прогонах</td></tr>
+<tr><td>$\epsilon$</td><td>1e-8</td><td>Защита от деления на ноль</td><td><strong>1e-6 при fp16</strong>: 1e-8 не представимо и превращается в 0</td></tr>
+<tr><td>$\eta$</td><td>1e-3</td><td>Размер шага в пространстве параметров</td><td>1e-4…3e-4 для трансформеров, 1e-3 для небольших сетей</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>$\epsilon$ при mixed precision — реальный баг из практики.</strong> В fp16 минимальное представимое субнормальное число около $6\times10^{-8}$. Значение $\epsilon = 10^{-8}$ <em>не существует</em> в fp16 и округляется до нуля. Если состояния оптимизатора хранятся в половинной точности, а $v_t$ на каком-то параметре стал нулём — получаем деление на ноль и <code>NaN</code>. Поэтому состояния Adam почти всегда держат в fp32, а если очень нужно fp16 — поднимают $\epsilon$ до $10^{-6}$.</div></div>
+
+<div class="states">
+  <div class="st" style="background:#0891b2;"><strong>θ</strong>параметры<br>N × 4 байта</div>
+  <div class="st" style="background:#0e7490;"><strong>g</strong>градиенты<br>N × 4 байта</div>
+  <div class="st" style="background:#7c3aed;"><strong>m</strong>первый момент<br>N × 4 байта</div>
+  <div class="st" style="background:#a78bfa;"><strong>v</strong>второй момент<br>N × 4 байта</div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-4px;">Adam хранит <strong>два дополнительных тензора размером с модель</strong>. Это удваивает память относительно SGD и утраивает относительно инференса.</p>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное: почему Adam «съедает» столько памяти и что с этим делают.</strong> На каждый параметр — сам параметр, градиент, $m$ и $v$. У SGD без momentum состояния нет вообще, у SGD+momentum один тензор. Для модели на 7B в fp32 это 28 ГБ только под $m$ и $v$. Решения: <strong>8-битные оптимизаторы</strong> (bitsandbytes) квантуют состояния и экономят ~75%; <strong>Adafactor</strong> хранит вместо полной матрицы $v$ её факторизацию по строкам и столбцам — $O(n+m)$ вместо $O(nm)$; <strong>ZeRO stage 1</strong> шардирует состояния между GPU.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. AdamW: почему weight decay ≠ L2</div>
+<div class="sdesc">Самая недооценённая деталь, стоившая индустрии несколько лет</div>
+
+<p>В классической оптимизации L2-регуляризация и weight decay — <strong>одно и то же</strong>. Для SGD это действительно так. Для адаптивных методов — нет, и Loshchilov & Hutter (2019) показали, почему.</p>
+
+<div class="fbox red">
+<div class="flabel">📐 L2-регуляризация: штраф добавляется в градиент</div>
+$$g_t \leftarrow \nabla \mathcal{L}(\theta_t) + \lambda\theta_t$$
+<p>Дальше этот суммарный градиент идёт в Adam, то есть <strong>делится на $\sqrt{\hat v_t}$</strong>:</p>
+$$\theta_{t+1} = \theta_t - \eta\,\frac{\widehat{m}_t\big[\nabla\mathcal{L} + \lambda\theta\big]}{\sqrt{\hat v_t}+\epsilon}$$
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 AdamW: decoupled weight decay</div>
+$$\theta_{t+1} = \theta_t - \eta\left(\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon} + \lambda\,\theta_t\right)$$
+<p class="fnote">Затухание весов применяется <strong>напрямую</strong>, не проходя через адаптивную нормировку.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: в чём именно катастрофа</div>
+<p>Возьмём два параметра. У первого градиенты большие, значит $\sqrt{v}\approx 10$. У второго градиенты крошечные, $\sqrt{v}\approx 0.01$.</p>
+<p><strong>С L2-регуляризацией</strong> штраф $\lambda\theta$ тоже делится на $\sqrt{v}$:</p>
+<p style="margin-left:14px">• параметр 1 получает затухание $\lambda\theta/10$ — <em>в 10 раз слабее</em> задуманного;<br>• параметр 2 получает $\lambda\theta/0.01 = 100\lambda\theta$ — <em>в 100 раз сильнее</em>.</p>
+<p>То есть регуляризация действует <strong>обратно пропорционально важности параметра</strong>: параметры с большими градиентами (обычно самые нужные) регуляризуются слабее всех, а почти неиспользуемые — задавливаются в ноль. Это ровно противоположно тому, чего мы хотим.</p>
+<p><strong>AdamW</strong> выносит $\lambda\theta$ за пределы дроби: каждый параметр затухает на одинаковую относительную величину $\eta\lambda$ за шаг, независимо от масштаба его градиентов.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: во сколько раз различается фактическая регуляризация</div>
+<div class="numex-step"><span class="nb">1</span><div>$\lambda = 0.01$, $\eta = 10^{-3}$, $\theta = 0.5$ для обоих параметров.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>L2 + Adam, параметр 1</strong> ($\sqrt{\hat v}=10$): вклад затухания в шаг $= \eta\cdot\dfrac{\lambda\theta}{\sqrt{\hat v}} = 10^{-3}\cdot\dfrac{0.005}{10} = 5\times10^{-7}$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>L2 + Adam, параметр 2</strong> ($\sqrt{\hat v}=0.01$): $= 10^{-3}\cdot\dfrac{0.005}{0.01} = 5\times10^{-4}$. Разница между параметрами — <strong>в 1000 раз</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>AdamW, оба параметра:</strong> $\eta\lambda\theta = 10^{-3}\cdot0.01\cdot0.5 = 5\times10^{-6}$. Одинаково и предсказуемо.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Отсюда же следует, что <strong>оптимальное $\lambda$ для AdamW и для Adam+L2 отличается на порядки</strong>. Типичное $\lambda$ для AdamW: 0.01–0.1; для Adam с L2 — 1e-5…1e-4. Перенос значения из одной статьи в другую без пересчёта — частая ошибка.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Фактическая сила затухания веса в зависимости от масштаба его градиентов</div>
+<div class="chsub">Adam+L2 регуляризует обратно пропорционально важности параметра; AdamW — равномерно</div>
+<div style="position:relative;height:290px;"><canvas id="c_wd"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Weight decay нельзя применять ко всем параметрам подряд.</strong> Bias, параметры LayerNorm/BatchNorm ($\gamma$, $\beta$) и обычно embedding-слои <strong>исключают</strong> из weight decay. Причина: затухание $\gamma$ к нулю буквально выключает нормализацию, затухание bias смещает распределение активаций. Это исключение есть во всех современных рецептах обучения, но в самописном коде его почти всегда забывают.</div></div>
+
+<pre><code># Правильная настройка weight decay — эталон
+decay, no_decay = [], []
+for name, p in model.named_parameters():
+    if not p.requires_grad:
+        continue
+    # исключаем bias, все нормализации и одномерные тензоры
+    if p.ndim <= 1 or name.endswith(".bias") or "norm" in name.lower():
+        no_decay.append(p)
+    else:
+        decay.append(p)
+
+optimizer = torch.optim.AdamW([
+    {"params": decay,    "weight_decay": 0.1},
+    {"params": no_decay, "weight_decay": 0.0},
+], lr=3e-4, betas=(0.9, 0.95), eps=1e-8)
+</code></pre>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Историческая справка, объясняющая масштаб проблемы.</strong> С 2015 по 2019 год практически все реализации «Adam с weight decay» на самом деле делали Adam+L2. Из-за этого сложилось убеждение, что «Adam хуже обобщает, чем SGD» — и в CV массово оставались на SGD. После AdamW разрыв в обобщении заметно сократился. Это хороший пример того, как <strong>деталь реализации на одну строчку определяла выводы целой области на несколько лет</strong>.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Learning rate schedules и warmup</div>
+<div class="sdesc">Расписание влияет на результат сильнее, чем выбор между Adam и SGD</div>
+
+<div class="chb">
+<div class="cht">Основные расписания learning rate</div>
+<div class="chsub">Форма кривой определяет и скорость сходимости, и итоговое качество</div>
+<div style="position:relative;height:320px;"><canvas id="c_sched"></canvas></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Расписание</th><th>Формула</th><th>Где применяется</th></tr></thead>
+<tbody>
+<tr><td><b>Step decay</b></td><td>$\eta_t = \eta_0\gamma^{\lfloor t/s\rfloor}$</td><td>Классика CV: ×0.1 на эпохах 30, 60, 90</td></tr>
+<tr><td><b>Cosine</b></td><td>$\eta_t = \eta_{\min} + \tfrac12(\eta_0-\eta_{\min})(1+\cos\tfrac{\pi t}{T})$</td><td><strong>Дефолт для трансформеров и LLM</strong></td></tr>
+<tr><td><b>Linear decay</b></td><td>$\eta_t = \eta_0(1 - t/T)$</td><td>BERT-подобное дообучение</td></tr>
+<tr><td><b>Inverse sqrt</b></td><td>$\eta_t = \eta_0/\sqrt{\max(t, t_w)}$</td><td>Оригинальный Transformer (Vaswani et al.)</td></tr>
+<tr><td><b>OneCycle</b></td><td>разогрев до $\eta_{\max}$, затем спад ниже $\eta_0$</td><td>Быстрое обучение с нуля (fast.ai)</td></tr>
+<tr><td><b>Warmup + constant</b></td><td>линейно вверх, затем плато</td><td>Когда общее число шагов заранее неизвестно</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Warmup + cosine — стандартный рецепт</div>
+$$\eta_t = \begin{cases}
+\eta_{\max}\cdot\dfrac{t}{T_w}, & t < T_w \quad\text{(линейный разогрев)}\\[10pt]
+\eta_{\min} + \dfrac{\eta_{\max}-\eta_{\min}}{2}\left(1+\cos\dfrac{\pi(t-T_w)}{T-T_w}\right), & t \ge T_w
+\end{cases}$$
+<p class="fnote">Типично $T_w$ = 1–5% от общего числа шагов, $\eta_{\min} = 0.1\,\eta_{\max}$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три отдельные причины, зачем нужен warmup</div>
+<p><strong>① Adam ещё не «прогрелся».</strong> На первых шагах оценка $\hat v_t$ построена по 1–2 наблюдениям и очень шумная. Делить на шумный знаменатель = делать шаги случайного масштаба. Warmup держит $\eta$ малым, пока статистика не накопится.</p>
+<p><strong>② Веса случайны, градиенты огромны.</strong> В самом начале модель предсказывает мусор, loss велик, градиенты велики. Большой шаг на этом этапе выкидывает веса в область, откуда не вернуться.</p>
+<p><strong>③ Специфика Post-LN трансформеров.</strong> В оригинальной архитектуре градиенты по нижним слоям на старте непропорционально велики. Без warmup обучение расходится буквально за десятки шагов — это воспроизводимый эффект, а не редкая неудача.</p>
+<p><strong>Метафора:</strong> warmup — это прогрев двигателя. Даёшь механизму выйти на рабочий режим, прежде чем нагружать. Стоит 1–2% от бюджета обучения, а предотвращает полный провал прогона.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая причина «трансформер не обучается».</strong> Adam с дефолтным lr=1e-3 без warmup на трансформере — почти гарантированная расходимость в первые сотни шагов. Правильный рецепт: lr в диапазоне 1e-4…3e-4, warmup 2–5% шагов, cosine до 10% от максимума, $\beta_2 = 0.95$ вместо 0.999 для больших моделей, gradient clipping 1.0.</div></div>
+
+<h3>Почему cosine, а не просто линейное затухание</h3>
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Косинус имеет три полезных свойства формы. <strong>В начале</strong> он спадает медленно — модель дольше держится на большом lr, где идёт основное исследование ландшафта. <strong>В середине</strong> спад самый быстрый — переход к уточнению. <strong>В конце</strong> снова медленный, с плавным выходом на минимум — модель аккуратно «садится» в найденный оптимум, а не обрывает обучение на полушаге.</p>
+<p>Линейное затухание тратит слишком много времени на промежуточные значения lr, которые не оптимальны ни для исследования, ни для уточнения. Эмпирически разница между cosine и linear невелика (десятые доли процента), но воспроизводима — поэтому cosine стал дефолтом.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Cosine требует знать общее число шагов заранее.</strong> Если ты остановишь обучение на середине косинуса, модель окажется на «неудобном» lr и её качество будет заметно хуже, чем у модели, обученной с косинусом, рассчитанным на это число шагов. Практическое следствие: <em>нельзя просто продлить обучение</em> модели, обученной с cosine — расписание уже отработало. Для дообучения используют либо новый короткий косинус, либо constant+warmup изначально.</div></div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Linear scaling rule (Goyal et al., 2017)</div>
+$$\text{при } B \to kB \quad\Rightarrow\quad \eta \to k\eta$$
+<p class="fnote">Увеличил батч в $k$ раз — увеличь learning rate в $k$ раз. Работает до определённого предела (обычно батч ~8–32k), дальше требуется warmup подлиннее и правило начинает ломаться.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Дисперсия оценки градиента падает как $1/B$. Больший батч = более точная оценка = можно смелее шагать. Если увеличить батч, но не тронуть lr, ты просто делаешь <strong>меньше шагов той же длины</strong> за эпоху — модель недообучается, и это часто списывают на «большие батчи хуже обобщают».</p>
+<p>Для адаптивных методов иногда лучше работает <strong>корневое правило</strong> $\eta \to \sqrt{k}\,\eta$, потому что Adam уже нормирует градиент на его масштаб. Единого ответа нет — это то, что стоит проверить экспериментом на своей задаче.</p>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Как подобрать learning rate за один прогон</div>
+<div class="sdesc">LR range test — приём, экономящий десятки экспериментов</div>
+
+<p>Learning rate — самый важный гиперпараметр обучения. Перебирать его сеткой дорого. LR range test (Smith, 2015) находит рабочий диапазон за <strong>одно короткое обучение</strong>.</p>
+
+<div class="fbox teal">
+<div class="flabel">📐 Процедура LR range test</div>
+<p>За $N$ шагов экспоненциально увеличиваем lr от очень малого до очень большого:</p>
+$$\eta_t = \eta_{\text{start}}\left(\frac{\eta_{\text{end}}}{\eta_{\text{start}}}\right)^{t/N}$$
+<p class="fnote">Типично: $\eta_{\text{start}} = 10^{-7}$, $\eta_{\text{end}} = 10$, $N = 100$–500 шагов. Логируем loss на каждом шаге.</p>
+</div>
+
+<div class="chb">
+<div class="cht">LR range test: как читать график</div>
+<div class="chsub">Ось X логарифмическая. Ищем точку самого крутого спуска, а не минимум loss</div>
+<div style="position:relative;height:310px;"><canvas id="c_lrfind"></canvas></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как читать кривую</div>
+<p><strong>Плоский участок слева.</strong> lr настолько мал, что модель почти не двигается. Loss не меняется.</p>
+<p><strong>Участок спуска.</strong> Здесь модель реально учится. Нас интересует точка <em>самого крутого падения</em>.</p>
+<p><strong>Минимум loss.</strong> Соблазн взять именно эту точку — <strong>ошибка</strong>. Здесь модель уже на грани нестабильности.</p>
+<p><strong>Резкий взлёт.</strong> lr слишком велик, обучение расходится.</p>
+<p><strong>Правило выбора:</strong> бери lr на <em>порядок меньше</em> точки минимума, или точку самого крутого наклона. Для AdamW разумно взять примерно $\eta_{\min\text{-loss}}/10$.</p>
+</div>
+
+<pre><code>def lr_range_test(model, loader, opt, lr_start=1e-7, lr_end=10, n=200):
+    mult = (lr_end / lr_start) ** (1 / n)
+    lr, losses, lrs, best = lr_start, [], [], float("inf")
+    for i, (x, y) in enumerate(loader):
+        if i >= n: break
+        for g in opt.param_groups: g["lr"] = lr
+        opt.zero_grad(set_to_none=True)
+        loss = criterion(model(x), y)
+        loss.backward(); opt.step()
+
+        smoothed = loss.item() if not losses else 0.95*losses[-1] + 0.05*loss.item()
+        losses.append(smoothed); lrs.append(lr)
+        if smoothed > 4 * best: break        # разошлись — останавливаемся
+        best = min(best, smoothed)
+        lr *= mult
+    return lrs, losses
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Три практических замечания.</strong> ① Тест нужно делать на <strong>свежей, необученной модели</strong> — на дообученной кривая будет другой. ② Сглаживай loss экспоненциальным средним, иначе шум минибатча скроет форму кривой. ③ Обязательно сохрани веса до теста и восстанови после — модель после прохода по большим lr испорчена.</div></div>
+
+<div class="play">
+  <label>Поиграй: как расписание меняет фактический learning rate</label>
+  <input type="range" id="sl_step" min="0" max="100" step="1" value="30" oninput="updSched()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>начало</span><span class="out" id="out_step">30% обучения</span><span>конец</span></div>
+  <label style="margin-top:14px;">Доля warmup от общего числа шагов</label>
+  <input type="range" id="sl_wu" min="0" max="20" step="1" value="3" oninput="updSched()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0%</span><span class="out" id="out_wu">3%</span><span>20%</span></div>
+  <div class="res" id="out_sched"></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Новое поколение: Lion, Sophia, Muon и Shampoo</div>
+<div class="sdesc">Что реально изменилось после AdamW</div>
+
+<div class="evo">
+  <div class="evorow"><span class="evoyear">2011</span><span class="evoname">AdaGrad</span><span class="evodesc">Свой lr на параметр через накопленные квадраты градиентов. Умирает из-за монотонно растущего знаменателя.</span><span class="evoadd">адаптивность</span></div>
+  <div class="evorow"><span class="evoyear">2012</span><span class="evoname">RMSProp</span><span class="evodesc">То же, но с экспоненциальным забыванием. Знаменатель может и падать.</span><span class="evoadd">забывание</span></div>
+  <div class="evorow"><span class="evoyear">2015</span><span class="evoname">Adam</span><span class="evodesc">RMSProp + momentum + bias correction. Становится дефолтом почти везде.</span><span class="evoadd">momentum</span></div>
+  <div class="evorow"><span class="evoyear">2019</span><span class="evoname">AdamW</span><span class="evodesc">Decoupled weight decay. Закрывает разрыв в обобщении с SGD.</span><span class="evoadd">регуляризация</span></div>
+  <div class="evorow"><span class="evoyear">2023</span><span class="evoname">Lion</span><span class="evodesc">Только знак момента — вдвое меньше памяти состояния. Найден автоматическим поиском по программам.</span><span class="evoadd">память</span></div>
+  <div class="evorow"><span class="evoyear">2024+</span><span class="evoname">Muon / Sophia</span><span class="evodesc">Учёт геометрии матриц весов и кривизны. Ускорение претрейна на десятки процентов.</span><span class="evoadd">геометрия</span></div>
+</div>
+
+<div class="fbox org">
+<div class="flabel">📐 Lion (Chen et al., 2023)</div>
+$$c_t = \beta_1 m_{t-1} + (1-\beta_1) g_t$$
+$$\theta_{t+1} = \theta_t - \eta\big(\operatorname{sign}(c_t) + \lambda\theta_t\big)$$
+$$m_t = \beta_2 m_{t-1} + (1-\beta_2) g_t$$
+<p class="fnote">Хранится <strong>только один</strong> тензор состояния $m$ вместо двух. Типично $\beta_1 = 0.9$, $\beta_2 = 0.99$, lr в 3–10 раз меньше, чем у AdamW, weight decay в 3–10 раз больше.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Lion выбрасывает второй момент полностью и берёт от направления только <strong>знак</strong>. Шаг по каждой координате всегда одинаков по величине — ровно $\eta$ — и различается только направлением.</p>
+<p>Это радикальная нормализация: там, где Adam делит на $\sqrt{v}$ и получает «примерно ±1», Lion просто говорит «ровно ±1». Оказалось, что для многих задач этой грубости достаточно.</p>
+<p><strong>Практическая выгода:</strong> вдвое меньше памяти под состояния. Для модели на 7B это экономия 28 ГБ. <strong>Плата:</strong> гиперпараметры надо перенастраивать с нуля — прямой перенос lr от AdamW даст расходимость, поскольку шаг Lion всегда полноразмерный.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Оптимизатор</th><th>Состояние на параметр</th><th>Ключевая идея</th><th>Статус</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>AdamW</b></td><td>2 тензора</td><td>momentum + адаптивный масштаб + decoupled decay</td><td>Дефолт для 95% задач</td></tr>
+<tr><td>SGD + momentum</td><td>1 тензор</td><td>Инерция, без адаптивности</td><td>Жив в CV, лучшее обобщение на свёртках</td></tr>
+<tr><td>Lion</td><td>1 тензор</td><td>Только знак момента</td><td>Растущее применение при ограничениях памяти</td></tr>
+<tr><td>Adafactor</td><td>$O(n+m)$ вместо $O(nm)$</td><td>Факторизация второго момента по строкам/столбцам</td><td>T5 и модели Google</td></tr>
+<tr><td>8-bit Adam</td><td>2 тензора в int8</td><td>Блочное квантование состояний</td><td>Стандарт для дообучения на одной карте</td></tr>
+<tr><td>Sophia</td><td>2 тензора</td><td>Диагональная оценка гессиана (кривизна)</td><td>Исследовательский, обещает ×2 к скорости претрейна</td></tr>
+<tr><td>Muon</td><td>1 тензор</td><td>Ортогонализация обновления матрицы весов</td><td>Активно исследуется, хорошие результаты на LLM</td></tr>
+<tr><td>Shampoo / K-FAC</td><td>матрицы предобуславливателя</td><td>Приближение второго порядка</td><td>Дорого; применяется в отдельных крупных прогонах</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему методы второго порядка так и не победили.</strong> Ньютоновский шаг $\theta \leftarrow \theta - H^{-1}g$ теоретически сходится куда быстрее. Но гессиан для модели на $N$ параметров имеет $N^2$ элементов — для 7B это $5\times10^{19}$ чисел. Приближения (K-FAC, Shampoo) уменьшают стоимость, но всё равно требуют обращения матриц и заметной памяти. Плюс на шумных стохастических градиентах оценка кривизны сама зашумлена. Итог: <strong>Adam — это «дешёвая диагональная аппроксимация второго порядка»</strong>, и на практике этого оказывается достаточно.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Как честно сравнивать оптимизаторы.</strong> Почти все статьи «наш оптимизатор бьёт Adam» страдают той же болезнью, что статьи про табличный DL (блок 7): <em>свой метод тюнят, бейзлайн берут с дефолтами</em>. Честное сравнение требует ① одинакового бюджета подбора lr и schedule для обеих сторон, ② нескольких сидов со стандартным отклонением, ③ сравнения при равном <em>времени</em>, а не при равном числе шагов. При соблюдении этих условий разрыв между современными оптимизаторами обычно оказывается небольшим.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Подводные камни</div>
+<div class="sdesc">Ошибки, из-за которых «модель не учится»</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Adam с lr=1e-3 на трансформере</h5><p>Дефолт PyTorch слишком велик для attention-архитектур. Без warmup — расходимость за первые сотни шагов.</p><p><em>Лечение:</em> lr 1e-4…3e-4 + warmup 2–5%.</p></div>
+<div class="card rd"><h5>Weight decay на LayerNorm и bias</h5><p>Затухание $\gamma$ к нулю выключает нормализацию. Качество падает, причину ищут в архитектуре.</p><p><em>Лечение:</em> две param_groups, как в примере выше.</p></div>
+<div class="card rd"><h5>Батч увеличили, lr нет</h5><p>Меньше шагов той же длины за эпоху → недообучение. Списывают на «большие батчи хуже обобщают».</p><p><em>Лечение:</em> linear scaling rule + подлиннее warmup.</p></div>
+<div class="card rd"><h5>Перенос λ между Adam+L2 и AdamW</h5><p>Оптимальные значения различаются на порядки. λ=1e-4 из старой статьи в AdamW почти не регуляризует.</p><p><em>Лечение:</em> для AdamW искать λ в диапазоне 0.01–0.1.</p></div>
+<div class="card rd"><h5>scheduler.step() не в том месте</h5><p>Вызов до optimizer.step() пропускает первое значение lr. При GradScaler пропущенные шаги рассинхронизируют расписание.</p><p><em>Лечение:</em> строго после optimizer.step().</p></div>
+<div class="card rd"><h5>Смена оптимизатора без переподбора lr</h5><p>Оптимальный lr для SGD, Adam и Lion различается на 1–3 порядка. Перенос значения = гарантированный провал.</p><p><em>Лечение:</em> LR range test заново.</p></div>
+<div class="card rd"><h5>eps=1e-8 при fp16-состояниях</h5><p>Не представимо в fp16, округляется до нуля → деление на ноль → NaN.</p><p><em>Лечение:</em> состояния в fp32 или eps=1e-6.</p></div>
+<div class="card rd"><h5>Cosine не досчитан до конца</h5><p>Прервали обучение на середине косинуса — модель осталась на неоптимальном lr, качество заметно хуже.</p><p><em>Лечение:</em> планировать T заранее либо constant+warmup.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Диагностика по графику loss.</strong> <strong>Loss не падает вообще</strong> → lr слишком мал или есть баг в данных/лейблах. <strong>Loss падает и взрывается</strong> → lr слишком велик, нужен клиппинг или warmup. <strong>Loss шумно колеблется на плато</strong> → пора снижать lr, расписание отработало. <strong>Train падает, val растёт</strong> → переобучение, это уже не про оптимизатор. <strong>Loss = NaN на шаге N</strong> → смотри <code>grad_norm</code> за 10 шагов до этого.</div></div>
+
+<h3>Шпаргалка: с чего начинать на новой задаче</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Задача</th><th>Оптимизатор</th><th>lr</th><th>Расписание</th><th>Прочее</th></tr></thead>
+<tbody>
+<tr><td>Трансформер с нуля</td><td>AdamW</td><td>1e-4…3e-4</td><td>warmup 2–5% + cosine</td><td>$\beta_2$=0.95, clip 1.0, wd 0.1</td></tr>
+<tr><td>Дообучение LLM</td><td>AdamW</td><td>1e-5…5e-5</td><td>warmup 3% + linear/cosine</td><td>wd 0.0–0.01, clip 1.0</td></tr>
+<tr><td>CNN с нуля</td><td>SGD momentum 0.9</td><td>0.1 (при батче 256)</td><td>cosine или step</td><td>wd 1e-4, nesterov</td></tr>
+<tr><td>Дообучение CNN</td><td>SGD или AdamW</td><td>1e-3…1e-2 / 1e-4</td><td>cosine</td><td>discriminative lr по слоям</td></tr>
+<tr><td>Табличная сеть</td><td>AdamW</td><td>1e-3</td><td>OneCycle</td><td>большие батчи, wd 1e-4</td></tr>
+<tr><td>Мало памяти</td><td>8-bit Adam / Lion</td><td>как AdamW / ÷5</td><td>cosine</td><td>Lion: wd ×5</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. System Design: оптимизатор в масштабе</div>
+<div class="sdesc">Как выбор оптимизатора влияет на инфраструктуру обучения</div>
+
+<div class="sysbox">
+<h4>🏗 Состояния оптимизатора как главное потребление памяти</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Веса bf16</strong>2N байт</div>
+  <div class="sysarrow">+</div>
+  <div class="sysblock"><strong>Градиенты bf16</strong>2N байт</div>
+  <div class="sysarrow">+</div>
+  <div class="syshighlight"><strong>Мастер-веса fp32</strong>4N байт</div>
+  <div class="sysarrow">+</div>
+  <div class="syshighlight"><strong>Adam m, v (fp32)</strong>8N байт</div>
+  <div class="sysarrow">=</div>
+  <div class="sysblock"><strong>16N байт</strong>для 7B — 112 ГБ</div>
+</div>
+<div class="sysnote"><strong>Три способа это сократить, и все они — компромиссы:</strong><br>
+① <strong>ZeRO stage 1</strong> шардирует $m$, $v$ и мастер-веса между $P$ GPU: память падает почти в $P$ раз, но перед шагом оптимизатора нужен дополнительный обмен. Обычно почти бесплатно по времени — <em>это первое, что стоит включить</em>.<br>
+② <strong>8-битные оптимизаторы</strong> квантуют состояния поблочно: экономия ~6N байт на одной карте, потеря качества в пределах шума. Работает и без многокарточной установки.<br>
+③ <strong>Adafactor</strong> хранит вместо матрицы $v$ размера $(n,m)$ два вектора размера $n$ и $m$: экономия огромная, но качество на некоторых задачах заметно хуже.<br>
+<strong>Что выбирают на практике:</strong> много GPU → ZeRO; одна карта и дообучение → 8-bit Adam + LoRA; экстремальный масштаб с ограничением памяти → Adafactor или Lion.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Почему в распределённом обучении шаг оптимизатора — отдельная стадия</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Backward</strong>градиенты<br>по bucket'ам</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>All-reduce</strong>усреднение<br>между GPU</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Optimizer step</strong>обновление<br>локального шарда</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>All-gather</strong>сбор обновлённых<br>весов (ZeRO)</div>
+</div>
+<div class="sysnote"><strong>Ключевые практические следствия:</strong><br>
+① <strong>Gradient accumulation требует <code>no_sync()</code></strong> на промежуточных микрошагах. Без него all-reduce выполняется $k$ раз вместо одного — обучение замедляется в разы при идентичном результате.<br>
+② <strong>Клиппинг должен считаться по глобальной норме <em>после</em> all-reduce</strong>, иначе каждая GPU обрежет по своей локальной норме и результат перестанет соответствовать однокарточному обучению.<br>
+③ <strong>Состояния оптимизатора обязаны попадать в чекпоинт.</strong> Возобновление обучения с одних только весов, без $m$ и $v$, даёт заметный провал качества на первых сотнях шагов — Adam заново «разогревает» свои моменты.<br>
+④ <strong>Шаг планировщика привязан к оптимизатору, а не к эпохе</strong> — при изменении числа GPU меняется число шагов на эпоху, и расписание нужно пересчитывать.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Отраслевой рецепт претрейна LLM</div>
+<h4>Что реально используют при обучении больших языковых моделей</h4>
+<p>Конфигурация, повторяющаяся почти во всех публичных описаниях претрейна:</p>
+<ul>
+<li><strong>AdamW</strong>, $\beta_1 = 0.9$, $\beta_2 = \mathbf{0.95}$ (не 0.999 — на длинных прогонах медленное забывание второго момента даёт нестабильность), $\epsilon = 10^{-8}$.</li>
+<li><strong>Warmup</strong> на 1–2% шагов, затем <strong>cosine</strong> до 10% от максимума.</li>
+<li><strong>Gradient clipping 1.0</strong> по глобальной норме — обязательно, а не опционально.</li>
+<li><strong>Weight decay 0.1</strong>, исключая bias, нормализации и обычно embeddings.</li>
+<li><strong>bf16</strong> для вычислений, <strong>fp32</strong> для мастер-весов и состояний оптимизатора.</li>
+<li><strong>ZeRO / FSDP</strong> для шардирования состояний.</li>
+</ul>
+<p><strong>Почему это работает и стоит запомнить:</strong> набор не «магический» — каждый пункт закрывает конкретный сбой. $\beta_2$=0.95 против медленного дрейфа масштаба, warmup против непрогретой статистики Adam, clipping против редких выбросов в данных, исключения из weight decay против выключения нормализации, bf16 против underflow градиентов.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">11. Вопросы и ответы</div>
+<div class="sdesc">20 вопросов — от вывода формул до диагностики обучения</div>
+
+<div class="qah">Momentum и адаптивность</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Что означает μ = 0.9 в momentum количественно?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Momentum — экспоненциальное скользящее среднее градиентов: $v_t = \sum_k \mu^k g_{t-k}$. Эффективное число усредняемых шагов равно $\frac{1}{1-\mu}$.</p><p>$\mu=0.9$ → примерно 10 последних градиентов. $\mu=0.95$ → 20. $\mu=0.99$ → 100.</p><p><strong>Побочный эффект, о котором забывают:</strong> momentum увеличивает эффективный размер шага примерно в $\frac{1}{1-\mu}$ раз. Переходя с чистого SGD на SGD+momentum с тем же lr, ты фактически увеличил шаг в 10 раз — и обучение может разойтись. Это не дефект momentum, а забытая перенастройка lr.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Как momentum помогает в овраге?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>В овраге (сильно вытянутой долине) градиент почти перпендикулярен направлению к минимуму: он указывает на противоположную стенку. Чистый SGD скачет между стенками, почти не продвигаясь вдоль.</p><p>Momentum усредняет градиенты по ~10 шагам. Компоненты <strong>поперёк</strong> оврага чередуют знак и взаимно гасятся. Компонента <strong>вдоль</strong> оврага стабильна по знаку и накапливается.</p><p>Результат: колебания подавлены, движение вдоль долины ускорено. Это и есть решение проблемы плохой обусловленности без вычисления гессиана.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Чем Nesterov отличается от обычного momentum?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Обычный momentum считает градиент в текущей точке $\theta_t$, затем добавляет инерцию. Nesterov сначала делает «пробный» шаг инерцией в $\theta_t - \eta\mu v_{t-1}$ и считает градиент <strong>там</strong>.</p><p>Смысл: если впереди loss начинает расти, Nesterov увидит это <em>заранее</em> и притормозит; обычный momentum влетит и развернётся только на следующем шаге.</p><p>Практический эффект — меньше перелётов около минимума, чуть более стабильная сходимость. Включается флагом <code>nesterov=True</code>, выигрыш небольшой, но бесплатный.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Почему AdaGrad перестаёт обучать модель?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>$G_t = \sum_{k\le t} g_k^2$ — накопленная сумма, которая может только <strong>расти</strong>. Знаменатель $\sqrt{G_t}$ монотонно увеличивается, значит эффективный шаг $\eta/\sqrt{G_t}$ монотонно падает.</p><p>Рано или поздно шаг становится настолько мал, что обучение останавливается — <em>независимо от того, сошлись мы или нет</em>.</p><p>RMSProp чинит это одной заменой: накопленная сумма → экспоненциальное скользящее среднее $v_t = \beta v_{t-1} + (1-\beta)g_t^2$. Теперь знаменатель может и падать, если градиенты успокоились.</p><p>Где AdaGrad всё же хорош: выпуклые задачи с разреженными признаками, где затухание шага — желаемое свойство.</p></div></details>
+
+<div class="qah">Adam</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Выпиши Adam по памяти и объясни каждую строку.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$m_t = \beta_1 m_{t-1} + (1-\beta_1)g_t$ — экспоненциальное среднее градиентов, то есть momentum: «куда мы в среднем движемся».</p><p>$v_t = \beta_2 v_{t-1} + (1-\beta_2)g_t^2$ — экспоненциальное среднее квадратов, то есть RMSProp: «какого масштаба здесь градиенты».</p><p>$\hat m_t = m_t/(1-\beta_1^t)$, $\hat v_t = v_t/(1-\beta_2^t)$ — bias correction, компенсация инициализации нулями.</p><p>$\theta_{t+1} = \theta_t - \eta\,\hat m_t/(\sqrt{\hat v_t}+\epsilon)$ — шаг.</p><p><strong>Главное свойство:</strong> числитель и знаменатель имеют одинаковую размерность градиента, поэтому отношение безразмерно и лежит примерно в ±1. Шаг Adam по каждой координате ≈ $\eta$ независимо от масштаба градиентов — отсюда универсальность lr=1e-3.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Зачем bias correction? Посчитай первый шаг без неё.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>При $m_0 = v_0 = 0$ первые оценки систематически занижены: $\mathbb{E}[m_t] = g(1-\beta_1^t)$.</p><p><strong>Шаг $t=1$, $g_1=1$:</strong> $m_1 = 0.1$, $v_1 = 0.001$. Без коррекции шаг $= \eta\cdot\frac{0.1}{\sqrt{0.001}} = \eta\cdot 3.16$ — <strong>втрое больше номинального</strong>.</p><p>С коррекцией: $\hat m_1 = 0.1/0.1 = 1$, $\hat v_1 = 0.001/0.001 = 1$, шаг ровно $\eta$.</p><p>Коррекция для $m$ перестаёт быть заметной через ~50 шагов ($\beta_1=0.9$), для $v$ — через несколько тысяч ($\beta_2=0.999$). Без неё первые сотни шагов Adam делает шаги непредсказуемого масштаба — ровно тогда, когда модель наиболее хрупкая.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Почему для больших LLM берут β₂ = 0.95, а не 0.999?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>$\beta_2=0.999$ означает усреднение масштаба градиентов примерно по 1000 шагов. На длинных прогонах это <strong>слишком медленное забывание</strong>: если распределение градиентов изменилось (новый участок данных, редкий батч с выбросом), $v$ реагирует с большой задержкой.</p><p>Последствие — редкие, но разрушительные всплески: реальный градиент вырос, а знаменатель ещё «помнит» старый малый масштаб, шаг получается огромным.</p><p>$\beta_2=0.95$ (~20 шагов) делает оптимизатор отзывчивее и заметно снижает частоту loss spikes на многодневных прогонах. Плата — чуть больше шума в оценке масштаба, что при огромных батчах несущественно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Сколько памяти требует Adam и как её сократить?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Adam хранит <strong>два тензора размером с модель</strong>: $m$ и $v$. Плюс сама модель, градиенты и fp32-мастер-веса при mixed precision. Итого ~16 байт на параметр: для 7B это 112 ГБ.</p><p><strong>Способы сократить:</strong></p><p>① <strong>ZeRO stage 1 / FSDP</strong> — шардирует $m$, $v$ и мастер-веса между GPU. Память падает почти в $P$ раз, накладные расходы малы. Первое, что стоит включить.</p><p>② <strong>8-битные оптимизаторы</strong> (bitsandbytes) — блочное квантование состояний, экономия ~6N байт, потеря качества в пределах шума. Работает и на одной карте.</p><p>③ <strong>Adafactor</strong> — вместо матрицы $v$ размера $(n,m)$ хранит два вектора: $O(n+m)$ вместо $O(nm)$.</p><p>④ <strong>Lion</strong> — один тензор состояния вместо двух.</p></div></details>
+
+<div class="qah">AdamW и weight decay</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Почему weight decay ≠ L2-регуляризация для Adam?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>L2 добавляет штраф в градиент: $g \leftarrow \nabla\mathcal{L} + \lambda\theta$. Дальше этот суммарный градиент проходит через адаптивную нормировку, то есть <strong>делится на $\sqrt{\hat v}$</strong>.</p><p>Результат: параметр с большими градиентами ($\sqrt{v}=10$) получает затухание в 10 раз слабее задуманного, параметр с малыми ($\sqrt{v}=0.01$) — в 100 раз сильнее. Регуляризация действует <em>обратно пропорционально важности параметра</em> — ровно наоборот тому, чего мы хотим.</p><p>AdamW выносит $\lambda\theta$ за пределы дроби: $\theta \leftarrow \theta - \eta(\hat m/(\sqrt{\hat v}+\epsilon) + \lambda\theta)$. Каждый параметр затухает на одинаковую относительную величину независимо от масштаба градиентов.</p><p>Для SGD разницы нет — там нет адаптивного знаменателя, и обе формулировки эквивалентны.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. К каким параметрам НЕ надо применять weight decay и почему?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Bias</strong> — затухание смещает распределение активаций; bias не влияет на сложность модели и его регуляризация не имеет смысла.</p><p><strong>Параметры нормализации</strong> ($\gamma$, $\beta$ в LayerNorm/BatchNorm) — затухание $\gamma$ к нулю буквально <em>выключает</em> нормализацию, обнуляя выход слоя.</p><p><strong>Embeddings</strong> — обычно исключают, потому что редкие токены получают мало обновлений и weight decay систематически тянет их к нулю.</p><p>Практическое правило: исключать всё, где <code>p.ndim &lt;= 1</code>, плюс явно проверять по имени параметра.</p><p>Это есть во всех современных рецептах, но в самописном коде почти всегда забывается — и даёт просадку качества, которую ищут в архитектуре.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Почему нельзя перенести λ из статьи про Adam+L2 в AdamW?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Оптимальные значения различаются <strong>на порядки</strong>, потому что в Adam+L2 фактическая сила затухания делится на $\sqrt{\hat v}$, который обычно много меньше единицы.</p><p>Типичное $\lambda$ для Adam+L2: $10^{-5}$–$10^{-4}$. Типичное для AdamW: 0.01–0.1.</p><p>Перенос $\lambda=10^{-4}$ в AdamW даёт практически нулевую регуляризацию — модель переобучается, и это списывают на архитектуру или данные.</p><p>Дополнительная тонкость: в AdamW фактическое затухание за шаг равно $\eta\lambda$, поэтому <strong>при смене расписания lr меняется и сила регуляризации</strong>. Некоторые реализации нормируют $\lambda$ на lr, чтобы этого избежать.</p></div></details>
+
+<div class="qah">Learning rate и расписания</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Назови три независимые причины, зачем нужен warmup.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>① Adam не прогрет.</strong> На первых шагах $\hat v_t$ построена по 1–2 наблюдениям и очень шумная. Делить на шумный знаменатель = делать шаги случайного масштаба.</p><p><strong>② Веса случайны, градиенты велики.</strong> Модель предсказывает мусор, loss огромен. Большой шаг на этом этапе выкидывает веса в область, откуда не вернуться.</p><p><strong>③ Post-LN трансформеры.</strong> В оригинальной архитектуре градиенты по нижним слоям на старте непропорционально велики. Без warmup расходимость происходит буквально за десятки шагов — воспроизводимый эффект, а не невезение.</p><p>Стоит 1–5% бюджета обучения, предотвращает полный провал прогона. Pre-LN архитектуры менее чувствительны, но warmup всё равно применяют.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Почему cosine, а не линейное затухание?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Форма косинуса даёт три полезных свойства. <strong>В начале</strong> спад медленный — модель дольше держится на большом lr, где идёт основное исследование ландшафта. <strong>В середине</strong> спад самый быстрый — переход к уточнению. <strong>В конце</strong> снова медленный — плавное «приземление» в минимум вместо обрыва на полушаге.</p><p>Линейное затухание тратит много времени на промежуточные lr, неоптимальные ни для исследования, ни для уточнения.</p><p>Разница невелика (десятые доли процента), но воспроизводима — поэтому cosine стал дефолтом. Обычно спускают не до нуля, а до 10% от максимума.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Почему нельзя просто продлить обучение модели, обученной с cosine?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Cosine рассчитывается на заранее известное общее число шагов $T$. Если остановить обучение на середине, модель окажется на «неудобном» промежуточном lr — её качество будет заметно хуже, чем у модели, обученной с косинусом, рассчитанным ровно на это число шагов.</p><p>Аналогично при продлении: расписание уже отработало и вышло в $\eta_{\min}$, дальнейшие шаги почти ничего не меняют.</p><p><strong>Решения:</strong> ① планировать $T$ заранее; ② для дообучения запускать новый короткий косинус с меньшим максимумом; ③ если число шагов неизвестно — использовать warmup + constant, либо inverse-sqrt, которые не требуют знания $T$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Как работает LR range test и как читать его график?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>За 100–500 шагов экспоненциально увеличиваем lr от $10^{-7}$ до ~10, логируя сглаженный loss. Один короткий прогон вместо сетки экспериментов.</p><p><strong>Чтение графика:</strong> плоско слева — lr мал, модель не двигается. Участок спуска — здесь модель учится. Минимум loss — <em>уже на грани нестабильности</em>. Резкий взлёт — расходимость.</p><p><strong>Правило выбора:</strong> бери lr на порядок меньше точки минимума, либо точку самого крутого наклона. Не бери сам минимум.</p><p><strong>Три оговорки:</strong> делать на свежей необученной модели; сглаживать loss экспоненциальным средним; сохранить веса до теста и восстановить после — модель после прохода по большим lr испорчена.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Увеличили батч в 4 раза. Что делать с learning rate?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Linear scaling rule</strong> (Goyal et al., 2017): увеличить lr тоже в 4 раза. Обоснование — дисперсия оценки градиента падает как $1/B$, точность оценки выросла, можно смелее шагать.</p><p>Если не тронуть lr, ты просто делаешь <em>меньше шагов той же длины</em> за эпоху. Модель недообучается, и это часто списывают на «большие батчи хуже обобщают».</p><p><strong>Ограничения правила:</strong> работает примерно до батча 8–32k, дальше ломается. При больших батчах требуется более длинный warmup — резкий переход к большому lr на старте разрушает обучение.</p><p>Для адаптивных методов иногда лучше работает корневое правило $\eta \to \sqrt{k}\eta$, поскольку Adam уже нормирует градиент на его масштаб. Единого ответа нет — стоит проверить экспериментом.</p></div></details>
+
+<div class="qah">Современные оптимизаторы и диагностика</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. В чём идея Lion и когда его брать?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Lion выбрасывает второй момент полностью и берёт от направления только <strong>знак</strong>: $\theta \leftarrow \theta - \eta(\operatorname{sign}(c_t) + \lambda\theta)$. Шаг по каждой координате всегда равен ровно $\eta$ и различается лишь направлением.</p><p>Там, где Adam делит на $\sqrt{v}$ и получает «примерно ±1», Lion говорит «ровно ±1». Оказалось, что для многих задач этой грубости достаточно.</p><p><strong>Выгода:</strong> один тензор состояния вместо двух — вдвое меньше памяти. Для 7B это экономия 28 ГБ.</p><p><strong>Плата:</strong> гиперпараметры надо перенастраивать с нуля. lr в 3–10 раз меньше, чем у AdamW (шаг всегда полноразмерный), weight decay в 3–10 раз больше. Прямой перенос lr от AdamW даст расходимость.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Почему методы второго порядка не вытеснили Adam?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Ньютоновский шаг $\theta \leftarrow \theta - H^{-1}g$ теоретически сходится существенно быстрее. Но гессиан для модели на $N$ параметров содержит $N^2$ элементов — для 7B это $5\times10^{19}$ чисел, что невозможно ни хранить, ни обращать.</p><p>Приближения (K-FAC, Shampoo) факторизуют гессиан поблочно, но всё равно требуют обращения матриц и заметной памяти под предобуславливатель.</p><p>Дополнительная проблема: градиенты стохастические и шумные, значит оценка кривизны тоже зашумлена — часть теоретического выигрыша съедается.</p><p><strong>Правильная рамка:</strong> Adam — это <em>дешёвая диагональная аппроксимация второго порядка</em> (диагональ гессиана оценивается через $\sqrt{v}$). На практике этого оказывается достаточно, а стоимость на порядки ниже.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Как диагностировать проблему обучения по графику loss?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Loss не падает вообще</strong> → lr слишком мал, либо баг в данных или лейблах. Проверь, переобучается ли модель на одном батче: если нет — баг, а не оптимизатор.</p><p><strong>Loss падает и взрывается</strong> → lr слишком велик. Нужен gradient clipping, warmup или меньший lr.</p><p><strong>Loss шумно колеблется на плато</strong> → расписание отработало, пора снижать lr.</p><p><strong>Редкие резкие spikes</strong> → выбросы в данных или слишком большая $\beta_2$. Помогает clipping и $\beta_2=0.95$.</p><p><strong>Train падает, val растёт</strong> → переобучение, это уже не про оптимизатор.</p><p><strong>NaN на шаге N</strong> → смотри <code>grad_norm</code> за 10–50 шагов до: почти всегда виден рост.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Почему состояния оптимизатора обязаны попадать в чекпоинт?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Adam хранит $m$ и $v$ — накопленную статистику направления и масштаба градиентов за тысячи шагов. Возобновление обучения только с весов, без этих состояний, заставляет Adam <strong>заново разогревать моменты</strong>.</p><p>Практический эффект: заметный провал качества на первых сотнях шагов после рестарта, иногда с полной потерей прогресса нескольких часов обучения.</p><p>В чекпоинт должны входить: веса, состояния оптимизатора, состояние планировщика, номер шага, состояние GradScaler, состояния RNG и позиция в данных.</p><p><strong>Дополнительная тонкость для распределённого обучения:</strong> при ZeRO состояния шардированы, и чекпоинт нужно либо собирать в один файл, либо сохранять шардированным — но тогда возобновление возможно только на том же числе GPU, если не использовать конвертацию.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block8_01_backprop.html" class="btn prev">← Backpropagation</a>
+  <a href="block8_03_normalization.html" class="btn">Нормализация →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Траектории в овраге ---
+(function(){
+  // f(x,y) = 0.5*(a*x^2 + b*y^2), a<<b — вытянутый овраг
+  const a=0.06, b=2.2, lr=0.28;
+  function run(mu){
+    let x=-4.2, y=1.9, vx=0, vy=0; const pts=[{x,y}];
+    for(let i=0;i<42;i++){
+      const gx=a*x, gy=b*y;
+      vx = mu*vx + gx; vy = mu*vy + gy;
+      x -= lr*vx; y -= lr*vy;
+      pts.push({x,y});
+    }
+    return pts;
+  }
+  new Chart(document.getElementById('c_traj'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'SGD (μ=0) — скачет поперёк оврага',data:run(0),borderColor:'#dc2626',
+       backgroundColor:'#dc2626',showLine:true,pointRadius:2.5,borderWidth:2,tension:0},
+      {label:'momentum μ=0.9 — движется вдоль',data:run(0.9),borderColor:'#0891b2',
+       backgroundColor:'#0891b2',showLine:true,pointRadius:2.5,borderWidth:2,tension:0},
+      {label:'минимум',data:[{x:0,y:0}],backgroundColor:'#16a34a',pointRadius:9,pointStyle:'star',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'пологая ось (медленная кривизна)'},min:-5,max:1.5},
+              y:{title:{display:true,text:'крутая ось'},min:-2.2,max:2.2}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- AdaGrad vs RMSProp эффективный lr ---
+(function(){
+  const T=300, xs=[]; for(let i=1;i<=T;i+=5) xs.push(i);
+  let G=0, v=0; const ada=[], rms=[];
+  let Gs=0, vs=0;
+  for(let t=1;t<=T;t++){
+    // градиент: сначала большой, после t=150 резко падает
+    const g = t<150 ? 1.0 : 0.15;
+    Gs += g*g; vs = 0.95*vs + 0.05*g*g;
+    if(t%5===1){ ada.push(1/Math.sqrt(Gs+1e-8)); rms.push(1/Math.sqrt(vs+1e-8)); }
+  }
+  new Chart(document.getElementById('c_adalr'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'AdaGrad — эффективный lr монотонно затухает',data:ada,borderColor:'#dc2626',pointRadius:0,borderWidth:2.8,tension:.25},
+      {label:'RMSProp — адаптируется к текущему масштабу',data:rms,borderColor:'#0891b2',pointRadius:0,borderWidth:2.8,tension:.25}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'шаг (на шаге 150 градиенты резко упали)'},ticks:{maxTicksLimit:10}},
+              y:{type:'logarithmic',title:{display:true,text:'множитель 1/√·'}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Bias correction ---
+(function(){
+  const xs=[]; for(let t=1;t<=200;t+=2) xs.push(t);
+  const b1=0.9, b2=0.999;
+  const raw = xs.map(t=>{
+    const m=(1-Math.pow(b1,t)), v=(1-Math.pow(b2,t));
+    return m/Math.sqrt(v);            // множитель шага без коррекции
+  });
+  const corrected = xs.map(()=>1);
+  new Chart(document.getElementById('c_bias'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'без bias correction — шаг искажён',data:raw,borderColor:'#dc2626',pointRadius:0,borderWidth:2.8,tension:.25},
+      {label:'с коррекцией — ровно η',data:corrected,borderColor:'#16a34a',borderDash:[6,4],pointRadius:0,borderWidth:2.5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'номер шага'},ticks:{maxTicksLimit:10}},
+              y:{title:{display:true,text:'фактический множитель к η'},min:0,max:3.6}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(' —')[0]+': ×'+c.parsed.y.toFixed(2)}}}}
+  });
+})();
+
+// --- Weight decay: Adam+L2 vs AdamW ---
+(function(){
+  const sq=[0.01,0.03,0.1,0.3,1,3,10];
+  const l2 = sq.map(s=>0.005/s);
+  const w  = sq.map(()=>0.005);
+  new Chart(document.getElementById('c_wd'), {
+    type:'line',
+    data:{labels:sq.map(s=>'√v='+s),datasets:[
+      {label:'Adam + L2 — сила затухания зависит от масштаба градиентов',data:l2,
+       borderColor:'#dc2626',pointRadius:5,borderWidth:2.8,tension:.2},
+      {label:'AdamW — одинаково для всех параметров',data:w,
+       borderColor:'#16a34a',pointRadius:5,borderWidth:2.8,tension:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'масштаб градиентов параметра'}},
+              y:{type:'logarithmic',title:{display:true,text:'фактическая сила затухания'}}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(' —')[0]+': '+c.parsed.y.toExponential(2)}}}}
+  });
+})();
+
+// --- Расписания ---
+(function(){
+  const T=100, xs=[]; for(let t=0;t<=T;t++) xs.push(t);
+  const wu=5;
+  const cos = xs.map(t=> t<wu ? t/wu : 0.1+0.45*(1+Math.cos(Math.PI*(t-wu)/(T-wu))));
+  const lin = xs.map(t=> t<wu ? t/wu : 1-(t-wu)/(T-wu));
+  const step= xs.map(t=> t<30?1 : t<60?0.1 : t<85?0.01 : 0.001);
+  const isqrt=xs.map(t=> t<wu ? t/wu : Math.sqrt(wu/t));
+  const onec= xs.map(t=> t<30 ? 0.15+0.85*(t/30) : 0.05+0.95*0.5*(1+Math.cos(Math.PI*(t-30)/(T-30))));
+  new Chart(document.getElementById('c_sched'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'warmup + cosine (дефолт для трансформеров)',data:cos,borderColor:'#0891b2',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'warmup + linear',data:lin,borderColor:'#7c3aed',pointRadius:0,borderWidth:2.3,tension:.2},
+      {label:'step decay',data:step,borderColor:'#d97706',pointRadius:0,borderWidth:2.3,stepped:true},
+      {label:'inverse sqrt (оригинальный Transformer)',data:isqrt,borderColor:'#16a34a',pointRadius:0,borderWidth:2.3,tension:.2},
+      {label:'OneCycle',data:onec,borderColor:'#db2777',pointRadius:0,borderWidth:2.3,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'% обучения'},ticks:{maxTicksLimit:11}},
+              y:{title:{display:true,text:'lr относительно максимума'},min:0,max:1.08}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- LR range test ---
+(function(){
+  const lrs=[], loss=[];
+  for(let i=0;i<=60;i++){
+    const lr = 1e-7 * Math.pow(10, i/60*8);   // 1e-7 → 10
+    lrs.push(lr);
+    const l = 2.30 - 1.55/(1+Math.pow(lr/6e-4, -0.85)) + (lr>2e-2 ? 4.2*Math.pow(lr/2e-2, 1.5) : 0);
+    loss.push(Math.min(l, 5.2));
+  }
+  new Chart(document.getElementById('c_lrfind'), {
+    type:'line',
+    data:{labels:lrs.map(v=>v.toExponential(0)),datasets:[
+      {label:'сглаженный loss',data:loss,borderColor:'#0891b2',
+       backgroundColor:'rgba(8,145,178,.12)',fill:true,pointRadius:0,borderWidth:3,tension:.25},
+      {label:'👍 рекомендуемый lr (÷10 от минимума)',data:lrs.map((v,i)=>Math.abs(v-6e-4)<3e-4?loss[i]:null),
+       borderColor:'#16a34a',pointRadius:8,pointStyle:'triangle',borderWidth:0},
+      {label:'⚠️ минимум loss — брать НЕ надо',data:lrs.map((v,i)=>Math.abs(v-8e-3)<4e-3?loss[i]:null),
+       borderColor:'#d97706',pointRadius:8,pointStyle:'rectRot',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'learning rate (лог-шкала)'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'loss'},min:0.5,max:5.4}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Интерактив: расписание ---
+function updSched(){
+  const t = +document.getElementById('sl_step').value / 100;
+  const wu = +document.getElementById('sl_wu').value / 100;
+  document.getElementById('out_step').textContent = (t*100).toFixed(0) + '% обучения';
+  document.getElementById('out_wu').textContent = (wu*100).toFixed(0) + '%';
+  let lr, phase;
+  if (wu > 0 && t < wu){ lr = t/wu; phase = '🔥 Фаза warmup — lr линейно растёт'; }
+  else {
+    const p = wu >= 1 ? 0 : (t - wu)/(1 - wu);
+    lr = 0.1 + 0.45*(1 + Math.cos(Math.PI*p));
+    phase = p < 0.3 ? '🚀 Фаза исследования — большой lr, модель ищет область'
+          : p < 0.75 ? '⚙️ Фаза сходимости — lr активно спадает'
+          : '🎯 Фаза уточнения — плавное приземление в минимум';
+  }
+  const base = 3e-4;
+  document.getElementById('out_sched').innerHTML =
+    'Относительный lr: <strong>' + lr.toFixed(3) + '</strong> от максимума' +
+    ' &nbsp;·&nbsp; при η<sub>max</sub>=3e-4 это <strong>' + (base*lr).toExponential(2) + '</strong>' +
+    '<br>' + phase +
+    (wu === 0 ? '<br><em style="color:#b91c1c">⚠️ Warmup выключен — для трансформера это почти гарантированная расходимость на старте.</em>' : '');
+}
+updSched();
+</script>
+</body>
+</html>

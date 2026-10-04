@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.5 · Обучение больших моделей: параллелизм и точность</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0e7490 45%,#0891b2);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.88;max-width:720px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);} .nb.pk{background:var(--pk);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- Биты формата ---------- */
+.bits{display:flex;gap:2px;margin:8px 0 4px;flex-wrap:wrap;}
+.bit{height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+     font-size:9.5px;font-weight:700;color:#fff;min-width:13px;flex:1;}
+.bit.s{background:#dc2626;} .bit.e{background:#0891b2;} .bit.m{background:#7c3aed;}
+.bitlbl{font-size:11px;color:var(--text3);margin-bottom:9px;}
+/* ---------- GPU-сетка ---------- */
+.gpus{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0;}
+.gpu{flex:1;min-width:104px;border-radius:10px;padding:11px 12px;font-size:11.5px;line-height:1.5;
+     border:1.5px solid var(--cy-b);background:var(--cy-l);color:#083344;text-align:center;}
+.gpu strong{display:block;font-size:12.5px;margin-bottom:3px;color:var(--cy);}
+.gpu.sh{background:var(--pur-l);border-color:var(--pur);color:#4c1d95;}
+.gpu.sh strong{color:var(--pur);}
+.gpu.rep{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;}
+.gpu.rep strong{color:var(--grn);}
+/* ---------- Pipeline диаграмма ---------- */
+.pipe{display:flex;flex-direction:column;gap:3px;margin:14px 0;font-size:0;}
+.piperow{display:flex;align-items:center;gap:5px;}
+.pipelbl{font-size:11px;font-weight:700;color:var(--text3);min-width:64px;}
+.pipecells{display:flex;gap:2px;flex:1;}
+.pc{height:24px;flex:1;border-radius:3px;font-size:9px;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-weight:700;}
+.pc.f{background:#0891b2;} .pc.b{background:#7c3aed;} .pc.idle{background:#e2e8f0;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+@keyframes ringFlow{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+@keyframes barGrow{from{height:0;}}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--pur-l);border-color:var(--pur);color:#4c1d95;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--cy);animation:blink 2.4s infinite;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .gpu{min-width:80px;font-size:10.5px;}.pipelbl{min-width:44px;font-size:10px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 5 из 6 · расширенная</div>
+  <h1>Обучение больших моделей: параллелизм и точность</h1>
+  <p class="sub">Что делать, когда модель не влезает на одну карту. От устройства чисел с плавающей точкой
+     до 3D-параллелизма на тысячах GPU — с расчётами, которые можно повторить на бумаге.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–5</span>
+    <span>🔵 средний — секции 6–10</span>
+    <span>🟣 продвинутый — секции 11–16</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Арифметика памяти</a>
+  <a href="#s2">2. Форматы чисел</a>
+  <a href="#s3">3. Mixed precision</a>
+  <a href="#s4">4. Accumulation</a>
+  <a href="#s5">5. Checkpointing</a>
+  <a href="#s6">6. Коллективы</a>
+  <a href="#s7">7. Data Parallel</a>
+  <a href="#s8">8. ZeRO / FSDP</a>
+  <a href="#s9">9. Tensor Parallel</a>
+  <a href="#s10">10. Pipeline</a>
+  <a href="#s11">11. Sequence Parallel</a>
+  <a href="#s12">12. 3D-параллелизм</a>
+  <a href="#s13">13. Scaling laws</a>
+  <a href="#s14">14. Отказоустойчивость</a>
+  <a href="#s15">15. Подводные камни</a>
+  <a href="#s16">16. System Design</a>
+  <a href="#qa">17. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–5</strong> — что происходит на <em>одной</em> карте: откуда берётся память, как устроены fp16 и bf16, как выжать больше из одной GPU. Работает даже если у тебя одна видеокарта.</li>
+<li><strong>Секции 6–10</strong> — как связать <em>много</em> карт: коллективные операции, DDP, ZeRO, тензорный и конвейерный параллелизм.</li>
+<li><strong>Секции 11–14</strong> — как это комбинируют в реальных прогонах, сколько данных нужно на параметр, и что делать, когда узлы падают.</li>
+<li><strong>Секции 15–17</strong> — подводные камни, системный дизайн и 30 вопросов уровня собеседования.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Арифметика памяти: откуда берутся гигабайты <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Расчёт, который надо уметь делать за минуту</div>
+
+<p>Первый вопрос при обучении любой модели: <strong>влезет ли она</strong>. Ответ считается точно, без экспериментов — достаточно знать число параметров и конфигурацию обучения.</p>
+
+<div class="fbox">
+<div class="flabel">📐 Пять источников потребления памяти</div>
+$$M_{\text{total}} = \underbrace{N b_w}_{\text{веса}} + \underbrace{N b_g}_{\text{градиенты}} + \underbrace{N b_o}_{\text{состояния оптим.}} + \underbrace{A}_{\text{активации}} + \underbrace{F}_{\text{фрагментация}}$$
+<p class="fnote">$N$ — число параметров, $b$ — байт на параметр в соответствующем месте, $A$ — активации (зависят от батча и длины), $F$ — накладные расходы аллокатора, обычно 5–15%.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему обучение дороже инференса в 8 раз</div>
+<p>Инференс хранит только веса. Обучение хранит <strong>четыре копии информации о каждом параметре</strong>:</p>
+<p style="margin-left:14px">① сам <strong>вес</strong> — чтобы считать;<br>② <strong>градиент</strong> — куда двигаться;<br>③ <strong>первый момент Adam</strong> — усреднённое направление за последние ~10 шагов;<br>④ <strong>второй момент Adam</strong> — усреднённый масштаб за последние ~1000 шагов.</p>
+<p>Плюс при mixed precision нужна <strong>fp32-копия весов</strong> (мастер-веса) — о ней в секции 3.</p>
+<p>Итого 16 байт на параметр против 2 байт на инференсе. Это <strong>восьмикратная разница</strong>, и она объясняет, почему обучать модель, которая прекрасно работает на одной карте, часто невозможно без кластера.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Полный расчёт памяти для модели 7B</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Конфигурация:</strong> $N = 7\times10^9$, AdamW, mixed precision bf16, батч 8, длина 2048, 32 слоя, $d$=4096.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Веса bf16:</strong> $7\times10^9 \times 2 = 14$ ГБ.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Градиенты bf16:</strong> ещё $14$ ГБ.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Мастер-веса fp32:</strong> $7\times10^9\times4 = 28$ ГБ.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>Adam $m$ (fp32):</strong> $28$ ГБ. &nbsp; <strong>Adam $v$ (fp32):</strong> ещё $28$ ГБ.</div></div>
+<div class="numex-step"><span class="nb red">6</span><div><strong>Итого состояния:</strong> $14+14+28+28+28 = \mathbf{112}$ ГБ. Это <strong>16 байт на параметр</strong> — запомни это число.</div></div>
+<div class="numex-step"><span class="nb">7</span><div><strong>Активации без checkpointing:</strong> примерно $B\cdot L\cdot d\cdot n_{\text{layers}}\cdot k \cdot 2$ байт, где $k\approx 10$–20 тензоров на слой. $8\times2048\times4096\times32\times14\times2 \approx 60$ ГБ.</div></div>
+<div class="numex-step"><span class="nb red">✓</span><div><strong>Итого ≈ 172 ГБ + фрагментация.</strong> На H100 (80 ГБ) не влезает даже близко. Нужно либо шардировать состояния (ZeRO), либо checkpointing, либо и то, и другое.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Из чего складывается память при обучении модели 7B</div>
+<div class="chsub">Состояния оптимизатора занимают вдвое больше самой модели</div>
+<div style="position:relative;height:300px;"><canvas id="c_mem"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор памяти обучения</label>
+  <input type="range" id="sl_n" min="1" max="180" step="1" value="7" oninput="updMem()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1B</span><span class="out" id="out_n">7B</span><span>180B</span></div>
+  <label style="margin-top:14px;">Конфигурация обучения</label>
+  <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;">
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="cfg" value="full" checked onchange="updMem()"> Adam fp32-состояния</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="cfg" value="z1" onchange="updMem()"> + ZeRO-1</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="cfg" value="z3" onchange="updMem()"> + ZeRO-3</label>
+    <label style="font-weight:500;font-size:13px;"><input type="radio" name="cfg" value="lora" onchange="updMem()"> LoRA (r=16)</label>
+  </div>
+  <label style="margin-top:14px;">Число GPU (для ZeRO)</label>
+  <input type="range" id="sl_gpu" min="1" max="64" step="1" value="8" oninput="updMem()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_gpu">8</span><span>64</span></div>
+  <div class="res" id="out_mem"></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Три числа, которые стоит помнить наизусть.</strong> <strong>2 байта</strong> на параметр — инференс в fp16/bf16. <strong>16 байт</strong> на параметр — обучение с AdamW в mixed precision. <strong>≈20 токенов на параметр</strong> — Chinchilla-оптимум объёма данных (секция 13). С этими тремя числами можно за минуту прикинуть требования почти любого проекта: «модель 13B → инференс 26 ГБ, обучение 208 ГБ состояний, нужно 260B токенов».</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про фрагментацию, о которой забывают.</strong> Аллокатор CUDA не всегда может использовать освободившуюся память, если она разбита на мелкие куски. Типичный симптом: <code>OOM</code> при попытке выделить 2 ГБ, хотя <code>nvidia-smi</code> показывает 8 ГБ свободных. Лечится переменной <code>PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True</code>, вызовом <code>torch.cuda.empty_cache()</code> между фазами и, главное, <strong>постоянными формами тензоров</strong> — переменная длина последовательности провоцирует фрагментацию сильнее всего.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Форматы чисел: биты, диапазон и точность <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Почему bf16 вытеснил fp16 в обучении больших моделей</div>
+
+<p>Число с плавающей точкой хранится как три части: <strong>знак</strong>, <strong>экспонента</strong> (порядок величины) и <strong>мантисса</strong> (значащие цифры). От того, как биты поделены между экспонентой и мантиссой, зависит всё.</p>
+
+<div class="fbox blue">
+<div class="flabel">📐 Устройство числа с плавающей точкой</div>
+$$x = (-1)^{s}\times 2^{\,e - \text{bias}}\times (1 + m)$$
+<p class="fnote">$s$ — бит знака, $e$ — экспонента (задаёт <strong>диапазон</strong>), $m$ — мантисса (задаёт <strong>точность</strong>).</p>
+</div>
+
+<div style="margin:18px 0;">
+<div class="bitlbl"><strong>fp32</strong> — 1 знак / 8 экспонента / 23 мантисса · диапазон ±3.4×10³⁸ · ~7 значащих цифр</div>
+<div class="bits">
+  <div class="bit s">S</div>
+  <div class="bit e" style="flex:8">экспонента 8 бит</div>
+  <div class="bit m" style="flex:23">мантисса 23 бита</div>
+</div>
+
+<div class="bitlbl" style="margin-top:14px;"><strong>fp16</strong> — 1 / 5 / 10 · диапазон ±65504 · ~3 значащих цифры</div>
+<div class="bits">
+  <div class="bit s">S</div>
+  <div class="bit e" style="flex:5">экспонента 5</div>
+  <div class="bit m" style="flex:10">мантисса 10</div>
+  <div style="flex:16"></div>
+</div>
+
+<div class="bitlbl" style="margin-top:14px;"><strong>bf16</strong> — 1 / <strong>8</strong> / 7 · диапазон <strong>как у fp32</strong> · ~2 значащих цифры</div>
+<div class="bits">
+  <div class="bit s">S</div>
+  <div class="bit e" style="flex:8">экспонента 8 — как в fp32</div>
+  <div class="bit m" style="flex:7">мантисса 7</div>
+  <div style="flex:16"></div>
+</div>
+
+<div class="bitlbl" style="margin-top:14px;"><strong>fp8 (E4M3)</strong> — 1 / 4 / 3 · диапазон ±448 · ~1 значащая цифра</div>
+<div class="bits">
+  <div class="bit s">S</div>
+  <div class="bit e" style="flex:4">эксп. 4</div>
+  <div class="bit m" style="flex:3">мант. 3</div>
+  <div style="flex:24"></div>
+</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: диапазон против точности</div>
+<p>Представь линейку. <strong>Экспонента</strong> определяет, насколько она длинная — от миллиметров до километров. <strong>Мантисса</strong> определяет, насколько мелкие деления нанесены.</p>
+<p><strong>fp16</strong> — короткая линейка с мелкими делениями. Точно измеряет то, что в диапазоне, но всё за пределами $6\times10^{-5}$…$65504$ просто не существует.</p>
+<p><strong>bf16</strong> — длинная линейка с крупными делениями. Меряет что угодно, но грубо. <strong>Это ровно тот же диапазон, что у fp32</strong> — просто отрезали хвост мантиссы.</p>
+<p><strong>Почему для обучения важнее диапазон.</strong> Градиенты имеют порядок $10^{-6}$–$10^{-8}$. В fp16 минимальное нормальное число $6\times10^{-5}$ — <strong>большая часть градиентов обнуляется</strong>. Не «теряет точность», а становится ровно нулём, и обучение молча останавливается. В bf16 такой проблемы нет.</p>
+<p>А потеря точности мантиссы почти не вредит: градиентный спуск и так шумный, лишние знаки после запятой не несут информации.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Формат</th><th>Байт</th><th>Мин. норм.</th><th>Макс.</th><th>Значащих цифр</th><th>Где применяется</th></tr></thead>
+<tbody>
+<tr><td><b>fp32</b></td><td>4</td><td>$1.2\times10^{-38}$</td><td>$3.4\times10^{38}$</td><td>~7</td><td>Мастер-веса, состояния оптимизатора, нормализации</td></tr>
+<tr><td><b>tf32</b></td><td>4 (хранение)</td><td>как fp32</td><td>как fp32</td><td>~3</td><td>Автоматически на Ampere+ для матричных умножений</td></tr>
+<tr><td><b>fp16</b></td><td>2</td><td>$6.1\times10^{-5}$</td><td>$65504$</td><td>~3</td><td>Инференс, обучение на старых картах (требует loss scaling)</td></tr>
+<tr class="trh"><td><b>bf16</b></td><td>2</td><td>$1.2\times10^{-38}$</td><td>$3.4\times10^{38}$</td><td>~2</td><td><strong>Стандарт обучения LLM</strong></td></tr>
+<tr><td><b>fp8 E4M3</b></td><td>1</td><td>$1.5\times10^{-3}$</td><td>$448$</td><td>~1</td><td>Активации в fp8-обучении (H100+)</td></tr>
+<tr><td><b>fp8 E5M2</b></td><td>1</td><td>$6.1\times10^{-5}$</td><td>$57344$</td><td>&lt;1</td><td>Градиенты в fp8 (шире диапазон)</td></tr>
+<tr><td><b>int8</b></td><td>1</td><td>—</td><td>$\pm127$</td><td>целые</td><td>Квантованный инференс</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>tf32 — формат, о котором мало кто знает, но который у всех включён.</strong> На картах Ampere и новее матричные умножения по умолчанию выполняются в tf32: берётся fp32-число, мантисса усекается до 10 бит, экспонента остаётся полной. Хранение по-прежнему 4 байта, но тензорные ядра работают быстрее в ~8 раз. Именно поэтому «обучение в fp32» на A100 на самом деле уже не совсем fp32. Отключается через <code>torch.backends.cuda.matmul.allow_tf32 = False</code> — что иногда нужно для воспроизведения численно чувствительных результатов.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Два варианта fp8 и зачем их два.</strong> <strong>E4M3</strong> (4 бита экспоненты) — точнее, но узкий диапазон; используется для <em>активаций и весов</em>, у которых величины умеренные. <strong>E5M2</strong> (5 бит экспоненты) — шире диапазон, ниже точность; используется для <em>градиентов</em>, которые могут быть очень малы. Это прямое следствие того же принципа: там, где важен диапазон, отдаём биты экспоненте.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Mixed precision: три копии весов и loss scaling <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Почему нельзя просто перевести всё в fp16 и жить дальше</div>
+
+<div class="flow">
+  <div class="fn d"><strong>Мастер-веса</strong>fp32<br>источник истины</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Копия весов</strong>bf16<br>для вычислений</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>Forward + Backward</strong>bf16<br>быстро</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>Градиенты</strong>bf16 → fp32</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>Шаг Adam</strong>в fp32<br>по мастер-весам</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем нужны мастер-веса в fp32</div>
+<p>Проблема в <strong>малых обновлениях</strong>. Типичный шаг оптимизатора: $\Delta\theta \approx 10^{-7}$, а сам вес $\theta \approx 0.01$.</p>
+<p>В bf16 у нас всего ~2 значащих цифры. Попытка прибавить $10^{-7}$ к $0.01$ даёт... <strong>ровно $0.01$</strong>. Обновление полностью теряется при округлении. Через тысячи шагов вес не сдвинется ни на йоту.</p>
+<p>В fp32 (7 значащих цифр) $0.01 + 10^{-7} = 0.0100001$ — обновление сохраняется. Оно крошечное, но <em>накапливается</em>: тысяча таких шагов даст заметное изменение.</p>
+<p>Отсюда схема: <strong>вычисления идут в bf16 (быстро), а накопление — в fp32 (точно)</strong>. Мастер-веса — это «бухгалтерская книга», где ведётся точный учёт, а bf16-копия — рабочий инструмент.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что происходит с малым обновлением в разных форматах</div>
+<div class="numex-step"><span class="nb">1</span><div>Вес $\theta = 0.01$, обновление $\Delta = -1.5\times10^{-7}$.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div><strong>fp32:</strong> $0.01 - 0.00000015 = 0.00999985$. Записывается корректно, 7 значащих цифр хватает.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>fp16:</strong> ближайшее представимое к $0.01$ — примерно $0.0099945$, шаг сетки около $10^{-5}$. Обновление в $1.5\times10^{-7}$ <strong>в 60 раз меньше шага сетки</strong> → округляется в ноль.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>bf16:</strong> шаг сетки около $10^{-4}$ → обновление в 600 раз меньше шага → тоже ноль.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> без fp32-мастер-весов малые обновления теряются полностью, и обучение застревает. Это не «небольшая потеря точности», а <em>полная потеря сигнала</em>.</div></div>
+</div>
+
+<h3>Loss scaling: нужен для fp16, не нужен для bf16</h3>
+
+<div class="fbox red">
+<div class="flabel">📐 Loss scaling</div>
+$$\mathcal{L}_{\text{scaled}} = S\cdot\mathcal{L} \quad\Longrightarrow\quad g_{\text{scaled}} = S\cdot g \quad\text{(по линейности)}$$
+<p>Перед шагом оптимизатора: $\;g = g_{\text{scaled}}/S$.</p>
+<p class="fnote">Динамический скейлер: начинаем с $S = 2^{16}$, при появлении <code>inf</code>/<code>nan</code> делим $S$ пополам и пропускаем шаг; после $N$ успешных шагов удваиваем.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Градиент $10^{-7}$ в fp16 обнуляется — минимальное нормальное число там $6\times10^{-5}$.</p>
+<p>Умножим loss на $65536 = 2^{16}$. По правилу цепочки все градиенты умножатся на то же число: $10^{-7}\times65536 = 6.5\times10^{-3}$ — прекрасно представимо. Перед шагом делим обратно.</p>
+<p><strong>Почему динамический скейлер:</strong> если $S$ слишком велик, градиенты уйдут в $\infty$ сверху. Если мал — часть по-прежнему теряется снизу. Оптимальное $S$ меняется по ходу обучения, поэтому его подбирают автоматически: наращивают, пока не появится <code>inf</code>, потом откатывают.</p>
+<p><strong>Для bf16 всё это не нужно</strong> — у него диапазон fp32, градиенты не обнуляются. Именно поэтому обучение больших моделей перешло на bf16: минус целый класс проблем.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Распределение градиентов и границы представимости форматов</div>
+<div class="chsub">В fp16 значительная часть градиентов попадает в зону обнуления — отсюда необходимость loss scaling</div>
+<div style="position:relative;height:310px;"><canvas id="c_grad"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Что обязано остаться в fp32 даже при mixed precision.</strong> ① <strong>Мастер-веса</strong> — иначе теряются обновления. ② <strong>Состояния Adam</strong> — $v$ хранит квадраты градиентов, то есть $10^{-14}$, что в bf16 представимо, но с катастрофической потерей точности. ③ <strong>Нормализации</strong> — суммирование квадратов по длинному вектору переполняет fp16 (тема 8.3). ④ <strong>Softmax и loss</strong> — экспоненты требуют диапазона. ⑤ <strong>Аккумуляторы в матричных умножениях</strong> — тензорные ядра сами накапливают в fp32, это делается на уровне железа. PyTorch <code>autocast</code> ведёт список операций, которые не переводит в пониженную точность — но при написании своих слоёв это надо контролировать вручную.</div></div>
+
+<pre><code># Эталонный цикл с mixed precision
+scaler = torch.amp.GradScaler("cuda")           # для fp16; для bf16 не нужен
+
+for x, y in loader:
+    optimizer.zero_grad(set_to_none=True)
+
+    with torch.autocast("cuda", dtype=torch.bfloat16):
+        loss = criterion(model(x), y)            # forward в bf16
+
+    scaler.scale(loss).backward()                # градиенты × S
+
+    scaler.unscale_(optimizer)                   # ① вернуть масштаб
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)   # ② потом клип
+
+    scaler.step(optimizer)                       # пропустит шаг при inf/nan
+    scaler.update()                              # подстроит S
+    scheduler.step()                             # ③ после optimizer.step()
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Порядок ① → ② критичен.</strong> Клиппинг до <code>unscale_</code> обрежет отмасштабированные градиенты по порогу 1.0, что при $S=2^{16}$ эквивалентно клиппингу настоящих градиентов по $1.5\times10^{-5}$ — то есть фактическому обнулению обучения. Ошибки не будет, метрики просто не растут. Разбирали это в теме 8.1, но повторить стоит: это один из самых дорогих по времени поиска багов.</div></div>
+
+<h3>fp8: следующий шаг</h3>
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>При одном байте на число точность настолько мала, что глобального масштаба уже не хватает — нужен <strong>свой масштабный коэффициент на каждый тензор</strong>, а иногда и на блок внутри тензора.</p>
+<p>Схема (Transformer Engine на H100): перед каждым матричным умножением измеряется максимум по тензору, вычисляется масштаб, тензор переводится в fp8, умножение выполняется на fp8-ядрах, аккумуляция идёт в fp32.</p>
+<p>Выигрыш примерно ×2 к скорости матричных умножений и вдвое меньше памяти под активации. Плата — заметное усложнение: нужно отслеживать историю максимумов (delayed scaling), и часть слоёв всё равно остаётся в bf16.</p>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Gradient accumulation: большой батч на маленькой карте <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Простейший приём, у которого есть неочевидные исключения</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Эквивалентность накопления и большого батча</div>
+$$g_{\text{batch }N} = \frac{1}{N}\sum_{i=1}^{N}\nabla\ell_i = \frac{1}{k}\sum_{j=1}^{k}\left(\frac{1}{N/k}\sum_{i\in\text{micro}_j}\nabla\ell_i\right) = \frac{1}{k}\sum_{j=1}^{k} g_{\text{micro }j}$$
+<p class="fnote">Градиент по батчу $N$ равен среднему градиентов по $k$ микробатчам размера $N/k$. Математически <strong>идентично</strong> — при условии, что лосс усредняется, а не суммируется.</p>
+</div>
+
+<pre><code>accum_steps = 8
+optimizer.zero_grad(set_to_none=True)
+
+for i, (x, y) in enumerate(loader):
+    with torch.autocast("cuda", dtype=torch.bfloat16):
+        loss = criterion(model(x), y) / accum_steps    # ← ДЕЛИМ!
+
+    # в DDP: не синхронизировать на промежуточных шагах
+    ctx = model.no_sync() if (i + 1) % accum_steps != 0 else nullcontext()
+    with ctx:
+        loss.backward()
+
+    if (i + 1) % accum_steps == 0:
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad(set_to_none=True)
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три места, где gradient accumulation НЕ эквивалентен большому батчу.</strong><br>
+① <strong>BatchNorm.</strong> Статистика считается по микробатчу, а не по эффективному батчу. При микробатче 8 и накоплении 16 у тебя формально батч 128, но BN ведёт себя как при батче 8 — со всеми проблемами шумной статистики (тема 8.3). Единственное лечение — SyncBatchNorm или отказ от BatchNorm.<br>
+② <strong>Забытое деление на <code>accum_steps</code>.</strong> Если лосс не поделить, эффективный learning rate вырастет в $k$ раз. Обучение либо разойдётся, либо будет вести себя странно.<br>
+③ <strong>Отсутствие <code>no_sync()</code> в DDP.</strong> All-reduce выполнится $k$ раз вместо одного — обучение замедлится в разы при абсолютно идентичном результате. Это чистая потеря, которую легко не заметить.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: когда accumulation оправдан, а когда нет</div>
+<p><strong>Оправдан:</strong> когда нужен большой <em>эффективный</em> батч ради стабильности градиента, а память не позволяет. Классика — обучение LLM, где эффективный батч в миллионы токенов, а на карту влезает несколько тысяч.</p>
+<p><strong>Не оправдан:</strong> если ты просто хочешь ускорить обучение. Accumulation <em>не даёт ускорения вообще</em> — ты делаешь те же $k$ проходов, просто откладываешь шаг оптимизатора. Единственная экономия — на реже выполняемом шаге оптимизатора и на синхронизации в DDP.</p>
+<p><strong>Ключевое отличие от большого батча на большем железе:</strong> настоящий большой батч на нескольких GPU выполняется <em>параллельно</em>, accumulation — <em>последовательно</em>. Одинаковый результат, разное время.</p>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Activation checkpointing: размен времени на память <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Самый эффективный приём, если модель не влезает по активациям</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Память под активации без checkpointing</div>
+$$A \approx B \cdot L \cdot d \cdot n_{\text{layers}} \cdot k \cdot b$$
+<p class="fnote">$k$ — число сохраняемых тензоров на слой (для трансформерного блока примерно 10–20: входы каждой линейной операции, выход softmax, промежуточные тензоры FFN). Заметь: <strong>линейно по батчу И по длине</strong>.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 С checkpointing на $\sqrt{L}$ сегментов</div>
+$$A': \; O(L) \to O(\sqrt{L}), \qquad T: \times 1 \to \times \approx 1.33$$
+<p class="fnote">Chen et al. (2016). Сохраняем активации только на границах сегментов; внутри сегмента пересчитываем forward заново во время backward.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Ты решаешь длинную задачу и записываешь <em>каждый</em> промежуточный результат — тетрадь распухает. Альтернатива: записывать только каждый десятый шаг, а остальное при необходимости <strong>пересчитать</strong> от ближайшей записанной точки.</p>
+<p>Тетрадь в 10 раз тоньше. Пересчёт стоит примерно один дополнительный forward — отсюда «+33% времени»: обычно было $1F + 2B$ (forward + backward стоит вдвое), стало $2F + 2B$.</p>
+<p><strong>Когда это выгодно даже по скорости.</strong> Если без checkpointing влезает батч 4, а с ним — батч 32, то GPU утилизируется в разы лучше. Прирост от большего батча часто перекрывает потерю 33% на шаг. Считать надо не «время на шаг», а <strong>токенов в секунду</strong>.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Расчёт: сколько экономит checkpointing на модели 7B</div>
+<div class="numex-step"><span class="nb">1</span><div>Конфигурация: 32 слоя, $d$=4096, батч 8, длина 2048, bf16.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Без checkpointing:</strong> $8\times2048\times4096\times32\times14\times2 \approx 60$ ГБ активаций.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>С full checkpointing</strong> (сохраняем только вход каждого блока): $8\times2048\times4096\times32\times1\times2 \approx \mathbf{4.3}$ ГБ. Экономия в <strong>14 раз</strong>.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Цена:</strong> +33% времени на шаг. Но теперь вместо батча 8 влезает батч 40 — при том же общем времени обрабатывается больше токенов.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итог:</strong> full checkpointing на трансформерах — почти всегда выигрыш. Он настолько стандартен, что в большинстве фреймворков включён по умолчанию для больших моделей.</div></div>
+</div>
+
+<pre><code># Вариант 1: обернуть каждый блок вручную
+from torch.utils.checkpoint import checkpoint
+
+class Block(nn.Module):
+    def forward(self, x, mask=None):
+        if self.training and self.use_ckpt:
+            return checkpoint(self._forward, x, mask, use_reentrant=False)
+        return self._forward(x, mask)
+
+# Вариант 2: селективный checkpointing — сохраняем дорогие операции
+from torch.utils.checkpoint import create_selective_checkpoint_contexts
+# пересчитываем всё, КРОМЕ матричных умножений (их дорого повторять)
+</code></pre>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Selective checkpointing — важное развитие идеи.</strong> Не все операции одинаково дороги для пересчёта. Матричное умножение — дорого. Поэлементные операции (активации, dropout, сложения) — почти бесплатно, но занимают много памяти. <strong>Селективная стратегия:</strong> сохранять выходы матричных умножений, пересчитывать всё остальное. Даёт 80% экономии памяти при накладных расходах всего 5–10% вместо 33%. Реализовано в PyTorch как <code>create_selective_checkpoint_contexts</code> и используется по умолчанию в современных фреймворках обучения.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три подводных камня checkpointing.</strong> ① <strong>Недетерминированные слои.</strong> Dropout при пересчёте даст <em>другую</em> маску, если не зафиксировать RNG. PyTorch делает это при <code>preserve_rng_state=True</code> (по умолчанию), но ценой синхронизации. ② <strong>BatchNorm обновится дважды</strong> — running statistics испортятся. Ещё один аргумент против BatchNorm в больших моделях. ③ <strong>Слишком мелкая гранулярность.</strong> Оборачивать каждый Linear бессмысленно — накладные расходы съедят выигрыш. Разумная единица — трансформерный блок целиком.</div></div>
+
+<div class="chb">
+<div class="cht">Память и время при разных стратегиях экономии</div>
+<div class="chsub">Селективный checkpointing — лучшая точка компромисса</div>
+<div style="position:relative;height:300px;"><canvas id="c_ckpt"></canvas></div>
+</div>
+
+<h3>Сводка приёмов на одной карте</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Приём</th><th>Экономит</th><th>Стоит</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr class="trh"><td>Mixed precision (bf16)</td><td>~2× активации и градиенты</td><td>почти ничего</td><td><strong>Всегда</strong></td></tr>
+<tr><td>Activation checkpointing</td><td>$O(L)\to O(\sqrt L)$ или до 14×</td><td>+10–33% времени</td><td>Не влезают активации</td></tr>
+<tr><td>Gradient accumulation</td><td>линейно по числу микрошагов</td><td>время ×$k$ шагов</td><td>Нужен большой эффективный батч</td></tr>
+<tr><td>8-bit оптимизатор</td><td>~6 байт/параметр</td><td>потеря в пределах шума</td><td>Одна карта, ограничена память</td></tr>
+<tr><td>LoRA</td><td>~14 байт/параметр (нет состояний для базы)</td><td>меньше выразительности</td><td>Дообучение, не претрейн</td></tr>
+<tr><td>CPU offload</td><td>почти всё</td><td>×3–10 времени</td><td>Крайняя мера</td></tr>
+<tr><td>Уменьшить батч</td><td>линейно</td><td>хуже утилизация, шумнее градиент</td><td>Последнее средство</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Коллективные операции: язык распределённого обучения <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пять примитивов, из которых собраны все схемы параллелизма</div>
+
+<p>Прежде чем разбирать DDP и ZeRO, нужно знать «алфавит». Все схемы параллелизма — это комбинации пяти коллективных операций.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Операция</th><th>Что делает</th><th>Объём передачи</th><th>Где встречается</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>All-Reduce</b></td><td>Каждый вносит свой тензор, все получают <strong>сумму</strong></td><td>$2\frac{P-1}{P}\cdot S$</td><td>Синхронизация градиентов в DDP</td></tr>
+<tr><td><b>Reduce-Scatter</b></td><td>Суммирование + каждый получает <strong>свой кусок</strong> суммы</td><td>$\frac{P-1}{P}\cdot S$</td><td>ZeRO: первая половина all-reduce</td></tr>
+<tr><td><b>All-Gather</b></td><td>Каждый вносит кусок, все получают <strong>целое</strong></td><td>$\frac{P-1}{P}\cdot S$</td><td>ZeRO-3: сбор весов перед слоем</td></tr>
+<tr><td><b>Broadcast</b></td><td>Один отправляет всем</td><td>$S$</td><td>Раздача начальных весов</td></tr>
+<tr><td><b>All-to-All</b></td><td>Каждый отправляет каждому свою часть</td><td>$\frac{P-1}{P}\cdot S$</td><td>MoE: маршрутизация токенов к экспертам</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: главное соотношение</div>
+<p>Заметь ключевой факт из таблицы: <strong>All-Reduce = Reduce-Scatter + All-Gather</strong>, и стоит ровно вдвое дороже каждой из них.</p>
+<p>Именно на этом построен ZeRO. Обычный DDP делает all-reduce градиентов ($2S$ передачи). ZeRO-2 делает reduce-scatter градиентов ($S$), каждая карта обновляет свой кусок весов, потом all-gather обновлённых весов ($S$). <strong>Итого те же $2S$</strong> — но памяти нужно в $P$ раз меньше.</p>
+<p>Это редкий случай, когда экономия памяти достаётся <em>бесплатно</em> по трафику. Отсюда практическое правило: ZeRO stage 1 и 2 стоит включать почти всегда.</p>
+</div>
+
+<h3>Ring All-Reduce: почему объём не зависит от числа карт</h3>
+
+<div class="fbox blue">
+<div class="flabel">📐 Объём передачи в ring all-reduce</div>
+$$V = 2\cdot\frac{P-1}{P}\cdot S \;\xrightarrow[P\to\infty]{}\; 2S$$
+<p class="fnote">$P$ — число GPU, $S$ — размер тензора в байтах. При $P=8$: $V = 1.75S$. При $P=1000$: $V \approx 2S$. <strong>Практически не зависит от числа карт.</strong></p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как устроено кольцо</div>
+<p>Наивная реализация: все отправляют всё одному узлу, он суммирует и рассылает обратно. Трафик $O(P\cdot S)$, и центральный узел становится узким местом.</p>
+<p><strong>Ring all-reduce</strong> устраивает GPU в кольцо и делит тензор на $P$ кусков. Работа идёт в две фазы по $P-1$ шагов:</p>
+<p style="margin-left:14px"><strong>Фаза 1 (reduce-scatter):</strong> на каждом шаге карта отправляет соседу один кусок и принимает другой, прибавляя его к своему. Через $P-1$ шагов каждая карта имеет <em>полностью просуммированный</em> один кусок.<br>
+<strong>Фаза 2 (all-gather):</strong> те же $P-1$ шагов, но теперь готовые куски просто передаются по кольцу без суммирования.</p>
+<p><strong>Ключевое свойство:</strong> на каждом шаге каждая карта передаёт ровно $S/P$ байт. Всего $2(P-1)$ шагов × $S/P$ = $2\frac{P-1}{P}S$. С ростом $P$ шагов больше, но каждый мельче — <strong>суммарный объём остаётся почти постоянным</strong>. Именно это и делает распределённое обучение масштабируемым.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Объём передачи на карту: наивная схема vs ring all-reduce</div>
+<div class="chsub">Ring выходит на плато 2S, наивная растёт линейно по числу карт</div>
+<div style="position:relative;height:290px;"><canvas id="c_ring"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Latency против пропускной способности.</strong> Ring оптимален по <em>объёму</em>, но требует $2(P-1)$ последовательных шагов — при большом $P$ и мелких тензорах накапливается задержка. Поэтому NCCL для маленьких тензоров использует другие алгоритмы (tree, double binary tree), где число шагов $O(\log P)$, а объём чуть больше. Практический вывод: <strong>много мелких all-reduce хуже одного крупного</strong> — отсюда bucketing в DDP (секция 7).</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Топология имеет значение.</strong> Внутри одного узла карты соединены NVLink (600–900 ГБ/с), между узлами — InfiniBand или Ethernet (25–400 Гбит/с, то есть в 10–30 раз медленнее). NCCL строит иерархические алгоритмы: сначала reduce внутри узла по быстрым связям, потом обмен между узлами, потом broadcast внутри узла. Практическое следствие для System Design: <strong>тензорный параллелизм всегда держат внутри узла</strong> (он требует обмена на каждом слое), а data parallel можно растягивать между узлами (обмен раз в шаг).</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Data Parallel и DDP <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Базовая схема, с которой начинается любое масштабирование</div>
+
+<div class="gpus">
+  <div class="gpu rep"><strong>GPU 0</strong>полная копия<br>модели<br>микробатч 1</div>
+  <div class="gpu rep"><strong>GPU 1</strong>полная копия<br>модели<br>микробатч 2</div>
+  <div class="gpu rep"><strong>GPU 2</strong>полная копия<br>модели<br>микробатч 3</div>
+  <div class="gpu rep"><strong>GPU 3</strong>полная копия<br>модели<br>микробатч 4</div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-4px;text-align:center;">Каждая карта имеет <strong>полную копию</strong> модели и обрабатывает свою часть батча. После backward градиенты усредняются all-reduce.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Data parallel — самая простая идея: <strong>дублируем модель, делим данные</strong>. Каждая карта считает градиент по своему куску батча, потом все усредняют результат — и все делают одинаковый шаг оптимизатора.</p>
+<p>Поскольку градиент усреднён, все копии модели остаются <strong>идентичными</strong> после каждого шага. Это важно: они не расходятся, а идут строго синхронно.</p>
+<p>Ограничение очевидно: <strong>модель должна помещаться на одну карту целиком</strong>, вместе со всеми состояниями оптимизатора. Для 7B это 112 ГБ — уже не влезает. Отсюда все остальные схемы.</p>
+</div>
+
+<h3>Overlap: почему DDP не ждёт конца backward</h3>
+
+<div class="sysbox">
+<h4>🏗 Bucketing и перекрытие обмена с вычислениями</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Backward слоя 32</strong>градиенты готовы</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Bucket 1 заполнен</strong>запуск all-reduce<br>НЕ дожидаясь конца</div>
+  <div class="sysarrow">‖</div>
+  <div class="sysblock"><strong>Backward слоя 31</strong>идёт параллельно<br>с обменом</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Backward слоя 30</strong></div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Bucket 2</strong>ещё один all-reduce</div>
+  <div class="sysarrow">‖</div>
+  <div class="sysblock"><strong>...и так далее</strong>к первому слою</div>
+</div>
+<div class="sysnote"><strong>Почему это вообще возможно.</strong> Backward идёт <em>от выхода ко входу</em> (тема 8.1), значит градиенты становятся готовы по частям, в предсказуемом порядке. DDP группирует параметры в bucket'ы (по умолчанию 25 МБ) и запускает all-reduce для bucket'а сразу, как только все его градиенты посчитаны.<br><br>
+<strong>Практические следствия:</strong><br>
+① <strong>Размер bucket — компромисс.</strong> Мелкие bucket'ы → больше перекрытия, но больше мелких all-reduce (плохо по latency). Крупные → меньше накладных расходов, но обмен начинается позже. 25 МБ — эмпирический дефолт.<br>
+② <strong><code>find_unused_parameters=True</code> резко замедляет</strong> — DDP вынужден обойти весь граф, чтобы понять, какие параметры не получили градиент, и это ломает перекрытие. Включать только если действительно есть неиспользуемые ветки.<br>
+③ <strong>Порядок регистрации параметров важен.</strong> DDP предполагает, что backward идёт примерно в обратном порядке к forward. Нестандартный порядок ухудшает перекрытие.</div>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Эффективность масштабирования DDP</div>
+$$\text{Efficiency} = \frac{T_{\text{compute}}}{T_{\text{compute}} + T_{\text{comm}}^{\text{непокрытый}}}, \qquad T_{\text{comm}} = \frac{2\frac{P-1}{P}N b}{\text{BW}}$$
+<p class="fnote">При хорошем перекрытии $T_{\text{comm}}^{\text{непокрытый}} \to 0$ и эффективность приближается к 100%. Именно поэтому DDP хорошо масштабируется до сотен карт.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Когда DDP упирается в сеть</div>
+<div class="numex-step"><span class="nb">1</span><div>Модель 1.5B, bf16 градиенты: $S = 3$ ГБ. 8 GPU, InfiniBand 200 Гбит/с = 25 ГБ/с.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Объём all-reduce: $2\times\frac{7}{8}\times3 = 5.25$ ГБ. Время: $5.25/25 = \mathbf{0.21}$ с.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Время вычислений на шаг (батч 8×2048 токенов): примерно $6N\times$токенов$/$FLOPS $= 6\times1.5\times10^9\times16384/(4\times10^{14}) \approx \mathbf{0.37}$ с.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>Обмен (0.21 с) короче вычислений (0.37 с) → при хорошем перекрытии он <strong>полностью скрывается</strong>. Эффективность близка к 100%.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>А теперь батч меньше в 4 раза:</strong> вычисления 0.09 с, обмен по-прежнему 0.21 с. Обмен <em>длиннее</em> вычислений → эффективность падает до ~30%.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Правило:</strong> чем больше локальный батч, тем лучше скрывается обмен. Слишком маленький батч на карту делает DDP неэффективным — карты простаивают, ожидая сеть.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Классические ошибки DDP.</strong> ① <strong>Разные seed на воркерах</strong> → DistributedSampler не выставлен, и карты обрабатывают одни и те же данные, дублируя работу. Обязателен <code>sampler.set_epoch(epoch)</code>. ② <strong>Клиппинг до all-reduce</strong> — каждая карта обрежет по своей локальной норме, результат перестанет совпадать с однокарточным обучением. ③ <strong>Логирование со всех рангов</strong> — метрики нужно усреднять через all-reduce, а писать только с ранга 0. ④ <strong>Валидация без синхронизации</strong> — каждая карта посчитает метрику по своей части, и без all-reduce ты увидишь только 1/P данных.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. ZeRO и FSDP: шардируем состояния <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как убрать избыточность DDP и обучать модели в разы больше</div>
+
+<p>В DDP каждая карта хранит <strong>полную копию</strong> весов, градиентов и состояний оптимизатора. При 8 картах это 8 идентичных копий 112 ГБ. <strong>Чудовищная избыточность.</strong> ZeRO (Rajbhandari et al., 2020) убирает её постадийно.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Стадия</th><th>Что шардируется</th><th>Память на карту</th><th>Доп. трафик</th><th>Для 7B при P=8</th></tr></thead>
+<tbody>
+<tr><td><b>DDP</b> (baseline)</td><td>ничего</td><td>$16N$</td><td>$2S$</td><td>112 ГБ</td></tr>
+<tr class="trh"><td><b>ZeRO-1</b></td><td>состояния оптимизатора</td><td>$4N + \frac{12N}{P}$</td><td><strong>$2S$ — тот же!</strong></td><td><strong>45 ГБ</strong></td></tr>
+<tr><td><b>ZeRO-2</b></td><td>+ градиенты</td><td>$2N + \frac{14N}{P}$</td><td>$2S$ — тот же</td><td>28 ГБ</td></tr>
+<tr><td><b>ZeRO-3</b> (= FSDP)</td><td>+ веса</td><td>$\frac{16N}{P}$</td><td>$3S$ (+50%)</td><td><strong>14 ГБ</strong></td></tr>
+<tr><td>ZeRO-Infinity</td><td>+ offload на CPU/NVMe</td><td>почти ноль</td><td>ограничен PCIe</td><td>&lt;5 ГБ, но медленно</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему ZeRO-1 и ZeRO-2 бесплатны по трафику</div>
+<p>Это неочевидный и очень важный момент. Вспомним из секции 6: <strong>All-Reduce = Reduce-Scatter + All-Gather</strong>, и стоит вдвое дороже каждой.</p>
+<p><strong>DDP:</strong> all-reduce градиентов ($2S$), каждая карта обновляет <em>все</em> веса.</p>
+<p><strong>ZeRO-2:</strong> reduce-scatter градиентов ($S$) — каждая карта получает просуммированный кусок. Она обновляет <em>только свою часть</em> весов. Потом all-gather обновлённых весов ($S$). <strong>Итого $2S$ — ровно столько же.</strong></p>
+<p>То есть мы просто <em>переставили</em> операции так, чтобы каждая карта держала лишь свою долю состояний. Экономия памяти в $P$ раз досталась даром.</p>
+<p><strong>ZeRO-3 уже не бесплатен.</strong> Веса тоже шардированы, значит перед каждым слоем нужен дополнительный all-gather весов этого слоя. Отсюда +50% трафика.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Память на карту при разных стадиях ZeRO (модель 7B)</div>
+<div class="chsub">ZeRO-1 даёт большую часть выигрыша без дополнительного трафика</div>
+<div style="position:relative;height:300px;"><canvas id="c_zero"></canvas></div>
+</div>
+
+<h3>Как работает ZeRO-3 / FSDP пошагово</h3>
+
+<div class="numex">
+<div class="numex-title">🔢 Один forward-backward в ZeRO-3</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Старт.</strong> Каждая карта хранит только $1/P$ параметров каждого слоя. Полного слоя нет ни у кого.</div></div>
+<div class="numex-step"><span class="nb blue">2</span><div><strong>Forward, слой 1.</strong> All-gather весов слоя 1 → у всех временно есть полный слой → считаем → <strong>немедленно освобождаем</strong> всё, кроме своего шарда.</div></div>
+<div class="numex-step"><span class="nb blue">3</span><div><strong>Forward, слой 2.</strong> То же самое. И так все слои. В памяти одновременно — только один полный слой.</div></div>
+<div class="numex-step"><span class="nb pur">4</span><div><strong>Backward, слой N.</strong> Снова all-gather весов (они были освобождены!) → считаем градиенты → reduce-scatter градиентов → каждая карта получает градиент своего шарда → освобождаем.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Шаг оптимизатора.</strong> Каждая карта обновляет только свой шард, используя свои $m$ и $v$ — они тоже шардированы.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итог:</strong> в любой момент времени карта держит $16N/P$ постоянной памяти плюс один полный слой временно. Модель на 70B при $P=64$ требует ~17 ГБ на карту вместо 1120 ГБ.</div></div>
+</div>
+
+<pre><code># FSDP — нативная реализация ZeRO-3 в PyTorch
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import ShardingStrategy, MixedPrecision
+from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
+import functools
+
+mp = MixedPrecision(
+    param_dtype=torch.bfloat16,       # веса для вычислений
+    reduce_dtype=torch.float32,       # градиенты редуцируем в fp32 — точнее
+    buffer_dtype=torch.bfloat16,
+)
+
+model = FSDP(
+    model,
+    sharding_strategy=ShardingStrategy.FULL_SHARD,   # ZeRO-3
+    # ShardingStrategy.SHARD_GRAD_OP  → ZeRO-2
+    # ShardingStrategy.HYBRID_SHARD   → шард внутри узла, реплика между узлами
+    auto_wrap_policy=functools.partial(
+        transformer_auto_wrap_policy,
+        transformer_layer_cls={TransformerBlock},     # шардируем поблочно
+    ),
+    mixed_precision=mp,
+    device_id=torch.cuda.current_device(),
+    limit_all_gathers=True,          # ограничить префетч ради памяти
+)
+</code></pre>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>HYBRID_SHARD — важная практическая стратегия.</strong> FULL_SHARD растягивает шардирование на все карты кластера, включая межузловые связи, которые в 10–30 раз медленнее NVLink. При большом числе узлов это убивает производительность. <strong>Hybrid shard</strong> шардирует состояния <em>внутри узла</em> (по быстрому NVLink), а между узлами делает обычную репликацию с all-reduce. Память чуть больше, но трафик по медленной сети резко падает. Для кластеров от 4 узлов это обычно правильный выбор.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Гранулярность обёртки решает всё.</strong> Если обернуть модель целиком одним FSDP-модулем, all-gather соберёт <em>всю</em> модель разом — экономии памяти не будет. Если обернуть каждый Linear — накладные расходы на сотни мелких all-gather съедят выигрыш. Правильная единица — <strong>трансформерный блок</strong>, что и делает <code>transformer_auto_wrap_policy</code>. Это одна из самых частых ошибок при первом внедрении FSDP.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Чекпоинты в FSDP — отдельная боль.</strong> По умолчанию каждая карта сохраняет свой шард, и возобновление возможно только на <em>том же числе GPU</em>. Для переносимости нужен <code>FULL_STATE_DICT</code> с <code>rank0_only=True</code> и <code>offload_to_cpu=True</code> — но тогда сборка полного state_dict на ранге 0 требует памяти под всю модель, и для больших моделей может упасть по OOM на CPU. Современное решение — <code>torch.distributed.checkpoint</code> с шардированным форматом, который умеет пересобираться под другое число карт.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Tensor Parallelism: режем слой поперёк <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Когда даже один слой не влезает на карту</div>
+
+<p>ZeRO шардирует состояния, но во время вычислений слой всё равно собирается целиком. Если один слой не влезает — нужен <strong>тензорный параллелизм</strong>: разрезать саму матрицу весов между картами и считать частями.</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Column parallel: режем по столбцам</div>
+$$Y = XA, \qquad A = [A_1 \;|\; A_2] \quad\Longrightarrow\quad Y = [XA_1 \;|\; XA_2]$$
+<p class="fnote">Каждая карта хранит свои столбцы $A_i$ и считает свою часть выхода. <strong>Обмен не нужен</strong> — если следующая операция умеет работать с частями.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Row parallel: режем по строкам</div>
+$$Y = XB, \qquad B = \begin{bmatrix}B_1\\B_2\end{bmatrix},\; X = [X_1\;|\;X_2] \quad\Longrightarrow\quad Y = X_1B_1 + X_2B_2$$
+<p class="fnote">Каждая карта считает частичную сумму. <strong>Нужен all-reduce</strong>, чтобы сложить части.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему их чередуют</div>
+<p>Ключевой трюк Megatron-LM: в FFN <strong>первую матрицу режут по столбцам, вторую по строкам</strong>.</p>
+<p>$\operatorname{FFN}(x) = \operatorname{GELU}(xW_1)W_2$. Режем $W_1$ по столбцам → каждая карта получает свою часть скрытого слоя. Применяем GELU <em>поэлементно</em> — обмен не нужен, каждая карта работает со своими нейронами. Дальше режем $W_2$ по строкам → каждая карта считает частичную сумму выхода. Один all-reduce в конце.</p>
+<p><strong>Итог: на весь FFN — один обмен вместо двух.</strong> Тот же приём для attention: $W_Q, W_K, W_V$ режем по столбцам (каждая карта берёт свои головы целиком!), $W_O$ — по строкам. Опять один all-reduce.</p>
+<p>Именно поэтому multi-head attention так удобно параллелится: <strong>головы независимы по построению</strong>, их можно просто раздать по картам без всякого обмена внутри внимания.</p>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Тензорный параллелизм в трансформерном блоке (Megatron-LM)</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>x (полный)</strong>на всех картах</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>W_Q,W_K,W_V</strong>column parallel<br>головы 1–8 → GPU0<br>головы 9–16 → GPU1</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Attention</strong>каждая карта<br>считает свои головы<br><em>обмена нет</em></div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>W_O</strong>row parallel<br>+ all-reduce</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>x</strong></div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>W₁</strong>column parallel</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>GELU</strong>поэлементно,<br><em>обмена нет</em></div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>W₂</strong>row parallel<br>+ all-reduce</div>
+</div>
+<div class="sysnote"><strong>Итого 2 all-reduce на блок</strong> (по одному на attention и FFN), плюс столько же в backward. Для модели из 80 блоков это <strong>320 коллективных операций за шаг</strong> — вот почему тензорный параллелизм требует очень быстрой связи.<br><br>
+<strong>Жёсткое правило:</strong> TP всегда держат <em>внутри одного узла</em>, по NVLink. Растягивать его между узлами по InfiniBand — гарантированная потеря производительности в разы. Отсюда типичное $TP = 8$ (число карт в узле DGX) и никогда не больше.</div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Data Parallel</th><th>ZeRO-3 / FSDP</th><th>Tensor Parallel</th></tr></thead>
+<tbody>
+<tr><td>Что делится</td><td>батч</td><td>состояния (но не вычисления)</td><td><strong>сами матрицы весов</strong></td></tr>
+<tr><td>Обмен на шаг</td><td>1 all-reduce</td><td>~3 на слой</td><td><strong>2 all-reduce на блок</strong></td></tr>
+<tr><td>Чувствительность к сети</td><td>низкая</td><td>средняя</td><td><strong>критическая</strong></td></tr>
+<tr><td>Область применения</td><td>между узлами</td><td>внутри и между узлами</td><td><strong>только внутри узла</strong></td></tr>
+<tr><td>Решает проблему</td><td>мало данных за шаг</td><td>не влезают состояния</td><td>не влезает один слой</td></tr>
+<tr><td>Влияет на батч</td><td>увеличивает</td><td>не влияет</td><td>не влияет</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидный бонус TP: он экономит активации, а не только веса.</strong> При тензорном параллелизме каждая карта хранит активации только для своей части скрытого слоя. При $TP=8$ память под активации внутри FFN и attention падает в 8 раз. ZeRO так не умеет — он шардирует состояния, но во время forward полный слой всё равно собирается, и активации считаются целиком. Именно поэтому для очень длинного контекста TP помогает там, где ZeRO уже не справляется.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Pipeline Parallelism и проблема пузыря <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Режем модель по слоям — и боремся с простоем</div>
+
+<p>Ещё один способ разделить модель: отдать первые 20 слоёв карте 0, следующие 20 — карте 1, и так далее. Данные текут по конвейеру.</p>
+
+<h3>Наивный вариант: почти всё время простой</h3>
+
+<div class="pipe">
+  <div class="piperow"><span class="pipelbl">GPU 3</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc f">F</div><div class="pc b">B</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 2</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc idle"></div><div class="pc f">F</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc b">B</div><div class="pc idle"></div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 1</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc f">F</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc b">B</div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 0</span><div class="pipecells">
+    <div class="pc f">F</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc b">B</div></div></div>
+</div>
+<p style="font-size:12px;color:var(--text3);margin-top:-2px;">Наивный конвейер: серые ячейки — <strong>простой</strong>. Утилизация 25% при 4 картах.</p>
+
+<h3>С микробатчами: пузырь сжимается</h3>
+
+<div class="pipe">
+  <div class="piperow"><span class="pipelbl">GPU 3</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc f">F1</div><div class="pc b">B1</div><div class="pc f">F2</div><div class="pc b">B2</div><div class="pc f">F3</div><div class="pc b">B3</div><div class="pc f">F4</div><div class="pc b">B4</div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 2</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc idle"></div><div class="pc f">F1</div><div class="pc f">F2</div><div class="pc b">B1</div><div class="pc f">F3</div><div class="pc b">B2</div><div class="pc f">F4</div><div class="pc b">B3</div><div class="pc b">B4</div><div class="pc idle"></div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 1</span><div class="pipecells">
+    <div class="pc idle"></div><div class="pc f">F1</div><div class="pc f">F2</div><div class="pc f">F3</div><div class="pc b">B1</div><div class="pc f">F4</div><div class="pc b">B2</div><div class="pc b">B3</div><div class="pc b">B4</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div></div></div>
+  <div class="piperow"><span class="pipelbl">GPU 0</span><div class="pipecells">
+    <div class="pc f">F1</div><div class="pc f">F2</div><div class="pc f">F3</div><div class="pc f">F4</div><div class="pc b">B1</div><div class="pc b">B2</div><div class="pc b">B3</div><div class="pc b">B4</div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div><div class="pc idle"></div></div></div>
+</div>
+<p style="font-size:12px;color:var(--text3);margin-top:-2px;">1F1B-расписание с 4 микробатчами: простой остался только в начале и конце.</p>
+
+<div class="fbox red">
+<div class="flabel">📐 Доля пузыря (bubble ratio)</div>
+$$\text{bubble} = \frac{p-1}{m+p-1}$$
+<p class="fnote">$p$ — число стадий конвейера, $m$ — число микробатчей. При $p=4$, $m=4$: пузырь $=3/7 = 43\%$. При $m=32$: $3/35 = \mathbf{8.6\%}$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как избавиться от пузыря</div>
+<p>Пузырь — это время, когда часть карт ждёт, пока данные до них дойдут (в начале) или пока backward до них вернётся (в конце).</p>
+<p>Формула $\frac{p-1}{m+p-1}$ говорит: <strong>чем больше микробатчей, тем меньше доля простоя</strong>. Начало и конец конвейера — фиксированная плата в $p-1$ тактов, и её надо «размазать» по возможно большему числу полезных тактов.</p>
+<p><strong>Практическое правило:</strong> $m \geq 4p$, лучше $m \geq 8p$. При 8 стадиях нужно минимум 32 микробатча — иначе конвейер простаивает больше 20% времени.</p>
+<p>Но микробатчи не бесплатны: каждый требует своих активаций в памяти. Отсюда <strong>1F1B (one-forward-one-backward)</strong> — расписание, где backward запускается как можно раньше, освобождая память. Это позволяет держать в памяти активации только $p$ микробатчей вместо $m$.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Доля простоя конвейера от числа микробатчей</div>
+<div class="chsub">При 8 стадиях нужно минимум 32 микробатча, чтобы пузырь опустился ниже 20%</div>
+<div style="position:relative;height:300px;"><canvas id="c_bubble"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: стадии конвейера и микробатчи</label>
+  <input type="range" id="sl_p" min="2" max="32" step="1" value="8" oninput="updPipe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>2 стадии</span><span class="out" id="out_p">8</span><span>32</span></div>
+  <label style="margin-top:14px;">Число микробатчей</label>
+  <input type="range" id="sl_m" min="1" max="128" step="1" value="16" oninput="updPipe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_m">16</span><span>128</span></div>
+  <div class="res" id="out_pipe"></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Расписание</th><th>Пузырь</th><th>Память под активации</th><th>Особенность</th></tr></thead>
+<tbody>
+<tr><td>Наивный (GPipe без микробатчей)</td><td>$\frac{p-1}{p}$ — огромный</td><td>минимум</td><td>Только для понимания</td></tr>
+<tr><td>GPipe (все F, потом все B)</td><td>$\frac{p-1}{m+p-1}$</td><td>$O(m)$ — много</td><td>Просто, но память растёт с $m$</td></tr>
+<tr class="trh"><td><b>1F1B</b></td><td>$\frac{p-1}{m+p-1}$ — тот же</td><td><strong>$O(p)$</strong></td><td>Тот же пузырь, память в $m/p$ раз меньше</td></tr>
+<tr><td>Interleaved 1F1B</td><td>$\frac{p-1}{v\,m+p-1}$</td><td>$O(p)$</td><td>Каждая карта берёт $v$ несмежных групп слоёв</td></tr>
+<tr><td>Zero-bubble</td><td>≈0 при идеальных условиях</td><td>$O(p)$</td><td>Разделяет backward на две части</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная сложность pipeline — балансировка стадий.</strong> Если карта 0 получила 25 слоёв, а карта 1 — 20, весь конвейер работает со скоростью самой медленной стадии, и разница уходит в простой. Балансировать надо не по <em>числу слоёв</em>, а по <em>времени выполнения</em> — а оно неоднородно: первый слой включает embedding-таблицу, последний — выходную проекцию на словарь (это может быть 30% всех вычислений при большом словаре). На практике первую и последнюю стадии делают короче остальных.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Pipeline плохо дружит с gradient checkpointing.</strong> Оба приёма экономят память, но конвейер уже держит активации нескольких микробатчей одновременно. При включении checkpointing пересчёт forward происходит для каждого микробатча отдельно, и накладные расходы умножаются. Комбинировать можно, но выигрыш меньше ожидаемого — считать надо на конкретной конфигурации.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Sequence и Context Parallelism <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четвёртое измерение — для очень длинного контекста</div>
+
+<p>Три предыдущих схемы делят батч, состояния и слои. Но есть ещё одна ось, по которой можно резать: <strong>сама последовательность</strong>.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем понадобилось</div>
+<p>При контексте 128k активации становятся доминирующей статьёй памяти — они линейны по длине, а матрица внимания квадратична. Ни ZeRO, ни TP это полностью не решают: ZeRO не трогает активации, TP делит только внутри скрытой размерности.</p>
+<p><strong>Sequence parallelism</strong> в узком смысле (Megatron): режем по длине те операции, которые <em>поэлементные</em> — LayerNorm, dropout, residual. Они не требуют взаимодействия между позициями, значит каждая карта может обработать свой отрезок последовательности независимо. Экономит активации там, где TP не помогает.</p>
+<p><strong>Context parallelism</strong> (Ring Attention) идёт дальше — режет по длине <em>само внимание</em>. Это сложнее, потому что внимание по определению связывает все позиции.</p>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Ring Attention: идея</div>
+<p>Последовательность делится на $P$ блоков, по одному на карту. Каждая карта хранит свои $Q_i$, $K_i$, $V_i$. Блоки $K$, $V$ передаются <strong>по кольцу</strong>: за $P$ шагов каждая карта увидит все блоки $K$, $V$ и накопит своё внимание через online softmax.</p>
+$$O_i = \sum_{j=1}^{P} \text{частичное внимание}(Q_i, K_j, V_j)\;\text{с пересчётом масштаба}$$
+<p class="fnote">Тот же online softmax, что в FlashAttention (тема 8.4) — только теперь блоки живут на разных картах, и обмен идёт по сети вместо обращений к HBM.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: FlashAttention, растянутый на кластер</div>
+<p>FlashAttention решал ту же задачу внутри одной карты: как посчитать softmax, не видя всю строку сразу. Ответ был — обрабатывать блоками и пересчитывать масштаб накопленного при появлении нового максимума.</p>
+<p>Ring Attention берёт ровно этот механизм и применяет его к блокам, лежащим на <em>разных GPU</em>. Обмен $K$, $V$ по кольцу перекрывается с вычислениями: пока карта считает внимание с текущим блоком, следующий блок уже едет к ней по сети.</p>
+<p>Результат: контекст масштабируется <strong>линейно по числу карт</strong>. 8 карт → контекст в 8 раз длиннее. Именно так получают модели с контекстом в миллион токенов.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Тонкость: causal-маска ломает балансировку Ring Attention.</strong> При causal-внимании карта с первым блоком токенов почти не работает (её токены смотрят только на себя), а карта с последним блоком считает внимание ко всей последовательности. Нагрузка различается в $P$ раз. Решение — <strong>zigzag-раскладка</strong>: каждой карте дают не смежный отрезок, а комбинацию из начала и конца последовательности, что выравнивает объём работы.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. 3D-параллелизм: как это комбинируют <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Реальные прогоны используют все схемы одновременно</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Разложение кластера</div>
+$$P_{\text{total}} = TP \times PP \times DP \;(\times CP)$$
+<p class="fnote">Например, 1024 GPU = $TP{=}8 \times PP{=}8 \times DP{=}16$. Каждая ось решает свою проблему.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Ось</th><th>Решает</th><th>Частота обмена</th><th>Где размещать</th><th>Типичный размер</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Tensor (TP)</b></td><td>слой не влезает на карту</td><td><strong>2× на каждый блок</strong></td><td>внутри узла, NVLink</td><td>2–8</td></tr>
+<tr><td><b>Pipeline (PP)</b></td><td>модель не влезает на узел</td><td>1× на границу стадии</td><td>между узлами</td><td>4–32</td></tr>
+<tr><td><b>Data (DP)</b></td><td>нужен больший батч</td><td><strong>1× за шаг</strong></td><td>между узлами, самая внешняя</td><td>сколько осталось</td></tr>
+<tr><td><b>Context (CP)</b></td><td>очень длинный контекст</td><td>$P$ обменов на attention</td><td>внутри узла</td><td>1–8</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: правило размещения</div>
+<p>Простое правило, из которого следует вся конфигурация: <strong>чем чаще ось требует обмена, тем быстрее должна быть связь под ней</strong>.</p>
+<p>TP обменивается дважды на каждый из 80 блоков = 160 раз за forward. Значит TP обязан жить на NVLink внутри узла, и его размер ограничен числом карт в узле — обычно 8.</p>
+<p>PP обменивается на границах стадий — при 8 стадиях это 7 раз за forward, и передаются только активации на границе (небольшой тензор). Терпит межузловую связь.</p>
+<p>DP обменивается <em>один раз за шаг</em>, зато большим объёмом (все градиенты). При хорошем перекрытии с backward это скрывается почти полностью. Самая внешняя ось.</p>
+<p><strong>Отсюда стандартный порядок вложенности:</strong> DP снаружи → PP → TP внутри. И типовая конфигурация для 70B: $TP{=}8$ (один узел), $PP{=}4$–8, остальное в DP.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Пример конфигурации: обучение модели 70B на 512 GPU</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Требования по памяти:</strong> $16N = 16\times70\times10^9 = 1120$ ГБ состояний. На карту H100 (80 ГБ) нужно уместить примерно 60 ГБ под состояния, остальное — активации и запас.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>TP = 8.</strong> Один узел DGX H100. Веса каждого слоя делятся на 8 → 140 ГБ на узел под веса+градиенты, активации тоже делятся.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>PP = 8.</strong> 80 слоёв делятся на 8 стадий по 10 слоёв. Теперь на группу из 8 карт приходится $1120/8 = 140$ ГБ, а с учётом TP — по 17.5 ГБ на карту. Влезает.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>DP = 512/(8×8) = 8.</strong> Восемь реплик всего конвейера. Эффективный батч умножается на 8.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>Микробатчи:</strong> нужно $m \geq 4\times PP = 32$, берём 64 → пузырь $= 7/71 = \mathbf{9.9\%}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итог:</strong> $8\times8\times8 = 512$ GPU, память укладывается, простой конвейера около 10%, обмен по медленной сети — только раз в шаг (DP) и на границах стадий (PP).</div></div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Как выглядит разложение 512 GPU по трём осям</h4>
+<div class="sys-row">
+  <div class="syshighlight"><strong>Уровень 1: DP = 8</strong>восемь независимых<br>реплик, обмен раз в шаг</div>
+  <div class="sysarrow">⊃</div>
+  <div class="sysblock"><strong>Уровень 2: PP = 8</strong>конвейер из 8 стадий,<br>по 10 слоёв каждая</div>
+  <div class="sysarrow">⊃</div>
+  <div class="syshighlight"><strong>Уровень 3: TP = 8</strong>внутри узла, NVLink,<br>каждый слой на 8 карт</div>
+</div>
+<div class="sysnote"><strong>Как читать:</strong> карта с координатами $(dp, pp, tp) = (3, 5, 2)$ хранит: третью реплику данных, слои 50–59, и вторую восьмую часть каждой матрицы этих слоёв.<br><br>
+<strong>Три группы коммуникации, каждая со своим темпом:</strong><br>
+• <strong>TP-группа</strong> (8 карт внутри узла) — all-reduce дважды на каждый из 10 своих слоёв, на каждом микробатче. Самый интенсивный трафик, но по NVLink.<br>
+• <strong>PP-группа</strong> (8 карт, по одной из каждого узла) — передача активаций между соседними стадиями. Тензор небольшой, но по медленной сети.<br>
+• <strong>DP-группа</strong> (8 карт с одинаковыми $(pp, tp)$) — all-reduce градиентов раз в шаг, большой объём, перекрывается с вычислениями.<br><br>
+<strong>Важно:</strong> эти группы <em>ортогональны</em> — каждая карта одновременно состоит в трёх разных коллективах. NCCL создаёт три отдельных коммуникатора.</div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Порядок подбора конфигурации на практике.</strong> ① Начни с <strong>TP = число карт в узле</strong> (8), если модель не влезает иначе — это самый дешёвый по сети вариант. ② Добавляй <strong>PP</strong>, пока состояния не уместятся, следя за $m \geq 4\,PP$. ③ Всё оставшееся отдай <strong>DP</strong>. ④ Включи ZeRO-1 <em>поверх</em> DP — он бесплатен по трафику и шардирует состояния оптимизатора между DP-репликами. ⑤ Если активации всё ещё не влезают — activation checkpointing, потом sequence parallel.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Частая ошибка: слишком большой TP.</strong> Соблазн поставить $TP=16$ или 32, растянув его между узлами. Результат — обмен по InfiniBand 160 раз за forward вместо NVLink, и производительность падает в разы. TP <em>никогда</em> не должен пересекать границу узла. Если модель не влезает при $TP=8$, добавляй PP, а не увеличивай TP.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Scaling laws: сколько данных нужно на параметр <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как решают, какую модель обучать при заданном бюджете</div>
+
+<div class="fbox pk">
+<div class="flabel">📐 Степенные законы качества</div>
+$$L(N, D) = E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}}$$
+<p class="fnote">$N$ — параметры, $D$ — токены обучения, $E$ — неустранимая энтропия языка. Hoffmann et al. (2022): $\alpha \approx 0.34$, $\beta \approx 0.28$ — <strong>показатели почти равны</strong>, и это ключевой факт.</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Compute-оптимальное соотношение (Chinchilla)</div>
+<p>При фиксированном бюджете $C \approx 6ND$ FLOPs минимум $L$ достигается при:</p>
+$$N_{\text{opt}} \propto C^{0.5}, \qquad D_{\text{opt}} \propto C^{0.5} \qquad\Longrightarrow\qquad \boxed{D \approx 20\,N}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что изменил Chinchilla</div>
+<p>Kaplan et al. (2020) предложили увеличивать преимущественно <em>размер модели</em>, оставляя данные почти неизменными. По этому рецепту обучали GPT-3 (175B параметров, 300B токенов — всего 1.7 токена на параметр).</p>
+<p>Hoffmann et al. (2022) переделали эксперимент аккуратнее — с правильно настроенным расписанием learning rate для каждого размера — и получили другой ответ: <strong>параметры и данные надо масштабировать одинаково</strong>. Оптимум примерно 20 токенов на параметр.</p>
+<p><strong>Демонстрация:</strong> Chinchilla (70B параметров, 1.4T токенов) обошла Gopher (280B, 300B токенов) при <em>том же бюджете вычислений</em>. Модель <strong>вчетверо меньше</strong>, но обучена на данных в 4.7 раза больше — и лучше.</p>
+<p>Это переопределило индустрию: вместо гонки за числом параметров начали гонку за качеством и объёмом данных.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Chinchilla-оптимум: одинаковый бюджет, разные соотношения N и D</div>
+<div class="chsub">При фиксированном C минимум loss достигается около D ≈ 20N</div>
+<div style="position:relative;height:310px;"><canvas id="c_chin"></canvas></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Расчёт бюджета обучения — то, что спрашивают на System Design</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Формулы для запоминания:</strong> инференс $\approx 2N$ FLOPs на токен, обучение $\approx 6N$ (forward $2N$ + backward $4N$).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Модель 7B по Chinchilla:</strong> $D = 20\times7\times10^9 = 1.4\times10^{11}$ токенов.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Бюджет:</strong> $C = 6ND = 6\times7\times10^9\times1.4\times10^{11} = 5.9\times10^{21}$ FLOPs.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Время:</strong> H100 даёт ~$10^{15}$ FLOPS в bf16 пиково, реально с MFU 40% — $4\times10^{14}$. Одна карта: $5.9\times10^{21}/4\times10^{14} = 1.5\times10^{7}$ с ≈ <strong>170 суток</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>На 256 GPU:</strong> $170/256 \approx \mathbf{16\ часов}$ при идеальном масштабировании; реально 20–24 часа.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Проверь себя:</strong> модель 70B по тому же расчёту потребует $6\times70\times10^9\times1.4\times10^{12} = 5.9\times10^{23}$ FLOPs — в 100 раз больше, то есть примерно 2 месяца на 1024 GPU.</div></div>
+</div>
+
+<div class="fbox sl">
+<div class="flabel">📐 MFU — Model FLOPs Utilization</div>
+$$\text{MFU} = \frac{6N \cdot \text{токенов/сек}}{\text{пиковая производительность кластера}}$$
+<p class="fnote">Главная метрика эффективности обучения. Хорошее значение 35–50%, отличное — выше 50%. Ниже 25% означает, что где-то серьёзная потеря.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: куда уходит MFU</div>
+<p>MFU показывает, какую долю теоретической мощности железа ты реально используешь. 100% недостижимы никогда. Основные потери:</p>
+<p style="margin-left:14px">• <strong>Непокрытый обмен</strong> — карты ждут сеть (5–15%);<br>
+• <strong>Пузырь конвейера</strong> — при плохой настройке до 40%;<br>
+• <strong>Activation checkpointing</strong> — пересчёт forward (~30% от базы);<br>
+• <strong>Операции, не использующие тензорные ядра</strong> — нормализации, softmax, поэлементные (5–10%);<br>
+• <strong>Загрузка данных</strong> — если dataloader не успевает.</p>
+<p><strong>MFU — первое, что надо померить</strong> при жалобах на медленное обучение. Она сразу отделяет «медленно, потому что модель большая» от «медленно, потому что конфигурация плохая».</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Chinchilla-оптимум оптимизирует <em>обучение</em>, а не эксплуатацию.</strong> Если модель будет обслуживать миллиарды запросов, выгоднее обучить <strong>меньшую модель на большем объёме данных</strong>, чем оптимально по Chinchilla — она обойдётся дороже в обучении, но дешевле в инференсе, и это окупится. Именно поэтому Llama-2 7B обучена на 2T токенов (286 токенов на параметр против 20 по Chinchilla) — команда сознательно «переобучила» модель ради дешёвого инференса. Правильная постановка — минимизировать <em>суммарную</em> стоимость обучения плюс инференса за жизненный цикл.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. Отказоустойчивость: когда прогон длится месяц <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">На тысяче карт что-нибудь ломается каждые несколько часов</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Вероятность сбоя за время прогона</div>
+$$P(\text{хотя бы один сбой}) = 1 - e^{-\lambda P T}$$
+<p class="fnote">$\lambda$ — интенсивность отказов одной GPU (примерно $1$ на $10^5$ GPU-часов), $P$ — число карт, $T$ — длительность.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько часто будет падать прогон на 1024 GPU</div>
+<div class="numex-step"><span class="nb">1</span><div>$\lambda = 10^{-5}$ отказов на GPU-час, $P = 1024$, прогон $T = 720$ часов (месяц).</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Ожидаемое число сбоев: $\lambda P T = 10^{-5}\times1024\times720 = \mathbf{7.4}$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>Средний интервал между сбоями: $720/7.4 \approx \mathbf{97\ часов}$ — примерно раз в четыре дня.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div>При 8192 GPU: $\lambda P T = 59$ сбоев за месяц — <strong>каждые 12 часов</strong>. Публичные отчёты о крупных прогонах указывают ещё более частые сбои с учётом сети, дисков и софта.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> отказоустойчивость на таком масштабе — не «хорошая практика», а <em>обязательное условие завершения прогона</em>. Без неё месячное обучение просто никогда не досчитается.</div></div>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Оптимальный интервал чекпоинтов</div>
+$$T_{\text{ckpt}}^{*} = \sqrt{\frac{2\,T_{\text{save}}}{\lambda P}}$$
+<p class="fnote">Формула Янга: балансирует потерю времени на сохранение против потери работы при сбое. Классический результат из HPC.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Слишком частые чекпоинты — тратим время на запись. Слишком редкие — при сбое теряем много работы. Оптимум там, где эти потери сравниваются.</p>
+<p><strong>Пример:</strong> сохранение занимает 3 минуты, сбои каждые 97 часов. $T^* = \sqrt{2\times0.05/(1/97)} = \sqrt{9.7} \approx 3.1$ часа. То есть чекпоинт примерно каждые три часа.</p>
+<p>Практически берут круглые значения — раз в час или раз в 2000 шагов, — потому что чекпоинты нужны ещё и для оценки промежуточного качества и для отката при расхождении лосса.</p>
+</div>
+
+<h3>Что обязано быть в чекпоинте</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Компонент</th><th>Что будет без него</th></tr></thead>
+<tbody>
+<tr><td>Веса модели</td><td>Очевидно — обучение с нуля</td></tr>
+<tr class="trh"><td><b>Состояния оптимизатора</b> ($m$, $v$)</td><td><strong>Adam заново «разогревает» моменты</strong> — заметный провал качества на первых сотнях шагов после рестарта</td></tr>
+<tr><td>Состояние планировщика lr</td><td>Расписание сбросится, модель окажется на неверном lr</td></tr>
+<tr><td>Номер шага</td><td>Планировщик и логирование рассинхронизируются</td></tr>
+<tr><td>Состояние GradScaler</td><td>Скейлер начнёт подбирать $S$ заново, несколько шагов пропадут</td></tr>
+<tr><td><b>Позиция в данных</b></td><td>Часть данных увидится дважды, часть не увидится вовсе</td></tr>
+<tr><td>Состояния RNG</td><td>Потеря воспроизводимости; dropout и аугментации пойдут иначе</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка при рестарте — потеря позиции в данных.</strong> Наивная реализация начинает эпоху заново, и модель повторно видит первые батчи. При частых сбоях это приводит к тому, что начало датасета просматривается в разы чаще остального — фактически смещённая выборка. Правильно: сохранять индекс/оффсет итератора данных и уметь перематывать. В современных фреймворках это делает <code>StatefulDataLoader</code>.</div></div>
+
+<h3>Приёмы, снижающие цену сбоя</h3>
+<div class="grid3">
+<div class="card gr"><h5>Асинхронное сохранение</h5><p>Копируем состояние в CPU-память, дальше пишем на диск в фоне. Обучение продолжается — простой сокращается с минут до секунд.</p></div>
+<div class="card gr"><h5>Elastic training</h5><p><code>torchrun --nnodes=8:16</code> — прогон продолжается при потере узла, просто на меньшем числе карт. Требует, чтобы конфигурация параллелизма это допускала.</p></div>
+<div class="card gr"><h5>Проверка здоровья узлов</h5><p>Периодический тест all-reduce между всеми картами. «Тихо деградировавшая» карта (замедлившаяся, но не упавшая) тормозит весь кластер и почти не диагностируется иначе.</p></div>
+<div class="card am"><h5>Детекция расхождения</h5><p>Автоматический откат к предыдущему чекпоинту при скачке loss выше порога. Без этого один плохой батч может испортить недели работы.</p></div>
+<div class="card am"><h5>Спот-инстансы</h5><p>Дешевле в 2–3 раза, но прерываются. Оправданы только при отработанном механизме чекпоинтов и elastic-запуске.</p></div>
+<div class="card am"><h5>Шардированные чекпоинты</h5><p>Каждая карта пишет свою часть параллельно — на порядок быстрее, чем сборка полного state_dict на ранге 0.</p></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Тихая деградация — самый коварный тип сбоя.</strong> Карта не падает, но начинает работать на 30% медленнее из-за троттлинга, ошибок ECC или проблем с NVLink. Поскольку все коллективы синхронны, <strong>весь кластер из 1024 карт замедляется до скорости этой одной</strong>. Диагностируется только регулярным бенчмарком: периодически замеряй время шага по рангам и алертируй на выбросы. В отчётах о крупных прогонах это упоминается как одна из основных причин потери производительности.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Подводные камни</div>
+<div class="sdesc">Ошибки, которые не падают, а тихо портят обучение или скорость</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Клиппинг до all-reduce</h5><p>Каждая карта обрезает по своей локальной норме — результат перестаёт совпадать с однокарточным обучением. Правильно: сначала синхронизация градиентов, потом клиппинг по глобальной норме.</p></div>
+<div class="card rd"><h5>Забытый no_sync() при accumulation</h5><p>All-reduce выполняется $k$ раз вместо одного. Результат идентичен, скорость падает в разы. Чистая потеря, которую легко не заметить.</p></div>
+<div class="card rd"><h5>Отсутствие sampler.set_epoch()</h5><p>DistributedSampler перемешивает одинаково каждую эпоху — карты видят те же данные в том же порядке. Обучение хуже, причину ищут в модели.</p></div>
+<div class="card rd"><h5>TP между узлами</h5><p>160 обменов за forward по InfiniBand вместо NVLink. Производительность падает в разы. TP никогда не должен пересекать границу узла.</p></div>
+<div class="card rd"><h5>Мало микробатчей при PP</h5><p>$m < 4p$ → пузырь больше 20%. Формула $\frac{p-1}{m+p-1}$ должна проверяться перед запуском.</p></div>
+<div class="card rd"><h5>FSDP обёрнут целиком</h5><p>All-gather собирает всю модель разом — экономии памяти нет. Нужна поблочная обёртка через auto_wrap_policy.</p></div>
+<div class="card rd"><h5>Состояния оптимизатора не в чекпоинте</h5><p>Adam заново разогревает моменты, провал качества после каждого рестарта. При частых сбоях — постоянная деградация.</p></div>
+<div class="card rd"><h5>Метрики только с ранга 0</h5><p>Loss посчитан по $1/P$ данных. Выглядит правдоподобно, но шумит и смещён. Нужен all-reduce перед логированием.</p></div>
+<div class="card rd"><h5>Разные версии библиотек на узлах</h5><p>NCCL или PyTorch отличаются на одном узле — обучение либо падает с невнятной ошибкой, либо работает некорректно.</p></div>
+<div class="card rd"><h5>Переменная длина последовательности</h5><p>Фрагментация памяти, перекомпиляция при torch.compile, нестабильное время шага. Решение — паддинг до кратных размеров или упаковка.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Чек-лист перед запуском длинного прогона.</strong> ① Посчитай память аналитически и сверь с реальным потреблением после 10 шагов. ② Измерь MFU — если ниже 30%, ищи проблему до старта, а не после недели обучения. ③ Проверь, что чекпоинт сохраняется и <em>успешно восстанавливается</em> — сделай пробный рестарт. ④ Убедись, что loss на первых шагах близок к $\ln(\text{размер словаря})$ — если сильно ниже, есть утечка через маску (тема 8.4). ⑤ Прогони 100 шагов на 1 карте и на $P$ картах с одинаковым эффективным батчем и seed — кривые loss должны совпадать в пределах шума.</div></div>
+</div>
+
+<!-- ================= S16 ================= -->
+<div class="sec" id="s16">
+<div class="stitle">16. System Design: обучение как инженерная система</div>
+<div class="sdesc">Что нужно построить вокруг самого обучения</div>
+
+<div class="sysbox">
+<h4>🏗 Полная система обучения большой модели</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Данные</strong>объектное хранилище,<br>предтокенизировано<br>в шарды</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Dataloader</strong>стриминг, префетч,<br>позиция в чекпоинте</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Кластер</strong>3D-параллелизм<br>TP×PP×DP</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Чекпоинты</strong>асинхронно,<br>шардированно</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Мониторинг</strong>loss, grad_norm,<br>MFU, время шага<br>по рангам</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Автоматика</strong>откат при spike,<br>рестарт при сбое</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Оценка</strong>периодические<br>бенчмарки на<br>отдельных картах</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Реестр</strong>чекпоинт + конфиг<br>+ версия данных</div>
+</div>
+<div class="sysnote"><strong>Что мониторить обязательно, и почему именно это:</strong><br>
+• <strong>loss и grad_norm</strong> — резкий рост grad_norm предшествует расхождению за десятки шагов, это ранний сигнал;<br>
+• <strong>MFU</strong> — падение означает проблему с железом или сетью, а не с моделью;<br>
+• <strong>время шага по каждому рангу</strong> — выброс на одном ранге указывает на тихо деградировавшую карту;<br>
+• <strong>доля пропущенных шагов</strong> (GradScaler) — рост означает численную нестабильность;<br>
+• <strong>температура и throttling GPU</strong> — физическая причина замедления;<br>
+• <strong>позиция в данных</strong> — проверка, что после рестартов не образовалось дублей или пропусков.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Обобщённая практика крупных прогонов</div>
+<h4>Что публично известно про обучение моделей уровня 70B+</h4>
+<ul>
+<li><strong>Конфигурация:</strong> 3D-параллелизм с $TP=8$ внутри узла, $PP$ от 4 до 16, остальное в DP; поверх DP — ZeRO-1.</li>
+<li><strong>Точность:</strong> bf16 для вычислений, fp32 для мастер-весов, состояний оптимизатора и всех нормализаций.</li>
+<li><strong>Оптимизатор:</strong> AdamW с $\beta_2 = 0.95$, gradient clipping 1.0, warmup 1–2% шагов, cosine до 10% максимума.</li>
+<li><strong>Стабильность:</strong> loss spikes — <em>нормальное явление</em>, а не аномалия. Стандартная реакция — откат к чекпоинту и пропуск проблемного участка данных.</li>
+<li><strong>Данные:</strong> дедупликация, фильтрация качества и правильные пропорции доменов дают больший прирост, чем архитектурные изменения.</li>
+<li><strong>MFU:</strong> 35–50% считается хорошим результатом; каждый процент — это дни машинного времени.</li>
+</ul>
+<p><strong>Общий вывод:</strong> обучение больших моделей — <em>инженерная</em>, а не исследовательская задача. Архитектура почти стандартизована; различия между командами — в качестве данных, стабильности инфраструктуры и умении не терять время на сбои.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Сквозная связь</div>
+<h4>Как темы блока 8 складываются в одну картину</h4>
+<ul>
+<li><strong>8.1 Backprop</strong> объяснил, почему нужны активации → отсюда checkpointing и вся проблема памяти.</li>
+<li><strong>8.1 же</strong> показал, что градиенты готовы по частям от выхода ко входу → отсюда bucketing и overlap в DDP.</li>
+<li><strong>8.2 Оптимизаторы</strong> объяснили, почему Adam хранит два тензора → отсюда 16 байт на параметр и весь ZeRO.</li>
+<li><strong>8.3 Нормализация</strong> показала, почему BatchNorm плох в распределённом обучении → отсюда LayerNorm и RMSNorm в трансформерах.</li>
+<li><strong>8.4 Attention</strong> дал независимость голов → отсюда тензорный параллелизм режется именно по головам.</li>
+<li><strong>8.4 же</strong> дал online softmax → отсюда Ring Attention и контекстный параллелизм.</li>
+</ul>
+<p>Ни одно решение в этой теме не появилось само по себе — все они выводятся из механики, разобранной в предыдущих темах. <strong>Это и есть смысл фундамента:</strong> он позволяет не запоминать список приёмов, а выводить их.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">17. Вопросы и ответы</div>
+<div class="sdesc">30 вопросов — от арифметики памяти до конфигурации кластера</div>
+
+<div class="qah">🟢 База: память и точность</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Почему обучение требует в 8 раз больше памяти, чем инференс?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>Инференс хранит только веса — 2 байта на параметр в bf16.</p><p>Обучение хранит <strong>четыре копии информации о каждом параметре</strong>: сам вес (2), градиент (2), первый момент Adam (4, fp32), второй момент Adam (4, fp32), плюс fp32-мастер-веса (4). Итого <strong>16 байт на параметр</strong>.</p><p>Для 7B: инференс 14 ГБ, обучение 112 ГБ состояний — <em>до</em> активаций. Плюс активации, которые при батче 8 и длине 2048 добавляют ещё около 60 ГБ.</p><p>Эти два числа — 2 и 16 байт на параметр — стоит помнить наизусть, они дают быструю оценку любого проекта.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Чем bf16 отличается от fp16 и почему обучение перешло на bf16?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>Оба занимают 2 байта, но делят биты по-разному. fp16: 5 бит экспоненты, 10 мантиссы. bf16: <strong>8 бит экспоненты</strong> (как у fp32), 7 мантиссы.</p><p>Экспонента задаёт <strong>диапазон</strong>, мантисса — <strong>точность</strong>. bf16 жертвует точностью ради диапазона.</p><p><strong>Почему это правильный размен для обучения:</strong> градиенты имеют порядок $10^{-6}$–$10^{-8}$. В fp16 минимальное нормальное число $6\times10^{-5}$ — большая часть градиентов <em>обнуляется</em>, обучение молча останавливается. В bf16 диапазон как у fp32, проблемы нет.</p><p>А потеря точности мантиссы почти не вредит: градиентный спуск и так шумный. Итог — bf16 не требует loss scaling, что убирает целый класс проблем.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Зачем нужны fp32-мастер-веса, если вычисления идут в bf16?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Из-за <strong>потери малых обновлений при округлении</strong>.</p><p>Типичный шаг оптимизатора $\Delta\theta\approx10^{-7}$, вес $\theta\approx0.01$. В bf16 шаг сетки около $10^{-4}$ — обновление в 600 раз меньше шага сетки и округляется <strong>в ноль</strong>. Вес не сдвинется никогда.</p><p>В fp32 (7 значащих цифр) $0.01 + 10^{-7}$ записывается корректно. Обновление крошечное, но <em>накапливается</em> за тысячи шагов.</p><p>Схема: вычисления в bf16 (быстро), накопление в fp32 (точно). Мастер-веса — «бухгалтерская книга» с точным учётом, bf16-копия — рабочий инструмент.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Как работает loss scaling и почему для bf16 он не нужен?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Умножаем loss на $S\approx2^{16}$ перед backward. По линейности все градиенты умножаются на $S$: $10^{-7}\times65536 = 6.5\times10^{-3}$ — попадает в представимый диапазон fp16. Перед шагом делим обратно.</p><p><strong>Динамический скейлер</strong> подбирает $S$: наращивает после успешных шагов, делит пополам и пропускает шаг при появлении <code>inf</code>. Оптимальное $S$ меняется по ходу обучения.</p><p>Для bf16 не нужен, потому что его диапазон совпадает с fp32 — градиенты не обнуляются снизу.</p><p><strong>Критично:</strong> <code>clip_grad_norm_</code> строго после <code>scaler.unscale_()</code>. Иначе обрежешь отмасштабированные градиенты по порогу 1.0, что при $S=2^{16}$ эквивалентно клиппингу настоящих по $1.5\times10^{-5}$ — фактическому обнулению обучения.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Что обязано остаться в fp32 при mixed precision?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>① Мастер-веса</strong> — иначе теряются малые обновления.</p><p><strong>② Состояния Adam</strong> — $v$ хранит квадраты градиентов, то есть $10^{-14}$; в bf16 это представимо, но с катастрофической потерей точности.</p><p><strong>③ Нормализации</strong> — суммирование квадратов по длинному вектору переполняет fp16 (тема 8.3).</p><p><strong>④ Softmax и вычисление loss</strong> — экспоненты требуют диапазона.</p><p><strong>⑤ Аккумуляторы матричных умножений</strong> — тензорные ядра сами накапливают в fp32 на уровне железа.</p><p>PyTorch <code>autocast</code> ведёт список операций, которые не переводит в пониженную точность. При написании своих слоёв это надо контролировать вручную.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Эквивалентен ли gradient accumulation большому батчу?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Математически <strong>да</strong> — при усреднении лосса градиент по батчу $N$ равен среднему градиентов по $k$ микробатчам.</p><p><strong>Три исключения:</strong></p><p>① <strong>BatchNorm</strong> считает статистику по микробатчу, а не по эффективному батчу. При микробатче 8 и накоплении 16 BN ведёт себя как при батче 8. Единственное лечение — SyncBatchNorm или отказ от BatchNorm.</p><p>② <strong>Забытое деление на <code>accum_steps</code></strong> — эффективный lr вырастет в $k$ раз.</p><p>③ <strong>Отсутствие <code>no_sync()</code> в DDP</strong> — all-reduce выполнится $k$ раз вместо одного, обучение замедлится в разы при идентичном результате.</p><p>И главное: accumulation <em>не даёт ускорения</em>. Те же $k$ проходов, просто отложенный шаг оптимизатора.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Как работает activation checkpointing и когда он выгоден даже по скорости?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Сохраняем активации только на границах сегментов, внутри сегмента пересчитываем forward заново во время backward. Память по активациям падает с $O(L)$ до $O(\sqrt L)$, а при full checkpointing на трансформере — до 14 раз.</p><p>Цена: примерно +33% времени, потому что было $1F+2B$, стало $2F+2B$.</p><p><strong>Когда выгоден по скорости:</strong> если без него влезает батч 4, а с ним — батч 32, GPU утилизируется в разы лучше. Считать надо <strong>токены в секунду</strong>, а не время на шаг.</p><p><strong>Selective checkpointing</strong> сохраняет выходы дорогих матричных умножений и пересчитывает только дешёвые поэлементные операции — 80% экономии памяти при накладных расходах 5–10% вместо 33%.</p></div></details>
+
+<div class="qah">🔵 Средний: коллективы и DDP</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Почему объём ring all-reduce почти не зависит от числа GPU?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Тензор делится на $P$ кусков, работа идёт в две фазы по $P-1$ шагов (reduce-scatter, затем all-gather). На каждом шаге каждая карта передаёт ровно $S/P$ байт.</p><p>Итого $2(P-1)\times S/P = 2\frac{P-1}{P}S$. При $P=8$ это $1.75S$, при $P=1000$ — $\approx2S$. <strong>Плато.</strong></p><p>С ростом $P$ шагов больше, но каждый мельче — суммарный объём почти постоянен. Именно это свойство делает распределённое обучение масштабируемым.</p><p><strong>Оговорка:</strong> ring оптимален по объёму, но требует $2(P-1)$ последовательных шагов. При мелких тензорах накапливается latency, поэтому NCCL для них использует древовидные алгоритмы с $O(\log P)$ шагов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Как связаны all-reduce, reduce-scatter и all-gather?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>All-Reduce = Reduce-Scatter + All-Gather</strong>, и стоит ровно вдвое дороже каждой из них.</p><p>Reduce-scatter: суммирование + каждый получает свой кусок суммы ($S$ передачи). All-gather: каждый вносит кусок, все получают целое ($S$).</p><p><strong>Практическое значение:</strong> на этом построен ZeRO. DDP делает all-reduce градиентов ($2S$) и каждая карта обновляет все веса. ZeRO-2 делает reduce-scatter ($S$), каждая карта обновляет свой кусок, потом all-gather ($S$) — <strong>итого те же $2S$</strong>, но памяти в $P$ раз меньше.</p><p>Экономия памяти достаётся бесплатно по трафику — именно поэтому ZeRO-1 и ZeRO-2 стоит включать почти всегда.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Почему DDP не ждёт окончания backward для синхронизации?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Backward идёт <em>от выхода ко входу</em> (тема 8.1), значит градиенты становятся готовы <strong>по частям, в предсказуемом порядке</strong>.</p><p>DDP группирует параметры в bucket'ы (по умолчанию 25 МБ) и запускает all-reduce для bucket'а сразу, как только его градиенты посчитаны. Обмен по верхним слоям идёт <em>параллельно</em> с вычислением градиентов нижних.</p><p><strong>Следствия:</strong> ① размер bucket — компромисс между перекрытием и накладными расходами; ② <code>find_unused_parameters=True</code> резко замедляет, потому что заставляет обойти весь граф и ломает перекрытие; ③ порядок регистрации параметров важен — DDP предполагает обратный к forward порядок.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Когда DDP перестаёт эффективно масштабироваться?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Когда время обмена перестаёт скрываться за временем вычислений.</p><p><strong>Пример:</strong> модель 1.5B, 8 GPU, InfiniBand 25 ГБ/с. Обмен: $2\times\frac78\times3\text{ГБ} = 5.25$ ГБ → 0.21 с. Вычисления при батче 8×2048 токенов: ~0.37 с. Обмен короче → скрывается полностью, эффективность ~100%.</p><p><strong>Уменьшим батч в 4 раза:</strong> вычисления 0.09 с, обмен по-прежнему 0.21 с. Теперь обмен <em>длиннее</em> вычислений → эффективность падает до ~30%.</p><p><strong>Правило:</strong> чем больше локальный батч на карту, тем лучше скрывается обмен. Слишком маленький батч делает DDP неэффективным независимо от качества сети.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Объясни стадии ZeRO и что шардируется на каждой.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>ZeRO-1:</strong> шардируются состояния оптимизатора ($m$, $v$, мастер-веса). Память $4N + 12N/P$. Трафик <strong>тот же $2S$</strong>.</p><p><strong>ZeRO-2:</strong> + градиенты. Память $2N + 14N/P$. Трафик тот же $2S$.</p><p><strong>ZeRO-3 (= FSDP):</strong> + сами веса. Память $16N/P$. Трафик <strong>$3S$</strong> — нужен дополнительный all-gather весов перед каждым слоем.</p><p>Для 7B при $P=8$: DDP 112 ГБ → ZeRO-1 45 ГБ → ZeRO-2 28 ГБ → ZeRO-3 14 ГБ.</p><p><strong>Практический вывод:</strong> ZeRO-1 даёт большую часть выигрыша бесплатно по трафику — включать почти всегда. ZeRO-3 брать, когда иначе не влезает.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Как работает forward в ZeRO-3, если веса шардированы?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Каждая карта хранит только $1/P$ параметров каждого слоя — полного слоя нет ни у кого.</p><p><strong>Forward, слой $i$:</strong> all-gather весов слоя $i$ → у всех временно есть полный слой → считаем → <strong>немедленно освобождаем</strong> всё, кроме своего шарда. И так по всем слоям.</p><p><strong>Backward, слой $i$:</strong> снова all-gather (веса были освобождены!) → считаем градиенты → reduce-scatter градиентов → каждая карта получает градиент своего шарда → освобождаем.</p><p>В любой момент в памяти — $16N/P$ постоянно плюс <em>один полный слой</em> временно. Отсюда и берётся линейная экономия по числу карт.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Что такое HYBRID_SHARD и когда он нужен?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>FULL_SHARD растягивает шардирование на все карты кластера, включая межузловые связи, которые в 10–30 раз медленнее NVLink. При многих узлах это убивает производительность.</p><p><strong>HYBRID_SHARD</strong> шардирует состояния <em>внутри узла</em> (по быстрому NVLink), а между узлами делает обычную репликацию с all-reduce.</p><p>Память чуть больше ($16N/P_{\text{узел}}$ вместо $16N/P_{\text{всего}}$), но трафик по медленной сети резко падает.</p><p><strong>Правило:</strong> для кластеров от 4 узлов hybrid обычно правильный выбор. Это тот же принцип, что и «TP только внутри узла» — размещать частый обмен под быстрой связью.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Почему важна гранулярность обёртки FSDP?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Если обернуть модель <strong>целиком</strong> одним FSDP-модулем, all-gather соберёт всю модель разом — экономии памяти не будет вообще.</p><p>Если обернуть <strong>каждый Linear</strong> — накладные расходы на сотни мелких all-gather съедят выигрыш и замедлят обучение.</p><p><strong>Правильная единица — трансформерный блок</strong>, что делает <code>transformer_auto_wrap_policy</code> с указанием класса блока.</p><p>Это одна из самых частых ошибок при первом внедрении FSDP: конфиг выглядит правильно, память не экономится, причину ищут долго.</p></div></details>
+
+<div class="qah">🟣 Продвинутый: параллелизм и масштаб</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Как устроен тензорный параллелизм в FFN и почему нужен только один all-reduce?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Трюк Megatron-LM: <strong>первую матрицу режем по столбцам, вторую по строкам</strong>.</p><p>$W_1$ по столбцам → каждая карта получает свою часть скрытого слоя. GELU применяется <em>поэлементно</em> — обмен не нужен, каждая карта работает со своими нейронами.</p><p>$W_2$ по строкам → каждая карта считает частичную сумму выхода. Один all-reduce в конце складывает части.</p><p><strong>Итого один обмен на весь FFN вместо двух.</strong> Тот же приём для attention: $W_Q,W_K,W_V$ по столбцам (каждая карта берёт свои головы целиком), $W_O$ по строкам.</p><p>Multi-head attention особенно удобен: <strong>головы независимы по построению</strong>, их можно раздать по картам без обмена внутри внимания.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Почему TP нельзя растягивать между узлами?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>TP делает <strong>2 all-reduce на каждый блок</strong>. Для модели из 80 блоков это 160 коллективов за forward и столько же за backward.</p><p>Внутри узла связь NVLink — 600–900 ГБ/с. Между узлами InfiniBand — в 10–30 раз медленнее. 320 обменов по медленной сети за шаг убивают производительность в разы.</p><p><strong>Жёсткое правило:</strong> $TP \leq$ число карт в узле, обычно 8. Если модель не влезает при $TP=8$ — добавляй pipeline parallelism, а не увеличивай TP.</p><p>Общий принцип размещения: <em>чем чаще ось требует обмена, тем быстрее должна быть связь под ней</em>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Какое неочевидное преимущество даёт TP по сравнению с ZeRO?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>TP экономит активации, а не только веса.</strong></p><p>При тензорном параллелизме каждая карта хранит активации только для своей части скрытого слоя. При $TP=8$ память под активации внутри FFN и attention падает <em>в 8 раз</em>.</p><p>ZeRO так не умеет: он шардирует состояния, но во время forward полный слой собирается all-gather'ом, и активации считаются целиком.</p><p><strong>Практическое следствие:</strong> для очень длинного контекста, где активации доминируют, TP помогает там, где ZeRO уже не справляется. Это одна из причин, почему в реальных конфигурациях используют обе схемы одновременно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Что такое пузырь конвейера и как его посчитать?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Пузырь — время, когда часть карт простаивает: в начале ждут, пока данные до них дойдут, в конце — пока backward вернётся.</p><p><strong>Формула:</strong> $\text{bubble} = \frac{p-1}{m+p-1}$, где $p$ — число стадий, $m$ — число микробатчей.</p><p>При $p=8$, $m=8$: пузырь $7/15 = 47\%$ — почти половина времени простой. При $m=32$: $7/39 = 18\%$. При $m=64$: $7/71 = 9.9\%$.</p><p><strong>Правило:</strong> $m \geq 4p$, лучше $m \geq 8p$. Это надо проверять <em>перед</em> запуском — обнаружить 40% простоя через неделю обучения обидно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Чем 1F1B лучше GPipe, если пузырь одинаковый?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Пузырь действительно одинаковый — $\frac{p-1}{m+p-1}$. Разница в <strong>памяти под активации</strong>.</p><p><strong>GPipe</strong> сначала прогоняет forward всех $m$ микробатчей, потом backward всех — значит активации всех $m$ микробатчей лежат в памяти одновременно: $O(m)$.</p><p><strong>1F1B</strong> запускает backward как можно раньше: после установившегося режима на каждый forward приходится один backward. В памяти только $O(p)$ микробатчей.</p><p>При $m=64$ и $p=8$ это разница в 8 раз по памяти при одинаковой скорости. Поэтому 1F1B — стандарт, а GPipe остался в учебниках.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Что такое Ring Attention и как он связан с FlashAttention?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Ring Attention — это <strong>FlashAttention, растянутый на кластер</strong>.</p><p>FlashAttention решал задачу «посчитать softmax, не видя всю строку сразу» через online softmax: обрабатываем блоками и пересчитываем масштаб накопленного при появлении нового максимума.</p><p>Ring Attention берёт тот же механизм, но блоки лежат на <em>разных GPU</em>. Последовательность делится на $P$ блоков, блоки $K$, $V$ передаются по кольцу; за $P$ шагов каждая карта увидит все блоки и накопит своё внимание.</p><p>Обмен перекрывается с вычислениями. Контекст масштабируется <strong>линейно по числу карт</strong> — так и получают модели с контекстом в миллион токенов.</p><p><strong>Тонкость:</strong> causal-маска ломает балансировку (карта с первым блоком почти не работает). Решение — zigzag-раскладка, где каждой карте дают комбинацию из начала и конца последовательности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Как выбрать конфигурацию TP × PP × DP для 512 GPU и модели 70B?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Порядок рассуждения:</strong></p><p>① <strong>TP = 8</strong> — число карт в узле, максимум по NVLink. Веса каждого слоя делятся на 8, активации тоже.</p><p>② <strong>PP = 8</strong> — 80 слоёв на 8 стадий по 10. Состояния: $1120/8 = 140$ ГБ на группу, с учётом TP — по 17.5 ГБ на карту. Влезает в 80 ГБ.</p><p>③ <strong>DP = 512/(8×8) = 8</strong> — восемь реплик конвейера.</p><p>④ <strong>Микробатчи:</strong> $m \geq 4\times PP = 32$, берём 64 → пузырь $7/71 = 9.9\%$.</p><p>⑤ <strong>ZeRO-1 поверх DP</strong> — бесплатно по трафику, шардирует состояния между репликами.</p><p><strong>Проверка размещения:</strong> TP внутри узла (частый обмен, NVLink), PP между узлами (редкий обмен, малые тензоры), DP самая внешняя (один обмен за шаг, перекрывается).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>23. Что такое Chinchilla-оптимум и что он изменил?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>$L(N,D) = E + A/N^{\alpha} + B/D^{\beta}$ с $\alpha\approx0.34$, $\beta\approx0.28$ — <strong>показатели почти равны</strong>. Значит параметры и данные надо масштабировать одинаково: $D \approx 20N$.</p><p>Kaplan et al. (2020) считали, что растить нужно преимущественно модель. По этому рецепту обучили GPT-3: 175B параметров, 300B токенов — всего 1.7 токена на параметр.</p><p>Hoffmann et al. (2022) переделали эксперимент с правильным расписанием lr для каждого размера и получили другой ответ. <strong>Демонстрация:</strong> Chinchilla (70B, 1.4T токенов) обошла Gopher (280B, 300B токенов) при том же бюджете — модель вчетверо меньше, но данных в 4.7 раза больше.</p><p>Это переопределило индустрию: гонка за числом параметров сменилась гонкой за качеством и объёмом данных.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>24. Почему Llama-2 7B обучена на 2T токенов, если Chinchilla говорит про 140B?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Потому что <strong>Chinchilla-оптимум минимизирует стоимость обучения, а не эксплуатации</strong>.</p><p>Если модель будет обслуживать миллиарды запросов, инференс за жизненный цикл обойдётся дороже обучения. Тогда выгоднее обучить <em>меньшую</em> модель на <em>большем</em> объёме данных: дороже в обучении, но существенно дешевле в инференсе.</p><p>286 токенов на параметр вместо 20 — сознательное «переобучение» ради дешёвого сервинга.</p><p><strong>Правильная постановка:</strong> минимизировать суммарную стоимость обучения плюс инференса за ожидаемый жизненный цикл модели. Chinchilla — частный случай, когда инференсом пренебрегают.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>25. Посчитай бюджет обучения модели 7B по Chinchilla.<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Формулы:</strong> инференс $\approx 2N$ FLOPs на токен, обучение $\approx 6N$ (forward $2N$ + backward $4N$).</p><p><strong>Данные:</strong> $D = 20\times7\times10^9 = 1.4\times10^{11}$ токенов.</p><p><strong>Бюджет:</strong> $C = 6ND = 6\times7\times10^9\times1.4\times10^{11} = 5.9\times10^{21}$ FLOPs.</p><p><strong>Время:</strong> H100 с MFU 40% даёт $4\times10^{14}$ FLOPS. Одна карта: $1.5\times10^7$ с ≈ <strong>170 суток</strong>. На 256 GPU: ~16 часов идеально, реально 20–24.</p><p>Эту оценку стоит уметь делать за минуту — её спрашивают на System Design секциях.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>26. Что такое MFU и куда она утекает?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>$\text{MFU} = \frac{6N\cdot\text{токенов/сек}}{\text{пиковая производительность кластера}}$ — доля теоретической мощности, которую реально используешь.</p><p>Хорошо 35–50%, отлично выше 50%, ниже 25% — где-то серьёзная потеря.</p><p><strong>Основные утечки:</strong> непокрытый обмен (5–15%), пузырь конвейера (до 40% при плохой настройке), activation checkpointing (~30% от базы), операции без тензорных ядер — нормализации, softmax, поэлементные (5–10%), медленный dataloader.</p><p><strong>MFU — первое, что надо померить</strong> при жалобах на скорость: она сразу отделяет «медленно, потому что модель большая» от «медленно, потому что конфигурация плохая».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>27. Как часто будет падать прогон на 1024 GPU и как с этим жить?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>При $\lambda\approx10^{-5}$ отказов на GPU-час и $P=1024$: ожидаемое число сбоев за месяц $= 10^{-5}\times1024\times720 \approx 7.4$, то есть <strong>раз в четыре дня</strong>. При 8192 GPU — каждые 12 часов.</p><p><strong>Оптимальный интервал чекпоинтов:</strong> $T^* = \sqrt{2T_{\text{save}}/(\lambda P)}$. При сохранении за 3 минуты и сбоях раз в 97 часов — примерно каждые 3 часа.</p><p><strong>Приёмы:</strong> асинхронное сохранение (копируем в CPU, пишем в фоне — простой секунды вместо минут); шардированные чекпоинты; elastic training (<code>--nnodes=8:16</code>); автоматический откат при скачке loss; периодический health-check all-reduce между всеми картами.</p><p>Без всего этого месячный прогон просто никогда не досчитается.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>28. Что должно быть в чекпоинте кроме весов?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Состояния оптимизатора</strong> ($m$, $v$) — без них Adam заново разогревает моменты, и после каждого рестарта заметный провал качества на сотнях шагов.</p><p><strong>Состояние планировщика и номер шага</strong> — иначе расписание lr сбросится.</p><p><strong>Состояние GradScaler</strong> — скейлер начнёт подбирать $S$ заново.</p><p><strong>Позиция в данных</strong> — самая частая ошибка. Наивный рестарт начинает эпоху заново, и начало датасета просматривается в разы чаще остального. Нужен <code>StatefulDataLoader</code> или сохранение оффсета.</p><p><strong>Состояния RNG</strong> — для воспроизводимости dropout и аугментаций.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>29. Что такое тихая деградация узла и как её ловить?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Карта не падает, но работает на 30% медленнее — троттлинг, ошибки ECC, проблемы с NVLink.</p><p>Поскольку все коллективные операции <strong>синхронны</strong>, весь кластер из 1024 карт замедляется до скорости этой одной. При этом никаких ошибок в логах нет.</p><p><strong>Как ловить:</strong> периодически замерять время шага <em>по каждому рангу отдельно</em> и алертить на выбросы. Плюс регулярный health-check — тестовый all-reduce между всеми картами с проверкой времени.</p><p>В публичных отчётах о крупных прогонах тихая деградация упоминается как одна из основных причин потери производительности — более частая, чем явные падения.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>30. Какой чек-лист пройти перед запуском длинного прогона?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>① <strong>Посчитай память аналитически</strong> ($16N$ + активации) и сверь с реальным потреблением после 10 шагов. Расхождение означает, что ты чего-то не понимаешь в своей конфигурации.</p><p>② <strong>Измерь MFU.</strong> Ниже 30% — ищи проблему <em>до</em> старта, а не через неделю.</p><p>③ <strong>Проверь полный цикл чекпоинта:</strong> сохрани, останови, восстанови, убедись что loss продолжается без скачка. Именно восстановление ломается чаще, чем сохранение.</p><p>④ <strong>Проверь начальный loss:</strong> должен быть близок к $\ln(\text{размер словаря})$. Сильно ниже — утечка через маску (тема 8.4).</p><p>⑤ <strong>Сравни 1 карту и $P$ карт</strong> с одинаковым эффективным батчем и seed — кривые loss должны совпадать в пределах шума. Расхождение указывает на ошибку в синхронизации, клиппинге или семплере.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block8_04_attention.html" class="btn prev">← Attention</a>
+  <a href="block8_06_ssl.html" class="btn">Self-supervised learning →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Память при обучении 7B ---
+new Chart(document.getElementById('c_mem'), {
+  type:'bar',
+  data:{labels:['Веса bf16','Градиенты bf16','Мастер fp32','Adam m','Adam v','Активации'],
+    datasets:[{label:'ГБ',data:[14,14,28,28,28,60],
+      backgroundColor:['#0891b2','#22d3ee','#7c3aed','#a78bfa','#c4b5fd','#d97706'],borderRadius:6}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'ГБ'},max:66}},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{afterLabel:c=>c.dataIndex<5?'Состояния: 112 ГБ = 16 байт/параметр':'Зависит от батча, длины и checkpointing'}}}}
+});
+
+// --- Распределение градиентов и границы форматов ---
+(function(){
+  const xs=[]; for(let e=-12;e<=2;e+=0.25) xs.push(e);
+  const pdf = xs.map(e=>Math.exp(-Math.pow(e+6.5,2)/(2*2.0*2.0)));
+  new Chart(document.getElementById('c_grad'), {
+    type:'line',
+    data:{labels:xs.map(e=>'1e'+e.toFixed(0)),datasets:[
+      {label:'типичное распределение величин градиентов',data:pdf,
+       borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.14)',fill:true,pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'граница fp16 (1e-5) — левее всё обнуляется',
+       data:xs.map(e=>Math.abs(e+4.2)<0.2?1.05:null),borderColor:'#dc2626',pointRadius:7,pointStyle:'rectRot',borderWidth:0},
+      {label:'граница bf16 = fp32 (1e-38) — далеко за графиком',
+       data:xs.map(()=>null),borderColor:'#16a34a',pointRadius:0,borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'величина градиента (лог-шкала)'},ticks:{maxTicksLimit:10}},
+              y:{title:{display:true,text:'плотность'},min:0,max:1.15}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Стратегии экономии памяти ---
+new Chart(document.getElementById('c_ckpt'), {
+  type:'scatter',
+  data:{datasets:[
+    {label:'без checkpointing',data:[{x:100,y:100}],backgroundColor:'#dc2626',pointRadius:11},
+    {label:'селективный checkpointing',data:[{x:25,y:108}],backgroundColor:'#16a34a',pointRadius:13,pointStyle:'star'},
+    {label:'full checkpointing',data:[{x:7,y:133}],backgroundColor:'#0891b2',pointRadius:11},
+    {label:'full + CPU offload',data:[{x:2,y:310}],backgroundColor:'#7c3aed',pointRadius:11}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'память под активации, % от базовой'},min:0,max:110},
+            y:{title:{display:true,text:'время на шаг, % от базового'},min:90,max:330}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{label:c=>c.dataset.label+': память '+c.parsed.x+'%, время '+c.parsed.y+'%'}}}}
+});
+
+// --- Ring all-reduce vs наивный ---
+(function(){
+  const ps=[2,4,8,16,32,64,128,256,512];
+  const ring = ps.map(p=>2*(p-1)/p);
+  const naive= ps.map(p=>p-1);
+  new Chart(document.getElementById('c_ring'), {
+    type:'line',
+    data:{labels:ps,datasets:[
+      {label:'ring all-reduce — выходит на плато 2S',data:ring,borderColor:'#16a34a',pointRadius:4,borderWidth:3,tension:.2},
+      {label:'наивная схема через центральный узел',data:naive,borderColor:'#dc2626',pointRadius:4,borderWidth:2.8,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число GPU'}},
+              y:{type:'logarithmic',title:{display:true,text:'объём передачи на карту (× размер тензора S)'}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- ZeRO стадии ---
+new Chart(document.getElementById('c_zero'), {
+  type:'bar',
+  data:{labels:['DDP','ZeRO-1','ZeRO-2','ZeRO-3'],
+    datasets:[
+      {label:'память на карту, ГБ (модель 7B, P=8)',data:[112,45,28,14],
+       backgroundColor:['#dc2626','#d97706','#0891b2','#16a34a'],borderRadius:6,yAxisID:'y'},
+      {label:'трафик за шаг (× S)',data:[2,2,2,3],type:'line',
+       borderColor:'#7c3aed',pointRadius:6,borderWidth:3,tension:.2,yAxisID:'y1'}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'ГБ на карту'},max:120,position:'left'},
+            y1:{title:{display:true,text:'трафик, × S'},min:0,max:4,position:'right',grid:{drawOnChartArea:false}}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{afterBody:i=>i[0].dataIndex===1?'👍 ZeRO-1 — экономия 60% памяти БЕЗ роста трафика':''}}}}
+});
+
+// --- Пузырь конвейера ---
+(function(){
+  const ms=[]; for(let m=1;m<=128;m+=1) ms.push(m);
+  const f=p=>ms.map(m=>(p-1)/(m+p-1)*100);
+  new Chart(document.getElementById('c_bubble'), {
+    type:'line',
+    data:{labels:ms,datasets:[
+      {label:'p = 4 стадии',data:f(4),borderColor:'#16a34a',pointRadius:0,borderWidth:2.6,tension:.2},
+      {label:'p = 8 стадий',data:f(8),borderColor:'#0891b2',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'p = 16 стадий',data:f(16),borderColor:'#d97706',pointRadius:0,borderWidth:2.6,tension:.2},
+      {label:'p = 32 стадии',data:f(32),borderColor:'#dc2626',pointRadius:0,borderWidth:2.6,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число микробатчей m'},ticks:{maxTicksLimit:10}},
+              y:{title:{display:true,text:'доля простоя, %'},min:0,max:80}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': пузырь '+c.parsed.y.toFixed(1)+'%'}}}}
+  });
+})();
+
+// --- Chinchilla ---
+(function(){
+  const ratios=[1,2,5,10,20,40,80,160,320];
+  // L = E + A/N^a + B/D^b при C=6ND=const
+  const C=6e21, E=1.69, A=406.4, B=410.7, a=0.34, b=0.28;
+  const loss = ratios.map(r=>{
+    const N=Math.sqrt(C/(6*r)), D=r*N;
+    return E + A/Math.pow(N,a) + B/Math.pow(D,b);
+  });
+  new Chart(document.getElementById('c_chin'), {
+    type:'line',
+    data:{labels:ratios.map(r=>r+'×'),datasets:[
+      {label:'loss при фиксированном бюджете C',data:loss,
+       borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.12)',fill:true,pointRadius:5,borderWidth:3,tension:.3},
+      {label:'👍 Chinchilla-оптимум ≈ 20 токенов/параметр',
+       data:ratios.map(r=>r===20?loss[4]:null),borderColor:'#16a34a',pointRadius:11,pointStyle:'star',borderWidth:0},
+      {label:'GPT-3 (1.7 токена/параметр) — далеко от оптимума',
+       data:ratios.map(r=>r===2?loss[1]:null),borderColor:'#dc2626',pointRadius:9,pointStyle:'rectRot',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'отношение токенов к параметрам D/N'}},
+              y:{title:{display:true,text:'итоговый loss'}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Интерактив: память ---
+function updMem(){
+  const N = +document.getElementById('sl_n').value * 1e9;
+  const P = +document.getElementById('sl_gpu').value;
+  const cfg = document.querySelector('input[name=cfg]:checked').value;
+  document.getElementById('out_n').textContent = (N/1e9).toFixed(0)+'B';
+  document.getElementById('out_gpu').textContent = P;
+  const GB = 1024**3;
+  let bytes, note;
+  if (cfg==='full'){ bytes = 16*N; note='DDP: полная копия на каждой карте'; }
+  else if (cfg==='z1'){ bytes = 4*N + 12*N/P; note='ZeRO-1: шардированы состояния оптимизатора, трафик тот же'; }
+  else if (cfg==='z3'){ bytes = 16*N/P; note='ZeRO-3 / FSDP: шардировано всё, трафик +50%'; }
+  else { bytes = 2*N + 16*(N*0.002); note='LoRA r=16: база заморожена (2 байта), состояния только для адаптеров'; }
+  const gb = bytes/GB;
+  const h100 = 80, cards = Math.ceil(gb/ (h100*0.75));
+  let verdict;
+  if (gb <= 20) verdict = '✅ Свободно влезает даже на одну карту 24 ГБ.';
+  else if (gb <= 60) verdict = '✅ Влезает на одну H100/A100 80 ГБ с запасом под активации.';
+  else if (gb <= 75) verdict = '⚠️ Впритык на 80 ГБ — активации могут не поместиться, нужен checkpointing.';
+  else verdict = '🚨 Не влезает на карту. Нужно ' + cards + '+ GPU или более агрессивное шардирование.';
+  document.getElementById('out_mem').innerHTML =
+    '<strong>' + gb.toFixed(1) + ' ГБ</strong> на карту под состояния' +
+    ' &nbsp;·&nbsp; ' + (bytes/N).toFixed(1) + ' байт на параметр' +
+    '<br><em style="color:#0e7490">' + note + '</em>' +
+    '<br>' + verdict;
+}
+updMem();
+
+// --- Интерактив: пузырь ---
+function updPipe(){
+  const p = +document.getElementById('sl_p').value;
+  const m = +document.getElementById('sl_m').value;
+  document.getElementById('out_p').textContent = p;
+  document.getElementById('out_m').textContent = m;
+  const bubble = (p-1)/(m+p-1)*100;
+  const need = 4*p;
+  let verdict;
+  if (bubble < 10) verdict = '✅ Отличная утилизация — простой меньше 10%.';
+  else if (bubble < 20) verdict = '✅ Приемлемо. Можно ещё нарастить микробатчи.';
+  else if (bubble < 40) verdict = '⚠️ Заметный простой. Нужно минимум ' + need + ' микробатчей.';
+  else verdict = '🚨 Больше трети времени карты простаивают. Увеличь m до ' + need + '+ или уменьши число стадий.';
+  document.getElementById('out_pipe').innerHTML =
+    'Пузырь = (p−1)/(m+p−1) = (' + (p-1) + ')/(' + (m+p-1) + ') = <strong>' + bubble.toFixed(1) + '%</strong>' +
+    ' &nbsp;·&nbsp; полезная утилизация <strong>' + (100-bubble).toFixed(1) + '%</strong>' +
+    '<br>Рекомендуемый минимум микробатчей: <strong>' + need + '</strong> (правило m ≥ 4p)' +
+    '<br>' + verdict;
+}
+updPipe();
+</script>
+</body>
+</html>

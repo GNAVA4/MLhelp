@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6.3 · Холодный старт: разбор механизмов по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#0d9488;--rf-l:#f0fdfa;--rf-b:#99f6e4;--rf-d:#134e4a;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#134e4a,#0d9488 50%,#5eead4);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(13,148,136,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#134e4a;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#134e4a!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#134e4a,#0d9488);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ccfbf1;padding:2px 6px;border-radius:4px;font-weight:700;color:#134e4a;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ccfbf1;color:#134e4a;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Распределения (визуализация постериора) --- */
+.dist{display:flex;align-items:flex-end;gap:1px;height:70px;margin:10px 0 4px;padding:0 2px;background:#f8fafc;border-radius:7px;}
+.dist span{flex:1;background:var(--rf);border-radius:1px 1px 0 0;min-height:1px;transition:height .3s;}
+.dist-ax{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);font-family:'SF Mono',monospace;margin-bottom:10px;}
+.dist-lbl{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:3px;}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#5eead4;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#134e4a;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.te{border-top:3px solid var(--teal);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+.card.vi{border-top:3px solid var(--vi);} .card.bl{border-top:3px solid var(--blue);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2,.grid4{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 6 · Рекомендательные системы · Тема 3 из 5 · расширенная</div>
+  <h1>Холодный старт: разбор механизмов по шагам</h1>
+  <p class="sub">Как байесовское обновление сужает неопределённость раунд за раундом,
+     как Thompson sampling выбирает кандидата броском из распределения, откуда берётся
+     вектор у объекта без единого взаимодействия. Все числа выписаны и проверяемы.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Четыре холодных старта</a>
+  <a href="#s2">2. Байесовское обновление</a>
+  <a href="#s3">3. Контентный приор</a>
+  <a href="#s4">4. Thompson sampling</a>
+  <a href="#s5">5. UCB и ε-greedy</a>
+  <a href="#s6">6. Сожаление</a>
+  <a href="#s7">7. Вектор без истории</a>
+  <a href="#s8">8. Новый пользователь</a>
+  <a href="#s9">9. Квоты и бюджет</a>
+  <a href="#s10">10. Нестационарность</a>
+  <a href="#s11">11. Валидация</a>
+  <a href="#s12">12. Контекстные бандиты</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секции 2–4 — ядро.</strong> Байесовское обновление, контентный приор и Thompson sampling разобраны как единый механизм на одном сквозном примере с полными числами.</li>
+    <li>Секция 6 объясняет, что такое «сожаление» и почему это правильная метрика для холодного старта — а не CTR.</li>
+    <li><strong>Секция 7</strong> — откуда берётся вектор у объекта с нулём взаимодействий, с трассировкой приёма ID-dropout.</li>
+    <li>Секции 10–12 — что ломается в реальности: нестационарность, честная валидация, контекст.</li>
+    <li>Секции 13–15 — подводные камни, пять кейсов и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Четыре разных холодных старта <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Их часто смешивают, а решаются они по-разному</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Холодный старт <span class="en">(cold start)</span></dt>
+<dd>Ситуация, когда для сущности нет истории взаимодействий, и коллаборативный сигнал отсутствует в принципе. Не «мало данных», а <em>ноль</em>: методы из темы 6.1 здесь не деградируют плавно, они не работают совсем.</dd>
+
+<dt>Приор <span class="en">(prior, априорное распределение)</span></dt>
+<dd>То, что мы предполагаем о величине <em>до</em> наблюдения данных. В холодном старте приор — единственный источник информации, поэтому его качество определяет всё.</dd>
+
+<dt>Постериор <span class="en">(posterior, апостериорное распределение)</span></dt>
+<dd>Обновлённое представление о величине <em>после</em> учёта наблюдений. Формально: приор × правдоподобие данных, отнормированное. Чем больше наблюдений, тем меньше влияние приора и больше — данных.</dd>
+
+<dt>Неопределённость <span class="en">(uncertainty)</span></dt>
+<dd>Ширина постериора. Ключевая идея всей темы: мы работаем не с точечной оценкой «CTR = 4%», а с распределением «CTR где-то между 1% и 12%, скорее всего около 4%». Ширина этого интервала и подсказывает, стоит ли объект исследовать.</dd>
+
+<dt>Исследование и эксплуатация <span class="en">(exploration / exploitation)</span></dt>
+<dd><strong>Эксплуатация</strong> — показать то, что по текущим данным лучше всего. <strong>Исследование</strong> — показать то, о чём мы мало знаем, чтобы узнать больше. Чистая эксплуатация максимизирует сиюминутную метрику и гарантированно упускает лучшие объекты, которые не успели себя проявить.</dd>
+
+<dt>Многорукий бандит <span class="en">(multi-armed bandit)</span></dt>
+<dd>Формализация этого компромисса. Название — из метафоры игрового автомата («однорукий бандит»): перед нами $K$ рычагов с неизвестными вероятностями выигрыша, надо за $T$ попыток набрать максимум. Каждая попытка — либо проверка нового рычага, либо использование лучшего известного.</dd>
+
+<dt>Сожаление <span class="en">(regret)</span></dt>
+<dd>Разница между тем, что мы получили бы, зная заранее лучший вариант, и тем, что получили фактически. Основная метрика бандитских алгоритмов. Подробно — в секции 6.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: четыре разные задачи под одним названием</div>
+<p><strong>① Новый объект.</strong> Товар только появился в каталоге. Есть его описание, категория, цена — но нет ни одного взаимодействия. Решается контентными признаками: вектор строится из свойств.</p>
+<p><strong>② Новый пользователь.</strong> Человек зарегистрировался минуту назад. Нет ни истории, ни описания — вообще ничего, кроме контекста (устройство, время, откуда пришёл). Решается онбордингом и контекстными признаками.</p>
+<p><strong>③ Новая система.</strong> Запускаем рекомендации с нуля: нет логов вообще. Решается не моделью, а правилами и сбором данных.</p>
+<p><strong>④ Разреженный хвост.</strong> Объект существует полгода, но у него 4 взаимодействия. Формально не холодный старт, но статистически — та же ситуация: сигнала недостаточно для надёжной оценки.</p>
+<p><strong>Четвёртый случай — самый массовый и самый недооценённый.</strong> «Настоящих» новых объектов в каталоге единицы процентов, а хвостовых — половина.</p>
+</div>
+
+<div class="ct">
+<table>
+<caption>Четыре типа холодного старта: что доступно и чем решается</caption>
+<thead><tr><th>Тип</th><th>Что известно</th><th>Основной метод</th><th>Доля в типичном каталоге</th></tr></thead>
+<tbody>
+<tr><td>Новый объект</td><td>атрибуты, текст, изображение</td><td class="k">контентные признаки</td><td>2–8%</td></tr>
+<tr><td>Новый пользователь</td><td>только контекст сессии</td><td class="k">онбординг + популярное по сегменту</td><td>1–15% сессий</td></tr>
+<tr><td>Новая система</td><td>ничего</td><td class="k">правила + сбор логов</td><td class="dim">разовая ситуация</td></tr>
+<tr class="best"><td>Разреженный хвост</td><td>атрибуты + 1–20 взаимодействий</td><td class="k">байесовское сглаживание + бандиты</td><td class="g">40–60%</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: почему CF не может дать вектор новому объекту</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Что происходит внутри ALS с объектом без истории</span></div>
+<div class="tstep-c">
+<p>Вспомним формулу шага ALS из темы 6.1 — решение для вектора объекта $j$:</p>
+<div class="calc">
+q_j = (Pⱼᵀ Pⱼ + λI)⁻¹ Pⱼᵀ r_j
+
+где Pⱼ — матрица векторов пользователей, взаимодействовавших с j
+    r_j — вектор их наблюдений
+</div>
+<p>Для нового объекта <strong>таких пользователей ноль</strong>. Значит:</p>
+<div class="calc">
+Pⱼ — пустая матрица (0 строк)
+PⱼᵀPⱼ = <span class="hl">нулевая матрица</span> размера k×k
+Pⱼᵀ r_j = <span class="hl">нулевой вектор</span>
+
+q_j = (0 + λI)⁻¹ · 0 = (1/λ)I · 0 = <span class="bad">нулевой вектор</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Что это означает для скоров</span></div>
+<div class="tstep-c">
+<div class="calc">
+Скор для любого пользователя:  p_u · q_j = p_u · <span class="bad">0</span> = <span class="bad">0</span>
+
+Для сравнения, обычный объект: p_u · q_i ≈ 0.3 … 2.8
+</div>
+<p><strong>Объект получает ровно нулевой скор для всех без исключения пользователей.</strong> Он никогда не попадёт в топ, никогда не будет показан, никогда не получит взаимодействие — и потому навсегда останется с нулевым вектором.</p>
+<p>Это не «плохо работает». Это <em>математически гарантированный</em> провал: замкнутый круг, из которого модель не может выйти сама.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">А что с объектом, у которого 3 взаимодействия?</span></div>
+<div class="tstep-c">
+<p>Формально вектор уже не нулевой. Но качество его — отдельный вопрос. Возьмём $k=2$, три пользователя с векторами $p_1, p_2, p_3$:</p>
+<div class="calc">
+p₁ = [0.9, 0.1]   p₂ = [0.8, 0.3]   p₃ = [0.85, 0.2]
+<span class="dim">(все три из одного «угла» пространства — так бывает, если объект
+показали только похожим пользователям)</span>
+
+PᵀP = [0.9²+0.8²+0.85²   0.9·0.1+0.8·0.3+0.85·0.2]
+      [       ·           0.1²+0.3²+0.2²          ]
+    = [<span class="hl">2.1650</span>   <span class="hl">0.4400</span>]
+      [<span class="hl">0.4400</span>   <span class="hl">0.1400</span>]
+
+det(PᵀP) = 2.1650×0.1400 − 0.4400² = 0.3031 − 0.1936 = <span class="bad">0.1095</span>
+</div>
+<p><strong>Определитель мал</strong> — матрица почти вырождена. Это значит, что три вектора лежат почти на одной прямой, и задача недоопределена: множество решений почти одинаково хороши, а выбранное определяется главным образом регуляризацией, а не данными.</p>
+<div class="calc">
+Число обусловленности (отношение собственных значений):
+  λ₁ ≈ 2.2545,  λ₂ ≈ 0.0505
+  cond = 2.2545 / 0.0505 = <span class="bad">44.6</span>
+
+<span class="dim">При cond &gt; 20 решение считается неустойчивым: малое изменение
+данных даёт большое изменение ответа.</span>
+</div>
+<p>Отсюда практический вывод: <strong>граница «холодного старта» — не ноль взаимодействий, а порядка 20–50.</strong> Ниже этого вектор из CF формально существует, но доверять ему нельзя.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Два принципиально разных выхода</span></div>
+<div class="tstep-c">
+<p><strong>Выход A — дать объекту вектор извне.</strong> Построить его не из взаимодействий, а из свойств: текста, категории, изображения. Это секция 7 и вся тема two-tower.</p>
+<p><strong>Выход B — целенаправленно собрать данные.</strong> Показывать объект тем, кто с наибольшей вероятностью даст информативный отклик, и обновлять оценку. Это байесовское обновление и бандиты — секции 2–6.</p>
+<p>На практике нужны оба: контентный вектор даёт стартовую точку, бандит быстро уточняет её реальными данными. Как именно они соединяются — трассировка в секции 3.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Число обусловленности задачи против числа взаимодействий</div>
+<div class="chsub">Граница доверия к CF-вектору — не ноль, а несколько десятков наблюдений</div>
+<div style="position:relative;height:330px;"><canvas id="c_cond"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Байесовское обновление: как сужается неопределённость <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Механизм, лежащий в основе всех бандитских алгоритмов</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Распределение Бернулли <span class="en">(Bernoulli)</span></dt>
+<dd>Модель одного бинарного события: клик с вероятностью $\theta$, не клик с вероятностью $1-\theta$. Простейшая модель показа рекомендации.</dd>
+
+<dt>Бета-распределение <span class="en">(Beta(α, β))</span></dt>
+<dd>Распределение <em>на отрезке [0,1]</em> — то есть распределение возможных значений вероятности. Задаётся двумя параметрами. Интуиция предельно простая: $\alpha$ ведёт себя как «число успехов», $\beta$ — как «число неудач». Beta(1,1) — равномерное («ничего не знаем»), Beta(50,50) — узкий пик вокруг 0.5 («уверены, что ровно половина»).</dd>
+
+<dt>Сопряжённость <span class="en">(conjugacy)</span></dt>
+<dd>Свойство пары «приор — правдоподобие», при котором постериор имеет <em>тот же вид</em>, что и приор. Бета сопряжена с Бернулли, и это делает обновление тривиальным: увидел клик — прибавь 1 к $\alpha$; увидел показ без клика — прибавь 1 к $\beta$. Никаких интегралов.</dd>
+
+<dt>Псевдонаблюдения <span class="en">(pseudo-counts)</span></dt>
+<dd>Параметры приора $\alpha_0, \beta_0$ интерпретируются как «наблюдения, которые мы как будто уже видели». Приор Beta(4, 96) означает «как будто мы уже видели 100 показов с 4 кликами». Чем больше псевдонаблюдений, тем сильнее приор и тем медленнее его перебивают реальные данные.</dd>
+
+<dt>Среднее и дисперсия постериора</dt>
+<dd>Среднее $= \alpha/(\alpha+\beta)$ — наша текущая точечная оценка CTR. Дисперсия $= \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$ — мера неопределённости; с ростом наблюдений знаменатель растёт как куб, поэтому распределение быстро сужается.</dd>
+
+<dt>Сглаживание <span class="en">(smoothing / shrinkage)</span></dt>
+<dd>Эффект приора: наблюдаемая частота «подтягивается» к приорному среднему тем сильнее, чем меньше данных. Именно это спасает от оценки «1 клик из 1 показа = CTR 100%».</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя просто делить клики на показы</div>
+<p>Объект A: <strong>1 клик из 1 показа</strong> → наивный CTR = 100%.<br>
+Объект B: <strong>340 кликов из 10 000 показов</strong> → CTR = 3.4%.</p>
+<p>Наивно A выглядит в 29 раз лучше. Но про A мы не знаем ничего: один показ — это не данные. Про B знаем почти точно.</p>
+<p><strong>Байесовский подход хранит не число, а распределение.</strong> Для A это широкое «где-то между 2% и 90%», для B — узкое «3.2%–3.6%». И дальше алгоритм принимает решения, глядя не только на среднее, но и на ширину.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Обновление Beta-Bernoulli</div>
+$$\theta \sim \text{Beta}(\alpha_0, \beta_0) \quad\xrightarrow{\;\;s\text{ кликов из } n \text{ показов}\;}\quad \theta \mid \text{данные} \sim \text{Beta}(\alpha_0 + s,\; \beta_0 + n - s)$$
+$$\mathbb{E}[\theta] = \frac{\alpha}{\alpha+\beta}, \qquad \text{Var}[\theta] = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$$
+<p class="fnote">Всё обновление — два сложения. В этом и состоит практическая ценность сопряжённости: постериор считается за $O(1)$, его можно держать в двух счётчиках на объект и обновлять в реальном времени, без переобучения чего бы то ни было.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📊</span> Трассировка: как сужается постериор за 5 порций данных</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Старт: приор из среднего по категории</span></div>
+<div class="tstep-c">
+<p>Новый объект. Известно только, что средний CTR в его категории — 4%. Задаём приор с силой «как будто 25 показов»:</p>
+<div class="calc">
+α₀ = 0.04 × 25 = <span class="hl">1.0</span>
+β₀ = 0.96 × 25 = <span class="hl">24.0</span>
+
+Среднее   = 1.0 / (1.0 + 24.0) = <span class="res">0.0400</span>  (4.00%)
+Дисперсия = (1.0 × 24.0) / (25² × 26) = 24 / 16 250 = <span class="res">0.001477</span>
+Ст. отклонение = √0.001477 = <span class="res">0.0384</span>  (3.84 п.п.)
+
+Грубый интервал ±2σ:  [0.00%, 11.7%]  ← очень широко
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Порция 1: 10 показов, 2 клика</span></div>
+<div class="tstep-c">
+<div class="calc">
+α = 1.0 + 2 = <span class="hl">3.0</span>
+β = 24.0 + (10 − 2) = <span class="hl">32.0</span>
+
+Среднее   = 3.0 / 35.0 = <span class="res">0.0857</span>  (8.57%)
+Дисперсия = (3 × 32) / (35² × 36) = 96 / 44 100 = <span class="res">0.002177</span>
+σ = <span class="res">0.0467</span>
+
+Наивная оценка была бы 2/10 = <span class="bad">20.0%</span>
+Байесовская дала <span class="res">8.57%</span> — приор сдержал выброс
+</div>
+<p><strong>Обрати внимание: дисперсия выросла</strong>, с 0.00148 до 0.00218. Это не ошибка — данные противоречат приору (наблюдали 20% при ожидании 4%), и модель честно говорит «стало менее ясно».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Порция 2: ещё 40 показов, 5 кликов</span></div>
+<div class="tstep-c">
+<div class="calc">
+α = 3.0 + 5 = <span class="hl">8.0</span>
+β = 32.0 + 35 = <span class="hl">67.0</span>
+
+Среднее   = 8.0 / 75.0 = <span class="res">0.1067</span>  (10.67%)
+Дисперсия = (8 × 67) / (75² × 76) = 536 / 427 500 = <span class="res">0.001254</span>
+σ = <span class="res">0.0354</span>
+
+Всего наблюдений: 50 показов, 7 кликов → наивно 14.0%
+Вклад приора: 25 псевдонаблюдений из 75 суммарных = <span class="hl">33%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Порция 3: ещё 150 показов, 17 кликов</span></div>
+<div class="tstep-c">
+<div class="calc">
+α = 8.0 + 17 = <span class="hl">25.0</span>
+β = 67.0 + 133 = <span class="hl">200.0</span>
+
+Среднее   = 25.0 / 225.0 = <span class="res">0.1111</span>  (11.11%)
+σ = √((25×200)/(225²×226)) = √(5000/11 441 250) = <span class="res">0.0209</span>
+
+Вклад приора: 25 из 225 = <span class="hl">11%</span>  ← приор уже почти не влияет
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Порция 4: ещё 800 показов, 88 кликов</span></div>
+<div class="tstep-c">
+<div class="calc">
+α = 25.0 + 88 = <span class="hl">113.0</span>
+β = 200.0 + 712 = <span class="hl">912.0</span>
+
+Среднее = 113 / 1025 = <span class="res">0.1102</span>  (11.02%)
+σ = √((113×912)/(1025²×1026)) = <span class="res">0.00979</span>
+
+Вклад приора: 25 из 1025 = <span class="hl">2.4%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сводка: как менялись оценка и уверенность</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Один и тот же объект, накопление данных</caption>
+<thead><tr><th>Шаг</th><th>α</th><th>β</th><th>Среднее CTR</th><th>σ</th><th>Интервал ±2σ</th><th>Вклад приора</th></tr></thead>
+<tbody>
+<tr><td>0 — только приор</td><td>1.0</td><td>24.0</td><td>4.00%</td><td class="r">3.84 п.п.</td><td class="r">0.0 – 11.7%</td><td class="r">100%</td></tr>
+<tr><td>1 — +10 показов</td><td>3.0</td><td>32.0</td><td>8.57%</td><td class="r">4.67 п.п.</td><td class="r">0.0 – 17.9%</td><td>71%</td></tr>
+<tr><td>2 — +40</td><td>8.0</td><td>67.0</td><td>10.67%</td><td class="a">3.54 п.п.</td><td class="a">3.6 – 17.8%</td><td>33%</td></tr>
+<tr><td>3 — +150</td><td>25.0</td><td>200.0</td><td>11.11%</td><td class="a">2.09 п.п.</td><td class="a">6.9 – 15.3%</td><td>11%</td></tr>
+<tr class="best"><td>4 — +800</td><td>113.0</td><td>912.0</td><td class="k">11.02%</td><td class="g">0.98 п.п.</td><td class="g">9.1 – 13.0%</td><td class="g">2.4%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Три вещи, которые видно из таблицы.</strong></p>
+<p><strong>①</strong> Оценка стабилизировалась около 11% уже к шагу 3, дальше менялась мало — но <em>уверенность</em> продолжала расти. Это разные вещи, и именно вторая определяет, пора ли прекращать исследование.</p>
+<p><strong>②</strong> Влияние приора убывает автоматически: 100% → 71% → 33% → 11% → 2.4%. Никакого расписания задавать не нужно, механизм саморегулируется.</p>
+<p><strong>③</strong> Ширина интервала убывает примерно как $1/\sqrt{n}$: чтобы сузить его вдвое, нужно в четыре раза больше данных. Отсюда практический вывод — <em>первые сотни показов дают почти всю информацию</em>, дальше отдача резко падает.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Как сужается постериор: форма распределения на каждом шаге</div>
+<div class="chsub">Не точка, а распределение — и его ширина определяет, стоит ли объект исследовать</div>
+<div style="position:relative;height:360px;"><canvas id="c_beta"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: сила приора и данные</label>
+  <label style="margin-top:2px;">Сила приора (эквивалент числа псевдонаблюдений)</label>
+  <input type="range" id="sl_prior" min="1" max="300" step="1" value="25" oninput="updBeta()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_prior">25</span><span>300</span></div>
+  <label style="margin-top:14px;">Показов</label>
+  <input type="range" id="sl_n" min="1" max="2000" step="1" value="50" oninput="updBeta()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_n">50</span><span>2000</span></div>
+  <label style="margin-top:14px;">Наблюдаемый CTR в этих показах</label>
+  <input type="range" id="sl_ctr" min="0" max="400" step="5" value="140" oninput="updBeta()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0%</span><span class="out" id="out_ctr">14.0%</span><span>40%</span></div>
+  <div class="res" id="out_bres"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Сила приора — главный настраиваемый параметр, и его легко испортить.</strong> Слишком слабый (1–5 псевдонаблюдений) не защищает от выбросов: один клик из одного показа даст оценку под 50%. Слишком сильный (500+) душит сигнал — объект должен набрать тысячи показов, чтобы сдвинуть оценку, а к тому времени он уже не новый. <strong>Рабочее правило:</strong> сила приора ≈ число показов, за которое хочется получить осмысленную оценку, обычно 20–100.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Контентный приор: приор из модели, а не из константы <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Место, где контентные признаки соединяются с байесовским обновлением</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Контентный приор <span class="en">(content-based prior)</span></dt>
+<dd>Приор, среднее которого предсказано моделью по свойствам объекта, а не взято как константа по категории. Вместо «все новые товары стартуют с 4%» получаем «этот конкретный товар стартует с 6.2%, потому что похож на успешные».</dd>
+
+<dt>Сила приора <span class="en">(prior strength, $\kappa$)</span></dt>
+<dd>Сумма $\alpha_0 + \beta_0$. Интерпретируется как «сколько показов стоит наш приор». Задаётся исходя из того, насколько мы доверяем контентной модели: точная модель заслуживает большей силы.</dd>
+
+<dt>Эмпирический байес <span class="en">(empirical Bayes)</span></dt>
+<dd>Подход, при котором параметры приора не задаются экспертно, а <em>оцениваются из данных</em> — по объектам, у которых история уже накоплена. Практично: не нужно угадывать $\kappa$, оно выводится из наблюдаемого разброса CTR внутри категории.</dd>
+
+<dt>Иерархический приор <span class="en">(hierarchical prior)</span></dt>
+<dd>Приор, построенный по уровням: объект наследует от подкатегории, подкатегория от категории, категория от глобального среднего. Позволяет корректно работать, когда данных мало на всех уровнях сразу.</dd>
+
+<dt>Калибровка приора <span class="en">(prior calibration)</span></dt>
+<dd>Проверка того, что предсказания контентной модели <em>несмещённые</em>: среди объектов с предсказанным CTR 6% фактический средний CTR тоже около 6%. Некалиброванный приор систематически искажает старт всех новых объектов.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: приор — это то, что мы знаем до данных</div>
+<p>В секции 2 приор был константой: «средний CTR категории 4%». Но мы знаем про объект больше — его бренд, цену, длину названия, наличие фото, сезон.</p>
+<p><strong>Обучим модель предсказывать CTR по этим признакам</strong> на объектах, у которых история уже есть. Для нового объекта прогоняем модель и получаем персональную стартовую точку.</p>
+<p>Разница может быть большой: константный приор даёт всем 4%, контентный — от 1.5% до 9% в зависимости от свойств. И это <em>до первого показа</em>.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Параметры приора из предсказания модели</div>
+$$\alpha_0 = \kappa \cdot \hat\mu_{\text{content}}, \qquad \beta_0 = \kappa \cdot (1 - \hat\mu_{\text{content}})$$
+<p>$\hat\mu_{\text{content}}$ — предсказанный контентной моделью CTR, $\kappa$ — сила приора.</p>
+<p class="fnote">Эти две формулы — весь механизм соединения. Контентная модель задаёт <em>где</em> находится центр приора, $\kappa$ — <em>насколько крепко</em> мы за него держимся. Дальше работает обычное обновление из секции 2, никаких изменений.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: три приора на одном объекте</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Объект и три способа задать старт</span></div>
+<div class="tstep-c">
+<p>Новый товар. Контентная модель, обученная на исторических объектах, предсказывает для него CTR 7.5%. Реальный CTR (который мы узнаем потом) — 11.0%.</p>
+<div class="calc"><span class="lbl">Вариант A — без приора</span>
+α₀ = 0, β₀ = 0
+Оценка = чистая частота кликов, ничем не сдерживаемая
+
+<span class="lbl">Вариант B — константный приор по категории (4%), κ = 25</span>
+α₀ = 0.04 × 25 = <span class="hl">1.0</span>
+β₀ = 0.96 × 25 = <span class="hl">24.0</span>
+
+<span class="lbl">Вариант C — контентный приор (7.5%), κ = 25</span>
+α₀ = 0.075 × 25 = <span class="hl">1.875</span>
+β₀ = 0.925 × 25 = <span class="hl">23.125</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Первый показ — клик</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">A — без приора</span>
+Оценка = 1/1 = <span class="bad">100.0%</span>   ← объект взлетает на первое место каталога
+
+<span class="lbl">B — константный</span>
+α = 2.0, β = 24.0  →  2.0/26.0 = <span class="hl">7.69%</span>
+
+<span class="lbl">C — контентный</span>
+α = 2.875, β = 23.125  →  2.875/26.0 = <span class="res">11.06%</span>
+</div>
+<p>Вариант A уже сломан: один клик даёт оценку 100%, объект вытесняет всё остальное, получает лавину показов и «регрессирует к среднему» уже за счёт пользователей.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Первые 20 показов, 2 клика (наблюдаемо 10%)</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">A</span>  2/20 = <span class="bad">10.00%</span>  — но σ огромна, доверительный интервал [1.2%, 31.7%]
+
+<span class="lbl">B</span>  α = 3.0, β = 42.0  →  3.0/45.0 = <span class="hl">6.67%</span>
+   ошибка относительно истины 11.0%:  <span class="bad">−4.33 п.п.</span>
+
+<span class="lbl">C</span>  α = 3.875, β = 41.125  →  3.875/45.0 = <span class="res">8.61%</span>
+   ошибка относительно истины 11.0%:  <span class="res">−2.39 п.п.</span>
+</div>
+<p><strong>Контентный приор ошибается вдвое меньше</strong>, потому что стартовал ближе к правде.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Динамика ошибки по мере накопления данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Абсолютная ошибка оценки CTR относительно истинных 11.0%</caption>
+<thead><tr><th>Показов</th><th>A — без приора</th><th>B — константный 4%</th><th>C — контентный 7.5%</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="r">89.0 п.п.</td><td class="a">3.3 п.п.</td><td class="g">0.1 п.п.</td></tr>
+<tr><td>10</td><td class="r">9.0 п.п.</td><td class="a">5.1 п.п.</td><td class="g">2.8 п.п.</td></tr>
+<tr><td>20</td><td class="a">1.0 п.п.</td><td class="a">4.3 п.п.</td><td class="g">2.4 п.п.</td></tr>
+<tr><td>50</td><td class="a">3.0 п.п.</td><td class="a">2.7 п.п.</td><td class="g">1.4 п.п.</td></tr>
+<tr><td>200</td><td>1.5 п.п.</td><td>0.9 п.п.</td><td class="g">0.5 п.п.</td></tr>
+<tr class="best"><td>1000</td><td>0.4 п.п.</td><td class="g">0.3 п.п.</td><td class="g">0.2 п.п.</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Три вывода.</strong></p>
+<p><strong>①</strong> Вариант A катастрофичен на первых показах и приемлем после сотен. Проблема в том, что решение о показе принимается именно на первых.</p>
+<p><strong>②</strong> К 1000 показов все три сходятся — приор перестаёт иметь значение. <em>Ценность приора вся сосредоточена в первых десятках показов.</em></p>
+<p><strong>③</strong> Контентный приор выигрывает у константного примерно вдвое на всём промежутке 10–200 показов. Это и есть его вклад.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Что если контентная модель ошибается</span></div>
+<div class="tstep-c">
+<p>Обязательная проверка: а если приор смещён в другую сторону?</p>
+<div class="calc">
+Истинный CTR объекта = 11.0%
+Контентная модель ошиблась и предсказала <span class="bad">2.0%</span>  (вместо 7.5%)
+
+При κ = 25:  α₀ = 0.5, β₀ = 24.5
+
+Показов   оценка C с плохим приором   оценка B с константным 4%
+    10          <span class="bad">3.00%</span>                      6.29%
+    50          <span class="bad">6.00%</span>                      8.00%
+   200          9.11%                      9.64%
+  1000          10.68%                     10.73%
+</div>
+<p><strong>Плохой приор хуже константного</strong> — и это ожидаемо. Отсюда два требования к контентной модели.</p>
+<p><strong>Требование ①: калибровка.</strong> Среди объектов с предсказанием 6% фактический средний CTR должен быть около 6%. Проверяется калибровочным графиком на исторических объектах.</p>
+<p><strong>Требование ②: сила приора привязана к точности модели.</strong> Если контентная модель объясняет мало дисперсии, $\kappa$ надо снижать — доверять ей слабее. Формально это делается через эмпирический байес.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Как выбрать κ по данным — эмпирический байес</span></div>
+<div class="tstep-c">
+<p>Вместо угадывания $\kappa$ его можно вывести из наблюдаемого разброса CTR среди объектов с известной историей.</p>
+<div class="calc">
+1. Берём объекты категории с ≥500 показов — их CTR известен надёжно
+2. Считаем среднее и дисперсию этих CTR:
+
+   среднее по категории    m = <span class="hl">0.042</span>
+   дисперсия между объектами s² = <span class="hl">0.00068</span>
+
+3. Для бета-распределения с этими моментами:
+
+   κ = m(1−m)/s² − 1
+     = 0.042 × 0.958 / 0.00068 − 1
+     = 0.040236 / 0.00068 − 1
+     = 59.17 − 1 = <span class="res">58.2</span>
+
+4. Итого приор для нового объекта категории:
+   α₀ = κ · μ̂_content,   β₀ = κ · (1 − μ̂_content),   κ = <span class="res">58</span>
+</div>
+<p><strong>Смысл формулы.</strong> Если объекты внутри категории очень похожи по CTR (малая $s^2$), то знание категории говорит о новом объекте много — приор должен быть сильным, и $\kappa$ выходит большим. Если CTR внутри категории скачет (большая $s^2$), категория мало что подсказывает, и $\kappa$ мал.</p>
+<p>Это одна строка кода и полностью убирает необходимость угадывать параметр.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Ошибка оценки CTR: три способа задать приор</div>
+<div class="chsub">Разница вся в первых десятках показов — там, где принимаются решения о судьбе объекта</div>
+<div style="position:relative;height:340px;"><canvas id="c_prior"></canvas></div>
+</div>
+
+<pre><code># Контентный приор + эмпирический байес: полный цикл
+import numpy as np
+from sklearn.ensemble import HistGradientBoostingRegressor
+
+# --- ШАГ 1: обучаем контентную модель на объектах С историей ---
+warm = df[df.impressions >= 500]                 # надёжный CTR
+content_model = HistGradientBoostingRegressor(max_iter=300)
+content_model.fit(warm[CONTENT_FEATURES], warm.clicks / warm.impressions)
+
+# --- ШАГ 2: kappa через эмпирический байес, отдельно по категориям ---
+def estimate_kappa(group):
+    ctr = group.clicks / group.impressions
+    m, s2 = ctr.mean(), ctr.var()
+    if s2 <= 1e-12:
+        return 200.0                              # разброса нет → сильный приор
+    return max(5.0, min(500.0, m * (1 - m) / s2 - 1))
+
+kappa_by_cat = warm.groupby("category").apply(estimate_kappa).to_dict()
+
+# --- ШАГ 3: приор для нового объекта ---
+def make_prior(item):
+    mu = float(np.clip(content_model.predict(item[CONTENT_FEATURES])[0], 1e-4, 0.5))
+    k  = kappa_by_cat.get(item.category, 25.0)
+    return k * mu, k * (1 - mu)                   # alpha0, beta0
+
+# --- ШАГ 4: обновление в реальном времени (два сложения) ---
+def update(alpha, beta, clicks, impressions):
+    return alpha + clicks, beta + (impressions - clicks)
+
+# --- ШАГ 5: калибровка приора — ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА ---
+pred = content_model.predict(holdout[CONTENT_FEATURES])
+actual = holdout.clicks / holdout.impressions
+bins = np.quantile(pred, np.linspace(0, 1, 11))
+for lo, hi in zip(bins[:-1], bins[1:]):
+    m = (pred >= lo) & (pred < hi)
+    print(f"предсказано {pred[m].mean():.4f}  факт {actual[m].mean():.4f}  n={m.sum()}")
+    # эти два числа должны совпадать; систематический сдвиг = смещённый приор
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Иерархия приоров для глубоких каталогов.</strong> Если у подкатегории мало объектов с историей, её собственная оценка $\kappa$ ненадёжна. Стандартное решение — иерархия: объект наследует приор от подкатегории, подкатегория от категории, категория от глобального среднего, причём на каждом уровне применяется то же сглаживание. Так уровень с малым числом наблюдений автоматически подтягивается к родительскому, а с большим — работает самостоятельно.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Thompson sampling: пять раундов по шагам <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как бросок из распределения решает задачу исследования</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Thompson sampling <span class="en">(сэмплирование Томпсона)</span></dt>
+<dd>Алгоритм выбора: из постериора каждого кандидата <em>случайно тянется</em> одно значение, и показывается тот, у кого выпало больше. Не среднее, а именно случайная величина — в этом весь механизм.</dd>
+
+<dt>Рука <span class="en">(arm)</span></dt>
+<dd>Один кандидат на показ. Термин из метафоры игрового автомата. В рекомендациях «рука» — объект, слот, вариант обложки.</dd>
+
+<dt>Раунд <span class="en">(round)</span></dt>
+<dd>Один цикл «выбрали кандидата → показали → получили отклик → обновили постериор». В реальной системе раундов миллионы в сутки.</dd>
+
+<dt>Вероятностное соответствие <span class="en">(probability matching)</span></dt>
+<dd>Ключевое свойство Thompson sampling: рука выбирается с вероятностью, равной вероятности того, что она наилучшая. Если модель считает, что объект A лучший с вероятностью 70%, он и будет показан примерно в 70% раундов. Исследование распределяется <em>ровно пропорционально неуверенности</em>, без единого параметра настройки.</dd>
+
+<dt>Автоматическое затухание исследования</dt>
+<dd>По мере накопления данных постериоры сужаются, броски становятся всё ближе к средним, и алгоритм сам переходит от исследования к эксплуатации. Расписание задавать не нужно.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему бросок лучше среднего</div>
+<p>Если выбирать по <strong>среднему</strong>, объект с 1 показом и оценкой 8% никогда не обгонит объект с 10 000 показов и оценкой 11% — хотя его истинный CTR может быть 20%. Мы про него просто не узнаем.</p>
+<p>Если выбирать <strong>случайным броском из постериора</strong>, у широкого распределения есть шанс выдать большое значение и победить. Чем шире распределение (то есть чем меньше мы знаем), тем чаще такое случается.</p>
+<p><strong>Красота в том, что баланс возникает сам.</strong> Хорошо изученная рука выдаёт броски около своего среднего — стабильно. Плохо изученная иногда выстреливает. Как только она изучена, её броски тоже стабилизируются, и исследование прекращается автоматически.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Алгоритм Thompson sampling</div>
+$$\text{Для каждой руки } k: \quad \tilde\theta_k \sim \text{Beta}(\alpha_k, \beta_k)$$
+$$\text{Показать } k^* = \arg\max_k \tilde\theta_k \quad\Longrightarrow\quad \text{наблюдать } r \in \{0,1\} \quad\Longrightarrow\quad \alpha_{k^*} {+}{=} r,\;\; \beta_{k^*} {+}{=} 1-r$$
+<p class="fnote">Три строки кода целиком. Ни одного гиперпараметра: нет ни $\varepsilon$, ни коэффициента при доверительной границе, ни расписания охлаждения. При этом теоретические гарантии — на уровне лучших известных алгоритмов, а на практике Thompson sampling обычно превосходит UCB.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎲</span> Трассировка: 5 раундов Thompson sampling на трёх кандидатах</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Стартовое состояние</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Три объекта в одном слоте. Истинные CTR нам известны только для проверки — алгоритм их не видит</caption>
+<thead><tr><th>Объект</th><th>α</th><th>β</th><th>Среднее</th><th>σ</th><th>Истинный CTR</th><th>Комментарий</th></tr></thead>
+<tbody>
+<tr><td>A — старый хит</td><td>110</td><td>890</td><td class="k">11.00%</td><td class="g">0.99 п.п.</td><td>11.0%</td><td class="note">1000 показов, знаем точно</td></tr>
+<tr><td>B — средний</td><td>18</td><td>182</td><td>9.00%</td><td class="a">2.02 п.п.</td><td>9.0%</td><td class="note">200 показов</td></tr>
+<tr class="best"><td>C — новый</td><td>1.9</td><td>23.1</td><td>7.60%</td><td class="r">5.28 п.п.</td><td class="g">16.0%</td><td class="note">только контентный приор</td></tr>
+</tbody>
+</table>
+</div>
+<p>Задача, которую надо решить: <strong>C на самом деле лучший, но по среднему он третий.</strong> Жадный алгоритм («показывай максимум среднего») выбрал бы A всегда и никогда бы этого не узнал.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Раунд 1</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Броски из постериоров</span>
+θ̃_A ~ Beta(110, 890)   →  выпало <span class="hl">0.1063</span>   <span class="dim">(среднее 0.1100, σ 0.0099)</span>
+θ̃_B ~ Beta(18, 182)    →  выпало <span class="hl">0.0917</span>   <span class="dim">(среднее 0.0900, σ 0.0202)</span>
+θ̃_C ~ Beta(1.9, 23.1)  →  выпало <span class="res">0.1341</span>   <span class="dim">(среднее 0.0760, σ 0.0528)</span>
+
+Максимум → показываем <span class="res">C</span>
+Отклик: <span class="res">КЛИК</span>
+Обновление: α_C = 1.9 + 1 = <span class="hl">2.9</span>,  β_C = 23.1
+
+Новое среднее C = 2.9 / 26.0 = <span class="res">11.15%</span>   <span class="dim">было 7.60%</span>
+</div>
+<p><strong>Вот механизм в действии.</strong> Среднее C было 7.60% — меньше, чем у A. Но σ = 5.28 п.п., распределение широкое, и бросок легко выдал 0.1341 — выше, чем более стабильный бросок A. Один клик поднял среднее сразу на 3.5 п.п., потому что данных было мало.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Раунд 2</span></div>
+<div class="tstep-c">
+<div class="calc">
+θ̃_A ~ Beta(110, 890)  →  <span class="hl">0.1152</span>
+θ̃_B ~ Beta(18, 182)   →  <span class="hl">0.0743</span>
+θ̃_C ~ Beta(2.9, 23.1) →  <span class="res">0.1489</span>
+
+Показываем <span class="res">C</span>.  Отклик: <span class="res">КЛИК</span>
+α_C = <span class="hl">3.9</span>,  β_C = 23.1  →  среднее <span class="res">14.44%</span>,  σ = <span class="hl">6.79</span> п.п.
+</div>
+<p>C уже обошёл A по среднему. Обрати внимание, что σ выросла — при малых данных каждый новый клик увеличивает неопределённость, потому что подтверждает, что объект может быть заметно лучше ожидаемого.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Раунд 3 — и первая неудача</span></div>
+<div class="tstep-c">
+<div class="calc">
+θ̃_A ~ Beta(110, 890)  →  <span class="hl">0.1094</span>
+θ̃_B ~ Beta(18, 182)   →  <span class="hl">0.1021</span>
+θ̃_C ~ Beta(3.9, 23.1) →  <span class="res">0.1712</span>
+
+Показываем <span class="res">C</span>.  Отклик: <span class="bad">НЕТ КЛИКА</span>
+α_C = 3.9,  β_C = 23.1 + 1 = <span class="hl">24.1</span>  →  среднее <span class="hl">13.93%</span>
+</div>
+<p>Отсутствие клика опустило оценку всего на 0.5 п.п. — асимметрия объясняется тем, что $\beta$ уже велика, и одна неудача среди 24 меняет мало. Клик же прибавлялся к малой $\alpha$ и потому весил больше.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Раунды 4–5</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Раунд 4</span>
+θ̃_A → 0.1211,  θ̃_B → 0.0885,  θ̃_C → <span class="res">0.1355</span>
+Показываем C. Отклик: НЕТ КЛИКА.  α_C = 3.9,  β_C = <span class="hl">25.1</span>  →  среднее 13.45%
+
+<span class="lbl">Раунд 5</span>
+θ̃_A → <span class="hl">0.1283</span>,  θ̃_B → 0.0796,  θ̃_C → 0.1102
+Показываем <span class="hl">A</span>. Отклик: КЛИК.  α_A = <span class="hl">111</span>,  β_A = 890  →  среднее 11.09%
+</div>
+<p>На пятом раунде A выиграл — его бросок 0.1283 оказался выше. Это нормально и правильно: A действительно хорош, и алгоритм не должен его бросать. Постериоры пересекаются, поэтому выбор чередуется.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Что происходит на длинной дистанции</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Та же тройка, симуляция на 2000 раундов (усреднение по 500 прогонам)</caption>
+<thead><tr><th>Раундов</th><th>Показов A</th><th>Показов B</th><th>Показов C</th><th>Оценка CTR у C</th><th>Доля показов C</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>0</td><td>0</td><td>0</td><td>7.60%</td><td class="dim">—</td></tr>
+<tr><td>50</td><td>18</td><td>4</td><td class="a">28</td><td>13.8%</td><td class="a">56%</td></tr>
+<tr><td>200</td><td>44</td><td>7</td><td class="g">149</td><td>15.2%</td><td class="g">75%</td></tr>
+<tr><td>500</td><td>72</td><td>9</td><td class="g">419</td><td>15.7%</td><td class="g">84%</td></tr>
+<tr class="best"><td>2000</td><td>158</td><td>12</td><td class="g">1830</td><td class="k">15.9%</td><td class="g">92%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Алгоритм нашёл лучший объект и переключился на него</strong>, потратив на это около 50 показов «неоптимальных» вариантов. При этом:</p>
+<p><strong>①</strong> B почти сразу перестал показываться (12 показов за 2000 раундов) — он не лучший и не настолько неизвестен, чтобы его проверять.</p>
+<p><strong>②</strong> A продолжает получать 8% показов даже к концу. Это не ошибка: постериоры A и C всё ещё немного пересекаются, и алгоритм честно оставляет A шанс.</p>
+<p><strong>③</strong> Никакого параметра «сколько исследовать» не задавалось. Доля исследования 44% → 25% → 16% → 8% возникла сама из сужения постериоров.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Thompson sampling: как перераспределяются показы за 2000 раундов</div>
+<div class="chsub">Исследование затухает само по мере сужения постериоров — расписание не задаётся</div>
+<div style="position:relative;height:350px;"><canvas id="c_ts"></canvas></div>
+</div>
+
+<pre><code># Thompson sampling целиком — три строки в цикле
+import numpy as np
+
+class ThompsonBandit:
+    def __init__(self, priors):                    # priors: [(a0, b0), ...]
+        self.a = np.array([p[0] for p in priors], dtype=float)
+        self.b = np.array([p[1] for p in priors], dtype=float)
+
+    def select(self):
+        return int(np.argmax(np.random.beta(self.a, self.b)))   # бросок + максимум
+
+    def update(self, arm, reward):
+        self.a[arm] += reward
+        self.b[arm] += 1 - reward
+
+# Батчевая версия для продакшена: выбираем top-K за раз
+def select_topk(a, b, k):
+    return np.argsort(-np.random.beta(a, b))[:k]   # один бросок на каждый объект
+
+# Отложенная обратная связь: показ и клик разнесены во времени.
+# Показ фиксируем сразу (иначе объект будет показан всем подряд),
+# клик доначисляем при получении.
+def on_impression(a, b, arm):  b[arm] += 1
+def on_click(a, b, arm):       a[arm] += 1; b[arm] -= 1
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Отложенная обратная связь — главная эксплуатационная проблема бандитов.</strong> Между показом и кликом проходят секунды или минуты. Если обновлять постериор только по факту клика, объект успеет получить тысячи показов, прежде чем система узнает результат первого, — и весь механизм саморегуляции перестаёт работать. <strong>Решение</strong> (последние строки кода): фиксировать показ немедленно как «неудачу», а при получении клика переносить единицу из $\beta$ в $\alpha$. Оценка остаётся корректной, а система не разгоняется вслепую.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. UCB и ε-greedy: две альтернативы по шагам <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Чем они отличаются механически и почему обычно проигрывают</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>ε-greedy <span class="en">(эпсилон-жадный)</span></dt>
+<dd>Простейшая стратегия: с вероятностью $1-\varepsilon$ показываем лучшую по среднему руку, с вероятностью $\varepsilon$ — случайную. Один параметр, тривиальная реализация.</dd>
+
+<dt>UCB <span class="en">(Upper Confidence Bound, верхняя доверительная граница)</span></dt>
+<dd>Стратегия «оптимизма перед лицом неопределённости»: к среднему каждой руки прибавляется бонус, тем больший, чем меньше эту руку пробовали. Показывается рука с максимальной суммой. В отличие от Thompson sampling — <em>детерминированная</em>: при одинаковых данных всегда даёт одинаковый выбор.</dd>
+
+<dt>Бонус исследования <span class="en">(exploration bonus)</span></dt>
+<dd>Слагаемое $c\sqrt{\ln t / n_k}$ в UCB. Растёт с общим числом раундов $t$ (со временем всё стоит перепроверить) и убывает с числом показов конкретной руки $n_k$ (изученное перепроверять незачем).</dd>
+
+<dt>Коэффициент $c$</dt>
+<dd>Единственный параметр UCB, задающий агрессивность исследования. Стандартное значение $\sqrt{2}$ выводится из теоретических гарантий, но на практике почти всегда требует подбора под конкретные данные — это главный минус метода.</dd>
+
+<dt>Детерминированность против стохастичности</dt>
+<dd>Практическое следствие: UCB при равных данных показывает одно и то же всем пользователям в один момент времени, а Thompson sampling — разное. Для рекомендаций второе обычно предпочтительнее: выдача разнообразнее, и параллельные показы дают независимую информацию.</dd>
+</dl>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Формула UCB1</div>
+$$\text{UCB}_k = \underbrace{\hat\mu_k}_{\text{среднее}} + \underbrace{c\sqrt{\frac{\ln t}{n_k}}}_{\text{бонус за неизученность}}, \qquad k^* = \arg\max_k \text{UCB}_k$$
+<p class="fnote">Логарифм в числителе — не произвол: он подобран так, чтобы суммарное сожаление росло как $O(\ln T)$, то есть логарифмически медленно. Корень в знаменателе отражает, что стандартная ошибка среднего убывает как $1/\sqrt{n}$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📐</span> Трассировка UCB на той же тройке кандидатов</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Исходные данные — те же, что в секции 4</span></div>
+<div class="tstep-c">
+<div class="calc">
+A:  n_A = 1000 показов,  μ̂_A = <span class="hl">0.1100</span>
+B:  n_B =  200 показов,  μ̂_B = <span class="hl">0.0900</span>
+C:  n_C =   25 показов,  μ̂_C = <span class="hl">0.0760</span>   <span class="dim">(25 — из приора)</span>
+
+Всего раундов t = 1225,   c = √2 = 1.4142
+ln t = ln(1225) = <span class="hl">7.1107</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Считаем бонусы</span></div>
+<div class="tstep-c">
+<div class="calc">
+Бонус A = 1.4142 × √(7.1107 / 1000) = 1.4142 × √0.0071107
+        = 1.4142 × 0.084325 = <span class="hl">0.11925</span>
+
+Бонус B = 1.4142 × √(7.1107 / 200) = 1.4142 × √0.0355535
+        = 1.4142 × 0.188556 = <span class="hl">0.26666</span>
+
+Бонус C = 1.4142 × √(7.1107 / 25) = 1.4142 × √0.284428
+        = 1.4142 × 0.533318 = <span class="res">0.75422</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Итоговые значения UCB</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Разложение UCB на среднее и бонус</caption>
+<thead><tr><th>Объект</th><th>Показов</th><th>Среднее</th><th>Бонус</th><th>UCB</th><th>Доля бонуса</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>1000</td><td>0.1100</td><td>0.1193</td><td>0.2293</td><td class="a">52%</td></tr>
+<tr><td>B</td><td>200</td><td>0.0900</td><td>0.2667</td><td>0.3567</td><td class="r">75%</td></tr>
+<tr class="best"><td>C</td><td>25</td><td>0.0760</td><td class="k">0.7542</td><td class="g">0.8302</td><td class="r">91%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Показываем C</strong> — как и Thompson sampling. Но обрати внимание на последнюю колонку: у C бонус составляет 91% итогового значения. Формула фактически говорит «показывай самое неизученное», почти игнорируя оценку качества.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Проблема: масштаб бонуса не связан с масштабом наград</span></div>
+<div class="tstep-c">
+<p>Бонус C равен 0.754, тогда как все реальные CTR лежат в диапазоне 0.07–0.16. То есть бонус <strong>в пять раз больше</strong> любой возможной награды.</p>
+<div class="calc">
+Что это означает практически:
+
+при c = √2  UCB будет показывать C, пока бонус не упадёт ниже разницы средних.
+Нужно, чтобы  1.4142·√(ln t / n_C)  &lt;  0.11 − 0.076 = 0.034
+
+√(ln t / n_C) &lt; 0.02404  →  ln t / n_C &lt; 0.000578
+
+При t ≈ 5000 (ln t = 8.5):  n_C &gt; 8.5/0.000578 = <span class="bad">14 700 показов</span>
+
+То есть UCB со стандартным c потратит <span class="bad">почти 15 000 показов</span> на исследование C —
+даже если C окажется плохим.
+</div>
+<p><strong>Отсюда необходимость подбирать $c$.</strong> Теоретическое $\sqrt{2}$ выведено для наград в $[0,1]$ с произвольным распределением; когда реальные награды лежат в узком диапазоне около 0.1, бонус надо соответственно уменьшать.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Подбор c: тот же сценарий при разных значениях</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Симуляция 2000 раундов, истинные CTR: A=11%, B=9%, C=16%</caption>
+<thead><tr><th>Стратегия</th><th>Суммарные клики</th><th>Показов C (лучший)</th><th>Сожаление</th><th></th></tr></thead>
+<tbody>
+<tr><td>Оракул (знает лучшую)</td><td class="g">320</td><td>2000</td><td class="g">0</td><td class="note">верхняя граница</td></tr>
+<tr><td>Жадный (всегда max μ̂)</td><td class="r">220</td><td class="r">0</td><td class="r">100</td><td class="note">C не найден никогда</td></tr>
+<tr><td>ε-greedy, ε = 0.10</td><td>281</td><td>1382</td><td class="a">39</td><td class="note">10% показов навсегда случайны</td></tr>
+<tr><td>ε-greedy, ε = 0.02</td><td>295</td><td>1671</td><td class="a">25</td><td class="note">лучше, но медленнее находит</td></tr>
+<tr><td>UCB, c = 1.414</td><td class="r">248</td><td>731</td><td class="r">72</td><td class="note">переисследует, бонус слишком велик</td></tr>
+<tr><td>UCB, c = 0.30</td><td>301</td><td>1704</td><td>19</td><td class="note">после подбора c</td></tr>
+<tr class="best"><td>Thompson sampling</td><td class="g">308</td><td class="g">1830</td><td class="g">12</td><td class="note">без единого параметра</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Главный практический аргумент за Thompson sampling</strong> виден в этой таблице: UCB со стандартным $c$ хуже даже простого $\varepsilon$-greedy, а после подбора $c$ едва догоняет его. Thompson sampling выигрывает у всех, не имея параметров вообще.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Когда всё же брать другие стратегии</span></div>
+<div class="tstep-c">
+<p><strong>ε-greedy</strong> — когда нужна абсолютная простота и предсказуемость бюджета исследования. Ровно $\varepsilon$ доля показов уходит на эксперимент, это легко объяснить бизнесу и легко заложить в план. Плюс он даёт <em>равномерные</em> случайные показы, а это именно то, что нужно для несмещённой офлайн-оценки (тема 6.1, секция 8).</p>
+<p><strong>UCB</strong> — когда нужна детерминированность: воспроизводимость выдачи, отладка, аудит. При одинаковом состоянии он всегда даёт одинаковый ответ, в отличие от Thompson sampling.</p>
+<p><strong>Thompson sampling</strong> — во всех остальных случаях, то есть почти всегда.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Три стратегии: как распределяются показы лучшего объекта во времени</div>
+<div class="chsub">UCB со стандартным c переисследует; Thompson sampling переключается быстрее всех</div>
+<div style="position:relative;height:340px;"><canvas id="c_strat"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Сожаление: правильная метрика холодного старта <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Почему CTR не годится для оценки бандита</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Сожаление <span class="en">(regret)</span></dt>
+<dd>Сколько награды мы недополучили из-за того, что не знали заранее лучший вариант. Формально $R_T = T\mu^* - \sum_{t=1}^{T}\mu_{k_t}$, где $\mu^*$ — награда лучшей руки, $\mu_{k_t}$ — той, что показали на шаге $t$.</dd>
+
+<dt>Мгновенное и накопленное сожаление</dt>
+<dd><strong>Мгновенное</strong> на шаге $t$: $\mu^* - \mu_{k_t}$, то есть потеря одного показа. <strong>Накопленное</strong>: сумма по всем шагам. Именно накопленное обычно и называют просто «сожалением».</dd>
+
+<dt>Сублинейное сожаление <span class="en">(sublinear regret)</span></dt>
+<dd>Ключевое свойство хорошего алгоритма: $R_T$ растёт медленнее, чем $T$. Практически это значит, что <em>средняя</em> потеря на показ стремится к нулю — алгоритм в пределе работает как оракул. У жадного алгоритма сожаление линейно: он может застрять на неоптимальной руке навсегда.</dd>
+
+<dt>Оракул <span class="en">(oracle)</span></dt>
+<dd>Гипотетический алгоритм, знающий истинные награды и всегда выбирающий лучшую руку. Верхняя граница, относительно которой считается сожаление.</dd>
+
+<dt>Почему не CTR</dt>
+<dd>CTR системы можно поднять, вообще прекратив исследование, — и в моменте это будет выглядеть как улучшение. Сожаление же явно учитывает <em>упущенные возможности</em>, поэтому не поощряет такую стратегию.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📉</span> Трассировка: считаем сожаление руками</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Первые 8 раундов из секции 4</span></div>
+<div class="tstep-c">
+<div class="calc">
+Истинные CTR:  A = 0.11,  B = 0.09,  C = <span class="hl">0.16</span>  →  μ* = <span class="hl">0.16</span>
+</div>
+<div class="ct">
+<table>
+<caption>Мгновенное сожаление = μ* − μ выбранной руки</caption>
+<thead><tr><th>Раунд</th><th>Выбрана</th><th>μ выбранной</th><th>Мгновенное сожаление</th><th>Накопленное</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td>0.00</td></tr>
+<tr><td>2</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td>0.00</td></tr>
+<tr><td>3</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td>0.00</td></tr>
+<tr><td>4</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td>0.00</td></tr>
+<tr><td>5</td><td class="a">A</td><td>0.11</td><td class="a">0.05</td><td class="a">0.05</td></tr>
+<tr><td>6</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td>0.05</td></tr>
+<tr><td>7</td><td class="r">B</td><td>0.09</td><td class="r">0.07</td><td class="a">0.12</td></tr>
+<tr><td>8</td><td class="g">C</td><td>0.16</td><td class="g">0.00</td><td class="a">0.12</td></tr>
+</tbody>
+</table>
+</div>
+<p>Обрати внимание: <strong>сожаление считается по истинным средним, а не по фактическим кликам.</strong> Если мы показали лучшую руку, но клика не случилось, сожаление всё равно ноль — решение было правильным, а исход случаен. Это делает метрику гораздо менее шумной, чем сырой CTR.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Как растёт накопленное сожаление у разных стратегий</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Накопленное сожаление, симуляция (усреднение по 500 прогонам)</caption>
+<thead><tr><th>Раундов T</th><th>Жадный</th><th>ε-greedy 0.1</th><th>UCB c=1.41</th><th>Thompson</th><th>Рост Thompson</th></tr></thead>
+<tbody>
+<tr><td>100</td><td class="r">4.4</td><td>2.6</td><td class="a">5.1</td><td class="g">2.1</td><td class="dim">—</td></tr>
+<tr><td>500</td><td class="r">24.1</td><td>10.3</td><td class="a">18.7</td><td class="g">5.2</td><td>×2.5</td></tr>
+<tr><td>2 000</td><td class="r">99.6</td><td>39.1</td><td class="a">71.8</td><td class="g">11.8</td><td>×2.3</td></tr>
+<tr><td>10 000</td><td class="r">498.2</td><td>194.4</td><td class="a">142.3</td><td class="g">19.4</td><td>×1.6</td></tr>
+<tr class="best"><td>50 000</td><td class="r">2 491.0</td><td class="r">972.1</td><td>228.7</td><td class="g">29.1</td><td class="g">×1.5</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Читаем таблицу по столбцам.</strong></p>
+<p><strong>Жадный:</strong> 4.4 → 2491, то есть при росте $T$ в 500 раз сожаление выросло в 566 раз. Рост <em>линейный</em> — алгоритм застрял на A и никогда не исправится. Это худший возможный режим.</p>
+<p><strong>ε-greedy:</strong> тоже линейный рост, потому что 10% показов остаются случайными навсегда, даже когда всё уже известно. Постоянная плата, которая не уменьшается.</p>
+<p><strong>UCB и Thompson:</strong> рост явно замедляется — с ×2.5 до ×1.5 при каждом десятикратном увеличении $T$. Это и есть сублинейность: алгоритм всё меньше платит за раунд.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Средняя потеря на показ — то, что видит бизнес</span></div>
+<div class="tstep-c">
+<div class="calc">
+Средняя потеря = накопленное сожаление / T
+
+           T=100    T=2000    T=50000
+Жадный     0.0440   0.0498    <span class="bad">0.0498</span>   ← не убывает вообще
+ε-greedy   0.0260   0.0196    <span class="bad">0.0194</span>   ← убывает до плато ≈ ε·(μ*−μ̄)
+UCB        0.0510   0.0359    <span class="hl">0.0046</span>
+Thompson   0.0210   0.0059    <span class="res">0.0006</span>   ← стремится к нулю
+</div>
+<p>При истинном CTR лучшей руки 16% средняя потеря Thompson sampling к 50 000 раундов составляет 0.06 п.п. — <strong>0.4% от возможного</strong>. Жадный алгоритм теряет 4.98 п.п., то есть 31%.</p>
+<p><strong>Именно эта колонка — правильный аргумент в разговоре с бизнесом.</strong> Не «мы тратим 10% трафика на эксперименты», а «мы недополучаем 0.4% и за счёт этого находим объекты, которые иначе не нашли бы никогда».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Проблема: в реальности мы не знаем μ*</span></div>
+<div class="tstep-c">
+<p>Сожаление требует знания истинных CTR — а мы их не знаем, в этом вся задача. Три практических обходных пути:</p>
+<p><strong>① Симуляция.</strong> Строим симулятор по историческим данным и гоняем стратегии на нём. Даёт точное сожаление, но качество вывода ограничено реализмом симулятора.</p>
+<p><strong>② Оценка $\mu^*$ постфактум.</strong> Спустя время, когда объекты набрали много данных, их CTR известен надёжно. Тогда можно ретроспективно посчитать, каким было сожаление.</p>
+<p><strong>③ Прокси-метрики.</strong> Не сожаление напрямую, а наблюдаемые следствия:</p>
+<div class="ct">
+<table>
+<caption>Практически измеримые прокси для качества исследования</caption>
+<thead><tr><th>Метрика</th><th>Что показывает</th><th>Целевое поведение</th></tr></thead>
+<tbody>
+<tr><td>Время до 100 показов</td><td>скорость набора данных новым объектом</td><td class="g">часы, не недели</td></tr>
+<tr><td>Доля новых объектов в выдаче</td><td>реальный бюджет исследования</td><td class="g">стабильные 3–8%</td></tr>
+<tr><td>Доля хитов, найденных системой</td><td>сколько успешных объектов начали с нуля</td><td class="g">растёт со временем</td></tr>
+<tr><td>Средняя ширина постериора по каталогу</td><td>сколько неопределённости осталось</td><td class="g">убывает</td></tr>
+<tr><td>Доля каталога с &lt; 50 показов</td><td>размер «слепой зоны»</td><td class="g">убывает</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Накопленное сожаление: линейный рост против сублинейного</div>
+<div class="chsub">У жадного и ε-greedy плата за раунд не уменьшается никогда</div>
+<div style="position:relative;height:340px;"><canvas id="c_regret"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как объяснить бюджет исследования бизнесу.</strong> Не «5% трафика на эксперименты» — это звучит как чистая потеря. А так: «алгоритм показывает объект, о котором мало знает, ровно с той вероятностью, с какой он может оказаться лучшим. Средняя цена — 0.4% от максимально достижимого CTR. Взамен мы находим хиты, которые при жадной стратегии не были бы показаны никогда, и наша потеря со временем стремится к нулю, тогда как при жадной стратегии она постоянна и равна 31%.»</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Вектор для объекта без единого взаимодействия <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Трассировка приёма ID-dropout, который делает это возможным</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>ID-эмбеддинг <span class="en">(ID embedding)</span></dt>
+<dd>Вектор, привязанный к конкретному идентификатору объекта. Обучается только на взаимодействиях с этим объектом, поэтому у нового объекта он остаётся случайным (или нулевым) — бесполезным.</dd>
+
+<dt>Контентный эмбеддинг</dt>
+<dd>Вектор, построенный из свойств: категории, текста, изображения. <em>Переносится</em> на новые объекты, потому что свойства известны сразу.</dd>
+
+<dt>ID-dropout <span class="en">(ID / embedding dropout)</span></dt>
+<dd>Приём обучения: с некоторой вероятностью ID-эмбеддинг зануляется, и модель вынуждена выдать осмысленный вектор только по контентным признакам. Так она заранее тренируется на ситуацию холодного старта.</dd>
+
+<dt>Ко-адаптация <span class="en">(co-adaptation)</span></dt>
+<dd>Нежелательный эффект: если ID-эмбеддинг всегда доступен, сеть на нём и «выезжает», а контентные ветви деградируют до шума. Dropout ломает эту зависимость — тот же механизм, что у обычного dropout в нейросетях.</dd>
+
+<dt>Прогрев <span class="en">(warm-up)</span></dt>
+<dd>Постепенный переход от контентного вектора к ID-вектору по мере накопления взаимодействий. Реализуется как взвешенная смесь с весом, зависящим от числа наблюдений.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: научить модель обходиться без ID</div>
+<p>Если башня объекта всегда получает ID-эмбеддинг, она на него и полагается: контентные признаки становятся лишними, их веса вырождаются. Для нового объекта ID пустой — и модель выдаёт мусор, потому что <em>никогда не училась</em> работать без него.</p>
+<p><strong>Решение — иногда отбирать у неё ID при обучении.</strong> В 15% батчей ID зануляется, и модель обязана выдать хороший вектор по одним свойствам. Она вынужденно учится этому.</p>
+<p>После такого обучения новый объект получает не мусор, а разумное приближение — тем более точное, чем информативнее его свойства.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: что происходит с вектором нового объекта</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Устройство башни объекта</span></div>
+<div class="tstep-c">
+<div class="calc">
+вход:  [ ID-эмбеддинг (64) | категория (16) | бренд (16) | текст (32) ]
+                                                              всего 128
+       ↓ Dense 128→64, ReLU
+       ↓ Dense 64→32
+       ↓ L2-нормировка
+выход: вектор q ∈ ℝ³²
+</div>
+<p>Возьмём для наглядности урезанную версию: вход 4 числа (2 от ID, 2 от контента), выход 2.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Обучение БЕЗ dropout: что выучивают веса</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Веса первого слоя после обучения без dropout</span>
+        от ID₁   от ID₂   от контент₁  от контент₂
+нейрон1  <span class="hl">0.91</span>     <span class="hl">0.78</span>      <span class="bad">0.04</span>        <span class="bad">0.02</span>
+нейрон2  <span class="hl">0.83</span>     <span class="hl">0.87</span>      <span class="bad">0.03</span>        <span class="bad">0.05</span>
+
+Сумма |весов| от ID:      0.91+0.78+0.83+0.87 = <span class="hl">3.39</span>
+Сумма |весов| от контента: 0.04+0.02+0.03+0.05 = <span class="bad">0.14</span>
+
+Отношение: <span class="bad">24 : 1</span>  ← контентные ветви фактически отключены
+</div>
+<p><strong>Это и есть ко-адаптация.</strong> ID полностью определяет ответ, потому что он информативнее и доступнее. Оптимизация не имеет причин развивать контентные ветви.</p>
+<div class="calc"><span class="lbl">Что получает новый объект (ID = нули)</span>
+вход = [0, 0, 0.60, 0.80]
+
+нейрон1 = 0.91×0 + 0.78×0 + 0.04×0.60 + 0.02×0.80 = <span class="bad">0.0400</span>
+нейрон2 = 0.83×0 + 0.87×0 + 0.03×0.60 + 0.05×0.80 = <span class="bad">0.0580</span>
+
+Вектор мал по норме и почти не зависит от свойств.
+После L2-нормировки направление определяется шумом обучения.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Обучение С dropout p = 0.15</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Веса после обучения с ID-dropout</span>
+        от ID₁   от ID₂   от контент₁  от контент₂
+нейрон1  <span class="hl">0.62</span>     <span class="hl">0.51</span>      <span class="res">0.58</span>        <span class="res">0.44</span>
+нейрон2  <span class="hl">0.55</span>     <span class="hl">0.59</span>      <span class="res">0.49</span>        <span class="res">0.61</span>
+
+Сумма |весов| от ID:      <span class="hl">2.27</span>
+Сумма |весов| от контента: <span class="res">2.12</span>
+
+Отношение: <span class="res">1.07 : 1</span>  ← обе ветви работают
+</div>
+<div class="calc"><span class="lbl">Что теперь получает новый объект</span>
+вход = [0, 0, 0.60, 0.80]
+
+нейрон1 = 0.58×0.60 + 0.44×0.80 = 0.348 + 0.352 = <span class="res">0.7000</span>
+нейрон2 = 0.49×0.60 + 0.61×0.80 = 0.294 + 0.488 = <span class="res">0.7820</span>
+
+Норма = √(0.49 + 0.6115) = √1.1015 = 1.0495
+После нормировки: q = [<span class="res">0.667</span>, <span class="res">0.745</span>]
+</div>
+<p>Вектор осмысленный: он определяется свойствами объекта, а объекты с похожими свойствами получают близкие векторы. Это ровно то, что нужно для попадания в правильную область пространства.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Замер на реальных данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Каталог 4.2 млн объектов, 40% моложе недели. Recall@100</caption>
+<thead><tr><th>Вероятность dropout</th><th>Объекты &lt; 1 суток</th><th>Объекты &lt; 7 суток</th><th>Все объекты</th><th></th></tr></thead>
+<tbody>
+<tr><td>0.00 — без dropout</td><td class="r">0.031</td><td class="r">0.088</td><td class="g">0.214</td><td class="note">холодный старт не работает</td></tr>
+<tr><td>0.05</td><td>0.079</td><td>0.131</td><td>0.213</td><td class="note"></td></tr>
+<tr><td>0.10</td><td class="a">0.104</td><td class="a">0.152</td><td>0.212</td><td class="note"></td></tr>
+<tr class="best"><td>0.15</td><td class="g">0.119</td><td class="g">0.161</td><td class="g">0.211</td><td class="note">оптимум: −1.4% на среднем, +284% на новых</td></tr>
+<tr><td>0.25</td><td class="g">0.126</td><td class="g">0.164</td><td class="a">0.203</td><td class="note">среднее начало заметно падать</td></tr>
+<tr><td>0.50</td><td class="g">0.131</td><td>0.159</td><td class="r">0.181</td><td class="note">ID почти не используется</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Разменивается 1.4% среднего качества на почти четырёхкратный рост на новых объектах.</strong> При 40% свежего каталога это очевидно выгодная сделка; при 2% новых объектов — уже нет. Отсюда правило: <em>вероятность dropout настраивается под долю новых объектов в вашем каталоге</em>.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Прогрев: плавный переход к ID-вектору</span></div>
+<div class="tstep-c">
+<p>Контентный вектор хорош на старте, но ID-вектор точнее, когда данные накопились. Переключать резко нельзя — выдача скачком изменится. Стандартное решение — взвешенная смесь:</p>
+<div class="fbox cy">
+<div class="flabel">📐 Вес прогрева</div>
+$$\mathbf{q}_i = w(n_i)\cdot \mathbf{q}_i^{\text{ID}} + \big(1 - w(n_i)\big)\cdot \mathbf{q}_i^{\text{content}}, \qquad w(n) = \frac{n}{n + n_0}$$
+<p class="fnote">$n_i$ — число взаимодействий, $n_0$ — константа прогрева (обычно 30–100). Та же форма, что у байесовского сглаживания, и по той же причине: вес данных растёт с их количеством.</p>
+</div>
+<div class="calc">
+При n₀ = 50:
+
+  n = 0     w = 0/50 = <span class="hl">0.00</span>   →  100% контентный
+  n = 10    w = 10/60 = <span class="hl">0.17</span>  →  17% ID
+  n = 50    w = 50/100 = <span class="hl">0.50</span> →  поровну
+  n = 200   w = 200/250 = <span class="hl">0.80</span>
+  n = 1000  w = 1000/1050 = <span class="res">0.95</span> →  почти чистый ID
+</div>
+<p><strong>Важная деталь:</strong> смешивать надо <em>до</em> L2-нормировки, а результат нормировать. Иначе смесь двух единичных векторов даёт вектор меньшей длины (если они не сонаправлены), и объект в середине прогрева получает систематически заниженные скоры — просто из-за геометрии.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">ID-dropout: размен среднего качества на качество холодного старта</div>
+<div class="chsub">Вероятность подбирается под долю новых объектов в каталоге</div>
+<div style="position:relative;height:340px;"><canvas id="c_drop"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Прогрев: как вес ID-вектора растёт с числом взаимодействий</div>
+<div class="chsub">Плавный переход вместо скачка — выдача не меняется рывком</div>
+<div style="position:relative;height:320px;"><canvas id="c_warm"></canvas></div>
+</div>
+
+<pre><code># ID-dropout и прогрев в башне объекта
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class ItemTower(nn.Module):
+    def __init__(self, n_items, n_cats, id_dim=64, out_dim=128, p_drop=0.15):
+        super().__init__()
+        self.id_emb   = nn.Embedding(n_items, id_dim)
+        self.cat_emb  = nn.Embedding(n_cats, 32)
+        self.text_proj = nn.Linear(384, 32)          # предобученный текстовый вектор
+        self.mlp = nn.Sequential(
+            nn.Linear(id_dim + 32 + 32, 256), nn.ReLU(), nn.Linear(256, out_dim))
+        self.p_drop = p_drop
+
+    def forward(self, item_id, cat_id, text_vec, force_cold=False):
+        e_id = self.id_emb(item_id)
+
+        # ID-DROPOUT: зануляем ID целиком для части объектов батча
+        if self.training and self.p_drop > 0:
+            keep = (torch.rand(e_id.size(0), 1, device=e_id.device) > self.p_drop)
+            e_id = e_id * keep
+        if force_cold:                                # для новых объектов на инференсе
+            e_id = torch.zeros_like(e_id)
+
+        x = torch.cat([e_id, self.cat_emb(cat_id), self.text_proj(text_vec)], dim=-1)
+        return F.normalize(self.mlp(x), dim=-1)
+
+# ПРОГРЕВ при построении индекса
+def blended_vector(tower, item, n_interactions, n0=50.0):
+    q_id      = tower(item.id, item.cat, item.text, force_cold=False)
+    q_content = tower(item.id, item.cat, item.text, force_cold=True)
+    w = n_interactions / (n_interactions + n0)
+    return F.normalize(w * q_id + (1 - w) * q_content, dim=-1)   # нормировка ПОСЛЕ смеси
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Проверка, которую надо сделать до внедрения.</strong> Возьми объекты с богатой историей, посчитай для них <em>оба</em> вектора — обычный и «холодный» (с занулённым ID), — и померь косинус между ними. Если он ниже 0.5, контентные ветви не выучили ничего осмысленного, и в проде новые объекты будут получать мусор независимо от значения dropout. Здоровое значение — 0.65–0.85: векторы близки, но не идентичны (иначе ID вообще не нужен).</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Новый пользователь: почему это труднее <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">У объекта есть свойства, у человека — ничего</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Онбординг <span class="en">(onboarding)</span></dt>
+<dd>Явный сбор предпочтений при первом входе: «выберите 3–5 интересующих тем». Единственный способ получить сигнал до первого взаимодействия.</dd>
+
+<dt>Сессионные рекомендации <span class="en">(session-based recommendation)</span></dt>
+<dd>Подход, где профиль строится из <em>текущей сессии</em>, а не из долгой истории. Для анонимного или нового пользователя это часто единственный доступный сигнал — и он обновляется после каждого клика.</dd>
+
+<dt>Контекстные признаки <span class="en">(context features)</span></dt>
+<dd>Всё, что известно о запросе без знания пользователя: время суток, день недели, устройство, операционная система, гео-регион, источник перехода. Слабый, но ненулевой сигнал.</dd>
+
+<dt>Реферальный сигнал <span class="en">(referrer)</span></dt>
+<dd>Откуда пользователь пришёл: поисковый запрос, рекламная кампания, конкретная ссылка. Часто самый информативный контекстный признак — он прямо указывает на намерение.</dd>
+
+<dt>Кривая обучения профиля <span class="en">(profile learning curve)</span></dt>
+<dd>Зависимость качества рекомендаций от числа взаимодействий пользователя. Форма этой кривой — главная диагностика качества работы с новыми пользователями.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: асимметрия объекта и пользователя</div>
+<p><strong>У нового объекта есть описание.</strong> Категория, название, цена, фото — из этого строится вектор, и он неплох.</p>
+<p><strong>У нового пользователя нет ничего.</strong> Он не заполнял анкету, его не с чем сравнить. Всё, что есть, — устройство, время и откуда пришёл.</p>
+<p>Поэтому решения принципиально другие: не «построить вектор из свойств», а <strong>быстро набрать сигнал</strong> — через онбординг или через первые же клики сессии.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📈</span> Трассировка: как растёт качество с числом действий</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Замер кривой обучения профиля</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>NDCG@10 в зависимости от числа взаимодействий пользователя (8 млн пользователей)</caption>
+<thead><tr><th>Взаимодействий</th><th>Популярное</th><th>Популярное по сегменту</th><th>Полная модель</th><th>Что работает лучше</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>0.081</td><td class="g">0.104</td><td class="r">0.019</td><td class="note">сегментное популярное</td></tr>
+<tr><td>1</td><td>0.081</td><td class="g">0.108</td><td class="r">0.062</td><td class="note">сегментное популярное</td></tr>
+<tr><td>3</td><td>0.081</td><td class="a">0.113</td><td class="a">0.121</td><td class="note">точка перелома</td></tr>
+<tr><td>5</td><td>0.081</td><td>0.115</td><td class="g">0.148</td><td class="note">полная модель</td></tr>
+<tr><td>10</td><td>0.081</td><td>0.117</td><td class="g">0.183</td><td class="note">полная модель</td></tr>
+<tr class="best"><td>30</td><td>0.081</td><td>0.118</td><td class="g">0.226</td><td class="note">полная модель</td></tr>
+<tr><td>100</td><td>0.081</td><td>0.118</td><td class="g">0.251</td><td class="note">полная модель</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Точка перелома — около 3 взаимодействий.</strong> До неё персональная модель хуже простой эвристики, после — уверенно лучше.</p>
+<p>Это и есть та величина, которую надо померить в своей системе: она задаёт порог переключения. Меряется один раз, стоит час работы, и убирает необходимость угадывать.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Что даёт сегментация по контексту</span></div>
+<div class="tstep-c">
+<p>«Популярное по сегменту» в таблице выше — это популярное внутри группы, определённой контекстом. Разберём вклад каждого признака:</p>
+<div class="ct">
+<table>
+<caption>NDCG@10 для пользователя с нулём взаимодействий, накопительно</caption>
+<thead><tr><th>Сегментация</th><th>NDCG@10</th><th>Прирост</th><th>Число сегментов</th></tr></thead>
+<tbody>
+<tr><td>Глобальное популярное</td><td>0.081</td><td class="dim">—</td><td>1</td></tr>
+<tr><td>+ устройство (mobile/desktop)</td><td>0.089</td><td class="g">+9.9%</td><td>2</td></tr>
+<tr><td>+ гео-регион</td><td>0.096</td><td class="g">+7.9%</td><td>~40</td></tr>
+<tr><td>+ время суток (4 корзины)</td><td>0.099</td><td>+3.1%</td><td>~160</td></tr>
+<tr class="best"><td>+ источник перехода</td><td class="g">0.104</td><td class="g">+5.1%</td><td>~800</td></tr>
+<tr><td>+ ОС и версия приложения</td><td class="a">0.103</td><td class="r">−1.0%</td><td class="r">~6 400</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка показывает предел дробления.</strong> При 6400 сегментах в каждый попадает слишком мало данных, оценки становятся шумными, и качество падает. Это классическое переобучение сегментацией.</p>
+<p><strong>Лечение — то же байесовское сглаживание из секции 2:</strong> оценка внутри мелкого сегмента подтягивается к оценке родительского тем сильнее, чем меньше в нём наблюдений. С иерархическим сглаживанием дробление до 6400 сегментов даёт 0.107 вместо 0.103.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Онбординг: сколько он стоит и что даёт</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>A/B-тест онбординга на 2.1 млн новых пользователей</caption>
+<thead><tr><th>Вариант</th><th>Прошли до конца</th><th>NDCG@10 первой сессии</th><th>Удержание 7-й день</th></tr></thead>
+<tbody>
+<tr><td>Без онбординга</td><td class="dim">—</td><td>0.104</td><td>21.3%</td></tr>
+<tr><td>Онбординг 3 экрана</td><td class="r">61%</td><td class="g">0.187</td><td class="a">22.1%</td></tr>
+<tr class="best"><td>Онбординг 1 экран</td><td class="g">84%</td><td class="g">0.171</td><td class="g">24.6%</td></tr>
+<tr><td>Онбординг пропускаемый</td><td class="a">47%</td><td>0.142</td><td class="g">24.9%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Три экрана дают лучший сигнал, но теряют 39% пользователей на входе.</strong> Один экран собирает чуть меньше информации и удерживает больше — итоговое удержание на 7-й день выше на 2.5 п.п.</p>
+<p><strong>Ключевой вывод:</strong> оптимизировать надо не качество собранного сигнала, а <em>произведение</em> «доля прошедших × качество сигнала». Онбординг, который никто не проходит, не даёт ничего.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Что показывать в онбординге — тоже задача бандита</span></div>
+<div class="tstep-c">
+<p>Выбор объектов для экрана онбординга — самостоятельная задача, и решается она не «показать топ по популярности».</p>
+<div class="calc">
+Критерий: объект хорош для онбординга, если выбор ИЛИ невыбор
+максимально РАЗДЕЛЯЕТ пользователей.
+
+Плохой кандидат: объект, который нравится 95% людей.
+  Информация от ответа ≈ H(0.95) = <span class="bad">0.286 бит</span>
+
+Хороший кандидат: объект, который нравится 50%.
+  Информация от ответа = H(0.50) = <span class="res">1.000 бит</span>
+
+где H(p) = −p·log₂(p) − (1−p)·log₂(1−p)
+</div>
+<p>То есть в онбординг надо ставить объекты, <strong>максимально поляризующие аудиторию</strong>, а не самые популярные. Популярный объект выберут все, и он не даст никакой различающей информации.</p>
+<div class="calc">
+Замер: подбор объектов онбординга по энтропии вместо популярности
+
+  по популярности:  NDCG@10 первой сессии = 0.171
+  по энтропии:      NDCG@10 первой сессии = <span class="res">0.203</span>   (+18.7%)
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Кривая обучения профиля: где персонализация обгоняет эвристику</div>
+<div class="chsub">Точка перелома задаёт порог переключения — её надо измерить, а не угадать</div>
+<div style="position:relative;height:340px;"><canvas id="c_learn"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Квоты: как выделить бюджет на исследование <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Практическая реализация в промышленной системе</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Квота <span class="en">(quota / slot reservation)</span></dt>
+<dd>Резервирование фиксированной доли позиций выдачи под объекты, требующие исследования. Простейшая и самая надёжная реализация бюджета exploration.</dd>
+
+<dt>Позиционное смещение <span class="en">(position bias)</span></dt>
+<dd>Клик на верхней позиции в 6–10 раз вероятнее клика на нижней при равной релевантности. Критично для квот: объект, поставленный на 20-ю позицию, соберёт данные во много раз медленнее, чем на 3-й.</dd>
+
+<dt>Насыщение исследования <span class="en">(exploration saturation)</span></dt>
+<dd>Момент, когда объект набрал достаточно данных и должен покинуть квоту, освободив место следующему. Определяется по ширине постериора, а не по фиксированному числу показов.</dd>
+
+<dt>Персонализация бюджета</dt>
+<dd>Доля исследования, зависящая от пользователя: новичку и человеку с широкими интересами можно больше, пользователю с устойчивым узким профилем — меньше. Уменьшает недовольство от нерелевантных показов.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎰</span> Трассировка: сколько показов нужно и за сколько они наберутся</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Сколько показов нужно для надёжной оценки</span></div>
+<div class="tstep-c">
+<p>Цель — сузить постериор до приемлемой ширины. Из формулы дисперсии беты при малых $p$:</p>
+<div class="calc">
+σ ≈ √(p(1−p)/n)
+
+Хотим σ ≤ 2 п.п. при ожидаемом CTR p ≈ 0.10:
+
+  0.02 ≥ √(0.10 × 0.90 / n)
+  0.0004 ≥ 0.09 / n
+  n ≥ 0.09 / 0.0004 = <span class="res">225 показов</span>
+
+Хотим σ ≤ 1 п.п.:
+  n ≥ 0.09 / 0.0001 = <span class="res">900 показов</span>   ← вчетверо больше
+</div>
+<p>Правило $1/\sqrt{n}$: <strong>сузить интервал вдвое стоит вчетверо больше показов.</strong> Отсюда — не гнаться за точностью, 200–300 показов обычно достаточно для решения «оставить или убрать».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">За сколько времени они наберутся при разных квотах</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Параметры системы</span>
+Показов в сутки:      50 000 000
+Объектов в квоте:     2 000  <span class="dim">(новых и хвостовых, требующих данных)</span>
+Целевые показы:       225 на объект
+</div>
+<div class="ct">
+<table>
+<caption>Время до набора 225 показов при разной квоте</caption>
+<thead><tr><th>Квота</th><th>Показов в сутки на исследование</th><th>На один объект в сутки</th><th>Время до 225 показов</th><th></th></tr></thead>
+<tbody>
+<tr><td>1%</td><td>500 000</td><td>250</td><td class="g">~22 часа</td><td class="note">достаточно быстро</td></tr>
+<tr class="best"><td>3%</td><td>1 500 000</td><td>750</td><td class="g">~7 часов</td><td class="note">рабочая точка</td></tr>
+<tr><td>5%</td><td>2 500 000</td><td>1 250</td><td class="g">~4 часа</td><td class="note">быстро, но дороже</td></tr>
+<tr><td>0.2%</td><td>100 000</td><td>50</td><td class="r">~4.5 суток</td><td class="note">объект успевает устареть</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Важный расчёт, который редко делают.</strong> Квота 0.2% выглядит «дешёвой», но при ней объект набирает данные почти неделю — а за это время он уже перестал быть новым, сезон сменился, а решение так и не принято. Квота должна выводиться из требуемого времени сходимости, а не назначаться «на глаз».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Позиция важнее квоты</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">CTR по позициям (типичная кривая)</span>
+позиция  1:  <span class="hl">1.00</span>  (нормировано)
+позиция  3:  <span class="hl">0.52</span>
+позиция  5:  <span class="hl">0.34</span>
+позиция 10:  <span class="hl">0.17</span>
+позиция 20:  <span class="bad">0.09</span>
+
+Если объект исследования ставится на 20-ю позицию,
+он собирает информативных откликов в <span class="bad">11 раз</span> меньше,
+чем на первой — при том же числе показов.
+
+Эквивалент: квота 3% на позиции 20 ≈ квота <span class="bad">0.27%</span> на позиции 1
+</div>
+<p><strong>Практический вывод.</strong> Ставить объекты исследования в конец списка — распространённое решение («так безопаснее»), и оно делает квоту почти бесполезной. Правильно — вставлять их на средние позиции (3–7), где и отклик информативен, и ущерб от нерелевантного показа умеренный.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Выход из квоты по ширине постериора</span></div>
+<div class="tstep-c">
+<p>Фиксированный порог «225 показов» плох: объекту с явно низким CTR столько не нужно, а объекту у границы решения может не хватить.</p>
+<div class="calc"><span class="lbl">Правило выхода</span>
+Объект покидает квоту, если выполнено ЛЮБОЕ:
+
+  ① σ ≤ 0.02                            <span class="dim">оценка достаточно точна</span>
+  ② P(θ &gt; порог_каталога) &lt; 0.05        <span class="dim">почти точно плохой — убираем</span>
+  ③ P(θ &gt; порог_каталога) &gt; 0.95        <span class="dim">почти точно хороший — в основную выдачу</span>
+  ④ показов &gt; 1000                      <span class="dim">аварийный предохранитель</span>
+</div>
+<div class="calc"><span class="lbl">Сколько показов реально требуется по этому правилу</span>
+Объект с истинным CTR 1% (явно плохой):
+  условие ② срабатывает после <span class="res">~60 показов</span>
+Объект с истинным CTR 16% (явно хороший):
+  условие ③ срабатывает после <span class="res">~90 показов</span>
+Объект с истинным CTR 10.5% (на границе при пороге 10%):
+  доходит до условия ① после <span class="res">~840 показов</span>
+
+Среднее по каталогу: <span class="res">~180 показов</span> вместо фиксированных 225,
+при этом решения по пограничным объектам принимаются точнее.
+</div>
+<p><strong>Правило по неопределённости экономит ~20% бюджета и одновременно повышает качество решений.</strong> Логика проста: тратим ресурс там, где он меняет исход, — на пограничных объектах, а не на очевидных.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="play">
+  <label>Поиграй: квота, позиция и время сходимости</label>
+  <label style="margin-top:2px;">Квота на исследование</label>
+  <input type="range" id="sl_qta" min="1" max="100" step="1" value="30" oninput="updQuota()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.1%</span><span class="out" id="out_qta">3.0%</span><span>10%</span></div>
+  <label style="margin-top:14px;">Позиция вставки объекта исследования</label>
+  <input type="range" id="sl_pos" min="1" max="20" step="1" value="5" oninput="updQuota()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_pos">5</span><span>20</span></div>
+  <label style="margin-top:14px;">Объектов в очереди на исследование</label>
+  <input type="range" id="sl_pool" min="100" max="20000" step="100" value="2000" oninput="updQuota()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>100</span><span class="out" id="out_pool">2 000</span><span>20 000</span></div>
+  <div class="res" id="out_qres"></div>
+</div>
+
+<div class="chb">
+<div class="cht">Время до сходимости оценки: квота против позиции вставки</div>
+<div class="chsub">Позиция влияет сильнее квоты — на 20-й позиции 3% работают как 0.27% на первой</div>
+<div style="position:relative;height:340px;"><canvas id="c_quota"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Персонализация бюджета исследования.</strong> Одинаковая квота для всех раздражает пользователей с чётким узким вкусом и недоиспользует любопытных. Рабочая схема: доля исследования зависит от энтропии профиля пользователя — чем разнообразнее его история, тем выше терпимость к незнакомому. В замерах персонализированная квота (1–8% вместо фиксированных 3%) дала тот же объём собранных данных при на 40% меньшем числе жалоб на нерелевантность.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Нестационарность: когда истина меняется <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главное расхождение классической теории бандитов с реальностью</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Стационарность <span class="en">(stationarity)</span></dt>
+<dd>Предположение, что истинные вероятности наград не меняются со временем. Вся классическая теория бандитов на нём построена — и в рекомендациях оно почти всегда нарушено.</dd>
+
+<dt>Дрейф <span class="en">(drift)</span></dt>
+<dd>Постепенное изменение истинного CTR: сезонность, мода, устаревание контента, изменение аудитории.</dd>
+
+<dt>Сдвиг <span class="en">(abrupt change / changepoint)</span></dt>
+<dd>Резкое изменение: товар попал в подборку, вышел сиквел фильма, сменилась цена. В отличие от дрейфа, требует быстрой реакции.</dd>
+
+<dt>Скользящее окно <span class="en">(sliding window)</span></dt>
+<dd>Учёт только последних $W$ наблюдений. Простое решение нестационарности, но грубое: наблюдение либо полностью учитывается, либо полностью выбрасывается.</dd>
+
+<dt>Дисконтирование <span class="en">(discounting / decay)</span></dt>
+<dd>Умножение накопленных $\alpha, \beta$ на коэффициент $\gamma < 1$ на каждом шаге. Старые наблюдения экспоненциально теряют вес — плавнее, чем окно, и дешевле по памяти.</dd>
+
+<dt>Эффективный размер выборки <span class="en">(effective sample size)</span></dt>
+<dd>При дисконтировании суммарный вес наблюдений стремится к $1/(1-\gamma)$. Это и есть «сколько наблюдений мы фактически помним»: при $\gamma = 0.999$ — около 1000.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: постериор становится слишком уверенным</div>
+<p>После 50 000 показов постериор объекта очень узкий — модель считает, что знает его CTR с точностью до десятых долей процента. Исследование прекращено.</p>
+<p><strong>Но истинный CTR изменился.</strong> Сменился сезон, объект устарел, аудитория пришла другая. Чтобы модель это заметила при узком постериоре, нужны десятки тысяч новых наблюдений — а их не будет, потому что показывать объект перестали.</p>
+<p>Получается ловушка, зеркальная холодному старту: объект был хорош, стал плох, а система об этом не узнает. Или наоборот — был плох, стал хорош, и это тем более не будет обнаружено.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⏳</span> Трассировка: объект, у которого CTR упал вдвое</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Исходное состояние и событие</span></div>
+<div class="tstep-c">
+<div class="calc">
+До момента T:  50 000 показов, 6 000 кликов, истинный CTR = 12%
+  α = 6 000,  β = 44 000
+  среднее = 6000/50000 = <span class="hl">12.00%</span>
+  σ = √(6000×44000 / (50000²×50001)) = <span class="hl">0.145 п.п.</span>  ← очень узко
+
+В момент T истинный CTR падает до <span class="bad">6%</span> (сменился сезон)
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Без дисконтирования: сколько нужно, чтобы заметить</span></div>
+<div class="tstep-c">
+<div class="calc">
+Приходит n новых показов с реальным CTR 6%:
+
+n = 1 000:   α = 6060,  β = 44940
+             среднее = 6060/51000 = <span class="bad">11.88%</span>   <span class="dim">сдвиг на 0.12 п.п.</span>
+
+n = 10 000:  α = 6600,  β = 53400
+             среднее = 6600/60000 = <span class="bad">11.00%</span>   <span class="dim">сдвиг на 1.0 п.п.</span>
+
+n = 50 000:  α = 9000,  β = 91000
+             среднее = 9000/100000 = <span class="bad">9.00%</span>    <span class="dim">на полпути</span>
+
+n = 200 000: α = 18000, β = 232000
+             среднее = 18000/250000 = <span class="hl">7.20%</span>
+
+Чтобы оценка дошла до 6.5%, нужно ≈ <span class="bad">550 000</span> новых показов.
+</div>
+<p><strong>Полмиллиона показов по устаревшей оценке.</strong> И это оптимистичный сценарий — на практике объект с оценкой 12% будет активно показываться, так что убыток реализуется полностью.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">С дисконтированием γ = 0.9995</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Правило обновления</span>
+На каждом показе:  α ← γ·α + клик,   β ← γ·β + (1 − клик)
+
+Эффективный размер выборки: 1/(1−γ) = 1/0.0005 = <span class="hl">2 000</span> наблюдений
+</div>
+<div class="calc"><span class="lbl">Динамика после смены режима</span>
+Старое состояние затухает как γⁿ:
+
+n = 1 000:   вес старых данных = 0.9995^1000 = <span class="hl">0.607</span>
+             оценка ≈ <span class="hl">9.64%</span>
+
+n = 2 000:   вес старых = 0.9995^2000 = <span class="hl">0.368</span>
+             оценка ≈ <span class="hl">7.85%</span>
+
+n = 5 000:   вес старых = 0.9995^5000 = <span class="hl">0.082</span>
+             оценка ≈ <span class="res">6.40%</span>
+
+n = 10 000:  вес старых = 0.9995^10000 = <span class="hl">0.0067</span>
+             оценка ≈ <span class="res">6.03%</span>   ← практически сошлась
+</div>
+<div class="ct">
+<table>
+<caption>Скорость обнаружения падения CTR с 12% до 6%</caption>
+<thead><tr><th>Новых показов</th><th>Без дисконтирования</th><th>γ = 0.9999</th><th>γ = 0.9995</th><th>γ = 0.999</th></tr></thead>
+<tbody>
+<tr><td>1 000</td><td class="r">11.88%</td><td class="r">11.45%</td><td class="a">9.64%</td><td class="g">8.21%</td></tr>
+<tr><td>5 000</td><td class="r">11.45%</td><td class="a">9.31%</td><td class="g">6.40%</td><td class="g">6.04%</td></tr>
+<tr><td>10 000</td><td class="r">11.00%</td><td class="a">7.94%</td><td class="g">6.03%</td><td class="g">6.00%</td></tr>
+<tr class="best"><td>50 000</td><td class="r">9.00%</td><td class="g">6.05%</td><td class="g">6.00%</td><td class="g">6.00%</td></tr>
+<tr><td>Эфф. размер выборки</td><td class="dim">∞</td><td>10 000</td><td class="k">2 000</td><td>1 000</td></tr>
+<tr><td>σ в равновесии</td><td class="g">0.15 п.п.</td><td class="g">0.24 п.п.</td><td class="a">0.53 п.п.</td><td class="r">0.75 п.п.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Компромисс: скорость реакции против точности</span></div>
+<div class="tstep-c">
+<p>Последние две строки таблицы — суть выбора $\gamma$. Малое $\gamma$ (быстрое забывание) реагирует мгновенно, но постериор остаётся широким навсегда, и алгоритм продолжает бесполезно исследовать. Большое $\gamma$ даёт точность, но реагирует медленно.</p>
+<div class="calc"><span class="lbl">Как выбирать γ</span>
+① Оценить характерное время изменения CTR в твоей системе.
+   Например: заметный дрейф происходит за ~2 недели.
+
+② Перевести в число показов на объект:
+   50 млн показов/сутки ÷ 380 тыс. объектов ≈ 130 показов на объект в сутки
+   за 2 недели: 130 × 14 = <span class="hl">1 820 показов</span>
+
+③ Приравнять эффективный размер выборки:
+   1/(1−γ) = 1820  →  γ = 1 − 1/1820 = <span class="res">0.99945</span>
+</div>
+<p>Так $\gamma$ выводится из данных, а не подбирается наугад.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Альтернатива: детектор сдвига</span></div>
+<div class="tstep-c">
+<p>Дисконтирование хорошо для плавного дрейфа, но платит точностью постоянно. Для <em>резких</em> сдвигов эффективнее детектор:</p>
+<div class="calc">
+Держим два окна: длинное (все данные) и короткое (последние 500 показов).
+
+Если оценки расходятся значимо — сбрасываем постериор к приору.
+
+Пример:
+  длинное окно:  CTR = 12.0%,  n = 50 000
+  короткое:      CTR = 5.8%,   n = 500
+
+  z = (0.120 − 0.058) / √(0.12×0.88/500) = 0.062 / 0.01453 = <span class="res">4.27</span>
+
+  |z| &gt; 3  →  <span class="res">сдвиг обнаружен</span>, сбрасываем:
+  α ← κ · 0.058,  β ← κ · 0.942   при κ = 100
+</div>
+<p><strong>Комбинация обычно лучше всего:</strong> умеренное дисконтирование ($\gamma \approx 0.9999$) для плавного дрейфа плюс детектор для резких сдвигов. Первое не мешает точности, второе срабатывает редко, но вовремя.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Реакция на скачкообразное падение CTR при разном дисконтировании</div>
+<div class="chsub">Без забывания система работает по устаревшей оценке сотни тысяч показов</div>
+<div style="position:relative;height:340px;"><canvas id="c_drift"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Валидация холодного старта <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Почему обычная схема здесь не работает вовсе</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧪</span> Трассировка: как правильно и неправильно замерять</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Неправильно: агрегированная метрика</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель A: Recall@100 = <span class="hl">0.243</span>
+Модель B: Recall@100 = <span class="hl">0.239</span>
+
+Вывод «A лучше» — и он может быть полностью неверным.
+</div>
+<div class="ct">
+<table>
+<caption>Та же пара моделей с разбивкой по возрасту объекта</caption>
+<thead><tr><th>Сегмент</th><th>Доля показов</th><th>Модель A</th><th>Модель B</th><th></th></tr></thead>
+<tbody>
+<tr><td>Объекты &gt; 30 дней</td><td>84%</td><td class="g">0.271</td><td>0.259</td><td class="note">A лучше</td></tr>
+<tr><td>7–30 дней</td><td>11%</td><td>0.152</td><td class="g">0.168</td><td class="note">B лучше</td></tr>
+<tr><td>1–7 дней</td><td>4%</td><td class="r">0.061</td><td class="g">0.147</td><td class="note">B лучше в 2.4 раза</td></tr>
+<tr class="best"><td>&lt; 1 суток</td><td>1%</td><td class="r">0.019</td><td class="g">0.118</td><td class="note">B лучше в 6.2 раза</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Агрегат определяется 84% старых объектов и полностью скрывает картину.</strong> Модель B радикально лучше на всём, что моложе месяца, — то есть на том, ради чего холодный старт и делается.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Неправильно: случайный сплит по взаимодействиям</span></div>
+<div class="tstep-c">
+<div class="calc">
+При случайном разбиении объект, появившийся в марте, имеет
+взаимодействия и в обучении, и в тесте.
+
+→ В момент теста модель уже «знает» его,
+  и холодного старта в оценке ПРОСТО НЕТ.
+
+Замер: доля тестовых взаимодействий, относящихся к объектам,
+       у которых нет ни одного взаимодействия в обучении
+
+  случайный сплит:  <span class="bad">0.4%</span>   ← холодный старт почти не представлен
+  временной сплит:  <span class="res">7.1%</span>   ← реалистично
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Правильно: временной сплит плюс разбивка по возрасту</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Схема</span>
+|——— обучение до 15 мая ———|— gap 2 дня —|— тест 17–31 мая —|
+
+В тесте разделяем объекты:
+  ① появились до 1 мая         → «тёплые», история есть
+  ② появились 1–15 мая         → «прогретые», история малая
+  ③ появились ПОСЛЕ 15 мая     → <span class="res">настоящий холодный старт</span>
+
+Метрика считается для каждой группы ОТДЕЛЬНО.
+Агрегат тоже считаем — но как справочное число, а не как критерий.
+</div>
+<p>Группа ③ — единственная, которая честно измеряет холодный старт: эти объекты физически не могли попасть в обучение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Дополнительно: метрика времени, а не только качества</span></div>
+<div class="tstep-c">
+<p>Для холодного старта важно не только «насколько хорошо», но и «как быстро». Отдельный набор метрик:</p>
+<div class="ct">
+<table>
+<caption>Метрики скорости сходимости — то, что не видно в Recall</caption>
+<thead><tr><th>Метрика</th><th>Как считается</th><th>Целевое значение</th></tr></thead>
+<tbody>
+<tr><td>Медианное время до 100 показов</td><td>по объектам, появившимся в тестовом периоде</td><td class="g">&lt; 24 часов</td></tr>
+<tr><td>Доля объектов, не набравших 20 показов за неделю</td><td>по всему свежему каталогу</td><td class="g">&lt; 10%</td></tr>
+<tr><td>Время до первого попадания в органическую выдачу</td><td>первый показ вне квоты исследования</td><td class="g">&lt; 3 суток</td></tr>
+<tr><td>Доля хитов, найденных через квоту</td><td>среди топ-100 объектов месяца</td><td class="g">растёт</td></tr>
+<tr><td>Средняя σ постериора по свежим объектам</td><td>по всем моложе 7 дней</td><td class="g">убывает</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Вторая строка особенно показательна.</strong> Если 30% новых объектов за неделю не набрали и 20 показов, значит, квота либо мала, либо объекты в ней стоят на плохих позициях, либо очередь на исследование переполнена. Recall этого не покажет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Офлайн-оценка бандита невозможна напрямую</span></div>
+<div class="tstep-c">
+<p>Фундаментальная сложность: бандит <em>меняет</em> то, что будет показано, а значит, и логи, на которых мы хотели бы его оценить. В логах нет откликов на показы, которых не было.</p>
+<div class="calc"><span class="lbl">Три обходных пути</span>
+① <b>Replay-оценка на равномерном слое.</b>
+   Из exploration-трафика (равномерно случайные показы) проигрываем
+   лог: если алгоритм выбрал ту же руку, что была показана, —
+   засчитываем; иначе пропускаем событие.
+   Несмещённо, но использует лишь малую долю данных.
+
+② <b>Симулятор.</b> Модель откликов, обученная на исторических данных,
+   генерирует ответы на любые показы. Позволяет прогнать миллионы
+   раундов, но точность вывода ограничена реализмом симулятора.
+
+③ <b>Прямой A/B.</b> Самый надёжный, самый дорогой.
+   Осложнение: эффект бандита проявляется на горизонте недель,
+   а не сессий, поэтому тест длинный.
+</div>
+<p><strong>Рабочая последовательность:</strong> симулятор для грубого отсева вариантов → replay на exploration-слое для проверки лучших → A/B для финального решения. Каждый следующий шаг дороже и надёжнее.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разбивка качества по возрасту объекта: что скрывает агрегат</div>
+<div class="chsub">Одинаковый средний Recall при радикально разном поведении на свежем каталоге</div>
+<div style="position:relative;height:340px;"><canvas id="c_valid"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Контекстные бандиты: когда «лучший» зависит от пользователя <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Следующий шаг после Beta-Bernoulli</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Контекстный бандит <span class="en">(contextual bandit)</span></dt>
+<dd>Расширение: награда зависит не только от выбранной руки, но и от <em>контекста</em> — признаков пользователя и ситуации. Вместо одного числа «CTR объекта» модель предсказывает CTR для конкретной пары.</dd>
+
+<dt>LinUCB</dt>
+<dd>Контекстная версия UCB: предполагается, что ожидаемая награда линейна по признакам контекста, $\mathbb{E}[r] = x^\top\theta_k$. Бонус исследования считается через матрицу ковариаций признаков.</dd>
+
+<dt>Матрица дизайна $A_k$</dt>
+<dd>Накопленная $\sum x x^\top + I$ по всем показам руки $k$. Её обратная матрица задаёт неопределённость: направления в пространстве признаков, где наблюдений мало, дают большой бонус.</dd>
+
+<dt>Неопределённость в направлении</dt>
+<dd>Ключевое отличие от обычного бандита: рука может быть хорошо изучена для одного типа пользователей и совсем не изучена для другого. Бонус $\sqrt{x^\top A_k^{-1} x}$ измеряет неопределённость именно <em>вдоль текущего контекста</em>.</dd>
+
+<dt>Разделение параметров <span class="en">(shared vs per-arm parameters)</span></dt>
+<dd>Практический приём: часть параметров общая для всех рук (что нравится этому типу пользователей в целом), часть — своя (специфика конкретного объекта). Резко сокращает данные, нужные новой руке.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: «хороший объект» — не абсолютное понятие</div>
+<p>Beta-Bernoulli отвечает на вопрос «какой CTR у этого объекта <em>вообще</em>». Но объект может давать 20% на мобильных вечером и 2% на десктопе утром — и усреднённые 8% не описывают ни одну реальную ситуацию.</p>
+<p><strong>Контекстный бандит учит зависимость от контекста.</strong> Вместо одного числа — модель, предсказывающая награду по признакам. И исследование тоже становится контекстным: объект, изученный для одного сегмента, остаётся неизвестным для другого.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 LinUCB</div>
+$$\hat\theta_k = A_k^{-1} b_k, \qquad \text{UCB}_k(x) = x^\top\hat\theta_k + \gamma\sqrt{x^\top A_k^{-1} x}$$
+$$A_k \leftarrow A_k + x x^\top, \qquad b_k \leftarrow b_k + r\,x$$
+<p class="fnote">Первое слагаемое — предсказание гребневой регрессии (та же формула, что в ALS из темы 6.1). Второе — бонус, равный стандартной ошибке этого предсказания <em>в направлении текущего контекста</em>. Обновление — два сложения матриц, как и в Beta-Bernoulli.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка LinUCB: два контекста, один объект</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Настройка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Признаки контекста (2 штуки для наглядности):
+  x₁ = мобильное устройство (0 или 1)
+  x₂ = вечернее время (0 или 1)
+
+Объект показывали 100 раз, но ТОЛЬКО на десктопе утром: x = [0, 0]
+
+A = I + Σ xxᵀ = [1+0  0  ] = [<span class="hl">1</span>  <span class="hl">0</span>]
+                 [ 0   1+0]   [<span class="hl">0</span>  <span class="hl">1</span>]
+
+<span class="dim">Внешние произведения [0,0]·[0,0]ᵀ — нулевые матрицы,
+поэтому A осталась единичной несмотря на 100 показов.</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Приходит пользователь того же типа — десктоп утром</span></div>
+<div class="tstep-c">
+<div class="calc">
+x = [0, 0]
+
+Бонус = γ·√(xᵀ A⁻¹ x) = γ·√([0,0]·A⁻¹·[0,0]ᵀ) = γ·√0 = <span class="res">0</span>
+
+<span class="dim">Для этого контекста неопределённости нет — мы его изучили.</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Приходит новый тип — мобильный вечером</span></div>
+<div class="tstep-c">
+<div class="calc">
+x = [1, 1]
+
+xᵀ A⁻¹ x = [1,1] · [1 0] · [1] = [1,1] · [1] = 1 + 1 = <span class="hl">2</span>
+                    [0 1]   [1]           [1]
+
+Бонус = γ·√2 = 1.4142·γ   ← <span class="res">максимальный</span>
+</div>
+<p><strong>Вот в чём принципиальное отличие от обычного бандита.</strong> Обычный Beta-Bernoulli после 100 показов считал бы объект изученным и прекратил исследование. LinUCB понимает, что 100 показов были на <em>другом</em> контексте, и для мобильного вечером объект по-прежнему полностью неизвестен.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Обновляем после показа мобильному вечером</span></div>
+<div class="tstep-c">
+<div class="calc">
+Показали, получили клик (r = 1), x = [1, 1]
+
+xxᵀ = [1] · [1, 1] = [1  1]
+      [1]           [1  1]
+
+A ← [1 0] + [1 1] = [<span class="hl">2</span>  <span class="hl">1</span>]
+    [0 1]   [1 1]   [<span class="hl">1</span>  <span class="hl">2</span>]
+
+b ← [0] + 1·[1] = [<span class="hl">1</span>]
+    [0]     [1]   [<span class="hl">1</span>]
+
+Обращаем A:  det = 2×2 − 1×1 = 3
+A⁻¹ = (1/3)·[ 2  −1] = [ 0.667  −0.333]
+             [−1   2]   [−0.333   0.667]
+
+θ̂ = A⁻¹b = [0.667×1 − 0.333×1, −0.333×1 + 0.667×1] = [<span class="res">0.333</span>, <span class="res">0.333</span>]
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Новый бонус для того же контекста</span></div>
+<div class="tstep-c">
+<div class="calc">
+x = [1, 1]
+
+A⁻¹x = [0.667 − 0.333, −0.333 + 0.667] = [0.333, 0.333]
+xᵀA⁻¹x = 1×0.333 + 1×0.333 = <span class="hl">0.667</span>
+
+Бонус = γ·√0.667 = <span class="res">0.816·γ</span>    <span class="dim">было 1.414·γ</span>
+
+Снизился на 42% после ОДНОГО наблюдения — потому что
+это было первое наблюдение в данном направлении.
+</div>
+<p>Заодно посмотрим, что стало с бонусом для мобильного <em>утром</em> ($x = [1,0]$), которого мы не видели:</p>
+<div class="calc">
+xᵀA⁻¹x = [1,0] · [0.667] = <span class="hl">0.667</span>
+                  [−0.333]
+
+Бонус = 0.816·γ  — тоже снизился!
+</div>
+<p><strong>Это важное свойство: наблюдение в одном направлении снижает неопределённость и в коррелированных.</strong> Показ мобильному вечером дал информацию и о мобильном утром, потому что признак «мобильный» общий. Именно поэтому LinUCB нужно на порядки меньше данных, чем отдельным бандитам на каждый сегмент.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Сравнение подходов на реальных данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Каталог 380 тыс., 12 контекстных сегментов, замер CTR за 4 недели</caption>
+<thead><tr><th>Подход</th><th>CTR</th><th>Данных на объект до сходимости</th><th>Сложность</th></tr></thead>
+<tbody>
+<tr><td>Глобальный Beta-Bernoulli</td><td>базовый</td><td class="g">~200 показов</td><td class="g">два счётчика</td></tr>
+<tr><td>Отдельный бандит на сегмент</td><td class="r">−2.1%</td><td class="r">~2 400 показов</td><td>12× счётчиков</td></tr>
+<tr class="best"><td>LinUCB с общими признаками</td><td class="g">+6.8%</td><td class="g">~340 показов</td><td class="a">матрица k×k на объект</td></tr>
+<tr><td>Нейросетевой бандит</td><td class="g">+7.4%</td><td class="a">~500 показов</td><td class="r">переобучение, инфраструктура</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Вторая строка — важное предупреждение.</strong> Наивное решение «заведём отдельный бандит на каждый сегмент» <em>ухудшает</em> результат: данные дробятся на 12 частей, каждый бандит учится с нуля, и суммарно требуется на порядок больше показов. LinUCB решает ровно эту проблему за счёт общих параметров.</p>
+<p><strong>Четвёртая строка — про предел окупаемости.</strong> Нейросетевой бандит даёт лишь +0.6% к LinUCB, но требует переобучения, версионирования, мониторинга. В большинстве систем это не окупается.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Неопределённость LinUCB зависит от направления в пространстве контекста</div>
+<div class="chsub">Объект может быть изучен для одного сегмента и полностью неизвестен для другого</div>
+<div style="position:relative;height:340px;"><canvas id="c_lin"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Стоимость LinUCB в проде.</strong> На каждый объект хранится матрица $k\times k$ и её обращение. При $k=50$ и каталоге 380 тыс. это 380000 × 2500 × 8 байт ≈ <strong>7.6 ГБ</strong>, плюс обращение матрицы на каждый скоринг. Стандартные оптимизации: диагональное приближение $A$ (память падает до $k$ чисел на объект, качество теряет 1–2%), обновление обратной матрицы по формуле Шермана—Моррисона вместо полного обращения, и LinUCB только для верхних кандидатов после грубого отбора.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок, каждая встречалась в реальных проектах</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Оценка CTR делением кликов на показы.</b> Один клик из одного показа даёт 100%, объект вытесняет весь каталог. Байесовское сглаживание — две строки кода, которые это закрывают.</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>Сила приора выбрана наугад.</b> Слишком слабый не защищает от выбросов, слишком сильный душит сигнал. Эмпирический байес выводит $\kappa$ из наблюдаемого разброса CTR внутри категории — одна формула.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Контентная модель не калибрована.</b> Если среди объектов с предсказанием 6% фактический CTR 11%, приор систематически занижает старт всем новым объектам. Проверяется калибровочной таблицей за 10 минут.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>Постериор обновляется только по клику.</b> Показ фиксировать надо немедленно, иначе между показом и откликом объект получит тысячи показов вслепую, и саморегуляция перестанет работать.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>UCB со стандартным $c = \sqrt{2}$.</b> При CTR порядка 0.1 бонус в пять раз больше любой возможной награды — алгоритм переисследует и проигрывает даже ε-greedy. Требует подбора под масштаб наград.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>Объекты исследования ставятся в конец списка.</b> На 20-й позиции CTR в 11 раз ниже, чем на первой. Квота 3% на 20-й позиции эквивалентна 0.27% на первой — то есть почти бесполезна.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>Квота назначена «на глаз».</b> Её надо выводить из требуемого времени сходимости: показы в сутки ÷ объектов в очереди × квота = показов на объект. При 0.2% объект набирает данные почти неделю и успевает устареть.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Выход из квоты по фиксированному числу показов.</b> Правило по ширине постериора экономит ~20% бюджета и точнее решает по пограничным объектам — там, где решение действительно меняется.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Нет дисконтирования старых наблюдений.</b> После 50 тыс. показов постериор настолько узок, что смена истинного CTR вдвое обнаружится только через полмиллиона новых показов.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>ID-эмбеддинг без dropout.</b> Веса контентных ветвей вырождаются (отношение 24:1), и новый объект получает вектор, определяемый шумом. Проверка — косинус между обычным и «холодным» вектором на тёплых объектах.</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Резкое переключение с контентного вектора на ID-вектор.</b> Выдача меняется скачком. Нужна плавная смесь с весом $n/(n+n_0)$, причём нормировка — <em>после</em> смешивания, иначе объекты в середине прогрева получают заниженные скоры.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Персональная модель применяется к пользователю с нулём действий.</b> До точки перелома (обычно 3 взаимодействия) сегментное популярное работает лучше. Точку надо измерить, а не угадать.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Слишком дробная сегментация нового пользователя.</b> При 6400 сегментах оценки становятся шумными и качество падает. Лечится тем же иерархическим сглаживанием.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>Метрика холодного старта не выделена отдельно.</b> Агрегат определяется 84% старых объектов и полностью скрывает шестикратную разницу на свежем каталоге.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Отдельный бандит на каждый контекстный сегмент.</b> Данные дробятся, каждый учится с нуля, требуется на порядок больше показов, итог хуже глобального. Нужны общие параметры — LinUCB.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять кейсов с нюансами валидации</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎬</span><div><div class="sysname">Netflix — бандиты на выборе обложек</div><div class="syssub">Как получать сигнал даже без просмотра</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Один и тот же тайтл можно представить разными обложками, и выбор сильно влияет на то, кликнет ли человек. Обложек десятки, тайтлов тысячи, а сигнал приходит медленно.</p>
+<p><strong>Решение.</strong> Задача сформулирована как контекстный бандит: рука — конкретная обложка, контекст — признаки пользователя (какие жанры смотрит, какие визуальные стили ему заходили). Ключевой приём — <em>общие параметры между тайтлами</em>: если пользователю нравятся обложки крупным планом с лицом актёра, это знание переносится на все тайтлы, а не учится заново для каждого.</p>
+<p><strong>Почему так.</strong> Отдельный бандит на каждую пару «тайтл × обложка» никогда бы не сошёлся — данных на каждую комбинацию слишком мало. Общие визуальные признаки резко сокращают нужный объём: новая обложка стартует не с нуля, а с предсказания по своим свойствам.</p>
+<p><strong>Нюанс валидации.</strong> Замер идёт через replay на равномерном слое: часть трафика получает случайную обложку, и на этих данных оценка любой политики несмещённая. Метрика — не CTR обложки, а <em>завершённые просмотры</em>: обложка может собирать клики и разочаровывать, что в долгую вредит удержанию. Горизонт оценки — недели, потому что эффект проявляется в возвращаемости, а не в текущей сессии.</p>
+<p><strong>Подводный камень.</strong> Эффект новизны: любая смена обложки даёт временный подъём CTR просто потому, что картинка изменилась. Если не учитывать, бандит будет бесконечно чередовать варианты, принимая новизну за качество. Лечится сравнением на горизонте, превышающем время затухания эффекта.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎵</span><div><div class="sysname">Spotify — трек без единого прослушивания</div><div class="syssub">Вектор из аудиосигнала</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Ежедневно в каталог попадают десятки тысяч треков. У них ноль прослушиваний, коллаборативный вектор нулевой — а рекомендовать надо с первого дня, иначе трек не имеет шанса вообще.</p>
+<p><strong>Решение.</strong> Отдельная модель обучается предсказывать <em>коллаборативный вектор трека по его аудиосигналу</em>. Для треков с историей известны оба вектора, и модель учится сопоставлять одно другому. Новый трек получает предсказанный вектор, попадающий в то же пространство и тот же индекс. Дальше работает обычный механизм: бандит уточняет оценку реальными прослушиваниями, прогрев постепенно замещает предсказанный вектор настоящим.</p>
+<p><strong>Почему так.</strong> Архитектуру рекомендаций менять не приходится — поиск, скоринг и индекс одинаковы для всех треков, различается только источник вектора.</p>
+<p><strong>Нюанс валидации.</strong> Качество аудио-модели меряется <em>не MSE к целевому вектору</em>, а рекомендательной метрикой: у треков с известной историей коллаборативный вектор подменяется предсказанным, и сравнивается получившаяся выдача. MSE обманчив — векторы могут быть близки в среднем, но давать другой порядок ближайших соседей, а важен именно порядок.</p>
+<p><strong>Подводный камень.</strong> Предсказанные векторы систематически «консервативнее»: регрессия сглаживает, и они лежат ближе к центру пространства. Новый трек получает средние скоры для всех и высокие ни для кого — то есть не попадает никуда. Лечится калибровкой нормы предсказанного вектора под распределение настоящих.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🛒</span><div><div class="sysname">Instacart — новый товар в каталоге магазина</div><div class="syssub">Когда холодный старт имеет жёсткий дедлайн</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Товары появляются и исчезают постоянно, каталог различается по магазинам, а у многих позиций короткий срок актуальности — сезонные, акционные. Классическое «подождём, пока наберётся история» здесь не работает: к моменту накопления данных товар уже неактуален.</p>
+<p><strong>Решение.</strong> Приор строится иерархически: товар наследует от той же позиции в других магазинах, затем от подкатегории, затем от категории. Товар, новый для конкретного магазина, но известный по сети, стартует практически с полной информацией — холодного старта фактически нет.</p>
+<p><strong>Почему так.</strong> «Новый» — понятие относительное. Прежде чем запускать бандит, стоит проверить, не известен ли объект на другом уровне иерархии: по сети магазинов, по производителю, по идентичному товару в другой упаковке.</p>
+<p><strong>Нюанс валидации.</strong> Метрика — не CTR блока, а <em>инкрементальный</em> прирост корзины: доля добавлений, которых не произошло бы без рекомендации. Определяется через holdout-группу без блока рекомендаций. Клик по товару, который человек всё равно бы добавил, ценности не создаёт. Отдельно контролируется сезонность: временной сплит может попасть на нетипичную неделю, поэтому оценка ведётся на нескольких окнах.</p>
+<p><strong>Подводный камень.</strong> Товар может отсутствовать в наличии, и рекомендация становится вредной. Доступность проверяется на этапе фильтрации, но данные о ней запаздывают — приходится закладывать вероятность наличия прямо в скор, а не фильтровать жёстко.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📌</span><div><div class="sysname">Pinterest — свежий пин против накопленного сигнала</div><div class="syssub">Визуальные признаки как источник стартового вектора</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Пины загружаются непрерывно, и свежесть контента — часть ценности продукта. Но новый пин по коллаборативному сигналу неотличим от нуля.</p>
+<p><strong>Решение.</strong> Визуальные эмбеддинги как основной источник стартового вектора: изображение прогоняется через обученную модель, и пин сразу попадает в осмысленную область пространства. Дальше — квота на исследование с плавным замещением визуального вектора коллаборативным по мере накопления сохранений.</p>
+<p><strong>Почему так.</strong> В визуальном домене изображение несёт очень много информации о том, кому пин понравится, — больше, чем текстовые атрибуты в товарных каталогах. Поэтому старт получается точным, и бандиту остаётся лишь уточнение.</p>
+<p><strong>Нюанс валидации.</strong> Оценка ведётся отдельно по возрасту пина, и главная метрика для свежих — <em>время до первого сохранения</em>, а не CTR. Причина: пин, который никто не сохранил за первые сутки, практически никогда не «раскачивается» позже — окно возможности узкое. Также отслеживается доля свежего контента в общей ленте: без этого контроля оптимизация вовлечения тихо смещает выдачу к старым проверенным пинам.</p>
+<p><strong>Подводный камень.</strong> Визуальное сходство не равно интересу: два визуально похожих пина могут относиться к совершенно разным темам (рецепт и декор в одной цветовой гамме). Чистый визуальный вектор даёт красивые, но бессмысленные рекомендации — нужна комбинация с текстовым и контекстным сигналом.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎓</span><div><div class="sysname">Duolingo — холодный старт нового ученика</div><div class="syssub">Когда исследование нельзя делать вслепую</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Новый пользователь начинает учить язык. Нужно быстро понять его уровень и подобрать сложность упражнений. Ошибка в обе стороны вредна: слишком легко — скучно и человек уходит, слишком сложно — фрустрация и человек уходит.</p>
+<p><strong>Решение.</strong> Короткий адаптивный тест на входе: каждое следующее задание выбирается так, чтобы <em>максимально сузить оценку уровня</em> — то есть по критерию информативности, а не сложности. Это ровно та же логика, что при подборе объектов онбординга по энтропии: задание, которое почти все решают правильно, не даёт информации.</p>
+<p><strong>Почему так.</strong> Чистое случайное исследование здесь недопустимо: показ заведомо неподходящего упражнения — это не «немного нерелевантная рекомендация», а прямая причина ухода. Исследование должно быть направленным.</p>
+<p><strong>Нюанс валидации.</strong> Метрика — не точность оценки уровня, а <em>удержание на горизонте недель</em>. Более точная начальная оценка ценна только если она приводит к тому, что человек продолжает заниматься. Замер требует длинного A/B, потому что эффект проявляется на второй-третьей неделе, а не в первой сессии.</p>
+<p><strong>Подводный камень.</strong> Уровень пользователя меняется — он учится. Это классическая нестационарность: оценка, точная месяц назад, сегодня занижена. Без дисконтирования старых наблюдений система будет держать человека на пройденном материале, и он уйдёт от скуки — то есть по той же причине, от которой изначально защищались.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Почему матричная факторизация не может дать вектор новому объекту — покажи математически.</div><div class="a">Шаг ALS для вектора объекта: $q_j = (P_j^\top P_j + \lambda I)^{-1}P_j^\top r_j$, где $P_j$ — матрица векторов взаимодействовавших пользователей. У нового объекта таких пользователей ноль, значит $P_j$ пуста, $P_j^\top P_j$ — нулевая матрица, $P_j^\top r_j$ — нулевой вектор. Итого $q_j = (\lambda I)^{-1}\cdot 0 = 0$. Скор $p_u \cdot 0 = 0$ для <em>всех</em> пользователей, объект никогда не попадёт в топ и никогда не получит взаимодействие. Замкнутый круг, из которого модель не выходит сама.</div></div>
+
+<div class="qa"><div class="q">2. Где на самом деле проходит граница холодного старта?</div><div class="a">Не на нуле, а примерно на 20–50 взаимодействиях. При трёх наблюдениях вектор формально существует, но матрица $P^\top P$ почти вырождена: в примере секции 1 определитель 0.11 при числе обусловленности 44.6. Это значит, что решение неустойчиво — малое изменение данных даёт большое изменение ответа, и выбранный вектор определяется главным образом регуляризацией, а не данными. Практический критерий — число обусловленности выше 20.</div></div>
+
+<div class="qa"><div class="q">3. Какой из четырёх видов холодного старта самый массовый?</div><div class="a">Разреженный хвост — объекты, которые существуют давно, но имеют единицы взаимодействий. Их 40–60% каталога, тогда как «настоящих» новых объектов 2–8%. Формально это не холодный старт, но статистически ситуация та же: сигнала недостаточно для надёжной оценки. И решается он теми же средствами — байесовским сглаживанием и бандитами.</div></div>
+
+<div class="qa"><div class="q">4. Что такое бета-распределение и почему именно оно?</div><div class="a">Это распределение <em>на отрезке [0,1]</em>, то есть распределение возможных значений вероятности. Задаётся двумя параметрами с прямой интуицией: $\alpha$ ведёт себя как «число успехов», $\beta$ — как «число неудач». Выбрано потому, что оно <strong>сопряжено</strong> с Бернулли: постериор после наблюдений имеет тот же вид, что приор, и обновление сводится к двум сложениям. Никаких интегралов, $O(1)$ на объект, можно держать в двух счётчиках и обновлять в реальном времени.</div></div>
+
+<div class="qa"><div class="q">5. Что такое псевдонаблюдения и как выбирать силу приора?</div><div class="a">Параметры приора $\alpha_0, \beta_0$ интерпретируются как «наблюдения, которые мы как будто уже видели». Приор Beta(1, 24) — это «как будто 25 показов с 1 кликом». Сумма $\kappa = \alpha_0+\beta_0$ и есть сила приора. Слишком малая (1–5) не защищает от выброса «1 клик из 1 показа»; слишком большая (500+) душит сигнал — объект должен набрать тысячи показов, чтобы сдвинуть оценку. Правило: $\kappa$ ≈ число показов, за которое хочется получить осмысленную оценку, обычно 20–100. Строго — через эмпирический байес (вопрос 7).</div></div>
+
+<div class="qa"><div class="q">6. Почему после первой порции данных дисперсия постериора выросла?</div><div class="a">В трассировке секции 2: приор Beta(1, 24) имел дисперсию 0.00148, после 10 показов с 2 кликами стала 0.00218. Это не ошибка. Данные <em>противоречат</em> приору: наблюдали 20% при ожидании 4%. Модель честно сообщает, что стало менее ясно, где истина. Дисперсия начнёт убывать, когда данные согласуются между собой и накопятся в достаточном количестве — уже на следующем шаге она упала до 0.00125.</div></div>
+
+<div class="qa"><div class="q">7. Как вывести силу приора из данных вместо угадывания?</div><div class="a">Эмпирический байес. Берём объекты категории с надёжной историей (≥500 показов), считаем среднее $m$ и дисперсию $s^2$ их CTR, затем $\kappa = m(1-m)/s^2 - 1$. Смысл: если объекты внутри категории похожи по CTR (малая $s^2$), знание категории говорит о новом объекте много — приор должен быть сильным. Если CTR внутри категории скачет, категория мало что подсказывает, и $\kappa$ выходит малым. Одна строка кода, полностью убирает необходимость подбирать параметр.</div></div>
+
+<div class="qa"><div class="q">8. Чем контентный приор лучше константного?</div><div class="a">Он даёт каждому объекту персональную стартовую точку вместо общей константы. В трассировке секции 3 при истинном CTR 11%: константный приор 4% давал ошибку 4.3 п.п. на 20 показах, контентный (предсказание 7.5%) — 2.4 п.п., вдвое меньше. Выигрыш держится примерно вдвое на всём промежутке 10–200 показов. К 1000 показов оба сходятся — <em>вся ценность приора сосредоточена в первых десятках показов</em>, но именно там принимаются решения о судьбе объекта.</div></div>
+
+<div class="qa"><div class="q">9. Что если контентная модель ошибается?</div><div class="a">Плохой приор хуже константного, и это надо проверять. При истинном CTR 11% и предсказании 2% контентный приор давал 3.0% на 10 показах против 6.3% у константного. Отсюда два требования: ① <strong>калибровка</strong> — среди объектов с предсказанием 6% фактический CTR должен быть около 6%, проверяется калибровочной таблицей; ② <strong>сила приора привязана к точности модели</strong> — если модель объясняет мало дисперсии, $\kappa$ надо снижать, что и делает эмпирический байес автоматически.</div></div>
+
+<div class="qa"><div class="q">10. Как устроен Thompson sampling и почему бросок лучше среднего?</div><div class="a">Из постериора каждой руки <em>случайно тянется</em> одно значение, показывается та, у кого выпало больше. Если выбирать по среднему, объект с оценкой 7.6% никогда не обгонит объект с 11% — и мы про него не узнаем. При броске у широкого распределения есть шанс выдать большое значение: в раунде 1 трассировки объект C со средним 7.6% и σ = 5.28 п.п. выдал 0.1341 и выиграл у A. Чем шире распределение, тем чаще это происходит.</div></div>
+
+<div class="qa"><div class="q">11. Что такое вероятностное соответствие?</div><div class="a">Ключевое свойство Thompson sampling: рука выбирается с вероятностью, равной вероятности того, что она наилучшая. Если модель считает объект A лучшим с вероятностью 70%, он и будет показан примерно в 70% раундов. Исследование распределяется <em>ровно пропорционально неуверенности</em> — без единого параметра настройки. В симуляции секции 4 доля показов лучшего объекта росла 56% → 75% → 84% → 92% сама, никакого расписания не задавалось.</div></div>
+
+<div class="qa"><div class="q">12. Почему исследование затухает само?</div><div class="a">По мере накопления данных постериоры сужаются, и броски всё ближе к средним. У хорошо изученной руки бросок почти равен её среднему — стабильно. У изученной плохо иногда выпадает большое значение. Как только она изучена, её броски тоже стабилизируются, и исследование прекращается. В трассировке доля исследования шла 44% → 25% → 16% → 8% просто как следствие сужения распределений.</div></div>
+
+<div class="qa"><div class="q">13. Почему клик поднял оценку сильнее, чем неклик её опустил?</div><div class="a">Асимметрия из-за разного размера $\alpha$ и $\beta$. В трассировке у объекта C было $\alpha=1.9$, $\beta=23.1$. Клик прибавляется к малой $\alpha$ и меняет её на 53%, поднимая оценку с 7.60% до 11.15%. Неклик прибавляется к большой $\beta$ и меняет её на 4%, опуская оценку всего на 0.5 п.п. Это правильное поведение: при низком ожидаемом CTR клик — редкое и потому информативное событие, а его отсутствие ожидаемо и малоинформативно.</div></div>
+
+<div class="qa"><div class="q">14. Что не так с UCB при стандартном коэффициенте?</div><div class="a">Теоретическое $c=\sqrt{2}$ выведено для наград, распределённых по всему $[0,1]$. Когда реальные CTR лежат в диапазоне 0.07–0.16, бонус получается несоизмеримым: в трассировке секции 5 бонус для нового объекта составил 0.754 при всех наградах ниже 0.16 — <em>в пять раз больше любой возможной награды</em>, и он составлял 91% итогового значения UCB. Расчёт показывает, что при таком $c$ алгоритм потратит около 15 000 показов на исследование объекта, даже если тот плох. В замерах UCB с $c=\sqrt{2}$ проиграл даже простому ε-greedy.</div></div>
+
+<div class="qa"><div class="q">15. Когда всё же брать ε-greedy или UCB вместо Thompson sampling?</div><div class="a"><strong>ε-greedy</strong> — когда нужен предсказуемый бюджет («ровно 3% трафика на эксперимент», это легко объяснить и заложить в план) и когда нужны <em>равномерные</em> случайные показы для несмещённой офлайн-оценки. <strong>UCB</strong> — когда нужна детерминированность: воспроизводимость выдачи, отладка, аудит. При одинаковом состоянии он даёт одинаковый ответ, Thompson sampling — разный. Во всех остальных случаях Thompson sampling: он выигрывает в замерах и не имеет параметров.</div></div>
+
+<div class="qa"><div class="q">16. Что такое сожаление и почему не мерить просто CTR?</div><div class="a">Сожаление $R_T = T\mu^* - \sum_t \mu_{k_t}$ — сколько награды мы недополучили из-за незнания лучшего варианта. CTR не годится потому, что его можно поднять, вообще прекратив исследование, и в моменте это выглядит как улучшение. Сожаление явно учитывает упущенные возможности. Важная деталь: оно считается по <em>истинным средним</em>, а не по фактическим кликам — если показали лучшую руку, но клика не было, сожаление ноль, решение было верным. Это делает метрику гораздо менее шумной.</div></div>
+
+<div class="qa"><div class="q">17. Что означает сублинейность сожаления практически?</div><div class="a">Что <em>средняя</em> потеря на показ стремится к нулю: алгоритм в пределе работает как оракул. В таблице секции 6 при $T$ от 100 до 50 000 средняя потеря Thompson sampling шла 0.0210 → 0.0059 → 0.0006, тогда как у жадного она держалась на 0.0498 и не убывала вообще. Жадный алгоритм застревает на неоптимальной руке навсегда — линейное сожаление. ε-greedy тоже линеен: 10% показов остаются случайными даже когда всё уже известно, это постоянная плата.</div></div>
+
+<div class="qa"><div class="q">18. Как объяснить бюджет исследования бизнесу?</div><div class="a">Не «5% трафика на эксперименты» — это звучит как чистая потеря. А через среднюю потерю: «алгоритм показывает объект, о котором мало знает, ровно с той вероятностью, с какой тот может оказаться лучшим. Средняя цена — 0.4% от максимально достижимого CTR, и она со временем стремится к нулю. При жадной стратегии потеря постоянна и равна 31%, плюс мы не находим хиты, которые иначе не были бы показаны никогда».</div></div>
+
+<div class="qa"><div class="q">19. Как измерять сожаление, если истинные CTR неизвестны?</div><div class="a">Три пути. ① <strong>Симуляция</strong> по историческим данным — даёт точное сожаление, но вывод ограничен реализмом симулятора. ② <strong>Ретроспективная оценка</strong>: спустя время объекты набрали данные, их CTR известен, можно посчитать, каким было сожаление. ③ <strong>Прокси-метрики</strong>: время до 100 показов, доля новых объектов в выдаче, доля хитов, найденных системой, средняя ширина постериора, доля каталога с менее чем 50 показами. Последние измеримы напрямую и в реальном времени.</div></div>
+
+<div class="qa"><div class="q">20. Что такое ID-dropout и зачем он нужен?</div><div class="a">Приём: с вероятностью 10–20% ID-эмбеддинг объекта зануляется при обучении, и модель вынуждена выдать осмысленный вектор по одним контентным признакам. Без него возникает <strong>ко-адаптация</strong>: сеть выезжает на ID, а контентные ветви вырождаются. В трассировке секции 7 отношение сумм весов ID к контентным было 24:1 без dropout и 1.07:1 с ним. Новый объект без dropout получал вектор нормы 0.04, определяемый шумом; с dropout — осмысленный вектор, зависящий от свойств.</div></div>
+
+<div class="qa"><div class="q">21. Как выбрать вероятность dropout?</div><div class="a">По доле новых объектов в каталоге. В замере при 40% свежего каталога: $p=0.15$ дало −1.4% на среднем и +284% на объектах моложе суток — очевидно выгодный размен. При 2% новых объектов такой размен уже не окупается, и $p$ надо снижать. Проверка перед внедрением: посчитать для тёплых объектов оба вектора — обычный и «холодный» с занулённым ID — и померить косинус. Ниже 0.5 значит, что контентные ветви ничему не научились; здоровое значение 0.65–0.85.</div></div>
+
+<div class="qa"><div class="q">22. Как устроен прогрев и где там ловушка?</div><div class="a">Вектор строится как смесь $q = w\cdot q^{\text{ID}} + (1-w)\cdot q^{\text{content}}$ с весом $w(n) = n/(n+n_0)$: при нуле взаимодействий чистый контентный, при $n=n_0$ поровну, при $n \gg n_0$ почти чистый ID. Ловушка — <strong>порядок нормировки</strong>: смешивать надо до L2-нормировки, а результат нормировать. Иначе смесь двух единичных, но не сонаправленных векторов даёт вектор меньшей длины, и объект в середине прогрева получает систематически заниженные скоры чисто из-за геометрии.</div></div>
+
+<div class="qa"><div class="q">23. Чем холодный старт пользователя труднее холодного старта объекта?</div><div class="a">Асимметрией информации. У объекта есть описание — категория, текст, изображение, — из которого строится вектор. У нового пользователя нет ничего, кроме контекста: устройство, время, откуда пришёл. Поэтому решения принципиально другие: не «построить вектор из свойств», а быстро набрать сигнал через онбординг или через первые же клики сессии. Замер кривой обучения профиля показывает точку перелома около 3 взаимодействий — до неё сегментное популярное работает лучше персональной модели.</div></div>
+
+<div class="qa"><div class="q">24. До какой степени дробить сегментацию нового пользователя?</div><div class="a">До момента, когда качество перестаёт расти. В замере секции 8: глобальное популярное 0.081, +устройство 0.089, +гео 0.096, +время 0.099, +источник перехода 0.104, +ОС 0.103 — на 6400 сегментах пошло вниз. Причина — переобучение сегментацией: в каждый сегмент попадает слишком мало данных. Лечится тем же байесовским сглаживанием: оценка мелкого сегмента подтягивается к родительскому тем сильнее, чем меньше в нём наблюдений. С иерархическим сглаживанием те же 6400 сегментов дают 0.107 вместо 0.103.</div></div>
+
+<div class="qa"><div class="q">25. Что показывать в онбординге?</div><div class="a">Не самое популярное, а <em>максимально поляризующее</em>. Объект, который нравится 95% людей, даёт от ответа $H(0.95)=0.286$ бита информации; объект, который нравится половине, — ровно 1 бит. Популярный объект выберут все, и он не различает пользователей. В замере подбор по энтропии вместо популярности дал NDCG@10 первой сессии 0.203 против 0.171, то есть +18.7%. Отдельно важно: оптимизировать надо произведение «доля прошедших онбординг × качество сигнала» — три экрана дают лучший сигнал, но теряют 39% пользователей, и итоговое удержание оказывается ниже, чем у одного экрана.</div></div>
+
+<div class="qa"><div class="q">26. Как рассчитать квоту на исследование?</div><div class="a">От требуемого времени сходимости. Сначала сколько показов нужно: из $\sigma \approx \sqrt{p(1-p)/n}$ при $p=0.1$ и цели $\sigma \le 2$ п.п. получаем $n \ge 225$. Затем сколько времени они наберутся: 50 млн показов в сутки × квота ÷ число объектов в очереди. При квоте 3% и 2000 объектах это 750 показов на объект в сутки, то есть 7 часов. При квоте 0.2% — уже 4.5 суток, за которые объект успевает устареть. Квота выводится из этого расчёта, а не назначается на глаз.</div></div>
+
+<div class="qa"><div class="q">27. Почему позиция вставки важнее размера квоты?</div><div class="a">Из-за позиционного смещения. CTR на 20-й позиции примерно в 11 раз ниже, чем на первой, значит, объект собирает информативных откликов во столько же раз меньше при том же числе показов. Квота 3% на 20-й позиции эквивалентна 0.27% на первой — то есть почти бесполезна. Распространённое решение «поставим эксперимент в конец списка, так безопаснее» фактически отключает механизм. Правильно — средние позиции 3–7: отклик информативен, ущерб умеренный.</div></div>
+
+<div class="qa"><div class="q">28. Почему выход из квоты по числу показов хуже, чем по ширине постериора?</div><div class="a">Фиксированный порог тратит одинаково на очевидные и пограничные объекты. Правило по неопределённости (выход при $\sigma \le 0.02$, либо при $P(\theta > \text{порог}) < 0.05$, либо $> 0.95$) даёт: объекту с истинным CTR 1% хватает ~60 показов, с 16% — ~90, а пограничному с 10.5% выделяется ~840. Среднее по каталогу ~180 вместо фиксированных 225 — экономия 20% бюджета при <em>более точных</em> решениях там, где они меняют исход.</div></div>
+
+<div class="qa"><div class="q">29. Почему нужно дисконтирование и как выбрать γ?</div><div class="a">Потому что истинный CTR меняется, а узкий постериор этого не замечает. В трассировке секции 10: после 50 000 показов при падении CTR с 12% до 6% без дисконтирования оценка дойдёт до 6.5% только через ~550 000 новых показов. Выбор $\gamma$: оценить характерное время изменения (скажем, 2 недели), перевести в показы на объект (130 в сутки × 14 = 1820), приравнять эффективный размер выборки $1/(1-\gamma) = 1820$, откуда $\gamma = 0.99945$. Компромисс: малое $\gamma$ реагирует быстро, но постериор остаётся широким навсегда. Часто лучше умеренное дисконтирование плюс детектор резких сдвигов.</div></div>
+
+<div class="qa"><div class="q">30. Почему нельзя завести отдельный бандит на каждый контекстный сегмент?</div><div class="a">Данные дробятся, и каждый бандит учится с нуля. В замере секции 12: отдельные бандиты на 12 сегментов дали CTR на 2.1% <em>хуже</em> глобального и потребовали ~2400 показов на объект вместо 200. LinUCB решает это общими параметрами: показ в одном контексте снижает неопределённость и в коррелированных направлениях — в трассировке наблюдение при $x=[1,1]$ снизило бонус и для $x=[1,0]$, потому что признак «мобильный» общий. Итог: +6.8% CTR при ~340 показах на объект. Нейросетевой бандит добавляет лишь +0.6% и обычно не окупает инфраструктуру.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block6_02_two_tower.html">← Назад: 6.2 — Two-tower</a>
+  <a href="block6_04_graph_ml.html" class="next">Дальше: 6.4 — Графовые модели →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#2563eb', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_P='#7c3aed', C_T='#0d9488', C_GR='#94a3b8';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---- лог-гамма и плотность беты (для графиков и интерактива) ---- */
+function lgamma(z){
+  var g=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,
+         12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(z<0.5) return Math.log(Math.PI/Math.sin(Math.PI*z))-lgamma(1-z);
+  z-=1; var x=0.99999999999980993;
+  for(var i=0;i<8;i++) x+=g[i]/(z+i+1);
+  var t=z+7.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function betaPdf(x,a,b){
+  if(x<=0||x>=1) return 0;
+  var lp=(a-1)*Math.log(x)+(b-1)*Math.log(1-x)+lgamma(a+b)-lgamma(a)-lgamma(b);
+  return Math.exp(lp);
+}
+function betaCurve(a,b,lo,hi,n){
+  var pts=[]; for(var i=0;i<=n;i++){ var x=lo+(hi-lo)*i/n; pts.push({x:+x.toFixed(5), y:betaPdf(x,a,b)}); }
+  return pts;
+}
+
+/* ---------- S1: число обусловленности ---------- */
+(function(){
+  var ns=[1,2,3,5,8,13,21,34,55,89,144,233], cond=[];
+  for(var i=0;i<ns.length;i++){ cond.push(+(1 + 900/Math.pow(ns[i],1.35)).toFixed(1)); }
+  mk('c_cond', {type:'line', data:{labels:ns, datasets:[
+    {label:'Число обусловленности задачи', data:cond, borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:4, borderWidth:2.5},
+    {label:'Порог доверия (cond = 20)', data:ns.map(function(){return 20;}), borderColor:'#1e293b', borderDash:[3,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({title:{display:true,text:'Число взаимодействий у объекта'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'cond(PᵀP), лог'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var n=ns[c[0].dataIndex];
+        return n<20 ? 'Задача плохо обусловлена: вектор определяется\nрегуляризацией, а не данными'
+                    : 'Данных достаточно, решение устойчиво'; }}}}}});
+})();
+
+/* ---------- S2: сужение постериора ---------- */
+(function(){
+  var states=[[1,24],[3,32],[8,67],[25,200],[113,912]];
+  var names=['приор Beta(1, 24)','+10 показов','+40','+150','+800'];
+  var cols=[C_GR,'#fca5a5',C_A,'#38bdf8',C_T];
+  var ds=states.map(function(s,i){
+    return {label:names[i]+'  →  '+(100*s[0]/(s[0]+s[1])).toFixed(2)+'%',
+      data:betaCurve(s[0],s[1],0,0.35,180), borderColor:cols[i],
+      backgroundColor:i===4?'rgba(13,148,136,.14)':'transparent', fill:i===4,
+      tension:.2, pointRadius:0, borderWidth:i===4?3:2};
+  });
+  mk('c_beta', {type:'line', data:{datasets:ds}, options:{
+    maintainAspectRatio:false, responsive:true, parsing:false,
+    scales:{ x:Object.assign({type:'linear',min:0,max:0.35,
+              title:{display:true,text:'Возможные значения CTR'},
+              ticks:{callback:function(v){return (100*v).toFixed(0)+'%';}}},NOG),
+             y:Object.assign({title:{display:true,text:'Плотность вероятности'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10.5}}},
+      tooltip:{enabled:false}}}});
+})();
+
+/* ---------- S3: три приора ---------- */
+(function(){
+  mk('c_prior', {type:'line', data:{labels:['1','10','20','50','200','1000'], datasets:[
+    {label:'A — без приора', data:[89.0,9.0,1.0,3.0,1.5,0.4], borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'B — константный 4%', data:[3.3,5.1,4.3,2.7,0.9,0.3], borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'C — контентный 7.5%', data:[0.1,2.8,2.4,1.4,0.5,0.2], borderColor:C_T, backgroundColor:'rgba(13,148,136,.12)', fill:true, tension:.3, pointRadius:5, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Число показов'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Ошибка оценки CTR, п.п. (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return 'Без приора один клик даёт оценку 100% —\nобъект вытесняет весь каталог';
+        if(i>=4) return 'К сотням показов приор перестаёт влиять:\nвся его ценность в первых десятках';
+        return 'Контентный приор ошибается вдвое меньше константного'; }}}}}});
+})();
+
+/* ---------- S4: Thompson sampling — перераспределение показов ---------- */
+(function(){
+  var rounds=[0,50,200,500,1000,2000];
+  mk('c_ts', {type:'line', data:{labels:rounds, datasets:[
+    {label:'C — истинный лучший (16%)', data:[0,56,75,84,89,92], borderColor:C_G, backgroundColor:'rgba(22,163,74,.14)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'A — хороший (11%)', data:[0,36,22,14,10,8], borderColor:C_A, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'B — слабый (9%)', data:[0,8,3,2,1,0.6], borderColor:C_R, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'σ постериора C, п.п. (правая ось)', data:[5.28,3.91,2.42,1.53,1.12,0.82], borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:3, borderWidth:2, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Раунд'}},NOG),
+             y:Object.assign({max:100, title:{display:true,text:'Доля показов, %'}},GRID),
+             y2:{position:'right', title:{display:true,text:'σ, п.п.'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Доля исследования убывает вслед за сужением σ.\nНикакого расписания не задаётся.';}}}}}});
+})();
+
+/* ---------- S5: три стратегии ---------- */
+(function(){
+  var t=[0,100,300,700,1200,2000];
+  mk('c_strat', {type:'line', data:{labels:t, datasets:[
+    {label:'Thompson sampling', data:[0,52,74,85,90,92], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'UCB, c подобран (0.30)', data:[0,41,66,79,84,85], borderColor:C_B, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'ε-greedy, ε = 0.10', data:[0,33,58,68,70,69], borderColor:C_A, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'UCB, c = 1.414 (стандартный)', data:[0,33,34,35,36,37], borderColor:C_R, tension:.3, pointRadius:4, borderWidth:2, borderDash:[5,4]},
+    {label:'Жадный', data:[0,0,0,0,0,0], borderColor:'#475569', borderDash:[2,3], borderWidth:2, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Раунд'}},NOG),
+             y:Object.assign({max:100, title:{display:true,text:'Доля показов лучшего объекта, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'UCB со стандартным c застревает на 37%:\nбонус впятеро больше любой награды.\nЖадный не находит лучший объект никогда.';}}}}}});
+})();
+
+/* ---------- S6: накопленное сожаление ---------- */
+(function(){
+  var T=[100,500,2000,10000,50000];
+  mk('c_regret', {type:'line', data:{labels:T, datasets:[
+    {label:'Жадный (линейное)', data:[4.4,24.1,99.6,498.2,2491.0], borderColor:C_R, tension:.2, pointRadius:5, borderWidth:2.5},
+    {label:'ε-greedy 0.1 (линейное)', data:[2.6,10.3,39.1,194.4,972.1], borderColor:C_A, tension:.2, pointRadius:5, borderWidth:2.5},
+    {label:'UCB c=1.41 (сублинейное)', data:[5.1,18.7,71.8,142.3,228.7], borderColor:C_B, tension:.25, pointRadius:5, borderWidth:2.5},
+    {label:'Thompson (сублинейное)', data:[2.1,5.2,11.8,19.4,29.1], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.25, pointRadius:5, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({type:'logarithmic', title:{display:true,text:'Число раундов T (лог)'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Накопленное сожаление (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        return i>=3 ? 'На log-log шкале линейное сожаление идёт под 45°,\nсублинейное — положе. Разница видна прямо по наклону.' : ''; }}}}}});
+})();
+
+/* ---------- S7: ID-dropout ---------- */
+(function(){
+  mk('c_drop', {type:'line', data:{labels:['0.00','0.05','0.10','0.15','0.25','0.50'], datasets:[
+    {label:'Объекты моложе суток', data:[0.031,0.079,0.104,0.119,0.126,0.131], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'Объекты моложе 7 суток', data:[0.088,0.131,0.152,0.161,0.164,0.159], borderColor:C_B, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Все объекты (среднее)', data:[0.214,0.213,0.212,0.211,0.203,0.181], borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5, borderDash:[5,4]}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Вероятность ID-dropout'}},NOG),
+             y:Object.assign({title:{display:true,text:'Recall@100'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return 'Без dropout контентные ветви вырождены —\nновый объект получает шум';
+        if(i===3) return '✓ Оптимум: −1.4% на среднем, +284% на новых';
+        if(i>=4) return 'Среднее качество начало заметно падать:\nID почти не используется'; return ''; }}}}}});
+})();
+
+/* ---------- S7: прогрев ---------- */
+(function(){
+  var ns=[0,5,10,25,50,100,200,500,1000];
+  var w50=ns.map(function(n){return +(n/(n+50)).toFixed(4);});
+  var w20=ns.map(function(n){return +(n/(n+20)).toFixed(4);});
+  var w150=ns.map(function(n){return +(n/(n+150)).toFixed(4);});
+  mk('c_warm', {type:'line', data:{labels:ns, datasets:[
+    {label:'n₀ = 20 — быстрый переход', data:w20, borderColor:C_A, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'n₀ = 50 — рабочая точка', data:w50, borderColor:C_T, backgroundColor:'rgba(13,148,136,.12)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'n₀ = 150 — медленный переход', data:w150, borderColor:C_B, tension:.3, pointRadius:4, borderWidth:2},
+    {label:'Поровну (w = 0.5)', data:ns.map(function(){return 0.5;}), borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Число взаимодействий объекта'}},NOG),
+             y:Object.assign({min:0,max:1, title:{display:true,text:'Вес ID-вектора w(n)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Остаток веса (1−w) приходится на контентный вектор.\nНормировка — ПОСЛЕ смешивания.';}}}}}});
+})();
+
+/* ---------- S8: кривая обучения профиля ---------- */
+(function(){
+  mk('c_learn', {type:'line', data:{labels:['0','1','3','5','10','30','100'], datasets:[
+    {label:'Полная персональная модель', data:[0.019,0.062,0.121,0.148,0.183,0.226,0.251], borderColor:C_T, backgroundColor:'rgba(13,148,136,.12)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'Популярное по сегменту контекста', data:[0.104,0.108,0.113,0.115,0.117,0.118,0.118], borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Глобальное популярное', data:[0.081,0.081,0.081,0.081,0.081,0.081,0.081], borderColor:C_GR, borderDash:[4,3], tension:0, pointRadius:3, borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Число взаимодействий пользователя'}},NOG),
+             y:Object.assign({title:{display:true,text:'NDCG@10'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i<=1) return 'Персональная модель ХУЖЕ эвристики —\nздесь её включать нельзя';
+        if(i===2) return '✓ Точка перелома: порог переключения';
+        return 'Персональная модель уверенно лидирует'; }}}}}});
+})();
+
+/* ---------- S9: квота и позиция ---------- */
+(function(){
+  var quotas=[0.2,0.5,1,2,3,5,10];
+  function hours(q, posFactor){
+    var perItem = 50e6 * (q/100) / 2000;      // показов на объект в сутки
+    var eff = perItem * posFactor;             // с поправкой на позицию
+    return +(225 / eff * 24).toFixed(1);
+  }
+  mk('c_quota', {type:'line', data:{labels:quotas.map(function(q){return q+'%';}), datasets:[
+    {label:'Позиция 1–3 (фактор 1.0)', data:quotas.map(function(q){return hours(q,1.0);}), borderColor:C_G, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Позиция 5 (фактор 0.34)', data:quotas.map(function(q){return hours(q,0.34);}), borderColor:C_T, backgroundColor:'rgba(13,148,136,.10)', fill:true, tension:.3, pointRadius:5, borderWidth:3},
+    {label:'Позиция 10 (фактор 0.17)', data:quotas.map(function(q){return hours(q,0.17);}), borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Позиция 20 (фактор 0.09)', data:quotas.map(function(q){return hours(q,0.09);}), borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Порог 24 часа', data:quotas.map(function(){return 24;}), borderColor:'#1e293b', borderDash:[3,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Квота на исследование'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Часов до 225 информативных показов (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Переход с позиции 20 на позицию 5 даёт тот же эффект,\nчто увеличение квоты почти в 4 раза.';}}}}}});
+})();
+
+/* ---------- S10: реакция на дрейф ---------- */
+(function(){
+  var n=[0,1000,2000,5000,10000,25000,50000];
+  function disc(g){ return n.map(function(k){ var w=Math.pow(g,k); return +(100*(0.12*w + 0.06*(1-w))).toFixed(2); }); }
+  function nodisc(){ return n.map(function(k){ return +(100*(6000+0.06*k)/(50000+k)).toFixed(2); }); }
+  mk('c_drift', {type:'line', data:{labels:n, datasets:[
+    {label:'Без дисконтирования', data:nodisc(), borderColor:C_R, tension:.25, pointRadius:5, borderWidth:2.5},
+    {label:'γ = 0.9999 (память 10 000)', data:disc(0.9999), borderColor:C_A, tension:.25, pointRadius:4, borderWidth:2},
+    {label:'γ = 0.9995 (память 2 000)', data:disc(0.9995), borderColor:C_T, backgroundColor:'rgba(13,148,136,.12)', fill:true, tension:.25, pointRadius:5, borderWidth:3},
+    {label:'γ = 0.999 (память 1 000)', data:disc(0.999), borderColor:C_B, tension:.25, pointRadius:4, borderWidth:2},
+    {label:'Истинный CTR после сдвига (6%)', data:n.map(function(){return 6;}), borderColor:'#1e293b', borderDash:[3,3], borderWidth:2, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Новых показов после сдвига'}},NOG),
+             y:Object.assign({min:5,max:12.5, title:{display:true,text:'Оценка CTR, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Компромисс: малое γ реагирует быстро, но постериор\nостаётся широким навсегда — алгоритм зря исследует.';}}}}}});
+})();
+
+/* ---------- S11: валидация по возрасту ---------- */
+(function(){
+  mk('c_valid', {type:'bar', data:{labels:['> 30 дней\n(84% показов)','7–30 дней\n(11%)','1–7 дней\n(4%)','< 1 суток\n(1%)','АГРЕГАТ'], datasets:[
+    {label:'Модель A', data:[0.271,0.152,0.061,0.019,0.243], backgroundColor:['rgba(22,163,74,.75)','rgba(217,119,6,.70)','rgba(220,38,38,.75)','rgba(220,38,38,.85)','rgba(148,163,184,.70)'], borderColor:'#fff', borderWidth:2},
+    {label:'Модель B', data:[0.259,0.168,0.147,0.118,0.239], backgroundColor:['rgba(13,148,136,.55)','rgba(13,148,136,.70)','rgba(13,148,136,.85)','rgba(13,148,136,.95)','rgba(148,163,184,.45)'], borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Recall@100'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:12}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===4) return 'Агрегат почти одинаков — и полностью скрывает,\nчто B лучше в 6.2 раза на свежем каталоге';
+        if(i===3) return 'B лучше в 6.2 раза';
+        if(i===0) return 'Здесь A лучше — и это 84% показов,\nпоэтому агрегат определяется этим сегментом'; return ''; }}}}}});
+})();
+
+/* ---------- S12: неопределённость LinUCB по направлениям ---------- */
+(function(){
+  var pts=[], contour=[];
+  // A = [[2,1],[1,2]] после наблюдения при x=[1,1]; рисуем bonus по углу
+  for(var deg=0; deg<=360; deg+=5){
+    var r=deg*Math.PI/180, cx=Math.cos(r), cy=Math.sin(r);
+    // A^-1 = (1/3)[[2,-1],[-1,2]]
+    var q=(2*cx*cx - 2*cx*cy + 2*cy*cy)/3;
+    var b=Math.sqrt(Math.max(q,0));
+    contour.push({x:+(b*cx).toFixed(4), y:+(b*cy).toFixed(4)});
+  }
+  var contour0=[];
+  for(var deg2=0; deg2<=360; deg2+=5){
+    var r2=deg2*Math.PI/180;
+    contour0.push({x:+Math.cos(r2).toFixed(4), y:+Math.sin(r2).toFixed(4)});
+  }
+  mk('c_lin', {type:'scatter', data:{datasets:[
+    {label:'До наблюдений: A = I, неопределённость одинакова во все стороны', data:contour0, type:'line', borderColor:C_GR, borderDash:[4,3], borderWidth:2, pointRadius:0, fill:false, tension:0},
+    {label:'После показа при x = [1, 1]', data:contour, type:'line', borderColor:C_T, backgroundColor:'rgba(13,148,136,.14)', borderWidth:3, pointRadius:0, fill:true, tension:0},
+    {label:'Направление наблюдения x = [1, 1]', data:[{x:0,y:0},{x:0.707,y:0.707}], type:'line', showLine:true, borderColor:C_R, borderWidth:2.5, pointRadius:[0,7], backgroundColor:C_R},
+    {label:'Неизученное направление x = [1, −1]', data:[{x:0,y:0},{x:0.707,y:-0.707}], type:'line', showLine:true, borderColor:C_A, borderWidth:2.5, borderDash:[4,3], pointRadius:[0,7], backgroundColor:C_A}
+  ]}, options:{maintainAspectRatio:false, responsive:true, aspectRatio:1,
+    scales:{ x:Object.assign({min:-1.2,max:1.2,title:{display:true,text:'Признак 1 (мобильное устройство)'}},GRID),
+             y:Object.assign({min:-1.2,max:1.2,title:{display:true,text:'Признак 2 (вечернее время)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{title:function(c){return c[0].dataset.label;},
+        label:function(c){return 'бонус в этом направлении: '+Math.sqrt(c.parsed.x*c.parsed.x+c.parsed.y*c.parsed.y).toFixed(3);},
+        afterBody:function(){return 'Наблюдение «сплющило» область вдоль своего направления.\nПерпендикулярное направление осталось неизученным —\nбонус там по-прежнему максимальный.';}}}}}});
+})();
+
+/* ---------- Интерактив: бета-обновление ---------- */
+function updBeta(){
+  var k = +document.getElementById('sl_prior').value;
+  var n = +document.getElementById('sl_n').value;
+  var obsCtr = +document.getElementById('sl_ctr').value/1000;
+  document.getElementById('out_prior').textContent = k;
+  document.getElementById('out_n').textContent = n;
+  document.getElementById('out_ctr').textContent = (100*obsCtr).toFixed(1)+'%';
+  var priorMu = 0.04;
+  var a0 = k*priorMu, b0 = k*(1-priorMu);
+  var s = Math.round(n*obsCtr);
+  var a = a0 + s, b = b0 + (n - s);
+  var mean = a/(a+b);
+  var vari = (a*b)/((a+b)*(a+b)*(a+b+1));
+  var sd = Math.sqrt(vari);
+  var naive = n>0 ? s/n : 0;
+  var priorShare = k/(k+n);
+  var lo = Math.max(0, mean-2*sd), hi = Math.min(1, mean+2*sd);
+  var html = '<b>Постериор Beta('+a.toFixed(1)+', '+b.toFixed(1)+')</b><br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'среднее <b>'+(100*mean).toFixed(2)+'%</b> &nbsp;·&nbsp; σ <b>'+(100*sd).toFixed(2)+' п.п.</b> &nbsp;·&nbsp; ';
+  html += 'интервал ±2σ <b>['+(100*lo).toFixed(1)+'%, '+(100*hi).toFixed(1)+'%]</b><br>';
+  html += 'наивная оценка '+s+'/'+n+' = <b>'+(100*naive).toFixed(2)+'%</b> &nbsp;·&nbsp; ';
+  html += 'вклад приора <b>'+(100*priorShare).toFixed(1)+'%</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#475569;">';
+  var shrink = Math.abs(naive - mean)*100;
+  if(n < 10 && k < 10) html += '⚠️ Слабый приор при малых данных: оценка почти равна наивной и потому ненадёжна';
+  else if(priorShare > 0.85) html += '⚠️ Приор доминирует ('+(100*priorShare).toFixed(0)+'%) — данные почти не влияют, объект не сможет себя проявить';
+  else if(sd > 0.03) html += '⏳ Постериор ещё широкий (σ = '+(100*sd).toFixed(1)+' п.п.), объект в квоте на исследование';
+  else if(sd > 0.015) html += '✓ Оценка уточняется, σ = '+(100*sd).toFixed(2)+' п.п. — близко к порогу выхода из квоты';
+  else html += '✓ Оценка надёжна (σ = '+(100*sd).toFixed(2)+' п.п.), объект можно выпускать в органическую выдачу';
+  html += '<br>Приор подтянул оценку на <b>'+shrink.toFixed(2)+' п.п.</b> относительно наивной</span>';
+  document.getElementById('out_bres').innerHTML = html;
+}
+
+/* ---------- Интерактив: квота ---------- */
+function updQuota(){
+  var q = +document.getElementById('sl_qta').value/10;
+  var pos = +document.getElementById('sl_pos').value;
+  var pool = +document.getElementById('sl_pool').value;
+  document.getElementById('out_qta').textContent = q.toFixed(1)+'%';
+  document.getElementById('out_pos').textContent = pos;
+  document.getElementById('out_pool').textContent = pool.toLocaleString('ru');
+  var posFactor = Math.pow(pos, -0.75);              // кривая позиционного смещения
+  var daily = 50e6 * (q/100);
+  var perItem = daily / pool;
+  var effective = perItem * posFactor;
+  var hours = 225 / effective * 24;
+  var equivQuota = q * posFactor;
+  var html = '<b>'+Math.round(perItem).toLocaleString('ru')+' показов на объект в сутки</b>, ';
+  html += 'из них информативных с поправкой на позицию — <b>'+Math.round(effective).toLocaleString('ru')+'</b><br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'до 225 показов: <b>'+(hours<48 ? hours.toFixed(1)+' часов' : (hours/24).toFixed(1)+' суток')+'</b> &nbsp;·&nbsp; ';
+  html += 'фактор позиции '+posFactor.toFixed(3)+' &nbsp;·&nbsp; ';
+  html += 'эквивалент квоты на 1-й позиции <b>'+equivQuota.toFixed(2)+'%</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#475569;">';
+  if(hours <= 12) html += '✓ Быстрая сходимость — объект успевает проявить себя, пока актуален';
+  else if(hours <= 30) html += '✓ Приемлемо: решение по объекту принимается в течение суток';
+  else if(hours <= 96) html += '⚠️ Медленно: несколько суток на объект, сезонные позиции успеют устареть';
+  else html += '⚠️ Слишком медленно — объект перестанет быть новым раньше, чем наберёт данные. Поднимай квоту или позицию';
+  if(pos >= 10) html += '<br>⚠️ Позиция '+pos+' режет информативность в '+(1/posFactor).toFixed(1)+' раза. Перенос на позицию 5 эквивалентен росту квоты в '+(Math.pow(5,-0.75)/posFactor).toFixed(1)+' раза';
+  html += '</span>';
+  document.getElementById('out_qres').innerHTML = html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updBeta(); updQuota();
+</script>
+</body>
+</html>

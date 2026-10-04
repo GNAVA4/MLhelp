@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1.15 · Схемы валидации</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#be123c; --ac-d:#881337; --ac-l:#fff1f2; --ac-b:#fda4af; --ac-m:#e11d48;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,#881337,#be123c 50%,#fda4af);color:#fff;padding:66px 24px 58px;margin-bottom:0}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.94;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.85;display:flex;gap:22px;flex-wrap:wrap}
+
+/* SIDE NAV */
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+/* SECTIONS */
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+/* DEFINITION */
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#92400e}
+
+/* TABLES */
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+/* TRACE */
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#fda4af;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+/* CHARTS */
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+/* PLAYGROUND */
+.play{background:linear-gradient(135deg,#fff1f2,#ffe4e6);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+/* SYSTEM DESIGN */
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+/* PITFALLS */
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+/* QA */
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+/* PAGE NAV */
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:16px 20px;margin:0 0 20px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:9px;font-weight:650}
+.fbox .fm{font-family:'SF Mono',Menlo,monospace;font-size:17px;color:var(--ac-d);font-weight:700}
+.fnote{font-size:13.5px;color:var(--tx3);margin-top:9px}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 1 · тема 15 · базовый уровень</div>
+    <h1>Схемы валидации</h1>
+    <p>Одна и та же модель на одних и тех же данных показала AUC 0.871 и 0.784. Разница не в модели и не в признаках — только в том, как выборку разрезали на обучение и тест. В проде получилось 0.779. Схема валидации — это не техническая деталь перед экспериментом, это и есть эксперимент: всё, что вы измеряете дальше, измеряется относительно неё.</p>
+    <div class="meta">
+      <span>15 секций</span><span>12 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Что измеряет схема</a>
+    <a href="#s2">2 · Случайное разбиение</a>
+    <a href="#s3">3 · Группы</a>
+    <a href="#s4">4 · Время</a>
+    <a href="#s5">5 · Зазор</a>
+    <a href="#s6">6 · Adversarial</a>
+    <a href="#s7">7 · Виды CV</a>
+    <a href="#s8">8 · Расширение и окно</a>
+    <a href="#s9">9 · Вложенная CV</a>
+    <a href="#s10">10 · Стратификация</a>
+    <a href="#s11">11 · Число фолдов</a>
+    <a href="#s12">12 · Кривые обучения</a>
+    <a href="#s13">13 · Выбор и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Что на самом деле измеряет схема валидации</h2></div>
+  <p class="slead">Схема разбиения задаёт вопрос, на который отвечает метрика. Разные схемы задают разные вопросы — и получают разные ответы на одних и тех же данных.</p>
+
+  <p>Интуиция «отложим 20% и проверим» кажется настолько очевидной, что о ней не думают. Но что именно проверяет отложенная выборка? Она проверяет способность модели предсказывать <b>объекты, похожие на те, что она видела</b>. Прод требует другого: предсказывать объекты, которых модель <b>не видела и не могла видеть</b> — будущие дни, новых клиентов, новые регионы, новые версии приложения.</p>
+
+  <p>Расстояние между этими двумя вопросами и есть завышение метрики. Оно не случайно и не мало: в примерах ниже оно составляет 0.087 AUC — больше, чем весь вклад конструирования признаков из <a href="block1_14_feature_engineering.html">темы 1.14</a>.</p>
+
+  <div class="def">
+    <div class="def-t">Схема валидации</div>
+    <p><b>Правило, по которому объекты распределяются между обучением и проверкой.</b> Правило определяет, какая информация доступна модели во время обучения, а какая нет — и тем самым определяет, какой сдвиг между обучением и применением воспроизводится в эксперименте.</p>
+    <p>Ключевая мысль: схема — это <b>модель будущего</b>. Вы не можете проверить модель на настоящем будущем, поэтому строите его имитацию из прошлого. Качество имитации ограничивает всё, что вы узнаете дальше.</p>
+    <p>Отсюда единственный критерий правильности схемы: <b>офлайн-оценка должна совпадать с продовой</b>. Не «схема выглядит строго», не «так принято» — совпадение чисел.</p>
+  </div>
+
+  <p>Разберём базовый пример, который пройдёт через всю тему. Задача: предсказать отток клиента в ближайшие 30 дней. Данные: 400 000 строк за 365 дней, 100 000 клиентов (в среднем 4 строки на клиента — по одной на каждый месяц активности). Модель одна и та же — градиентный бустинг с фиксированными гиперпараметрами. Меняется только схема разбиения.</p>
+
+  <table class="ct">
+    <thead><tr><th>Схема</th><th>Что попадает в тест</th><th>AUC офлайн</th><th>AUC в проде</th><th>Расхождение</th></tr></thead>
+    <tbody>
+      <tr class="worst"><td>Случайное 80/20</td><td class="note">случайные строки любого клиента, любой даты</td><td class="k">0.871</td><td class="k">0.779</td><td class="r">+0.092</td></tr>
+      <tr><td>Групповое по клиенту</td><td class="note">все строки отобранных клиентов</td><td class="k">0.825</td><td class="k">0.779</td><td class="r">+0.046</td></tr>
+      <tr><td>Временное по дате</td><td class="note">все строки последних 73 дней</td><td class="k">0.830</td><td class="k">0.779</td><td class="r">+0.051</td></tr>
+      <tr class="best"><td>Временное + групповое + зазор</td><td class="note">последние 73 дня, клиенты не пересекаются, зазор 30 дней</td><td class="k">0.784</td><td class="k">0.779</td><td class="g">+0.005</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Одна модель, одни данные, четыре схемы. Разброс офлайн-оценок 0.087 AUC. Продовое значение одно — 0.779, измерено на трёх месяцах после выката.</p>
+
+  <div class="chb">
+    <div class="cht">Офлайн-оценка против прода по схемам разбиения</div>
+    <div class="chsub">Случайное разбиение завышает на 0.092 — примерно вдвое больше, чем весь прирост от конструирования признаков в этой задаче</div>
+    <canvas id="c_split"></canvas>
+  </div>
+
+  <p>Обратите внимание на важную деталь: завышения складываются почти аддитивно. Случайное разбиение содержит <b>две</b> утечки — через объект (клиент в обеих частях) и через время (модель видит период теста). Убрав по одной, получаем 0.871 − 0.046 = 0.825 и 0.871 − 0.041 = 0.830. Убрав обе: 0.871 − 0.046 − 0.041 = 0.784. Это не общее правило, а свойство этой задачи, но оно полезно как способ разложить проблему на части и чинить их по одной.</p>
+
+  <div class="intuition">
+    <b>Практическое следствие.</b> Если вы не измеряли продовую метрику и не сравнивали её с офлайн-оценкой, вы не знаете, работает ли ваша схема. Не «схема, наверное, нормальная» — <b>не знаете</b>. Первый выкат любой модели стоит рассматривать как калибровку схемы валидации: сравнили офлайн и прод, поняли размер расхождения, поправили схему, и только после этого офлайн-числа приобретают смысл.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Случайное разбиение: почему оно почти всегда врёт</h2></div>
+  <p class="slead">Случайное разбиение корректно ровно при одном условии — строки независимы и одинаково распределены. В прикладных задачах это условие нарушено почти всегда, и обычно двумя способами сразу.</p>
+
+  <p>Случайное разбиение — единственная схема, у которой есть строгое обоснование: если строки независимы и извлечены из одного распределения, то тестовая часть — честная выборка из того же распределения, и оценка несмещённая. Проблема в том, что оба условия почти никогда не выполняются.</p>
+
+  <table class="ct">
+    <thead><tr><th>Нарушение</th><th>Как выглядит в данных</th><th>Что «подсматривает» модель</th></tr></thead>
+    <tbody>
+      <tr><td>Зависимость через объект</td><td class="note">несколько строк одного клиента, магазина, сессии, пациента</td><td class="note">индивидуальный уровень объекта, который в проде неизвестен</td></tr>
+      <tr><td>Зависимость через время</td><td class="note">строки упорядочены по дате, есть тренд и сезонность</td><td class="note">уровень и структуру периода, который в проде ещё не наступил</td></tr>
+      <tr><td>Зависимость через пространство</td><td class="note">соседние магазины, ячейки сетки, географические кластеры</td><td class="note">локальный уровень региона</td></tr>
+      <tr><td>Разное распределение</td><td class="note">исторические данные собирались другой политикой</td><td class="note">режим, в котором прод уже не работает — см. <a href="block1_13_feedback_loops.html">1.13</a></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Четыре причины, по которым i.i.d.-предположение ломается. Первые три чинятся схемой разбиения, четвёртая — нет.</p>
+
+  <p>Полезно понимать масштаб проблемы количественно, а не на уровне «ну там что-то может протечь». Возьмём зависимость через объект и посчитаем точно.</p>
+
+  <div class="def">
+    <div class="def-t">Расщепление группы</div>
+    <p>Клиент <b>расщеплён</b>, если часть его строк попала в обучение, а часть — в тест. При случайном разбиении с долей теста <i>p</i> и <i>k</i> строками у клиента:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14.5px;text-align:center;color:var(--ac-d)">P(расщеплён) = 1 − (1−p)<sup>k</sup> − p<sup>k</sup></p>
+    <p>Но важнее другая величина — доля <b>тестовых строк</b>, у которых есть «родственник» в обучении. Для тестовой строки клиента с <i>k</i> строками остальные <i>k−1</i> строк независимо попадают в тест с вероятностью <i>p</i>:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14.5px;text-align:center;color:var(--ac-d)">P(есть родственник в обучении) = 1 − p<sup>k−1</sup></p>
+    <p>Эти две величины сильно расходятся, и расходятся в неприятную сторону: расщеплено меньшинство клиентов, но заражено большинство тестовых строк.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько теста заражено при случайном разбиении 80/20</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Распределение клиентов по числу строк. 100 000 клиентов, 400 000 строк.
+      <div class="calc"><span class="lbl">строк   клиентов    строк всего   доля строк</span>
+   1      40 000        40 000       10.0%
+   2      20 000        40 000       10.0%
+   3      12 000        36 000        9.0%
+   5      20 000       100 000       25.0%
+  23       8 000       184 000       46.0%
+<span class="dim">──────────────────────────────────────────</span>
+        <span class="res">100 000</span>       <span class="res">400 000</span>      <span class="res">100.0%</span>
+<span class="dim">среднее: 400 000 / 100 000 = 4.00 строки на клиента</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Доля расщеплённых клиентов: 1 − 0.8<sup>k</sup> − 0.2<sup>k</sup>.
+      <div class="calc">k=1:   1 − 0.80000 − 0.20000 = <span class="hl">0.00000</span>
+k=2:   1 − 0.64000 − 0.04000 = <span class="hl">0.32000</span>
+k=3:   1 − 0.51200 − 0.00800 = <span class="hl">0.48000</span>
+k=5:   1 − 0.32768 − 0.00032 = <span class="hl">0.67200</span>
+k=23:  1 − 0.00590 − 0.00000 = <span class="hl">0.99410</span>
+
+<span class="lbl">взвешиваем по числу клиентов:</span>
+0.40×0 + 0.20×0.32 + 0.12×0.48 + 0.20×0.672 + 0.08×0.9941
+= 0 + 0.06400 + 0.05760 + 0.13440 + 0.07953
+= <span class="res">0.33553</span>  →  расщеплено 33.6% клиентов</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Доля заражённых тестовых строк: 1 − 0.2<sup>k−1</sup>.
+      <div class="calc">k=1:   1 − 0.2⁰  = 1 − 1.00000 = <span class="hl">0.00000</span>
+k=2:   1 − 0.2¹  = 1 − 0.20000 = <span class="hl">0.80000</span>
+k=3:   1 − 0.2²  = 1 − 0.04000 = <span class="hl">0.96000</span>
+k=5:   1 − 0.2⁴  = 1 − 0.00160 = <span class="hl">0.99840</span>
+k=23:  1 − 0.2²² = 1 − 0.00000 = <span class="hl">1.00000</span>
+
+<span class="lbl">взвешиваем по числу строк:</span>
+0.10×0 + 0.10×0.80 + 0.09×0.96 + 0.25×0.9984 + 0.46×1.0
+= 0 + 0.08000 + 0.08640 + 0.24960 + 0.46000
+= <span class="res">0.87600</span>  →  заражено 87.6% тестовых строк</div>
+    </div>
+    <div class="tstep">
+      <b>Итог.</b> Расщеплена <b>треть клиентов</b>, но заражено <b>семь восьмых теста</b>.
+      <div class="calc"><span class="dim">Причина: расщепляются клиенты с большим числом строк,
+а именно они дают большую часть строк.
+8% клиентов с 23 строками = 46% всех строк.</span>
+
+<span class="lbl">Интуиция «ну расщепится процентов тридцать, не страшно»
+занижает проблему в 2.6 раза:</span>  0.876 / 0.3355 = <span class="bad">2.61</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Расщепление групп при случайном разбиении 80/20</div>
+    <div class="chsub">Красная линия — доля клиентов, попавших в обе части; синяя — доля тестовых строк, у которых есть родственник в обучении. Вторая растёт заметно быстрее</div>
+    <canvas id="c_overlap"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Посчитайте для своих данных</h4>
+    <div class="prow">
+      <label>Строк на клиента <i>k</i></label>
+      <input type="range" id="sl_k" min="1" max="30" step="1" value="4">
+      <output id="out_k">4</output>
+    </div>
+    <div class="prow">
+      <label>Доля теста <i>p</i></label>
+      <input type="range" id="sl_p" min="5" max="50" step="1" value="20">
+      <output id="out_p">20%</output>
+    </div>
+    <div class="pout" id="out_split"></div>
+  </div>
+
+  <p>Отдельно стоит сказать, когда случайное разбиение <b>всё-таки корректно</b>, потому что списки «никогда так не делайте» вредны. Оно корректно, если: одна строка = один независимый объект (одно фото, один документ, один пользователь целиком), данные не упорядочены во времени или временной сдвиг пренебрежимо мал, и распределение объектов в проде совпадает с обучающим. Задачи компьютерного зрения на статичных наборах, классификация текстов из фиксированного корпуса, многие соревновательные постановки — там случайное разбиение честное и никакой сложности не нужно.</p>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Групповое разбиение: единица наблюдения — не строка</h2></div>
+  <p class="slead">Если у объекта есть индивидуальный уровень, который сохраняется между его строками, модель выучит этот уровень по обучению и «угадает» тест. В проде объект новый — угадывать нечего.</p>
+
+  <p>Механизм утечки через группу стоит увидеть буквально. Пусть у клиента есть постоянная составляющая склонности к оттоку — что-то, что модель не может вывести из наблюдаемых признаков, но что одинаково влияет на все его строки. Скажем, клиент по своей природе нестабильный: у него отток произойдёт в любом из месяцев с повышенной вероятностью.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как модель «запоминает» клиента</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Устройство данных. У клиента есть скрытый уровень <i>u</i>, одинаковый во всех его строках.
+      <div class="calc"><span class="lbl">логит оттока = −2.0 + 0.8·(активность) + u</span>
+
+<span class="dim">u ~ N(0, 1.2²) — не наблюдается ни одним признаком
+но постоянен для клиента</span>
+
+<span class="lbl">клиент A:  u = +1.6   (склонен к оттоку)</span>
+  строка 1 (янв): логит = −2.0 + 0.8×1.5 + 1.6 = <span class="hl">0.80</span>  метка 1
+  строка 2 (фев): логит = −2.0 + 0.8×1.2 + 1.6 = <span class="hl">0.56</span>  метка 1
+  строка 3 (мар): логит = −2.0 + 0.8×2.0 + 1.6 = <span class="hl">1.20</span>  метка 0
+  строка 4 (апр): логит = −2.0 + 0.8×1.7 + 1.6 = <span class="hl">0.96</span>  метка 1</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> При случайном разбиении строки 1, 2, 4 попали в обучение, строка 3 — в тест.
+      <div class="calc"><span class="lbl">что видит модель в обучении по клиенту A:</span>
+  три строки, у двух признак активности ~1.2–1.5, метка 1
+
+<span class="lbl">но модели доступен и id клиента — напрямую или косвенно
+(город + тариф + дата регистрации + модель устройства
+ однозначно определяют клиента в 71% случаев)</span>
+
+<span class="dim">модель фактически выучивает: «этот клиент = высокий риск»
+и применяет это знание к строке 3</span>
+  предсказание по признакам:  <span class="hl">0.31</span>
+  предсказание с «памятью»:   <span class="hl">0.68</span>
+  истинная вероятность:       <span class="hl">0.77</span>  <span class="res">→ память помогает</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> В проде клиент новый: <i>u</i> неизвестно, память бесполезна.
+      <div class="calc"><span class="lbl">AUC на тесте при случайном разбиении:  </span><span class="hl">0.871</span>
+<span class="lbl">AUC на тесте при групповом разбиении:  </span><span class="hl">0.825</span>
+<span class="lbl">AUC в проде на новых клиентах:         </span><span class="hl">0.779</span>
+
+<span class="dim">разница 0.871 − 0.825 = 0.046 — это ровно та часть
+качества, которая держится на памяти о конкретном клиенте</span></div>
+    </div>
+    <div class="tstep">
+      <b>Важное уточнение.</b> Утечка через группу — <b>не всегда</b> ошибка.
+      <div class="calc"><span class="lbl">если в проде модель работает с ТЕМИ ЖЕ клиентами
+(ежемесячный скоринг существующей базы),</span>
+<span class="res">то память о клиенте — легитимный сигнал,</span>
+<span class="dim">и случайное разбиение по строкам корректнее группового.</span>
+
+<span class="lbl">если модель применяется к НОВЫМ клиентам
+(скоринг заявок, онбординг),</span>
+<span class="bad">то память — утечка,</span> <span class="dim">и нужно групповое разбиение.</span>
+
+<span class="lbl">если и то, и другое —</span> <span class="hl">нужны обе оценки,</span>
+<span class="dim">взвешенные по доле новых клиентов в потоке.</span></div>
+    </div>
+  </div>
+
+  <div class="intuition">
+    <b>Правило выбора.</b> Спросите: «объект, который придёт в прод, — модель его уже видела или нет?» Если видела — группировать не нужно. Если не видела — группировать обязательно. Если по-разному — считать две метрики. Это единственный вопрос; всё остальное — детали реализации.
+  </div>
+
+  <div class="chb">
+    <div class="cht">Завышение AUC от расщепления групп по числу строк на клиента</div>
+    <div class="chsub">У клиентов с одной строкой завышения нет по построению. Дальше эффект растёт и выходит на плато — когда родственник в обучении есть почти наверняка, добавлять больше строк уже нечего</div>
+    <canvas id="c_group"></canvas>
+  </div>
+
+  <p>Практическая сложность группового разбиения — <b>найти правильную группу</b>. Кандидатов обычно несколько, и они вложены друг в друга:</p>
+
+  <table class="ct">
+    <thead><tr><th>Задача</th><th>Наивная группа</th><th>Правильная группа</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr><td>Отток клиентов</td><td class="note">клиент</td><td class="a">домохозяйство / компания</td><td class="note">члены семьи уходят вместе; аккаунты одной компании коррелированы</td></tr>
+      <tr><td>Медицинская диагностика</td><td class="note">снимок</td><td class="a">пациент</td><td class="note">несколько снимков одного пациента — не независимы</td></tr>
+      <tr><td>Прогноз продаж</td><td class="note">магазин-день</td><td class="a">магазин</td><td class="note">уровень магазина постоянен</td></tr>
+      <tr><td>Модерация контента</td><td class="note">пост</td><td class="a">автор</td><td class="note">автор пишет в одном стиле; спамеры дублируют посты</td></tr>
+      <tr><td>Антифрод</td><td class="note">транзакция</td><td class="a">устройство / карта / кольцо</td><td class="note">фродовые кольца связаны — см. <a href="block1_13_feedback_loops.html">1.13</a></td></tr>
+      <tr><td>Разметка данных</td><td class="note">пример</td><td class="a">разметчик</td><td class="note">систематика разметчика утекает как сигнал</td></tr>
+      <tr><td>Речь / голос</td><td class="note">запись</td><td class="a">говорящий + сессия записи</td><td class="note">микрофон и акустика комнаты — сильнейший «признак»</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Ошибка выбора группы — самая частая причина, по которой «мы сделали GroupKFold, а расхождение осталось». Группа должна быть той единицей, которая целиком новая в проде.</p>
+
+  <p>Стоимость группового разбиения тоже реальна: фолды получаются неравными по размеру, а при сильно неравномерном распределении строк по группам разброс между фолдами растёт. В нашем примере при 5 фолдах по клиентам размеры фолдов вышли 78 400 / 81 200 / 79 100 / 82 300 / 79 000 строк — разброс ±2.5%, что приемлемо. Если бы 5% клиентов давали 60% строк, разброс был бы неприемлемым, и понадобилась бы стратификация по размеру группы.</p>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Временное разбиение: обучаемся на прошлом, проверяем на будущем</h2></div>
+  <p class="slead">Модель в проде всегда работает на данных позже обучающих. Любая схема, где это не так, отвечает на вопрос, которого никто не задавал.</p>
+
+  <p>Временная утечка отличается от групповой тем, что действует даже на полностью независимых объектах. Если в тестовом периоде базовая частота события выше, модель, обученная с примесью этого периода, «знает» новый уровень. Если сменился состав трафика, модель уже видела новый состав. Если появился новый тариф, модель уже видела его в обучении — а в реальности на момент обучения тарифа не существовало.</p>
+
+  <div class="def">
+    <div class="def-t">Out-of-time валидация</div>
+    <p><b>Обучение — на периоде до момента T, проверка — на периоде после T.</b> Стандарт для любых данных с осью времени, независимо от того, является ли задача формально «временным рядом».</p>
+    <p>Частая путаница: «у меня не временной ряд, у меня классификация» — и разбиение делается случайным. Но <b>наличие временного ряда — свойство данных, а не задачи</b>. Если у строк есть дата и распределение по этой дате меняется, нужен out-of-time, даже если вы предсказываете бинарную метку одной строки.</p>
+    <p>Второе следствие часто упускают: <b>тестовый период должен быть достаточно длинным, чтобы включать сезонность</b>. Проверка на одной неделе декабря скажет вам о декабрьской неделе, а не о модели.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · разложение временного завышения на составляющие</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Базовая частота оттока по кварталам.
+      <div class="calc"><span class="lbl">квартал   строк     оттоков   доля</span>
+Q1        98 000     6 370    6.50%
+Q2       101 000     7 373    7.30%
+Q3        99 000     8 316    8.40%
+Q4       102 000     9 792    9.60%
+<span class="dim">──────────────────────────────────────</span>
+всего    400 000    31 851    7.96%
+
+<span class="dim">частота выросла в 1.48 раза за год</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Что происходит при случайном разбиении. Модель обучается на смеси всех кварталов и видит Q4.
+      <div class="calc"><span class="lbl">случайное разбиение:</span>
+  обучение содержит  81 600 строк Q4 (80% от 102 000)
+  тест содержит      20 400 строк Q4
+  <span class="dim">модель откалибрована на средний уровень 7.96%,
+  но конкретно по Q4 «знает» уровень 9.60%</span>
+
+<span class="lbl">временное разбиение (тест = Q4):</span>
+  обучение содержит  0 строк Q4
+  <span class="dim">модель откалибрована на 7.40% (среднее Q1–Q3)
+  и систематически недооценивает Q4</span>
+  средний прогноз <span class="hl">0.0740</span> против факта <span class="hl">0.0960</span>
+  <span class="bad">недооценка в 1.297 раза</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Но AUC не чувствителен к калибровке. Откуда тогда падение 0.041?
+      <div class="calc"><span class="lbl">разложим падение на источники:</span>
+
+  сдвиг уровня (калибровка)         <span class="hl">0.000</span>  <span class="dim">← AUC не видит</span>
+  новый тариф «Про» с ноября        <span class="hl">0.014</span>
+  смена состава трафика (реклама)   <span class="hl">0.011</span>
+  устаревание пороговых значений
+    в признаках-агрегатах           <span class="hl">0.009</span>
+  сезонность декабря                <span class="hl">0.007</span>
+<span class="dim">────────────────────────────────────────────</span>
+  итого                             <span class="res">0.041</span>
+
+<span class="dim">Ни одна составляющая не связана с калибровкой.
+Все связаны с тем, что структура данных в Q4 другая.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Проверка вывода: обучим на Q1–Q3 и проверим на Q4 <b>с перекалибровкой</b>.
+      <div class="calc"><span class="lbl">AUC без перекалибровки:  </span><span class="hl">0.830</span>
+<span class="lbl">AUC с перекалибровкой:   </span><span class="hl">0.830</span>  <span class="dim">← не изменился</span>
+<span class="lbl">Brier без перекалибровки:</span> <span class="hl">0.0721</span>
+<span class="lbl">Brier с перекалибровкой: </span> <span class="res">0.0648</span>  <span class="dim">← −10.1%</span>
+
+<span class="res">Вывод: временное разбиение выявляет ДВА разных дефекта.
+Ранжирующий (AUC) чинится переобучением на свежих данных.
+Калибровочный (Brier) чинится дешёвой перекалибровкой.
+Случайное разбиение не показывает ни того, ни другого.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Деградация модели по неделям после точки обучения</div>
+    <div class="chsub">Обучение на Q1–Q3, тест по неделям Q4. Первые недели почти не отличаются от обучающего периода; расхождение накапливается</div>
+    <canvas id="c_decay"></canvas>
+  </div>
+
+  <p>Кривая деградации — самостоятельно полезный артефакт: она отвечает на вопрос «как часто переобучать модель». Если качество падает на 0.002 AUC в неделю, а переобучение стоит два дня работы и даёт возврат к исходному уровню, то интервал переобучения выбирается из сравнения этих величин, а не из привычки «раз в месяц».</p>
+
+  <table class="ct">
+    <thead><tr><th>Интервал переобучения</th><th>Среднее AUC за период</th><th>Потеря против свежей</th><th>Переобучений в год</th></tr></thead>
+    <tbody>
+      <tr><td>Ежедневно</td><td class="k">0.7840</td><td class="k">0.0000</td><td class="k">365</td></tr>
+      <tr><td>Раз в неделю</td><td class="k">0.7830</td><td class="k">0.0010</td><td class="k">52</td></tr>
+      <tr class="best"><td>Раз в месяц</td><td class="k">0.7797</td><td class="k">0.0043</td><td class="k">12</td></tr>
+      <tr><td>Раз в квартал</td><td class="k">0.7714</td><td class="a">0.0126</td><td class="k">4</td></tr>
+      <tr class="worst"><td>Раз в год</td><td class="k">0.7402</td><td class="r">0.0438</td><td class="k">1</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Расчёт по линейной деградации 0.00021 AUC в день: средняя потеря за интервал длиной <i>d</i> дней равна 0.00021·<i>d</i>/2. Проверка для месяца: 0.00021 × 30.4 / 2 = 0.00319 плюс 0.0011 от накопленного дрейфа справочников = 0.0043.</p>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Зазор между обучением и тестом</h2></div>
+  <p class="slead">Разрез по дате не устраняет утечку, если метка объекта определяется событиями <i>после</i> его точки отсечения. Тогда часть обучающих строк «смотрит» в тестовый период даже при формально корректном временном разбиении.</p>
+
+  <p>Это самая недооценённая часть темы. Люди делают временное разбиение, чувствуют, что поступили правильно, и всё равно получают расхождение с продом. Причина в том, что у объекта есть <b>две даты</b>, а не одна.</p>
+
+  <div class="def">
+    <div class="def-t">Две даты объекта</div>
+    <p><b>Точка отсечения</b> — момент, на который вычисляются признаки. Всё, что произошло позже, модели недоступно.</p>
+    <p><b>Момент реализации метки</b> — момент, когда становится известен ответ. Для метки «отток в ближайшие 30 дней» это точка отсечения плюс 30 дней. Для «дефолт за 12 месяцев» — плюс год. Для «вернулся ли пользователь через неделю» — плюс неделя.</p>
+    <p>Разбиение по <b>точке отсечения</b> оставляет утечку: обучающая строка с отсечением за 10 дней до разреза несёт метку, определённую событиями на 20 дней <i>внутри</i> тестового периода. Разбиение по <b>моменту реализации</b> утечку убирает, но выбрасывает данные.</p>
+    <p>Компромисс — <b>зазор</b> (в финансовой литературе <i>purging</i> и <i>embargo</i>): из обучения удаляются строки, чьё окно метки пересекает тестовый период. Размер зазора равен горизонту метки.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько стоит зазор и сколько стоит его отсутствие</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Геометрия разбиения. 365 дней, тест — последние 73, горизонт метки 30 дней.
+      <div class="calc"><span class="lbl">дни 1 ────────────────────── 292 │ 293 ───────── 365</span>
+                обучение          │      тест
+
+<span class="lbl">строка с отсечением в день 285:</span>
+  признаки считаются по дням 1–285   <span class="res">✓ корректно</span>
+  метка определяется днями 285–315   <span class="bad">✗ дни 293–315 в тесте</span>
+
+<span class="dim">заражены все строки с отсечением в [263, 292] — 30 дней</span>
+доля обучающих строк: 30 / 292 = <span class="hl">10.27%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Механизм переноса. 7 декабря (день 341) — сбой в приложении, всплеск оттока.
+      <div class="calc"><span class="lbl">строки с отсечением 311–341 имеют метку,
+зависящую от сбоя. Но день 311 &gt; 292, они уже в тесте.</span>
+
+<span class="lbl">возьмём событие внутри теста ближе к границе — день 300:</span>
+  промо-кампания завершилась, отток вырос на 2.1 п.п.
+  строки с отсечением 270–300 несут её след
+  из них 270–292 (23 дня) <span class="bad">находятся в обучении</span>
+
+<span class="dim">модель выучивает связь «признаки такого клиента → метка 1»
+на объектах, чья метка порождена событием тестового периода.
+Тестовые объекты с похожими признаками получают
+завышенно уверенное — и правильное — предсказание.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Замер эффекта.
+      <div class="calc"><span class="lbl">схема                              обучение   AUC офлайн   AUC прод</span>
+временное без зазора               320 000     <span class="hl">0.812</span>       0.779
+временное с зазором 30 дней        287 100     <span class="hl">0.784</span>       0.779
+<span class="dim">─────────────────────────────────────────────────────────────</span>
+                                   <span class="bad">−10.28%</span>    <span class="bad">−0.028</span>
+
+<span class="lbl">расхождение с продом:</span>
+  без зазора: 0.812 − 0.779 = <span class="bad">0.033</span>
+  с зазором:  0.784 − 0.779 = <span class="res">0.005</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> А сколько мы честно потеряли от того, что данных стало меньше? По кривой обучения из секции 12.
+      <div class="calc"><span class="lbl">AUC(n) = 0.795 − 1.441·n^(−0.37146)</span>
+
+n = 320 000:  ln n = 12.67608
+  0.37146 × 12.67608 = 4.70830
+  e^4.70830 = 110.845
+  1.441 / 110.845 = 0.0130006
+  AUC = 0.795 − 0.013001 = <span class="hl">0.781999</span>
+
+n = 287 100:  ln n = 12.56766
+  0.37146 × 12.56766 = 4.66803
+  e^4.66803 = 106.470
+  1.441 / 106.470 = 0.0135347
+  AUC = 0.795 − 0.013535 = <span class="hl">0.781465</span>
+
+<span class="lbl">честная потеря от 10.3% данных:</span>
+  0.781999 − 0.781465 = <span class="res">0.000534</span></div>
+    </div>
+    <div class="tstep">
+      <b>Итог.</b> Зазор стоит 0.0005 AUC и убирает 0.028 мнимого прироста.
+      <div class="calc">0.028 / 0.000534 = <span class="res">52.4</span>
+
+<span class="dim">Пятьдесят к одному. Это не компромисс — это очевидное решение.
+Отказ от зазора экономит 10% данных и покупает
+расхождение с продом в 6.6 раза большее.</span>
+
+<span class="lbl">Правило: зазор ≥ горизонт метки. Всегда.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Расхождение офлайн-оценки с продом при разном размере зазора</div>
+    <div class="chsub">Горизонт метки 30 дней. Расхождение падает до нуля ровно на 30 днях и дальше не улучшается — только съедает данные</div>
+    <canvas id="c_gap"></canvas>
+  </div>
+
+  <p>График показывает вторую половину правила: зазор больше горизонта метки бесполезен. На 60 днях расхождение то же (0.005), а обучающих данных на 10% меньше, и AUC уже честно падает до 0.781. Раздувать зазор «на всякий случай» — распространённая перестраховка, которая стоит данных и ничего не даёт.</p>
+
+  <table class="ct">
+    <thead><tr><th>Задача</th><th>Горизонт метки</th><th>Нужный зазор</th><th>Комментарий</th></tr></thead>
+    <tbody>
+      <tr><td>Клик по объявлению</td><td class="k">~1 час</td><td class="k">1 день</td><td class="note">практически не мешает</td></tr>
+      <tr><td>Отток за 30 дней</td><td class="k">30 дней</td><td class="k">30 дней</td><td class="note">~10% данных при годовой истории</td></tr>
+      <tr><td>Возврат товара</td><td class="k">14–60 дней</td><td class="k">60 дней</td><td class="note">брать максимум, а не среднее</td></tr>
+      <tr><td>Дефолт по кредиту</td><td class="k">12 месяцев</td><td class="a">12 месяцев</td><td class="note">съедает год истории — главная причина, почему такие задачи требуют длинных данных</td></tr>
+      <tr><td>LTV за 24 месяца</td><td class="k">24 месяца</td><td class="r">24 месяца</td><td class="note">часто неподъёмно, приходится на суррогат — см. <a href="block1_12_metrics_framing.html">1.12</a></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Чем длиннее горизонт метки, тем дороже честная валидация. Это фундаментальное ограничение задачи, а не недостаток схемы.</p>
+
+  <div class="intuition">
+    <b>Быстрая проверка на утечку через горизонт.</b> Сдвиньте точку разреза на величину горизонта назад и переобучите. Если офлайн-метрика почти не изменилась — зазор соблюдён. Если упала заметно — метка «подсматривала». В нашем примере: 0.812 → 0.784 при сдвиге на 30 дней, падение 0.028; у корректной схемы 0.784 → 0.7835, падение 0.0005. Та же диагностика, что для утечки признаков в <a href="block1_14_feature_engineering.html">1.14</a>.
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Adversarial validation: измерить сдвиг, а не гадать</h2></div>
+  <p class="slead">Обучите классификатор отличать обучающую выборку от тестовой. Его AUC — прямая численная мера того, насколько они разные. Это единственный способ узнать про сдвиг до того, как он проявится в проде.</p>
+
+  <div class="def">
+    <div class="def-t">Adversarial validation</div>
+    <p><b>Вспомогательная бинарная задача:</b> метка 0 — объект из обучения, метка 1 — из теста, признаки те же. Обучаем модель, смотрим её AUC на своей кросс-валидации.</p>
+    <p><b>AUC ≈ 0.5</b> — распределения неотличимы. Схема разбиения не вносит сдвига; отложенная выборка репрезентативна.</p>
+    <p><b>AUC 0.6–0.8</b> — умеренный сдвиг. Для временного разбиения это норма: данные и должны меняться со временем.</p>
+    <p><b>AUC &gt; 0.9</b> — почти всегда дефект: в признаках есть что-то, однозначно кодирующее принадлежность к периоду или группе. Обычно это идентификатор, монотонный счётчик или дата, просочившаяся как число.</p>
+    <p>Ценность метода в том, что он <b>не требует меток целевой задачи</b>: сдвиг между обучением и продом можно измерить сразу после выката, задолго до того, как реальные метки станут известны.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · adversarial validation находит утечку признака</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Замеряем сдвиг для четырёх ситуаций.
+      <div class="calc"><span class="lbl">разбиение                             adversarial AUC   вывод</span>
+случайное 80/20                            <span class="hl">0.502</span>       норма
+временное (Q1–Q3 / Q4)                     <span class="hl">0.681</span>       ожидаемый дрейф
+временное + новый регион в тесте           <span class="hl">0.834</span>       структурный сдвиг
+временное, признаки «как есть»             <span class="bad">0.958</span>       <span class="bad">дефект</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Разбираем случай 0.958. Смотрим важность признаков adversarial-модели.
+      <div class="calc"><span class="lbl">признак                          важность   что с ним не так</span>
+client_id                          <span class="bad">0.612</span>   выдаётся по порядку → монотонен во времени
+days_since_registration            <span class="bad">0.191</span>   в тесте систематически больше
+app_version_numeric                <span class="hl">0.084</span>   новые версии только в тесте
+tariff_id                          <span class="hl">0.041</span>   тариф «Про» появился в ноябре
+активность_7д                      0.019   норма
+средний_чек_90д                    0.014   норма
+<span class="dim">... остальные 34 признака             0.039</span>
+
+<span class="lbl">убираем client_id и days_since_registration:</span>
+  adversarial AUC  0.958 → <span class="res">0.673</span>
+<span class="dim">осталось ровно то, что и должно меняться со временем</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что это дало целевой модели.
+      <div class="calc"><span class="lbl">вариант                          AUC офлайн   AUC прод   расхождение</span>
+с client_id                          <span class="hl">0.851</span>      0.771       <span class="bad">0.080</span>
+без client_id                        <span class="hl">0.784</span>      0.779       <span class="res">0.005</span>
+
+<span class="dim">client_id давал +0.067 офлайн и −0.008 в проде.
+Модель ранжировала клиентов по дате регистрации,
+что на исторических данных коррелирует с оттоком,
+а на новых клиентах — нет.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Второе применение — взвешивание обучения по похожести на тест.
+      <div class="calc"><span class="lbl">вес объекта: w = p(тест|x) / (1 − p(тест|x))</span>
+
+p = 0.10  →  w = 0.10/0.90 = <span class="hl">0.11111</span>
+p = 0.30  →  w = 0.30/0.70 = <span class="hl">0.42857</span>
+p = 0.50  →  w = 0.50/0.50 = <span class="hl">1.00000</span>
+p = 0.70  →  w = 0.70/0.30 = <span class="hl">2.33333</span>
+p = 0.90  →  w = 0.90/0.10 = <span class="hl">9.00000</span>
+
+<span class="lbl">разброс весов огромен: 9.0 / 0.11111 = 81×</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Цена взвешивания — падение эффективного размера выборки (та же формула, что для IPS в <a href="block1_13_feedback_loops.html">1.13</a>).
+      <div class="calc"><span class="lbl">ESS = (Σw)² / Σw²   для этих пяти объектов</span>
+
+Σw  = 0.11111 + 0.42857 + 1.00000 + 2.33333 + 9.00000
+    = <span class="hl">12.87301</span>
+Σw² = 0.012346 + 0.183673 + 1.000000 + 5.444429 + 81.000000
+    = <span class="hl">87.640448</span>
+
+ESS = 12.87301² / 87.640448
+    = 165.71437 / 87.640448
+    = <span class="res">1.89083</span>
+
+<span class="dim">из 5 объектов осталось 1.89 — эффективность 37.8%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 6.</b> Обрезка весов сверху восстанавливает бо́льшую часть выборки.
+      <div class="calc"><span class="lbl">обрезаем на w ≤ 3:  0.11111, 0.42857, 1.0, 2.33333, 3.0</span>
+
+Σw  = <span class="hl">6.87301</span>
+Σw² = 0.012346 + 0.183673 + 1.0 + 5.444429 + 9.0 = <span class="hl">15.640448</span>
+ESS = 6.87301² / 15.640448 = 47.23827 / 15.640448 = <span class="res">3.02027</span>
+
+<span class="dim">эффективность 60.4% вместо 37.8% — почти вдвое лучше</span>
+
+<span class="lbl">на полной выборке 287 100 строк:</span>
+  без обрезки:  ESS = 116 300 (40.5%),  AUC <span class="hl">0.791</span>
+  обрезка ≤ 5:  ESS = 210 400 (73.3%),  AUC <span class="res">0.793</span>
+  без весов:                            AUC <span class="hl">0.784</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Adversarial AUC как индикатор: четыре сценария</div>
+    <div class="chsub">Зелёная зона — сдвига нет, жёлтая — ожидаемый временной дрейф, красная — почти наверняка дефект признаков</div>
+    <canvas id="c_adv"></canvas>
+  </div>
+
+  <p>Третье применение метода — <b>отбор валидационной выборки</b>. Если тестовое распределение известно (например, известен состав будущего трафика), можно выбрать в качестве валидации те обучающие объекты, которые больше всего на него похожи. Это даёт оценку, лучше предсказывающую прод, ценой меньшего размера валидации.</p>
+
+  <table class="ct">
+    <thead><tr><th>Способ отбора валидации</th><th>Размер</th><th>Оценка AUC</th><th>Прод</th><th>Ошибка предсказания</th></tr></thead>
+    <tbody>
+      <tr><td>Случайные 20%</td><td class="k">64 000</td><td class="k">0.871</td><td class="k">0.779</td><td class="r">0.092</td></tr>
+      <tr><td>Последние 20% по дате</td><td class="k">64 000</td><td class="k">0.812</td><td class="k">0.779</td><td class="a">0.033</td></tr>
+      <tr class="best"><td>Топ-20% по p(тест|x)</td><td class="k">64 000</td><td class="k">0.786</td><td class="k">0.779</td><td class="g">0.007</td></tr>
+      <tr><td>Топ-5% по p(тест|x)</td><td class="k">16 000</td><td class="k">0.781</td><td class="k">0.779</td><td class="g">0.002</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка точнее по среднему, но её доверительный интервал вчетверо шире: ±0.0104 против ±0.0052. Точность оценки и её размер — обычный компромисс.</p>
+
+  <div class="intuition">
+    <b>Чего adversarial validation не умеет.</b> Он видит сдвиг <b>признаков</b> — p(x). Он ничего не говорит о сдвиге <b>связи</b> — p(y|x). Модель может дать adversarial AUC 0.51 и при этом полностью развалиться в проде, потому что изменилось поведение при тех же признаках: конкурент снизил цены, поменялся интерфейс, изменилась политика антифрода. Это самый опасный вид сдвига, и он обнаруживается только метками.
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Виды кросс-валидации: что выбирать и что это стоит</h2></div>
+  <p class="slead">Кросс-валидация решает одну задачу — снизить разброс оценки, используя все данные для проверки. Взамен она умножает стоимость на число фолдов и создаёт новые способы протечь.</p>
+
+  <p>Отложенная выборка даёт одну оценку на 20% данных. Кросс-валидация даёт K оценок, каждая на 1/K данных, и усредняет. Выигрыш — в разбросе; проигрыш — во времени и в риске ошибиться со схемой K раз вместо одного.</p>
+
+  <table class="ct">
+    <thead><tr><th>Схема</th><th>Когда применима</th><th>Стоимость</th><th>Главный риск</th></tr></thead>
+    <tbody>
+      <tr><td><code>train_test_split</code></td><td class="note">данные i.i.d., выборка большая</td><td class="k">×1</td><td class="note">высокий разброс оценки при малых данных</td></tr>
+      <tr><td><code>KFold</code></td><td class="note">данные i.i.d.</td><td class="k">×K</td><td class="note">i.i.d. почти никогда не выполняется</td></tr>
+      <tr><td><code>StratifiedKFold</code></td><td class="note">i.i.d. + редкий класс</td><td class="k">×K</td><td class="note">не спасает от группового и временного сдвига</td></tr>
+      <tr><td><code>GroupKFold</code></td><td class="note">несколько строк на объект</td><td class="k">×K</td><td class="note">неверно выбранная группа; неравные фолды</td></tr>
+      <tr><td><code>StratifiedGroupKFold</code></td><td class="note">группы + редкий класс</td><td class="k">×K</td><td class="note">баланс классов и целостность групп конфликтуют</td></tr>
+      <tr><td><code>TimeSeriesSplit</code></td><td class="note">есть ось времени</td><td class="k">×K</td><td class="note">разные фолды обучаются на разном объёме</td></tr>
+      <tr><td>Скользящее окно</td><td class="note">ось времени + стабильный объём</td><td class="k">×K</td><td class="note">выбрасывает старые данные</td></tr>
+      <tr><td>Purged K-Fold + embargo</td><td class="note">длинный горизонт метки, финансы</td><td class="k">×K</td><td class="note">сложная реализация, легко ошибиться</td></tr>
+      <tr><td>Вложенная CV</td><td class="note">нужна честная оценка после отбора</td><td class="r">×K·M</td><td class="note">стоимость; редко оправдана при больших данных</td></tr>
+      <tr><td>Повторная K-Fold</td><td class="note">малые данные, нужна точность</td><td class="r">×K·R</td><td class="note">снижает разброс, но не смещение</td></tr>
+      <tr><td>Leave-One-Out</td><td class="note">данных сотни, не тысячи</td><td class="r">×n</td><td class="note">огромный разброс оценки, обманчиво «строгая»</td></tr>
+      <tr><td>Leave-One-Group-Out</td><td class="note">мало групп (регионы, больницы)</td><td class="k">×G</td><td class="note">оценка по одной группе очень шумная</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">В прикладных задачах с временем и группами почти всегда нужна комбинация: групповое разбиение внутри временного, с зазором. Готовой функции для этого в стандартных библиотеках нет — её пишут руками, и это нормально.</p>
+
+  <div class="def">
+    <div class="def-t">Комбинированная схема (то, что нужно в 80% прикладных задач)</div>
+    <p>1. <b>Разрезать по времени</b> — тестовый период идёт после обучающего.</p>
+    <p>2. <b>Выкинуть зазор</b> — удалить обучающие строки, чьё окно метки заходит в тест.</p>
+    <p>3. <b>Разнести группы</b> — если объект оказался по обе стороны разреза, убрать его из обучения (не из теста: тест должен отражать реальный поток).</p>
+    <p>4. <b>Проверить adversarial AUC</b> — убедиться, что сдвиг объясним, а не порождён идентификаторами.</p>
+    <p>5. <b>Сравнить с продом</b> после первого выката и при необходимости поправить.</p>
+    <p>Шаг 3 требует пояснения. Убирать из <b>теста</b> клиентов, которые есть в обучении, правильно только если в проде модель работает исключительно с новыми клиентами. Если поток смешанный, тест должен содержать и тех, и других — в реальной пропорции, — а метрику полезно считать отдельно по двум сегментам.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сборка комбинированной схемы на нашем примере</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Исходные данные: 400 000 строк, 100 000 клиентов, 365 дней, горизонт метки 30 дней.
+      <div class="calc"><span class="lbl">разрез по времени: тест = дни 293–365 (73 дня)</span>
+  обучающих строк (дни 1–292):   <span class="hl">320 000</span>
+  тестовых строк  (дни 293–365):  <span class="hl">80 000</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Зазор 30 дней — убираем обучающие строки с отсечением в днях 263–292.
+      <div class="calc">320 000 × (30 / 292) = <span class="hl">32 877</span> строк
+320 000 − 32 877 = <span class="res">287 123</span> обучающих строк
+<span class="dim">потеря 10.3%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Разносим группы. Сколько клиентов есть по обе стороны?
+      <div class="calc"><span class="lbl">клиентов в обучении:  </span> 88 400
+<span class="lbl">клиентов в тесте:     </span> 41 700
+<span class="lbl">пересечение:          </span> <span class="hl">30 100</span>
+
+<span class="dim">30 100 / 41 700 = 72.2% тестовых клиентов
+модель уже видела. Это НЕ ошибка — в проде
+модель тоже скорит существующую базу.</span>
+
+<span class="lbl">поэтому считаем метрику отдельно:</span>
+  на 30 100 знакомых клиентах:   AUC <span class="hl">0.803</span>
+  на 11 600 новых клиентах:      AUC <span class="hl">0.741</span>
+  общая:                         AUC <span class="hl">0.784</span>
+
+<span class="lbl">проверка взвешиванием по числу строк:</span>
+  знакомые дают 62 900 строк, новые 17 100
+  (62 900×0.803 + 17 100×0.741) / 80 000
+  = (50 508.7 + 12 671.1) / 80 000
+  = 63 179.8 / 80 000 = <span class="res">0.78975</span>
+<span class="dim">не в точности 0.784 — AUC не аддитивен по сегментам,
+объединение пар из разных сегментов даёт свой вклад.
+Расхождение 0.006 здесь как раз и есть этот вклад.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что это меняет в решениях.
+      <div class="calc"><span class="lbl">доля новых клиентов в потоке прода: 21.4%</span>
+
+<span class="dim">если завтра маркетинг удвоит приток новых клиентов,
+доля станет 35%, и ожидаемая метрика упадёт:</span>
+
+  0.786×0.803 + 0.214×0.741 = 0.62966 + 0.15857 = <span class="hl">0.78823</span>
+  0.650×0.803 + 0.350×0.741 = 0.52195 + 0.25935 = <span class="res">0.78130</span>
+
+<span class="dim">−0.007 без всяких изменений в модели.
+Одна общая цифра это скрыла бы полностью.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Стоимость и точность схем валидации</div>
+    <div class="chsub">По горизонтали — относительная стоимость в обучениях модели, по вертикали — расхождение офлайн-оценки с продом. Левый нижний угол лучше</div>
+    <canvas id="c_cvtype"></canvas>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Расширяющееся окно против скользящего</h2></div>
+  <p class="slead">Две стандартные схемы временной CV дают разные ответы, и разница между их фолдами означает разное. У расширяющегося окна почти весь разброс между фолдами — это эффект объёма обучения, а вовсе не различие периодов.</p>
+
+  <div class="def">
+    <div class="def-t">Две схемы временной CV</div>
+    <p><b>Расширяющееся окно</b> (<code>TimeSeriesSplit</code>): обучение всегда с начала истории до текущей границы, тест — следующий блок. Обучающая выборка растёт от фолда к фолду.</p>
+    <p><b>Скользящее окно</b>: обучение — фиксированное число последних дней перед границей. Размер обучения одинаков во всех фолдах, старые данные выбрасываются.</p>
+    <p>Расширяющееся ближе к реальности прода (вы же не выбрасываете историю). Скользящее даёт <b>сравнимые между собой фолды</b> — единственная переменная в них период, а не объём. Это делает его правильным инструментом для вопроса «менялось ли качество со временем».</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · разброс между фолдами: объём или период?</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Расширяющееся окно, 5 фолдов по 61 дню.
+      <div class="calc"><span class="lbl">фолд   обучение (дни)   размер   тест (дни)   AUC</span>
+  1     1–61              61      62–122     0.741
+  2     1–122            122     123–183     0.762
+  3     1–183            183     184–244     0.775
+  4     1–244            244     245–305     0.781
+  5     1–305            305     306–365     0.784
+
+<span class="lbl">среднее:</span> (0.741+0.762+0.775+0.781+0.784)/5
+        = 3.843 / 5 = <span class="res">0.76860</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Разброс между фолдами.
+      <div class="calc"><span class="lbl">отклонения от среднего:</span>
+  −0.0276, −0.0066, +0.0064, +0.0124, +0.0154
+
+<span class="lbl">квадраты:</span>
+  0.00076176, 0.00004356, 0.00004096, 0.00015376, 0.00023716
+<span class="lbl">сумма S_yy = </span><span class="hl">0.00123720</span>
+<span class="lbl">дисперсия = </span>0.00123720 / 5 = 0.00024744
+<span class="lbl">sd = </span>√0.00024744 = <span class="hl">0.015730</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сколько из этого разброса объясняется размером обучения? Регрессия AUC на ln(размер).
+      <div class="calc"><span class="lbl">x = ln(дней):</span>
+  4.110874, 4.804021, 5.209486, 5.497168, 5.720312
+<span class="lbl">x̄ = </span>25.341861 / 5 = <span class="hl">5.068372</span>
+
+<span class="lbl">отклонения x:</span>
+  −0.957498, −0.264351, +0.141114, +0.428796, +0.651940
+<span class="lbl">отклонения y (из шага 2):</span>
+  −0.0276, −0.0066, +0.0064, +0.0124, +0.0154
+
+<span class="lbl">произведения:</span>
+  0.02642695, 0.00174472, 0.00090313, 0.00531707, 0.01003988
+<span class="lbl">S_xy = </span><span class="hl">0.04443175</span>
+
+<span class="lbl">квадраты отклонений x:</span>
+  0.916802, 0.069881, 0.019913, 0.183866, 0.425026
+<span class="lbl">S_xx = </span><span class="hl">1.615488</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Доля объяснённого разброса.
+      <div class="calc"><span class="lbl">объяснённая сумма квадратов = S_xy² / S_xx</span>
+  = 0.04443175² / 1.615488
+  = 0.00197418 / 1.615488
+  = <span class="hl">0.00122203</span>
+
+<span class="lbl">R² = 0.00122203 / 0.00123720 = </span><span class="res">0.98774</span>
+
+<span class="bad">98.8% разброса между фолдами — это размер обучения.
+На различие периодов приходится 1.2%.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Проверим скользящим окном с фиксированным обучением 183 дня.
+      <div class="calc"><span class="lbl">фолд   обучение (дни)   размер   тест (дни)   AUC</span>
+  1     1–183            183     184–244     0.775
+  2     62–244           183     245–305     0.779
+  3     123–305          183     306–365     0.781
+
+<span class="lbl">среднее = </span>(0.775+0.779+0.781)/3 = 2.335/3 = <span class="res">0.778333</span>
+<span class="lbl">отклонения:</span> −0.003333, +0.000667, +0.002667
+<span class="lbl">квадраты:</span> 0.00001111, 0.00000044, 0.00000711
+<span class="lbl">сумма = </span>0.00001866
+<span class="lbl">sd = </span>√(0.00001866/3) = √0.00000622 = <span class="res">0.002494</span>
+
+<span class="lbl">разброс упал в </span>0.015730 / 0.002494 = <span class="res">6.31 раза</span></div>
+    </div>
+    <div class="tstep">
+      <b>Вывод.</b> Разброс расширяющегося окна нельзя читать как «нестабильность модели».
+      <div class="calc"><span class="dim">Типичная ошибка: увидеть sd = 0.0157 между фолдами
+TimeSeriesSplit и заключить «модель нестабильна,
+качество скачет от периода к периоду».</span>
+
+<span class="res">На самом деле модель очень стабильна:
+при равном объёме обучения sd = 0.0025.
+Скачет объём, а не качество.</span>
+
+<span class="lbl">Практика: для оценки качества — расширяющееся окно
+(оно воспроизводит прод), для диагностики стабильности —
+скользящее (оно изолирует эффект периода).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Расширяющееся против скользящего окна</div>
+    <div class="chsub">Синяя линия растёт вместе с объёмом обучения; оранжевая при фиксированном объёме почти плоская — периоды между собой почти не различаются</div>
+    <canvas id="c_window"></canvas>
+  </div>
+
+  <p>Есть и третье соображение, о котором забывают: <b>какое число возвращать наружу</b>. Среднее по фолдам расширяющегося окна (0.7686) систематически занижено — оно включает фолды, обученные на четверти данных, тогда как в проде модель обучится на всём. Более честная оценка для прода — последний фолд (0.784), обученный на объёме, максимально близком к продовому.</p>
+
+  <table class="ct">
+    <thead><tr><th>Что сообщать</th><th>Значение</th><th>Смещение против прода 0.779</th><th>Когда уместно</th></tr></thead>
+    <tbody>
+      <tr class="worst"><td>Среднее по фолдам расширяющегося окна</td><td class="k">0.7686</td><td class="r">−0.0104</td><td class="note">почти никогда: смешивает объём и период</td></tr>
+      <tr class="best"><td>Последний фолд расширяющегося окна</td><td class="k">0.7840</td><td class="g">+0.0050</td><td class="note">оценка качества будущей продовой модели</td></tr>
+      <tr><td>Среднее по скользящему окну</td><td class="k">0.7783</td><td class="g">−0.0007</td><td class="note">когда обучение в проде тоже на окне</td></tr>
+      <tr><td>Худший фолд</td><td class="k">0.7410</td><td class="a">−0.0380</td><td class="note">пессимистичная граница для решения о выкате</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Один и тот же прогон CV даёт четыре числа с разбросом 0.043. Выбирать нужно осознанно и один раз — до того, как увидели результат.</p>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Вложенная кросс-валидация: цена перебора</h2></div>
+  <p class="slead">Если по одним и тем же фолдам вы и подбирали гиперпараметры, и сообщаете качество, то сообщаемое число завышено. Величина завышения растёт с числом перепробованных конфигураций — это обычное множественное тестирование.</p>
+
+  <p>Логика та же, что в <a href="block4_05_sequential_testing.html">4.5</a> для подглядываний в A/B и в <a href="block1_09_leakage.html">1.9</a> для отбора признаков. Каждая конфигурация даёт оценку, равную истинному качеству плюс шум фолдов. Выбирая максимум по конфигурациям, вы выбираете и максимум шума.</p>
+
+  <div class="def">
+    <div class="def-t">Вложенная CV</div>
+    <p><b>Внешний цикл</b> из K фолдов оценивает качество. <b>Внутренний цикл</b> из M фолдов внутри каждого обучающего куска подбирает гиперпараметры. Внешний тестовый фолд не участвует в подборе — поэтому его оценка честная.</p>
+    <p>Стоимость: K·M·C обучений, где C — число конфигураций. При K=5, M=5 это в 5 раз дороже обычной CV.</p>
+    <p>Ключевой момент, который вызывает путаницу: вложенная CV <b>не выбирает</b> итоговые гиперпараметры (в каждом внешнем фолде они могут получиться разные). Она только <b>оценивает качество процедуры</b> «подобрать гиперпараметры и обучить». Итоговую модель после этого обучают на всех данных с гиперпараметрами, подобранными на всех данных.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · насколько завышает простая CV</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Перебираем 200 конфигураций по обычной 5-фолдовой CV, берём лучшую.
+      <div class="calc"><span class="lbl">лучшая конфигурация по CV:      </span><span class="hl">0.8120</span>
+<span class="lbl">она же, вложенная 5×5 CV:       </span><span class="hl">0.7970</span>
+<span class="lbl">она же, отложенная выборка:     </span><span class="hl">0.7960</span>
+<span class="lbl">она же, в проде:                </span><span class="hl">0.7790</span>
+
+<span class="lbl">завышение простой CV:</span>
+  0.8120 − 0.7960 = <span class="bad">0.0160</span>
+<span class="lbl">остаточное завышение вложенной:</span>
+  0.7970 − 0.7790 = 0.0180 <span class="dim">← это уже сдвиг данных, не перебор</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Теоретическая нижняя граница. Если C конфигураций одинаково хороши, а шум оценки имеет sd σ, то ожидаемый максимум шума ≈ σ·√(2 ln C).
+      <div class="calc"><span class="lbl">σ = 0.0018  (sd оценки CV-среднего на этих данных)</span>
+
+C = 10:    √(2·ln 10)   = √4.605170  = 2.145966
+           0.0018 × 2.145966 = <span class="hl">0.003863</span>
+C = 50:    √(2·ln 50)   = √7.824046  = 2.797150
+           0.0018 × 2.797150 = <span class="hl">0.005035</span>
+C = 200:   √(2·ln 200)  = √10.596635 = 3.255247
+           0.0018 × 3.255247 = <span class="hl">0.005859</span>
+C = 1000:  √(2·ln 1000) = √13.815511 = 3.716922
+           0.0018 × 3.716922 = <span class="hl">0.006690</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сравниваем с замером. Замеренное завышение растёт быстрее теории.
+      <div class="calc"><span class="lbl">C        теория     замер     превышение</span>
+  10      0.0039     0.0040       ×1.03
+  50      0.0050     0.0090       ×1.79
+ 200      0.0059     0.0160       ×2.73
+1000      0.0067     0.0240       ×3.59
+
+<span class="dim">Теория считает только шум фолдов при равных конфигурациях.
+Замер больше, потому что перебор находит ещё и конфигурации,
+подогнанные под конкретную нарезку фолдов:
+глубину дерева под размер фолда, регуляризацию под
+особенности распределения именно этих 80% данных.</span>
+
+<span class="res">Правило: σ√(2 ln C) — нижняя граница, а не оценка.
+Реальное завышение в 2–4 раза больше при широком переборе.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Дешёвая альтернатива вложенной CV.
+      <div class="calc"><span class="lbl">схема                                 обучений   оценка   ошибка</span>
+простая CV, отбор на тех же фолдах         200      0.8120   <span class="bad">0.0160</span>
+вложенная CV 5×5                         5 000      0.7970   <span class="res">0.0010</span>
+CV для отбора + отложенная для оценки    201      0.7980   <span class="res">0.0020</span>
+
+<span class="dim">Третий вариант в 25 раз дешевле вложенной
+и почти так же честен. Условие — отложенную
+выборку нельзя смотреть до самого конца
+и нельзя использовать повторно.</span>
+
+<span class="lbl">Именно поэтому вложенная CV нужна редко:
+она оправдана при малых данных, где отложить
+15% выборки слишком дорого.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Завышение оценки от числа перепробованных конфигураций</div>
+    <div class="chsub">Пунктир — теоретическая нижняя граница σ√(2·ln C), сплошная — замеренное завышение. Разрыв растёт: широкий перебор подгоняется не только под шум</div>
+    <canvas id="c_nested"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Практический вывод, который часто формулируют неверно.</b> «Всегда используйте вложенную CV» — плохой совет: она в разы дороже и при больших данных почти ничего не даёт. Правильный совет: <b>число, которое вы сообщаете наружу, должно быть получено на данных, не участвовавших ни в одном решении</b>. Как вы этого добьётесь — вложенной CV, финальной отложенной выборкой или честным out-of-time периодом — вопрос бюджета.
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Стратификация: когда она нужна и когда бесполезна</h2></div>
+  <p class="slead">Стратификация выравнивает долю классов по фолдам. Она снижает разброс оценки, но не устраняет смещения — и при больших выборках её эффект близок к нулю.</p>
+
+  <p>Стратификацию часто включают «по умолчанию», не задумываясь. Стоит понять, что именно она делает: она убирает <b>один конкретный источник разброса</b> — случайные колебания доли положительного класса между фолдами. Величина этого источника считается точно.</p>
+
+  <div class="def">
+    <div class="def-t">Разброс доли класса между фолдами</div>
+    <p>Число положительных в фолде размера <i>n</i> при базовой частоте <i>p</i> распределено биномиально:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14.5px;text-align:center;color:var(--ac-d)">sd(положительных) = √(n·p·(1−p)) &nbsp;&nbsp;·&nbsp;&nbsp; sd(доли) = √(p(1−p)/n)</p>
+    <p>Относительный разброс доли — <b>√((1−p)/(n·p))</b>. Он растёт при уменьшении фолда и при уменьшении базовой частоты. Именно эти два случая и есть область применения стратификации.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · когда стратификация меняет дело</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Большая выборка, обычная частота: 5 фолдов по 80 000 строк, базовая частота 7.96%.
+      <div class="calc">sd(положительных) = √(80 000 × 0.0796 × 0.9204)
+                 = √(80 000 × 0.07326)
+                 = √5 860.6 = <span class="hl">76.56</span>
+
+ожидаемое число:  80 000 × 0.0796 = 6 368
+относительный разброс: 76.56 / 6 368 = <span class="hl">1.20%</span>
+
+<span class="lbl">доля класса по фолдам гуляет в диапазоне</span>
+7.96% ± 2×0.0957 п.п. = <span class="res">7.77% … 8.15%</span>
+<span class="dim">разница между крайними фолдами — 0.38 п.п.
+это ни на что не влияет</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Малая выборка: 5 фолдов по 1 000 строк, та же частота.
+      <div class="calc">sd(положительных) = √(1 000 × 0.07326) = √73.26 = <span class="hl">8.56</span>
+ожидаемое число:  79.6
+относительный разброс: 8.56 / 79.6 = <span class="bad">10.75%</span>
+
+<span class="lbl">диапазон доли:</span> 7.96% ± 1.71 п.п. = <span class="bad">6.25% … 9.67%</span>
+<span class="dim">крайние фолды отличаются в 1.55 раза по числу
+положительных — это уже влияет на всё:
+на пороги, на калибровку, на разброс AUC</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Редкое событие: 5 фолдов по 10 000 строк, базовая частота 0.5%.
+      <div class="calc">sd(положительных) = √(10 000 × 0.005 × 0.995) = √49.75 = <span class="hl">7.05</span>
+ожидаемое число:  50
+относительный разброс: 7.05 / 50 = <span class="bad">14.11%</span>
+
+<span class="lbl">диапазон:</span> 50 ± 14.1 = <span class="bad">36 … 64 положительных</span>
+<span class="dim">фолд с 36 положительными даёт настолько шумную
+оценку AUC, что среднее по фолдам теряет смысл</span>
+
+<span class="lbl">и худший случай — фолд может получить 25 положительных
+с вероятностью ~0.02%. При 200 запусках это случится.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Замер: как это переводится в разброс AUC.
+      <div class="calc"><span class="lbl">сценарий                   sd(AUC) без   sd(AUC) со    выигрыш
+                            стратификации  стратификацией</span>
+80 000 строк, p=7.96%         <span class="hl">0.0057</span>        <span class="hl">0.0055</span>       <span class="dim">−3.5%</span>
+ 1 000 строк, p=7.96%         <span class="bad">0.0380</span>        <span class="res">0.0240</span>       <span class="res">−36.8%</span>
+10 000 строк, p=0.50%         <span class="bad">0.0412</span>        <span class="res">0.0281</span>       <span class="res">−31.8%</span>
+
+<span class="lbl">проверка первой строки:</span> 0.0055 / 0.0057 = 0.9649 → −3.51% <span class="res">✓</span>
+<span class="lbl">проверка второй строки:</span> 0.0240 / 0.0380 = 0.6316 → −36.84% <span class="res">✓</span></div>
+    </div>
+    <div class="tstep">
+      <b>Вывод.</b> Стратификация — инструмент малых выборок и редких событий.
+      <div class="calc"><span class="res">При 80 000 строк на фолд она даёт 3.5% снижения разброса.
+Это бесплатно, поэтому включать её можно всегда,
+но рассчитывать на неё как на решение проблемы — нельзя.</span>
+
+<span class="bad">Чего стратификация НЕ делает:
+не убирает утечку через группы;
+не убирает временной сдвиг;
+не убирает смещение оценки — только разброс.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Выигрыш стратификации в зависимости от числа положительных в фолде</div>
+    <div class="chsub">По горизонтали — ожидаемое число положительных примеров в одном фолде. Ниже 100 стратификация заметно помогает, выше 1000 — практически незаметна</div>
+    <canvas id="c_strat"></canvas>
+  </div>
+
+  <p>Отдельная тема — <b>конфликт стратификации с группировкой</b>. Нельзя одновременно точно выровнять доли классов и сохранить группы целыми: группы приходят «пакетами» разного размера и разной насыщенности положительным классом. <code>StratifiedGroupKFold</code> решает задачу приближённо, и цена приближения видна в размерах фолдов.</p>
+
+  <table class="ct">
+    <thead><tr><th>Схема</th><th>Доля класса по фолдам</th><th>Размеры фолдов, тыс. строк</th><th>Группы целы</th></tr></thead>
+    <tbody>
+      <tr><td><code>StratifiedKFold</code></td><td class="g">7.96 / 7.96 / 7.96 / 7.96 / 7.96</td><td class="k">80.0 / 80.0 / 80.0 / 80.0 / 80.0</td><td class="r">нет</td></tr>
+      <tr><td><code>GroupKFold</code></td><td class="r">6.81 / 7.42 / 8.13 / 8.94 / 8.60</td><td class="k">78.4 / 81.2 / 79.1 / 82.3 / 79.0</td><td class="g">да</td></tr>
+      <tr class="best"><td><code>StratifiedGroupKFold</code></td><td class="g">7.88 / 7.93 / 7.97 / 8.01 / 8.01</td><td class="a">71.4 / 94.1 / 78.2 / 80.6 / 75.7</td><td class="g">да</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Выравнивание доли класса с 2.13 п.п. до 0.13 п.п. куплено разбросом размеров фолдов с ±2.5% до ±17.6%. Что важнее — зависит от того, что шумит сильнее: неравный баланс классов или неравный размер теста.</p>
+
+  <p>Наконец, стратификация применима не только к классам. В регрессии стратифицируют по квантилям целевой переменной — иначе фолд может случайно собрать непропорционально много редких больших значений, а именно они доминируют в MSE. В нашем примере с CLV из <a href="block2_11_hierarchical_clv.html">2.11</a> один крупный клиент давал 97% суммы квадратов ошибок; при 5 фолдах без стратификации по величине целевой такой клиент делает один фолд полностью нерепрезентативным.</p>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Сколько фолдов: смещение против разброса и стоимости</h2></div>
+  <p class="slead">Больше фолдов — больше обучающих данных в каждом, меньше смещение; но меньше тестовых данных, больше разброс; и линейно растёт стоимость. Все три величины считаются заранее.</p>
+
+  <p>Спор «5 или 10 фолдов» решается арифметикой, а не вкусом. Каждая сторона компромисса имеет замкнутую форму.</p>
+
+  <div class="def">
+    <div class="def-t">Две стороны выбора K</div>
+    <p><b>Смещение.</b> При K фолдах модель обучается на доле (K−1)/K данных, а в проде — на всех. Оценка занижена ровно на разницу по кривой обучения: AUC(n) − AUC(n·(K−1)/K).</p>
+    <p><b>Разброс.</b> Тестовый фолд содержит n/K строк, поэтому стандартная ошибка оценки на одном фолде растёт как √K. Усреднение по K фолдам частично это компенсирует, но фолды коррелированы (обучающие выборки пересекаются на (K−2)/(K−1)), и компенсация неполная.</p>
+    <p><b>Стоимость.</b> Ровно K обучений.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · выбор K по кривой обучения</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Смещение при 400 000 строк. Кривая AUC(n) = 0.795 − 1.441·n<sup>−0.37146</sup> (вывод в секции 12).
+      <div class="calc"><span class="lbl">K    обучение        AUC(обучение)   смещение</span>
+ 3    266 667         0.781096        <span class="hl">−0.001944</span>
+ 5    320 000         0.781999        <span class="hl">−0.001041</span>
+10    360 000         0.782562        <span class="hl">−0.000478</span>
+20    380 000         0.782809        <span class="hl">−0.000231</span>
+ —    400 000         <span class="res">0.783040</span>            0
+
+<span class="dim">проверка для K=5:  n = 400 000 × 4/5 = 320 000
+ln 320 000 = 12.676076;  × 0.37146 = 4.708300
+e^4.708300 = 110.845;  1.441 / 110.845 = 0.013001
+0.795 − 0.013001 = 0.781999  ✓</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Разброс. Стандартная ошибка AUC по формуле Хэнли–Макнейла ≈ √(A(1−A)/n₊), где n₊ — число положительных в тесте.
+      <div class="calc"><span class="lbl">A ≈ 0.783,  A(1−A) = 0.783 × 0.217 = 0.169911
+базовая частота 7.96%</span>
+
+<span class="lbl">K     тест      n₊       se(AUC) теория   sd между фолдами замер</span>
+ 3   133 333   10 613     <span class="hl">0.004001</span>            <span class="hl">0.0042</span>
+ 5    80 000    6 368     <span class="hl">0.005165</span>            <span class="hl">0.0057</span>
+10    40 000    3 184     <span class="hl">0.007305</span>            <span class="hl">0.0082</span>
+20    20 000    1 592     <span class="hl">0.010331</span>            <span class="hl">0.0118</span>
+
+<span class="dim">проверка K=5: √(0.169911 / 6 368) = √0.00002668
+= 0.005165  ✓
+проверка масштабирования: 0.004001 × √(5/3)
+= 0.004001 × 1.290994 = 0.005165  ✓</span>
+
+<span class="lbl">замер стабильно выше теории на 5–14%:
+теория учитывает только шум теста,
+замер включает ещё и вариацию обучения</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Собираем всё вместе.
+      <div class="calc"><span class="lbl">K    смещение    sd фолдов   se(среднего)   обучений</span>
+ 3    −0.00194     0.0042      0.00242         3
+ 5    −0.00104     0.0057      0.00255         5
+10    −0.00048     0.0082      0.00259        10
+20    −0.00023     0.0118      0.00264        20
+
+<span class="dim">se(среднего) = sd / √K
+K=3:  0.0042 / 1.73205 = 0.002425
+K=5:  0.0057 / 2.23607 = 0.002549
+K=10: 0.0082 / 3.16228 = 0.002593
+K=20: 0.0118 / 4.47214 = 0.002639</span>
+
+<span class="res">Точность среднего почти не зависит от K —
+разница между K=3 и K=20 всего 9%.
+А смещение падает в 8 раз, стоимость растёт в 7 раз.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> То же при 5 000 строк — картина другая.
+      <div class="calc"><span class="lbl">K    обучение   AUC(обучение)   смещение</span>
+ 3     3 333      0.724200       <span class="bad">−0.009900</span>
+ 5     4 000      0.728835       <span class="bad">−0.005265</span>
+10     4 500      0.731668       <span class="hl">−0.002432</span>
+20     4 750      0.732928       <span class="hl">−0.001172</span>
+ —     5 000      <span class="res">0.734100</span>            0
+
+<span class="lbl">смещение при K=3 выросло с 0.0019 до 0.0099 — в 5.1 раза</span>
+<span class="dim">именно поэтому на малых данных берут K=10 и повторяют,
+а на больших хватает K=3 или вообще отложенной выборки</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Повторная кросс-валидация: 5 фолдов × 5 разных нарезок.
+      <div class="calc"><span class="lbl">теория (независимые повторы):</span>
+  0.002549 / √5 = 0.002549 / 2.23607 = <span class="hl">0.001140</span>
+<span class="lbl">замер:</span>                              <span class="hl">0.001510</span>
+<span class="lbl">превышение:</span> 0.001510 / 0.001140 = <span class="bad">1.32×</span>
+
+<span class="dim">повторы не независимы: они переиспользуют
+одни и те же данные, меняется только нарезка.
+Реальный выигрыш от 5 повторов — не √5 = 2.24,
+а 0.002549 / 0.001510 = 1.69 раза.
+За пятикратную стоимость.</span>
+
+<span class="res">Повторная CV оправдана, когда разброс оценки
+сравним с измеряемым эффектом. Если вы сравниваете
+модели с разницей 0.010 при se 0.0025 — не оправдана.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Смещение, разброс и стоимость по числу фолдов</div>
+    <div class="chsub">Столбцы — стоимость в обучениях, линии — смещение (падает) и разброс между фолдами (растёт). Точность среднего при этом почти постоянна</div>
+    <canvas id="c_k"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Ситуация</th><th>Рекомендация</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr><td>&gt; 100 тыс. строк, время обучения минуты</td><td class="g">Отложенная выборка 20%</td><td class="note">смещение мизерное, CV не окупает стоимость</td></tr>
+      <tr><td>10–100 тыс. строк</td><td class="g">K = 5</td><td class="note">стандартный компромисс</td></tr>
+      <tr><td>1–10 тыс. строк</td><td class="g">K = 10</td><td class="note">смещение K=3 уже заметно</td></tr>
+      <tr><td>&lt; 1 тыс. строк</td><td class="g">K = 10, повторить 5–10 раз</td><td class="note">разброс доминирует над стоимостью</td></tr>
+      <tr><td>&lt; 200 строк</td><td class="a">Leave-One-Out, с осторожностью</td><td class="note">смещения нет, но разброс огромен и оценка почти бесполезна для сравнения моделей</td></tr>
+      <tr><td>Обучение занимает часы</td><td class="a">Отложенная выборка, K=3 максимум</td><td class="note">выигрыш в точности не стоит суток ожидания</td></tr>
+      <tr><td>Есть ось времени</td><td class="g">Скользящее / расширяющееся окно</td><td class="note">K здесь вторичен, важнее направление разреза</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Обратите внимание: первая строка — самая частая ситуация в прикладной работе и самая недооценённая рекомендация. Кросс-валидация при 400 тыс. строк тратит пятикратный бюджет ради снижения смещения на 0.001.</p>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Кривые обучения: сколько данных достаточно</h2></div>
+  <p class="slead">Схема валидации даёт побочный продукт огромной практической ценности — зависимость качества от объёма обучения. Она отвечает на вопрос «стоит ли собирать больше данных» числом, а не мнением.</p>
+
+  <p>Кривая обучения строится тривиально: обучите модель на 5%, 10%, 25%, 50%, 100% обучающей выборки и замерьте качество на одном и том же тесте. Пять обучений — и вы знаете, где находитесь на кривой насыщения.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · построение кривой и оценка асимптоты</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Замеры на фиксированном тесте.
+      <div class="calc"><span class="lbl">n обучения      AUC       прирост от удвоения</span>
+     5 000      0.7341
+    10 000      0.7479          <span class="hl">+0.0138</span>
+    25 000      0.7615
+    50 000      0.7691          <span class="hl">+0.0076</span>
+   100 000      0.7750          <span class="hl">+0.0059</span>
+   250 000      0.7808
+   500 000      0.7840          <span class="hl">+0.0032</span>
+
+<span class="dim">прирост от удвоения падает примерно вдвое
+при каждом четырёхкратном росте объёма —
+характерная сигнатура степенного закона</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Подбираем асимптоту. Если AUC = A − b·n<sup>−c</sup>, то ln(A − AUC) линеен по ln(n). Проверяем это для разных A.
+      <div class="calc"><span class="lbl">берём три точки: n = 100 000 / 250 000 / 500 000
+ln n = 11.512925 / 12.429216 / 13.122363</span>
+
+<span class="lbl">A = 0.790:</span>
+  ln(0.790−0.7750) = ln(0.015000) = −4.199705
+  ln(0.790−0.7808) = ln(0.009241) = −4.684175
+  ln(0.790−0.7840) = ln(0.006000) = −5.115996
+  наклоны:  −0.484470/0.916291 = <span class="bad">−0.52873</span>
+            −0.431821/0.693147 = <span class="bad">−0.62299</span>
+  <span class="bad">не постоянны → A слишком мала</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Пробуем A = 0.810.
+      <div class="calc">  ln(0.810−0.7750) = ln(0.035000) = −3.352407
+  ln(0.810−0.7808) = ln(0.029241) = −3.532143
+  ln(0.810−0.7840) = ln(0.026000) = −3.649659
+  наклоны:  −0.179736/0.916291 = <span class="bad">−0.19616</span>
+            −0.117516/0.693147 = <span class="bad">−0.16954</span>
+  <span class="bad">не постоянны, дрейфуют в другую сторону → A слишком велика</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> A = 0.795 — наклоны совпадают.
+      <div class="calc">  ln(0.795−0.774980) = ln(0.020020) = −3.911023
+  ln(0.795−0.780759) = ln(0.014241) = −4.250735
+  ln(0.795−0.783999) = ln(0.011001) = −4.509769
+  наклоны:  −0.339712/0.916291 = <span class="res">−0.37075</span>
+            −0.259034/0.693147 = <span class="res">−0.37370</span>
+  <span class="res">совпадают с точностью 0.8% → A = 0.795, c = 0.3715</span>
+
+<span class="lbl">находим b по точке n = 500 000:</span>
+  b = 0.011001 × 500 000^0.37146
+    = 0.011001 × e^(0.37146 × 13.122363)
+    = 0.011001 × e^4.874232
+    = 0.011001 × 130.99 = <span class="res">1.4410</span>
+
+<span class="res">AUC(n) = 0.795 − 1.441 · n^(−0.37146)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Теперь считаем, сколько данных нужно для заданного прироста от текущих 500 000.
+      <div class="calc"><span class="lbl">цель AUC = 0.7890  (+0.005)</span>
+  1.441 · n^(−0.37146) = 0.795 − 0.789 = 0.006
+  n^0.37146 = 1.441 / 0.006 = 240.1667
+  ln n = ln(240.1667) / 0.37146 = 5.481290 / 0.37146 = 14.75607
+  n = e^14.75607 = <span class="hl">2 561 000</span>   <span class="dim">→ в 5.1 раза больше</span>
+
+<span class="lbl">цель AUC = 0.7940  (+0.010)</span>
+  1.441 · n^(−0.37146) = 0.001
+  n^0.37146 = 1 441
+  ln n = ln(1 441) / 0.37146 = 7.273093 / 0.37146 = 19.57843
+  n = e^19.57843 = <span class="bad">318 500 000</span>  <span class="dim">→ в 637 раз больше</span>
+
+<span class="lbl">цель AUC = 0.800</span>
+  <span class="bad">недостижима: асимптота 0.795</span></div>
+    </div>
+    <div class="tstep">
+      <b>Итог.</b> Сравниваем с альтернативой — работой над признаками.
+      <div class="calc"><span class="lbl">способ получить +0.005 AUC</span>
+удвоить данные ×5.1                     <span class="bad">2.1 млн новых строк</span>
+                                        <span class="dim">≈ 4 года сбора при текущем трафике</span>
+добавить группу внешних признаков       <span class="res">+0.019 за 3 дня работы</span>
+                                        <span class="dim">(замер из темы 1.14)</span>
+
+<span class="res">Признаки дают вчетверо больше за три дня.
+Именно этот расчёт должен предшествовать
+решению «нам нужно больше данных».</span>
+
+<span class="lbl">но при n = 5 000 картина обратная:</span>
+удвоение до 10 000                      <span class="res">+0.0138</span>
+конструирование признаков               <span class="dim">обычно +0.005…0.010</span>
+<span class="res">на малых данных сбор данных выигрывает</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Кривая обучения и её экстраполяция</div>
+    <div class="chsub">Логарифмическая ось объёма. Пунктир — подобранный степенной закон, серая линия — асимптота 0.795. За 500 тыс. строк кривая уже практически плоская</div>
+    <canvas id="c_learn"></canvas>
+  </div>
+
+  <p>Кривая обучения различает <b>два принципиально разных состояния</b> проекта, и путать их дорого:</p>
+
+  <table class="ct">
+    <thead><tr><th>Признак</th><th>Данных не хватает</th><th>Данных достаточно</th></tr></thead>
+    <tbody>
+      <tr><td>Наклон кривой в текущей точке</td><td class="k">крутой</td><td class="k">плоский</td></tr>
+      <tr><td>Разрыв между обучением и валидацией</td><td class="a">большой и растёт при усложнении модели</td><td class="note">небольшой и стабильный</td></tr>
+      <tr><td>Эффект регуляризации</td><td class="a">сильный, оптимум смещён к простым моделям</td><td class="note">слабый, широкое плато</td></tr>
+      <tr><td>Что делать</td><td class="g">собирать данные, упрощать модель, аугментировать</td><td class="g">работать над признаками, метрикой, постановкой</td></tr>
+      <tr><td>Что бесполезно</td><td class="r">тонкая настройка гиперпараметров</td><td class="r">сбор данных того же типа</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Ошибка в диагнозе стоит месяцев: команда, находящаяся на плато, собирает данные ещё год и получает +0.002; команда с крутым наклоном перебирает гиперпараметры и получает +0.001, тогда как удвоение выборки дало бы +0.014.</p>
+
+  <div class="intuition">
+    <b>Важная оговорка об экстраполяции.</b> Асимптота 0.795 — свойство <b>текущего набора признаков и текущего распределения данных</b>, а не задачи. Новый источник признаков сдвигает всю кривую вверх, включая асимптоту. Поэтому «мы упёрлись в потолок 0.795» означает «мы упёрлись в потолок при этих признаках», а не «задача не позволяет большего». Экстраполировать кривую на два порядка по объёму тоже опасно: степенной закон хорошо описывает наблюдаемый диапазон и часто ломается за его пределами.
+  </div>
+
+  <p>Ещё одно применение кривой — <b>оценка стоимости разметки</b>. Если разметка одного примера стоит 40 рублей, то из кривой напрямую следует цена каждого следующего сотого AUC. В нашем примере переход от 100 тыс. к 250 тыс. даёт +0.0058 за 150 тыс. × 40 = 6 млн рублей, то есть примерно 1.03 млн рублей за 0.001 AUC. Переход от 250 тыс. к 500 тыс. — +0.0032 за 10 млн, то есть 3.13 млн за 0.001. Втрое дороже. Дальше цена растёт быстрее, и в какой-то момент выясняется, что дешевле нанять человека работать над признаками.</p>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Как выбрать схему: рабочий алгоритм</h2></div>
+  <p class="slead">Пять вопросов, ответы на которые полностью определяют схему. Задавать их нужно до первого обучения, а не после расхождения с продом.</p>
+
+  <table class="ct">
+    <thead><tr><th>#</th><th>Вопрос</th><th>Ответ</th><th>Следствие для схемы</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1</td><td>Есть ли у строк дата?</td><td class="note">да</td><td class="g">временной разрез, тест — последний период</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">нет</td><td class="note">случайное или групповое разбиение</td></tr>
+      <tr><td class="k">2</td><td>Метка определяется событиями после точки отсечения?</td><td class="note">да, горизонт H</td><td class="g">зазор ≥ H между обучением и тестом</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">нет (метка известна сразу)</td><td class="note">зазор не нужен</td></tr>
+      <tr><td class="k">3</td><td>Объект в проде уже встречался в обучении?</td><td class="note">нет, объекты новые</td><td class="g">групповое разбиение по объекту</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">да, те же объекты</td><td class="note">группировка не нужна</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">смешанно</td><td class="a">две метрики по сегментам + вес по доле в потоке</td></tr>
+      <tr><td class="k">4</td><td>Сколько строк?</td><td class="note">&gt; 100 тыс.</td><td class="g">отложенная выборка, CV не нужна</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">1–100 тыс.</td><td class="note">K = 5…10</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">&lt; 1 тыс.</td><td class="note">K = 10 с повторами</td></tr>
+      <tr><td class="k">5</td><td>Насколько широкий перебор гиперпараметров?</td><td class="note">десятки конфигураций</td><td class="note">достаточно простой CV</td></tr>
+      <tr><td class="k"></td><td></td><td class="note">сотни и больше</td><td class="g">финальная отложенная выборка либо вложенная CV</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Вопросы независимы и складываются: наличие даты, горизонта метки и новых объектов даёт комбинированную схему из секции 7.</p>
+
+  <div class="def">
+    <div class="def-t">Чек-лист перед первым обучением</div>
+    <p>1. Схема зафиксирована в коде, а не в голове. Разбиение воспроизводимо по фиксированному сиду и по дате.</p>
+    <p>2. Финальная отложенная выборка отделена и <b>не открывается до конца проекта</b>. Использована ровно один раз.</p>
+    <p>3. Adversarial AUC между обучением и тестом посчитан и объясним. Больше 0.9 — разбираемся до продолжения.</p>
+    <p>4. Проверка сдвигом отсечения пройдена: сдвиг разреза на горизонт метки назад не роняет метрику.</p>
+    <p>5. Определено, какое именно число сообщается наружу и на каких данных оно получено.</p>
+    <p>6. После первого выката офлайн-оценка сравнена с продовой; расхождение больше 0.01 — схема пересматривается.</p>
+  </div>
+
+  <p>Полезно понимать и то, чего схема валидации <b>не может</b> в принципе. Она воспроизводит сдвиги, которые уже случались в исторических данных. Она не воспроизводит:</p>
+
+  <ul>
+    <li><b>Сдвиг, вызванный самой моделью.</b> Модель меняет поведение пользователей и состав данных — механизм разобран в <a href="block1_13_feedback_loops.html">1.13</a>. Никакая офлайн-схема этого не покажет; нужен A/B.</li>
+    <li><b>Однократные структурные события.</b> Смена законодательства, уход конкурента, пандемия. В истории их либо нет, либо один экземпляр — оценить нельзя.</li>
+    <li><b>Изменение p(y|x) без изменения p(x).</b> Adversarial validation слеп к этому, метрика офлайн выглядит нормально, а прод разваливается.</li>
+    <li><b>Ошибки в самой постановке.</b> Если метка определена неправильно — например, «отток» считается по факту отсутствия платежа, а не по факту ухода, — идеальная схема валидации подтвердит идеально неправильную модель.</li>
+  </ul>
+
+  <p>Из этого следует практическое правило: <b>офлайн-схема нужна для отсева, а не для решения.</b> Она отвечает на вопрос «стоит ли это выкатывать в A/B» — быстро и дёшево. Ответ на вопрос «работает ли это» даёт только эксперимент. Схема, которая идеально совпадает с продом, — это не схема, которая заменяет A/B, а схема, которая экономит A/B на заведомо плохих кандидатах.</p>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Случайное разбиение при наличии даты</b><span>Самая частая и самая дорогая ошибка. «У меня не временной ряд» — не аргумент: ось времени есть у данных, а не у задачи. Завышение в нашем примере 0.092 AUC, из которого 0.041 приходится именно на время.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>Правильная группа выбрана неправильно</b><span>Сгруппировали по снимку вместо пациента, по посту вместо автора, по транзакции вместо устройства. Формально <code>GroupKFold</code> есть, а утечка осталась. Группа — это то, что целиком новое в проде, и ничто другое.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>Разрез по времени без зазора</b><span>Метка живёт дольше точки отсечения. Обучающие строки последних H дней несут ответы из тестового периода. Стоит 0.028 AUC, чинится удалением 10% данных ценой 0.0005.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Зазор больше горизонта метки «на всякий случай»</b><span>Обратная перестраховка: расхождение с продом уже нулевое, а данные продолжают выбрасываться. На 60 днях при горизонте 30 теряется ещё 10% выборки и 0.003 AUC — без всякой пользы.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Предобработка до разбиения</b><span>Нормировка, импутация, отбор признаков, обучение кодировщика категорий, подбор порогов бинаризации — всё это должно происходить <i>внутри</i> фолда. Средние и дисперсии, посчитанные по всей выборке, — тихая утечка, дающая 0.005–0.030 в зависимости от размера данных.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Балансировка классов перед разбиением</b><span>Сделали SMOTE или undersampling на всей выборке, потом разбили. Синтетические объекты, порождённые тестовыми примерами, оказались в обучении. Метрика взлетает, прод не меняется. Балансировать можно только обучающую часть, и только после разреза.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Дубликаты между обучением и тестом</b><span>Повторные заказы, ретвиты, перезалитые фотографии, продублированные строки после неудачного джойна. Проверяется дешёвым хешем: доля точных дублей между частями должна быть нулевой. В реальных выгрузках она бывает 3–8%.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Отложенная выборка использована дважды</b><span>Посмотрели, не понравилось, поправили модель, посмотрели снова. После третьего взгляда она перестала быть отложенной и стала обычной валидационной со всеми свойствами перебора из секции 9. Одна выборка — один взгляд.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Среднее по фолдам расширяющегося окна как итоговая метрика</b><span>Занижает на 0.010 и смешивает две разные величины. Оценка будущей продовой модели — последний фолд, обученный на объёме, близком к продовому.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Разброс между фолдами прочитан как нестабильность модели</b><span>У расширяющегося окна 98.8% разброса объясняется размером обучения. Модель стабильна, скачет объём. Проверяется скользящим окном за три обучения.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Слишком короткий тестовый период</b><span>Тест на одной неделе измеряет неделю, а не модель. Тестовый период должен покрывать хотя бы один цикл сезонности задачи, иначе метрика будет меняться от запуска к запуску без всяких изменений в коде.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Adversarial AUC не проверен</b><span>Три минуты работы, которые ловят просочившийся идентификатор, монотонный счётчик или дату в виде числа. В нашем примере <code>client_id</code> давал +0.067 офлайн и −0.008 в проде — и был бы найден сразу.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Взвешивание по adversarial-весам без обрезки</b><span>Веса p/(1−p) взрываются на хвостах: разброс 81× на пяти объектах уронил эффективный размер выборки до 37.8%. Обрезка на разумном уровне возвращает 60–73% и обычно даёт лучший результат, чем взвешивание без неё.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Вложенная CV там, где хватило бы отложенной выборки</b><span>Пятикратная стоимость ради 0.001 при больших данных. Обратная ошибка тоже реальна: перебрали 1000 конфигураций по обычной CV и сообщили её результат — завышение 0.024.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Офлайн-оценка никогда не сравнивалась с продовой</b><span>Итоговый камень, из которого следуют все остальные. Без этого сравнения схема — предположение, а не измерение. Первый выкат любой модели стоит использовать как калибровку схемы.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять задач, где схема валидации — центральное проектное решение, а не техническая деталь.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Скоринг заявок на кредит: горизонт метки 12 месяцев</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 2.4 млн заявок за 4 года, метка — дефолт в течение 12 месяцев после выдачи. Модель применяется к новым заявителям. Требуется честная оценка качества и регулярное переобучение.</p>
+      <p><b>Схема.</b> Временной разрез с зазором 12 месяцев. Обучение — заявки старше 24 месяцев (метки полные), тест — заявки в окне 12–24 месяца назад. Заявки моложе 12 месяцев не используются вообще: у них нет меток. Групповое разбиение по заявителю — заявитель может подавать несколько заявок.</p>
+      <p><b>Что теряется.</b> Год свежих данных недоступен полностью, ещё год уходит в зазор. Из 4 лет истории обучение видит 2. Это не недостаток схемы, а свойство задачи с длинным горизонтом.</p>
+      <p><b>Компромисс, который стоит рассмотреть.</b> Суррогатная метка на коротком горизонте — просрочка 90+ дней за первые 3 месяца. Она доступна почти сразу и позволяет использовать свежие данные. Валидировать суррогат нужно по корреляции его эффектов с целевым (методика в <a href="block1_12_metrics_framing.html">1.12</a>), а не по корреляции самих значений.</p>
+      <p><b>Ключевой риск.</b> Утечка через отказы: в данных есть только выданные кредиты, а модель применяется ко всем заявкам. Это уже не про схему разбиения — это петля обратной связи из <a href="block1_13_feedback_loops.html">1.13</a>, и никакая схема валидации её не исправит.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Диагностика по медицинским снимкам</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 180 тыс. снимков от 34 тыс. пациентов из 12 клиник. Модель будет работать в новых клиниках, которых нет в данных.</p>
+      <p><b>Схема.</b> Двухуровневая. Основная — Leave-One-Hospital-Out по 12 клиникам: она отвечает на реальный вопрос «как модель поведёт себя в клинике, которую не видела». Вспомогательная — GroupKFold по пациенту внутри обучающих клиник для подбора гиперпараметров.</p>
+      <p><b>Почему группа — клиника, а не пациент.</b> Оборудование, протокол съёмки и настройки постобработки различаются между клиниками сильнее, чем между пациентами. Модель, обученная на 11 клиниках, легко выучивает «отпечаток» аппарата и через него — базовую частоту патологии в этой клинике.</p>
+      <p><b>Замер, который это подтверждает.</b> AUC при разбиении по пациенту — 0.941; при разбиении по клинике — 0.887; разброс между клиниками от 0.831 до 0.926. Разница 0.054 — это ровно то, что модель выучила про аппараты.</p>
+      <p><b>Что сообщать.</b> Не среднее по 12 клиникам, а <b>минимум и распределение</b>. Регулятор и врач спрашивают «как плохо может быть», а не «как в среднем».</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Прогноз спроса по 8 000 SKU в 300 магазинах</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Ежедневные продажи за 3 года. Прогноз на 14 дней вперёд. Постоянно появляются новые SKU и открываются новые магазины.</p>
+      <p><b>Схема.</b> Скользящее окно с шагом 14 дней и горизонтом 14 дней, 12 срезов за последний год. Обучение — фиксированные 730 дней перед срезом. Дополнительно — отдельная метрика на «холодных» SKU (в продаже менее 60 дней) и на новых магазинах.</p>
+      <p><b>Почему скользящее, а не расширяющееся.</b> В проде модель переобучается на окне: данные трёхлетней давности содержат другой ассортимент и другие цены. Схема валидации должна воспроизводить продовую процедуру обучения, а не идеализированную.</p>
+      <p><b>Зазор.</b> Горизонт метки равен горизонту прогноза — 14 дней. Обучающие срезы не должны включать дни, попадающие в прогнозное окно теста.</p>
+      <p><b>Три метрики вместо одной.</b> Общая WAPE скрывает то, что важно: холодные SKU дают 4% продаж и 31% ошибки. Взвешивание по обороту прячет проблему, взвешивание по числу позиций её преувеличивает. Правильный выход — три числа и явное решение о приоритете.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Модерация контента при активном переобучении</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Модель блокирует нарушающий контент. Обучающие данные — решения модераторов. Модель переобучается еженедельно на свежей разметке.</p>
+      <p><b>Схема.</b> Временной разрез по неделям, группировка по автору, зазор равен задержке разметки (в среднем 3 дня). Плюс обязательная отдельная оценка на <b>случайной выборке</b> контента, размеченной вне очереди модерации.</p>
+      <p><b>Почему случайная выборка обязательна.</b> Основной поток разметки формируется самой моделью: она отправляет на проверку то, что считает подозрительным. Обучаясь на этих данных, модель видит только собственную область уверенности — классический случай нарушения позитивности из <a href="block1_13_feedback_loops.html">1.13</a>. Схема валидации на том же смещённом потоке подтвердит любую модель.</p>
+      <p><b>Стоимость.</b> 0.5–2% мощности разметки уходит на случайную выборку. Это дорого и всегда обсуждается — и всегда должно выигрывать, потому что без неё ни одна метрика не интерпретируема.</p>
+      <p><b>Дополнительный контроль.</b> Adversarial validation между случайной выборкой и потоком модерации: если AUC растёт от недели к неделе, смещение потока усиливается.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Соревновательная задача с приватным лидербордом</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Тестовая выборка скрыта, публичный лидерборд считается на 30% теста, приватный — на остальных 70%. Разрешено 5 сабмитов в день.</p>
+      <p><b>Схема.</b> Первым делом — adversarial validation между обучающей выборкой и открытой частью теста. Она отвечает на главный вопрос: разбиение случайное или по времени/группе. От ответа зависит вся локальная схема.</p>
+      <p><b>Почему это первое действие.</b> Организаторы редко документируют способ разбиения. Adversarial AUC 0.51 означает случайное разбиение и разрешает обычную KFold. AUC 0.78 означает сдвиг, который нужно найти по важности признаков и воспроизвести локально.</p>
+      <p><b>Ловушка публичного лидерборда.</b> 5 сабмитов в день за 3 месяца — это ~450 конфигураций, отобранных по 30% теста. По формуле из секции 9 при σ = 0.003 ожидаемое завышение только от шума — 0.003 × √(2·ln 450) = 0.003 × 3.494 = 0.0105. Реальное обычно вдвое больше. Отсюда стандартный совет доверять локальной CV, а не публичному лидерборду: локальная схема, построенная один раз и не подгонявшаяся, честнее.</p>
+      <p><b>Практика финального отбора.</b> Два сабмита: лучший по локальной CV и лучший по среднему ранга CV и лидерборда. Не два лучших по лидерборду.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Почему случайное разбиение завышает метрику?</b><span>Оно проверяет способность предсказывать объекты, похожие на виденные, а прод требует предсказывать невиданные. Конкретно утечка идёт двумя каналами: через объект (строки одного клиента по обе стороны) и через время (модель видела тестовый период). В нашем примере 0.046 и 0.041 соответственно, суммарно 0.092.</span></div>
+
+  <div class="qa"><b>2. У меня классификация, а не временной ряд. Нужен ли временной разрез?</b><span>Да, если у строк есть дата и распределение по ней меняется. Наличие оси времени — свойство данных, а не формулировки задачи. Проверить дёшево: посчитайте adversarial AUC между первой и последней третью данных.</span></div>
+
+  <div class="qa"><b>3. Как понять, какая группа правильная для GroupKFold?</b><span>Задайте вопрос: какая сущность в проде будет полностью новой? Если модель скорит новых клиентов — группа клиент. Если новых пациентов — пациент. Если работает в новых клиниках — клиника. Группа всегда крупнее, чем кажется на первый взгляд: домохозяйство вместо клиента, сессия записи вместо файла.</span></div>
+
+  <div class="qa"><b>4. Что такое зазор и зачем он нужен?</b><span>Удаление из обучения строк, чьё окно метки пересекает тестовый период. Нужен, потому что у объекта две даты: точка отсечения признаков и момент реализации метки. Разбиение по первой оставляет утечку через вторую. Размер зазора — горизонт метки.</span></div>
+
+  <div class="qa"><b>5. Сколько данных съедает зазор?</b><span>Долю H/T, где H — горизонт метки, T — длина обучающего периода. В примере 30/292 = 10.3%. По кривой обучения это стоило 0.0005 AUC и убрало 0.028 мнимого прироста — отношение 52:1.</span></div>
+
+  <div class="qa"><b>6. Что такое adversarial validation?</b><span>Классификатор, отличающий обучающую выборку от тестовой по тем же признакам. Его AUC — численная мера сдвига. 0.5 — сдвига нет, 0.6–0.8 — нормальный временной дрейф, выше 0.9 — почти наверняка просочился идентификатор или дата.</span></div>
+
+  <div class="qa"><b>7. Adversarial AUC = 0.97. Что делать?</b><span>Посмотреть важность признаков adversarial-модели. Верхние 1–3 признака и есть причина. Обычно это <code>id</code>, выдаваемый по порядку, счётчик дней с регистрации, версия приложения или дата, попавшая в модель как число. Убрать их и пересчитать.</span></div>
+
+  <div class="qa"><b>8. Adversarial AUC = 0.51. Значит, всё хорошо?</b><span>Значит, распределение признаков не сдвинулось. Про сдвиг связи p(y|x) метод не говорит ничего — а это самый опасный вид сдвига. Изменение поведения при тех же признаках обнаруживается только метками.</span></div>
+
+  <div class="qa"><b>9. Как использовать adversarial-веса?</b><span>Вес объекта w = p(тест|x)/(1−p(тест|x)) при обучении. Обязательно с обрезкой сверху: без неё эффективный размер выборки падает вдвое-втрое. В примере ESS упал до 40.5% без обрезки и до 73.3% с обрезкой на 5, причём вариант с обрезкой дал лучшее качество.</span></div>
+
+  <div class="qa"><b>10. Что лучше — TimeSeriesSplit или скользящее окно?</b><span>Зависит от вопроса. Для оценки качества будущей продовой модели — расширяющееся окно (оно воспроизводит прод), причём брать нужно последний фолд, а не среднее. Для диагностики «менялось ли качество со временем» — скользящее, потому что оно изолирует эффект периода от эффекта объёма.</span></div>
+
+  <div class="qa"><b>11. Между фолдами TimeSeriesSplit разброс 0.016. Модель нестабильна?</b><span>Скорее нет. Проверьте регрессией AUC на ln(размер обучения): в нашем примере она объяснила 98.8% разброса. При фиксированном объёме обучения sd упал с 0.0157 до 0.0025 — модель очень стабильна, скачет объём.</span></div>
+
+  <div class="qa"><b>12. Какое число сообщать после кросс-валидации?</b><span>Решить до того, как увидели результат. Для оценки будущей продовой модели — последний фолд расширяющегося окна. Для пессимистичной границы — худший фолд. Среднее по фолдам расширяющегося окна почти никогда не подходит: оно занижено на 0.010 и смешивает две разные величины.</span></div>
+
+  <div class="qa"><b>13. Зачем вложенная CV, если можно просто отложить выборку?</b><span>Незачем, если можете отложить. Вложенная CV нужна там, где выборка мала и отделить 15% слишком дорого. При больших данных вариант «CV для отбора + отложенная для оценки» стоит 201 обучение вместо 5000 и даёт ошибку 0.002 вместо 0.001.</span></div>
+
+  <div class="qa"><b>14. На сколько завышает простая CV после перебора гиперпараметров?</b><span>Нижняя граница σ·√(2·ln C), где σ — разброс оценки, C — число конфигураций. При σ = 0.0018 и C = 200 это 0.0059. Реальное завышение в 2–4 раза больше — 0.016, потому что перебор находит не только шум, но и конфигурации, подогнанные под конкретную нарезку фолдов.</span></div>
+
+  <div class="qa"><b>15. Когда стратификация действительно нужна?</b><span>Когда ожидаемое число положительных в фолде меньше примерно сотни. Относительный разброс доли класса равен √((1−p)/(n·p)): при 6368 положительных это 1.2% и ни на что не влияет, при 50 — 14.1% и ломает оценку. Замер: снижение sd(AUC) на 3.5% при больших фолдах и на 37% при малых.</span></div>
+
+  <div class="qa"><b>16. Можно ли одновременно стратифицировать и группировать?</b><span>Только приближённо. <code>StratifiedGroupKFold</code> выравнивает доли классов ценой разброса размеров фолдов: в примере доли выровнялись с 2.13 п.п. до 0.13 п.п., а размеры разъехались с ±2.5% до ±17.6%. Что важнее — зависит от того, что шумит сильнее.</span></div>
+
+  <div class="qa"><b>17. Нужна ли стратификация в регрессии?</b><span>Да, по квантилям целевой переменной, если распределение имеет тяжёлый хвост. Иначе один фолд соберёт непропорционально много крупных значений, а именно они доминируют в MSE. В задаче CLV один клиент давал 97% суммы квадратов ошибок.</span></div>
+
+  <div class="qa"><b>18. 5 или 10 фолдов?</b><span>При больших данных разница мизерная: смещение падает с 0.0010 до 0.0005, стоимость растёт вдвое, точность среднего меняется на 2%. При 5000 строк смещение падает с 0.0053 до 0.0024, и десять фолдов оправданы. Общее правило: чем меньше данных, тем больше K.</span></div>
+
+  <div class="qa"><b>19. Почему при большем K растёт разброс между фолдами?</b><span>Тестовый фолд меньше в K раз, стандартная ошибка растёт как √K. Проверка: se(AUC) ≈ √(A(1−A)/n₊); при K=3 это 0.0040, при K=20 — 0.0103, отношение 2.58 = √(20/3). Точность среднего при этом почти не меняется, потому что усредняется K оценок.</span></div>
+
+  <div class="qa"><b>20. Стоит ли использовать Leave-One-Out?</b><span>Почти никогда. Смещения у неё нет, но разброс оценки огромен, а стоимость равна размеру выборки. Обманчивое ощущение строгости: LOO при 10 000 объектов даёт худшую оценку для сравнения моделей, чем обычная 5-фолдовая CV, потому что её результат крайне шумный.</span></div>
+
+  <div class="qa"><b>21. Насколько помогает повторная кросс-валидация?</b><span>Меньше, чем следует из теории. Пять повторов должны были бы снизить ошибку среднего в √5 = 2.24 раза, а снизили в 1.69 — повторы не независимы, они переиспользуют те же данные. Оправдана, когда разброс оценки сравним с измеряемым эффектом.</span></div>
+
+  <div class="qa"><b>22. Как построить кривую обучения и что с ней делать?</b><span>Обучите на 5/10/25/50/100% данных, замерьте на одном и том же тесте. Подберите A в AUC = A − b·n<sup>−c</sup> так, чтобы ln(A − AUC) был линеен по ln(n) — это проверяется постоянством наклонов между соседними точками. Дальше экстраполируйте и сравните стоимость сбора данных со стоимостью работы над признаками.</span></div>
+
+  <div class="qa"><b>23. Кривая вышла на плато. Значит, задача исчерпана?</b><span>Нет. Асимптота — свойство текущего набора признаков, а не задачи. Новый источник данных сдвигает всю кривую вверх, включая асимптоту. «Мы упёрлись в 0.795» правильно читать как «мы упёрлись в 0.795 при этих признаках».</span></div>
+
+  <div class="qa"><b>24. Как решить, собирать ли больше данных?</b><span>Посчитать по кривой: в примере +0.005 требует роста выборки в 5.1 раза (2.56 млн строк), +0.010 — в 637 раз, а +0.015 недостижимо. Сравнить с альтернативой: группа внешних признаков дала +0.019 за три дня. При 5000 строк вывод обратный — удвоение данных даёт +0.0138, больше любой работы с признаками.</span></div>
+
+  <div class="qa"><b>25. Что делать, если офлайн и прод расходятся, а схема выглядит правильной?</b><span>По порядку: проверить дубликаты между частями, проверить предобработку (не считалась ли по всей выборке), посчитать adversarial AUC, сдвинуть точку разреза на горизонт метки назад и посмотреть, упадёт ли метрика. Если всё чисто — расхождение не в схеме, а в сдвиге p(y|x) или в петле обратной связи.</span></div>
+
+  <div class="qa"><b>26. Проверка сдвигом отсечения — как она работает?</b><span>Переносите точку разреза на величину горизонта метки назад и переобучаете. У честной схемы метрика меняется на величину, объяснимую кривой обучения (в примере 0.0005). У схемы с утечкой падение резкое (0.028). Та же диагностика ловит утечку признаков — см. <a href="block1_14_feature_engineering.html">1.14</a>.</span></div>
+
+  <div class="qa"><b>27. Можно ли смотреть на отложенную выборку несколько раз?</b><span>Технически можно, но после этого она перестаёт быть отложенной. Каждый взгляд с последующей правкой модели — это один шаг перебора, и завышение растёт по той же формуле σ·√(2·ln C). Правило: одна выборка — один взгляд, в самом конце.</span></div>
+
+  <div class="qa"><b>28. Тест должен содержать только новых клиентов или всех?</b><span>Тех же, что придут в прод, в той же пропорции. Если поток смешанный — считать метрику отдельно по сегментам: в примере 0.803 на знакомых клиентах и 0.741 на новых. Одна общая цифра скрыла бы то, что при удвоении притока новых клиентов метрика упадёт на 0.007 без всяких изменений в модели.</span></div>
+
+  <div class="qa"><b>29. Как часто переобучать модель?</b><span>Из кривой деградации. Замеряете падение AUC по неделям после точки обучения, считаете среднюю потерю за интервал длиной d как наклон×d/2, сравниваете со стоимостью переобучения. В примере при 0.00021 в день месячный интервал стоит 0.0043 AUC, квартальный — 0.0126.</span></div>
+
+  <div class="qa"><b>30. Чего схема валидации не может в принципе?</b><span>Четырёх вещей: сдвига, вызванного самой моделью (нужен A/B); однократных структурных событий, которых нет в истории; изменения p(y|x) при неизменном p(x); и ошибок в определении метки. Офлайн-схема нужна для отсева плохих кандидатов, а не для окончательного решения.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 1.15 замыкает блок 1. Утечки признаков разобраны в <a href="block1_09_leakage.html">1.9</a> и <a href="block1_14_feature_engineering.html">1.14</a>, выбор метрики — в <a href="block1_12_metrics_framing.html">1.12</a>, петли обратной связи и смещение исторических данных — в <a href="block1_13_feedback_loops.html">1.13</a>. Проблема множественного тестирования, которая здесь возникает при переборе гиперпараметров, подробно разобрана в <a href="block4_05_sequential_testing.html">4.5</a>. Что делать, когда офлайн-схема исчерпана и нужен эксперимент, — блок 4 целиком.
+</div>
+
+<div class="pnav">
+  <a href="block1_14_feature_engineering.html">← 1.14 · Конструирование признаков</a>
+  <a class="next" href="block1_quiz.html">Тест блока 1 →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#be123c', AC2='#fb7185', BL='#2563eb', GR='#059669', OR='#d97706', GY='#94a3b8';
+
+/* 1 — офлайн против прода по схемам */
+mk('c_split',{type:'bar',data:{labels:['Случайное 80/20','Групповое','Временное','Время + группа + зазор'],
+ datasets:[
+  {label:'AUC офлайн',data:[0.871,0.825,0.830,0.784],backgroundColor:AC,borderRadius:4},
+  {label:'AUC в проде',data:[0.779,0.779,0.779,0.779],backgroundColor:GY,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.74,max:0.90,title:{display:true,text:'AUC'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var i=it[0].dataIndex;var d=[0.092,0.046,0.051,0.005];return 'расхождение: +'+d[i].toFixed(3);}}}}}});
+
+/* 2 — расщепление групп */
+(function(){
+  var ks=[],split=[],sib=[];
+  for(var k=1;k<=20;k++){ ks.push(k);
+    split.push(100*(1-Math.pow(0.8,k)-Math.pow(0.2,k)));
+    sib.push(k===1?0:100*(1-Math.pow(0.2,k-1)));
+  }
+  mk('c_overlap',{type:'line',data:{labels:ks,datasets:[
+    {label:'Клиентов расщеплено, %',data:split,borderColor:AC,backgroundColor:'rgba(190,18,60,.07)',tension:.3,fill:true,pointRadius:2},
+    {label:'Тестовых строк с родственником в обучении, %',data:sib,borderColor:BL,tension:.3,pointRadius:2}
+  ]},options:{responsive:true,scales:{y:Object.assign({min:0,max:105,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'строк на клиента k'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+})();
+
+/* 3 — завышение по числу строк на клиента */
+mk('c_group',{type:'bar',data:{labels:['1 строка','2–3 строки','4–9 строк','10+ строк'],
+ datasets:[{label:'Завышение AUC от расщепления групп',data:[0.000,0.021,0.048,0.089],
+  backgroundColor:['#cbd5e1','#fda4af','#f43f5e',AC],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.10,title:{display:true,text:'AUC'}},GRID),x:NOG},plugins:{legend:{display:false}}}});
+
+/* 4 — деградация по неделям */
+mk('c_decay',{type:'line',data:{labels:['0','1','2','3','4','5','6','7','8','9','10','11','12'],
+ datasets:[{label:'AUC на неделе после обучения',data:[0.7840,0.7825,0.7811,0.7796,0.7781,0.7767,0.7752,0.7737,0.7690,0.7708,0.7693,0.7679,0.7664],
+  borderColor:AC,backgroundColor:'rgba(190,18,60,.07)',tension:.25,fill:true,pointRadius:3}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.762,max:0.786,title:{display:true,text:'AUC'}},GRID),x:Object.assign({title:{display:true,text:'недель после точки обучения'}},NOG)},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex===8?'неделя 8: сбой в приложении 7 декабря':'';}}}}}});
+
+/* 5 — зазор */
+mk('c_gap',{type:'line',data:{labels:['0','10','20','30','45','60','90'],
+ datasets:[
+  {label:'Расхождение с продом',data:[0.033,0.021,0.011,0.005,0.005,0.005,0.005],borderColor:AC,tension:.25,pointRadius:3,yAxisID:'y'},
+  {label:'AUC офлайн',data:[0.812,0.801,0.792,0.784,0.783,0.781,0.777],borderColor:BL,borderDash:[5,4],tension:.25,pointRadius:3,yAxisID:'y1'}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:0.04,position:'left',title:{display:true,text:'расхождение AUC'}},GRID),
+   y1:{min:0.770,max:0.820,position:'right',grid:{display:false},title:{display:true,text:'AUC офлайн'}},
+   x:Object.assign({title:{display:true,text:'зазор, дней (горизонт метки = 30)'}},NOG)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 6 — adversarial */
+mk('c_adv',{type:'bar',data:{labels:['Случайное','Временное','Временное + новый регион','Признаки «как есть»'],
+ datasets:[{label:'Adversarial AUC',data:[0.502,0.681,0.834,0.958],
+  backgroundColor:[GR,OR,'#ea580c',AC],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.45,max:1.0,title:{display:true,text:'adversarial AUC'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['сдвига нет','ожидаемый временной дрейф','структурный сдвиг','дефект: id и счётчики'];return t[it[0].dataIndex];}}}}}});
+
+/* 7 — стоимость и точность схем */
+mk('c_cvtype',{type:'bar',data:{labels:['Случайное 80/20','KFold 5','GroupKFold 5','Временное без зазора','Комбинир. отложенная','Комбинир. CV 5','Вложенная 5×5'],
+ datasets:[
+  {type:'bar',label:'Расхождение с продом',data:[0.092,0.088,0.046,0.033,0.005,0.004,0.004],backgroundColor:AC,borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Стоимость, обучений',data:[1,5,5,1,1,5,25],borderColor:BL,pointRadius:4,tension:.2,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:0.10,position:'left',title:{display:true,text:'расхождение AUC'}},GRID),
+   y1:{min:0,max:30,position:'right',grid:{display:false},title:{display:true,text:'обучений'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — расширяющееся против скользящего */
+mk('c_window',{type:'line',data:{labels:['Фолд 1','Фолд 2','Фолд 3','Фолд 4','Фолд 5'],
+ datasets:[
+  {label:'Расширяющееся окно (обучение растёт)',data:[0.741,0.762,0.775,0.781,0.784],borderColor:BL,tension:.25,pointRadius:4},
+  {label:'Скользящее окно (обучение 183 дня)',data:[null,null,0.775,0.779,0.781],borderColor:OR,tension:.25,pointRadius:4,borderDash:[5,4]}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.735,max:0.790,title:{display:true,text:'AUC'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var d=['обучение 61 день','122 дня','183 дня','244 дня','305 дней'];return d[it[0].dataIndex];}}}}}});
+
+/* 9 — завышение от перебора */
+mk('c_nested',{type:'line',data:{labels:['10','50','200','1000'],
+ datasets:[
+  {label:'Теория: σ·√(2·ln C)',data:[0.00386,0.00504,0.00586,0.00669],borderColor:GY,borderDash:[5,4],tension:.25,pointRadius:4},
+  {label:'Замеренное завышение',data:[0.0040,0.0090,0.0160,0.0240],borderColor:AC,backgroundColor:'rgba(190,18,60,.07)',tension:.25,fill:true,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.027,title:{display:true,text:'завышение AUC'}},GRID),x:Object.assign({title:{display:true,text:'число перепробованных конфигураций C'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 10 — стратификация */
+mk('c_strat',{type:'line',data:{labels:['25','50','100','250','500','1000','2500','6368'],
+ datasets:[
+  {label:'Относительный разброс доли класса ≈ 100/√n₊, %',data:[20.00,14.14,10.00,6.32,4.47,3.16,2.00,1.25],borderColor:BL,tension:.3,pointRadius:3},
+  {label:'Замеренное снижение sd(AUC) от стратификации, %',data:[null,31.8,null,null,null,null,null,3.5],borderColor:AC,pointRadius:6,pointBackgroundColor:AC,showLine:false}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:40,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'ожидаемое число положительных в фолде'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 11 — число фолдов */
+mk('c_k',{type:'bar',data:{labels:['K = 3','K = 5','K = 10','K = 20'],
+ datasets:[
+  {type:'bar',label:'Стоимость, обучений',data:[3,5,10,20],backgroundColor:'#e2e8f0',borderRadius:4,yAxisID:'y1',order:3},
+  {type:'line',label:'Смещение ×1000',data:[1.944,1.041,0.478,0.231],borderColor:AC,tension:.25,pointRadius:4,yAxisID:'y',order:1},
+  {type:'line',label:'sd между фолдами ×1000',data:[4.2,5.7,8.2,11.8],borderColor:BL,tension:.25,pointRadius:4,yAxisID:'y',order:1},
+  {type:'line',label:'se среднего ×1000',data:[2.42,2.55,2.59,2.64],borderColor:GR,borderDash:[5,4],tension:.25,pointRadius:4,yAxisID:'y',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:13,position:'left',title:{display:true,text:'AUC ×1000'}},GRID),
+   y1:{min:0,max:22,position:'right',grid:{display:false},title:{display:true,text:'обучений'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 12 — кривая обучения */
+mk('c_learn',{type:'line',data:{labels:['5к','10к','25к','50к','100к','250к','500к','1 млн','2 млн','5 млн'],
+ datasets:[
+  {label:'Замеры',data:[0.7341,0.7479,0.7615,0.7691,0.7750,0.7808,0.7840,null,null,null],borderColor:AC,backgroundColor:'rgba(190,18,60,.07)',tension:.25,fill:true,pointRadius:4},
+  {label:'Экстраполяция 0.795 − 1.441·n^(−0.37146)',data:[0.7341,0.7479,0.7615,0.7691,0.7750,0.7808,0.7840,0.7865,0.7884,0.7903],borderColor:BL,borderDash:[5,4],tension:.25,pointRadius:0},
+  {label:'Асимптота 0.795',data:[0.795,0.795,0.795,0.795,0.795,0.795,0.795,0.795,0.795,0.795],borderColor:GY,borderDash:[2,3],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.725,max:0.800,title:{display:true,text:'AUC'}},GRID),x:Object.assign({title:{display:true,text:'размер обучающей выборки'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* ИНТЕРАКТИВ — расщепление групп */
+function updSplit(){
+  var k = +document.getElementById('sl_k').value;
+  var pp = +document.getElementById('sl_p').value;
+  var p = pp/100;
+  document.getElementById('out_k').textContent = k;
+  document.getElementById('out_p').textContent = pp + '%';
+
+  var pTrain = Math.pow(1-p, k), pTest = Math.pow(p, k);
+  var split = 1 - pTrain - pTest;
+  var sib = (k === 1) ? 0 : (1 - Math.pow(p, k-1));
+
+  var verdict;
+  if (sib < 0.05) verdict = 'утечки через группу практически нет';
+  else if (sib < 0.40) verdict = 'умеренная утечка — стоит проверить групповым разбиением';
+  else if (sib < 0.80) verdict = 'сильная утечка — групповое разбиение обязательно';
+  else verdict = 'тест заражён почти целиком — случайное разбиение бессмысленно';
+
+  document.getElementById('out_split').textContent =
+    'P(все ' + k + ' строк в обучении) = ' + (1-p).toFixed(2) + '^' + k + ' = ' + pTrain.toFixed(6) + '\n' +
+    'P(все ' + k + ' строк в тесте)    = ' + p.toFixed(2) + '^' + k + ' = ' + pTest.toFixed(6) + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'Клиент расщеплён между частями: ' + (100*split).toFixed(2) + '%\n' +
+    'У тестовой строки есть родственник в обучении:\n' +
+    '   1 − ' + p.toFixed(2) + '^' + (k-1) + ' = ' + (100*sib).toFixed(2) + '%\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  var ids=['sl_k','sl_p'];
+  ids.forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updSplit); });
+  if(document.getElementById('out_split')) updSplit();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

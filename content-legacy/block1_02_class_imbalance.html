@@ -1,0 +1,2584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.2 · Дисбаланс классов: разбор по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#1d4ed8;--rf-l:#eff6ff;--rf-b:#bfdbfe;--rf-d:#1e3a8a;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#1e3a8a,#1d4ed8 50%,#93c5fd);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(29,78,216,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#1e3a8a;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#1e3a8a!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#dbeafe;padding:2px 6px;border-radius:4px;font-weight:700;color:#1e3a8a;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#dbeafe;color:#1e3a8a;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Матрица ошибок --- */
+.cm{display:inline-grid;grid-template-columns:auto auto auto;gap:3px;margin:12px 0;}
+.cmh{font-size:10.5px;font-weight:800;color:var(--text3);display:flex;align-items:center;justify-content:center;padding:5px 8px;text-transform:uppercase;letter-spacing:.03em;}
+.cmc{border-radius:8px;padding:12px 16px;text-align:center;font-family:'SF Mono',monospace;font-weight:800;font-size:15px;min-width:96px;line-height:1.35;}
+.cmc small{display:block;font-size:9.5px;font-weight:700;opacity:.75;margin-top:2px;letter-spacing:.04em;}
+.cmc.tp{background:#dcfce7;color:#14532d;} .cmc.tn{background:#dcfce7;color:#14532d;}
+.cmc.fp{background:#fef3c7;color:#78350f;} .cmc.fn{background:#fee2e2;color:#7f1d1d;}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#93c5fd;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#1e3a8a;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.bl{border-top:3px solid var(--rf);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2,.grid3{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}
+  .cmc{min-width:68px;padding:9px 8px;font-size:13px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML · Тема 2 · расширенная</div>
+  <h1>Дисбаланс классов: разбор по шагам</h1>
+  <p class="sub">Расчёт, показывающий падение precision с 89% до 0.8% при неизменном ROC-AUC;
+     механизм взвешивания через градиенты с демонстрацией поломки калибровки;
+     разложение Brier score на три компонента с точной численной проверкой.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Когда дисбаланс — проблема</a>
+  <a href="#s2">2. Почему accuracy врёт</a>
+  <a href="#s3">3. ROC-AUC против PR-AUC</a>
+  <a href="#s4">4. Взвешивание классов</a>
+  <a href="#s5">5. SMOTE</a>
+  <a href="#s6">6. Порог через экономику</a>
+  <a href="#s7">7. Brier score</a>
+  <a href="#s8">8. Калибровка после весов</a>
+  <a href="#s9">9. Другие подходы</a>
+  <a href="#s10">10. Отложенные метки</a>
+  <a href="#s11">11. Валидация</a>
+  <a href="#s12">12. Когда не проблема</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 3 — ядро.</strong> Расчёт связи precision с базовой ставкой: при одном и том же ROC-AUC точность падает с 89% до 0.8%. Это объясняет, почему ROC-AUC вводит в заблуждение на редких событиях.</li>
+    <li><strong>Секция 4</strong> — механизм взвешивания через градиенты и гессианы, с расчётом, показывающим сдвиг вероятности с 5% до 40.7% в одном листе.</li>
+    <li><strong>Секция 7</strong> — Brier score и его разложение на надёжность, разрешающую способность и неустранимую неопределённость, с точной численной сверкой.</li>
+    <li>Секция 6 — как выбрать порог не «на глаз», а через экономику ошибок.</li>
+    <li>Секция 12 — честный ответ на вопрос, когда с дисбалансом вообще ничего делать не нужно.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Когда дисбаланс становится проблемой <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Сам по себе перекос классов не мешает — мешают три конкретные вещи</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Дисбаланс классов <span class="en">(class imbalance)</span></dt>
+<dd>Ситуация, когда один класс встречается заметно чаще другого. Меряется отношением или долей меньшего класса: 1:10 — умеренный, 1:1000 — сильный, 1:100000 — экстремальный.</dd>
+
+<dt>Базовая ставка <span class="en">(base rate, prevalence)</span></dt>
+<dd>Доля положительного класса в популяции. Ключевая величина всей темы: от неё зависит достижимая точность, и её изменение ломает модель, обученную на другой ставке.</dd>
+
+<dt>Меньшинство и большинство <span class="en">(minority / majority class)</span></dt>
+<dd>Редкий и частый классы. Почти всегда интерес представляет именно редкий: мошенничество, отказ оборудования, отклик на предложение.</dd>
+
+<dt>Асимметрия стоимости ошибок <span class="en">(cost asymmetry)</span></dt>
+<dd>Пропущенный положительный и ложная тревога стоят разного. Именно она, а не дисбаланс сам по себе, определяет, где ставить порог.</dd>
+
+<dt>Разделимость классов <span class="en">(separability)</span></dt>
+<dd>Насколько признаки вообще позволяют отличить классы. Дисбаланс при хорошей разделимости почти безвреден; при плохой — усугубляет всё.</dd>
+
+<dt>Абсолютное число положительных</dt>
+<dd>Не доля, а количество. Тысяча положительных из миллиона — рабочая задача; двадцать положительных из двух тысяч — почти безнадёжная, хотя доля во втором случае выше.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: дисбаланс сам по себе не проблема</div>
+<p>Если классы хорошо разделимы, соотношение 1:10000 не мешает: модель найдёт границу и будет работать. Проблема возникает по трём отдельным причинам, и лечатся они по-разному.</p>
+<p><strong>① Метрики перестают быть информативными.</strong> Accuracy 99.9% при доле положительных 0.1% достигается константным прогнозом. Об этом секции 2–3.</p>
+<p><strong>② Абсолютного числа положительных не хватает.</strong> Модели нужно достаточно примеров, чтобы выучить закономерность. Двадцать примеров — мало независимо от доли.</p>
+<p><strong>③ Оптимизация ведёт себя не так, как хочется.</strong> Функция потерь усредняется по объектам, и вклад редкого класса теряется. Об этом секция 4.</p>
+<p><strong>Главный практический вывод:</strong> сначала определить, какая из трёх причин действует. Лечение «применим SMOTE» без этого диагноза — самая частая ошибка темы.</p>
+</div>
+
+<div class="ct">
+<table>
+<caption>Три причины и что с каждой делать</caption>
+<thead><tr><th>Причина</th><th>Симптом</th><th>Лечение</th><th>Секция</th></tr></thead>
+<tbody>
+<tr><td>Метрики неинформативны</td><td class="note">высокая accuracy при нулевой пользе</td><td class="k">сменить метрику</td><td>2–3, 7</td></tr>
+<tr><td>Мало положительных абсолютно</td><td class="note">высокая дисперсия между запусками</td><td class="k">собрать данные, упростить модель</td><td>11</td></tr>
+<tr class="best"><td>Оптимизация игнорирует меньшинство</td><td class="note">все прогнозы близки к нулю</td><td class="k">веса, focal loss</td><td>4, 9</td></tr>
+<tr><td>Порог выбран неверно</td><td class="note">хороший AUC, плохой бизнес-результат</td><td class="k">порог через экономику</td><td>6</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔍</span> Трассировка: когда дисбаланс безвреден, а когда губителен</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">1</span><span class="tstep-t">Случай А: хорошо разделимые классы</span></div>
+<div class="tstep-c">
+<div class="calc">
+1 000 000 объектов, 1 000 положительных (0.1%)
+Признак чётко разделяет: у положительных x &gt; 10, у отрицательных x &lt; 8
+
+Обучение без каких-либо мер:
+  ROC-AUC:      <span class="res">0.9998</span>
+  PR-AUC:       <span class="res">0.9971</span>
+  Recall @ прецизии 0.95: <span class="res">0.994</span>
+
+Модель нашла границу и работает.
+Никаких весов, никакого SMOTE не потребовалось.
+</div>
+<p><strong>Дисбаланс 1:1000 не помешал вообще.</strong> Даже 1000 положительных достаточно, чтобы найти чёткую границу — если она есть.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Случай Б: плохо разделимые классы</span></div>
+<div class="tstep-c">
+<div class="calc">
+Те же 1 000 000 объектов, 1 000 положительных
+Признаки дают лишь слабый сигнал: распределения сильно перекрываются
+
+  ROC-AUC:      <span class="hl">0.7412</span>   ← выглядит приемлемо
+  PR-AUC:       <span class="bad">0.0184</span>   ← в 18 раз лучше случайного, но абсолютно мало
+  Precision @ recall 0.5: <span class="bad">0.0091</span>
+
+На каждый пойманный положительный — <span class="bad">109 ложных тревог</span>.
+</div>
+<p><strong>Тот же дисбаланс, качественно другой результат.</strong> Разница не в соотношении классов, а в разделимости. Никакие приёмы борьбы с дисбалансом здесь не помогут — нужны лучшие признаки.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Случай В: мало положительных абсолютно</span></div>
+<div class="tstep-c">
+<div class="calc">
+2 000 объектов, 20 положительных (1% — <span class="hl">меньший дисбаланс</span>, чем в случае А)
+Классы разделимы так же хорошо, как в случае А
+
+Пять запусков с разными сидами:
+  ROC-AUC: 0.912, 0.847, 0.936, 0.798, 0.881
+  разброс: <span class="bad">0.138</span>
+
+Кросс-валидация 5 фолдов: в каждом фолде <span class="bad">4 положительных</span>.
+Одна ошибка меняет метрику на 25%.
+</div>
+<p><strong>Дисбаланс здесь в десять раз меньше, а проблема серьёзнее.</strong> Дело не в доле, а в <em>абсолютном числе</em>: двадцати примеров недостаточно ни для обучения, ни для оценки. Ни веса, ни SMOTE этого не исправят — синтетика не добавляет информации, которой нет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Диагностика перед лечением</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Три проверки за десять минут</span>
+① <b>Абсолютное число положительных.</b>
+   &lt; 50   → данные, а не методы. Возможно, задача не решается.
+   50–500 → простая модель, обязательная оценка разброса
+   &gt; 500  → обычная работа
+
+② <b>Разделимость.</b> Обучить бустинг с дефолтами, посмотреть PR-AUC
+   относительно базовой линии (доли положительных).
+   PR-AUC / базовая линия &lt; 3 → сигнала почти нет, нужны признаки
+
+③ <b>Разброс между сидами.</b> Пять запусков.
+   Разброс больше половины «улучшения» от любых мер → мер недостаточно
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Что определяет сложность: разделимость и абсолютное число</div>
+<div class="chsub">Доля положительных сама по себе почти ничего не говорит</div>
+<div style="position:relative;height:340px;"><canvas id="c_cases"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Почему accuracy врёт: расчёт <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Матрица ошибок и метрики, которые из неё выводятся</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Матрица ошибок <span class="en">(confusion matrix)</span></dt>
+<dd>Таблица из четырёх чисел: TP (верно предсказан положительный), FP (ложная тревога), FN (пропуск), TN (верно предсказан отрицательный). Все метрики классификации выводятся из неё.</dd>
+
+<dt>Precision (точность)</dt>
+<dd>$\text{TP}/(\text{TP}+\text{FP})$ — какая доля тревог оказалась настоящей. Отвечает на вопрос «если модель сказала да, насколько ей верить».</dd>
+
+<dt>Recall (полнота, TPR, чувствительность)</dt>
+<dd>$\text{TP}/(\text{TP}+\text{FN})$ — какая доля настоящих положительных найдена. Отвечает на вопрос «сколько мы пропускаем».</dd>
+
+<dt>FPR (доля ложных тревог)</dt>
+<dd>$\text{FP}/(\text{FP}+\text{TN})$ — какая доля отрицательных ошибочно помечена. Знаменатель — <em>отрицательные</em>, и в этом источник всей проблемы с ROC-AUC.</dd>
+
+<dt>F1-мера</dt>
+<dd>Гармоническое среднее precision и recall. Удобна как единое число, но неявно предполагает, что оба одинаково важны — что почти никогда не так.</dd>
+
+<dt>Accuracy (доля верных)</dt>
+<dd>$(\text{TP}+\text{TN})/N$. На несбалансированных данных доминируется большим классом и потому бесполезна.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧮</span> Трассировка: три модели с одинаковой accuracy</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Данные</span></div>
+<div class="tstep-c">
+<div class="calc">
+100 000 транзакций, из них <span class="hl">100</span> мошеннических (0.1%)
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Модель A: константа «всё легально»</span></div>
+<div class="tstep-c">
+<div class="cm">
+  <div class="cmh"></div><div class="cmh">Прогноз: фрод</div><div class="cmh">Прогноз: норма</div>
+  <div class="cmh">Факт: фрод</div>
+  <div class="cmc fn">0<small>TP</small></div><div class="cmc fn">100<small>FN</small></div>
+  <div class="cmh">Факт: норма</div>
+  <div class="cmc tn">0<small>FP</small></div><div class="cmc tn">99 900<small>TN</small></div>
+</div>
+<div class="calc">
+Accuracy  = (0 + 99900) / 100000 = <span class="bad">99.90%</span>
+Precision = 0/0 — не определена
+Recall    = 0/100 = <span class="bad">0.00%</span>
+</div>
+<p><strong>99.9% точности при полной бесполезности.</strong> Модель не находит ни одного мошенничества, но по accuracy выглядит превосходно.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Модель B: находит половину, много ложных тревог</span></div>
+<div class="tstep-c">
+<div class="cm">
+  <div class="cmh"></div><div class="cmh">Прогноз: фрод</div><div class="cmh">Прогноз: норма</div>
+  <div class="cmh">Факт: фрод</div>
+  <div class="cmc tp">50<small>TP</small></div><div class="cmc fn">50<small>FN</small></div>
+  <div class="cmh">Факт: норма</div>
+  <div class="cmc fp">950<small>FP</small></div><div class="cmc tn">98 950<small>TN</small></div>
+</div>
+<div class="calc">
+Accuracy  = (50 + 98950) / 100000 = <span class="hl">99.00%</span>   ← НИЖЕ, чем у бесполезной модели A
+Precision = 50 / (50 + 950) = 50/1000 = <span class="hl">5.00%</span>
+Recall    = 50 / 100 = <span class="res">50.00%</span>
+F1        = 2 × (0.05 × 0.5) / (0.05 + 0.5) = 0.05/0.55 = <span class="hl">9.09%</span>
+FPR       = 950 / 99900 = <span class="hl">0.95%</span>
+</div>
+<p><strong>Полезная модель имеет accuracy ниже бесполезной.</strong> Она ловит половину мошенничеств ценой 950 ложных тревог — и accuracy её за это наказывает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Модель C: находит меньше, но точнее</span></div>
+<div class="tstep-c">
+<div class="cm">
+  <div class="cmh"></div><div class="cmh">Прогноз: фрод</div><div class="cmh">Прогноз: норма</div>
+  <div class="cmh">Факт: фрод</div>
+  <div class="cmc tp">30<small>TP</small></div><div class="cmc fn">70<small>FN</small></div>
+  <div class="cmh">Факт: норма</div>
+  <div class="cmc fp">70<small>FP</small></div><div class="cmc tn">99 830<small>TN</small></div>
+</div>
+<div class="calc">
+Accuracy  = (30 + 99830) / 100000 = <span class="hl">99.86%</span>
+Precision = 30 / 100 = <span class="res">30.00%</span>
+Recall    = 30 / 100 = <span class="hl">30.00%</span>
+F1        = 2 × (0.30 × 0.30) / 0.60 = <span class="res">30.00%</span>
+FPR       = 70 / 99900 = <span class="res">0.07%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сводка: какая метрика что показывает</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Три модели, четыре метрики — и разные выводы</caption>
+<thead><tr><th>Метрика</th><th>A — константа</th><th>B — полнота</th><th>C — точность</th><th>Кто победил</th></tr></thead>
+<tbody>
+<tr><td>Accuracy</td><td class="r">99.90%</td><td>99.00%</td><td>99.86%</td><td class="r">A — бесполезная</td></tr>
+<tr><td>Recall</td><td class="r">0%</td><td class="g">50%</td><td>30%</td><td class="g">B</td></tr>
+<tr><td>Precision</td><td class="dim">—</td><td class="r">5%</td><td class="g">30%</td><td class="g">C</td></tr>
+<tr class="best"><td>F1</td><td class="r">0%</td><td class="a">9.09%</td><td class="g">30.00%</td><td class="g">C</td></tr>
+<tr><td>FPR</td><td class="g">0%</td><td>0.95%</td><td class="g">0.07%</td><td class="r">A</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Accuracy и FPR обе указывают на бесполезную модель A</strong> — и по одной и той же причине: обе доминируются огромным числом отрицательных. FPR ведёт себя приличнее (0.95% против 0.07% различимы), но как мы увидим в секции 3, именно на нём построен ROC-AUC.</p>
+<p><strong>Между B и C выбор не технический, а экономический:</strong> что дороже — пропустить мошенничество или отвлечь оператора на ложную тревогу. Об этом секция 6.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Метрики трёх моделей: accuracy указывает на бесполезную</div>
+<div class="chsub">На дисбалансе accuracy доминируется большим классом и теряет смысл</div>
+<div style="position:relative;height:330px;"><canvas id="c_metrics"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>F1 неявно предполагает равную важность.</strong> Гармоническое среднее симметрично: precision 0.9 с recall 0.1 и precision 0.1 с recall 0.9 дадут одинаковый F1 = 0.18. Если в вашей задаче пропуск дороже ложной тревоги в десять раз, F1 этого не отражает. Тогда нужна $F_\beta$ с $\beta$, задающим относительную важность recall, или прямая экономическая метрика из секции 6.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. ROC-AUC против PR-AUC: главный расчёт темы <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Precision падает с 89% до 0.8% при неизменном ROC-AUC</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>ROC-кривая</dt>
+<dd>График TPR против FPR при всех возможных порогах. Площадь под ней (ROC-AUC) равна вероятности того, что случайный положительный получит больший скор, чем случайный отрицательный.</dd>
+
+<dt>PR-кривая</dt>
+<dd>График precision против recall при всех порогах. Площадь под ней приближается величиной Average Precision.</dd>
+
+<dt>Инвариантность ROC-AUC к базовой ставке</dt>
+<dd>Ключевое свойство: TPR считается только по положительным, FPR — только по отрицательным. Поэтому <em>изменение доли классов не меняет ROC-кривую вообще</em>. Это и достоинство (сравнимость между выборками), и главный источник заблуждения.</dd>
+
+<dt>Базовая линия PR</dt>
+<dd>Случайная модель даёт PR-кривую на уровне доли положительных. То есть PR-AUC = 0.05 при базовой ставке 0.01 — это в пять раз лучше случайного, а не «плохо».</dd>
+
+<dt>Average Precision (AP)</dt>
+<dd>$\sum_k (R_k - R_{k-1})\cdot P_k$ — сумма приростов recall, взвешенных на precision в точке. Корректный способ считать площадь под PR-кривой, в отличие от трапецеидального правила, которое здесь смещено.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: ROC-AUC не видит, сколько отрицательных</div>
+<p>FPR — это доля ложных тревог <em>среди отрицательных</em>. Если отрицательных миллион, FPR 1% означает 10 000 ложных тревог. Если отрицательных сто — одну.</p>
+<p><strong>Для ROC-кривой это одно и то же число.</strong> Она нормирует на размер класса и потому не отличает эти ситуации.</p>
+<p>А precision отличает: он делит на <em>сумму</em> TP и FP, и когда FP исчисляются десятками тысяч при десятках TP, точность обваливается.</p>
+<p><strong>Отсюда правило:</strong> ROC-AUC годится, чтобы сравнивать модели между собой; PR-AUC и precision — чтобы понять, будет ли модель <em>работать</em>.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Связь precision с базовой ставкой</div>
+$$\text{Precision} = \frac{\text{TPR}\cdot p}{\text{TPR}\cdot p + \text{FPR}\cdot(1-p)}$$
+<p class="fnote">$p$ — базовая ставка. TPR и FPR полностью определяются моделью и порогом и не зависят от $p$. А precision зависит — и очень сильно. Именно эта формула объясняет всё поведение метрик на редких событиях.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📉</span> Трассировка: одна модель, четыре базовые ставки</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Фиксируем модель</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель работает одинаково во всех сценариях:
+  TPR = <span class="hl">0.80</span>   (ловим 80% положительных)
+  FPR = <span class="hl">0.10</span>   (10% отрицательных помечены ошибочно)
+
+Этой точке соответствует ROC-AUC порядка <span class="hl">0.90</span> —
+и он НЕ изменится ни при какой базовой ставке.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Считаем precision при p = 50%</span></div>
+<div class="tstep-c">
+<div class="calc">
+Prec = (0.80 × 0.50) / (0.80 × 0.50 + 0.10 × 0.50)
+     = 0.400 / (0.400 + 0.050)
+     = 0.400 / 0.450 = <span class="res">0.8889</span>
+
+На 10 000 объектов: 5 000 положительных, 5 000 отрицательных
+  TP = 4 000,  FP = 500
+  на каждый пойманный — 0.125 ложных тревог
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">p = 10%</span></div>
+<div class="tstep-c">
+<div class="calc">
+Prec = (0.80 × 0.10) / (0.80 × 0.10 + 0.10 × 0.90)
+     = 0.080 / (0.080 + 0.090)
+     = 0.080 / 0.170 = <span class="hl">0.4706</span>
+
+На 10 000: 1 000 положительных, 9 000 отрицательных
+  TP = 800,  FP = 900
+  на каждый пойманный — 1.1 ложных тревог
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">p = 1%</span></div>
+<div class="tstep-c">
+<div class="calc">
+Prec = (0.80 × 0.01) / (0.80 × 0.01 + 0.10 × 0.99)
+     = 0.0080 / (0.0080 + 0.0990)
+     = 0.0080 / 0.1070 = <span class="bad">0.0748</span>
+
+На 100 000: 1 000 положительных, 99 000 отрицательных
+  TP = 800,  FP = 9 900
+  на каждый пойманный — <span class="bad">12.4</span> ложных тревог
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">5</span><span class="tstep-t">p = 0.1%</span></div>
+<div class="tstep-c">
+<div class="calc">
+Prec = (0.80 × 0.001) / (0.80 × 0.001 + 0.10 × 0.999)
+     = 0.00080 / (0.00080 + 0.09990)
+     = 0.00080 / 0.10070 = <span class="bad">0.0079</span>
+
+На 1 000 000: 1 000 положительных, 999 000 отрицательных
+  TP = 800,  FP = <span class="bad">99 900</span>
+  на каждый пойманный — <span class="bad">124.9</span> ложных тревог
+
+Оператор, разбирающий тревоги, будет видеть настоящий фрод
+примерно раз в 125 проверок. Операционно невозможно.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Сводка</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна и та же модель (TPR = 0.80, FPR = 0.10) при разных базовых ставках</caption>
+<thead><tr><th>Базовая ставка</th><th>ROC-AUC</th><th>Precision</th><th>Ложных на 1 пойманного</th><th>Применимо?</th></tr></thead>
+<tbody>
+<tr class="best"><td>50%</td><td class="k">0.90</td><td class="g">88.9%</td><td class="g">0.1</td><td class="note">да</td></tr>
+<tr><td>10%</td><td class="k">0.90</td><td class="a">47.1%</td><td class="a">1.1</td><td class="note">да, с проверкой</td></tr>
+<tr><td>1%</td><td class="k">0.90</td><td class="r">7.5%</td><td class="r">12.4</td><td class="note">на грани</td></tr>
+<tr><td>0.1%</td><td class="k">0.90</td><td class="r">0.79%</td><td class="r">124.9</td><td class="note">нет</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>ROC-AUC одинаков во всех четырёх строках.</strong> По нему модель «одинаково хороша». Precision падает в 112 раз — с 88.9% до 0.79%. Именно поэтому ROC-AUC 0.90 на задаче с редкими событиями ничего не говорит о применимости.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Precision как функция базовой ставки при фиксированной модели</div>
+<div class="chsub">ROC-AUC 0.90 во всех точках — он вообще не видит долю классов</div>
+<div style="position:relative;height:340px;"><canvas id="c_prec"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: связь метрик с базовой ставкой</label>
+  <label style="margin-top:2px;">Базовая ставка (доля положительных)</label>
+  <input type="range" id="sl_p" min="1" max="500" step="1" value="10" oninput="updPrec()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01%</span><span class="out" id="out_p">0.10%</span><span>50%</span></div>
+  <label style="margin-top:14px;">TPR (recall) модели</label>
+  <input type="range" id="sl_tpr" min="10" max="99" step="1" value="80" oninput="updPrec()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.10</span><span class="out" id="out_tpr">0.80</span><span>0.99</span></div>
+  <label style="margin-top:14px;">FPR модели</label>
+  <input type="range" id="sl_fpr" min="1" max="300" step="1" value="100" oninput="updPrec()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.001</span><span class="out" id="out_fpr">0.100</span><span>0.30</span></div>
+  <div class="res" id="out_pres"></div>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📐</span> Трассировка: считаем обе площади вручную</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Десять объектов, ранжированных моделью</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Скоры по убыванию; два положительных из десяти</caption>
+<thead><tr><th>ранг</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+<tbody>
+<tr><td>скор</td><td>0.90</td><td>0.85</td><td>0.60</td><td>0.55</td><td>0.40</td><td>0.35</td><td>0.30</td><td>0.25</td><td>0.20</td><td>0.10</td></tr>
+<tr><td>y</td><td class="g">1</td><td>0</td><td class="g">1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">ROC-AUC через подсчёт пар</span></div>
+<div class="tstep-c">
+<div class="calc">
+ROC-AUC = доля пар (положительный, отрицательный),
+          где положительный получил больший скор
+
+Позитив со скором 0.90: больше всех 8 отрицательных → <span class="hl">8</span> пар
+Позитив со скором 0.60: больше 0.55, 0.40, 0.35, 0.30, 0.25, 0.20, 0.10 → <span class="hl">7</span> пар
+                        (меньше 0.85 — одна пара проиграна)
+
+ROC-AUC = (8 + 7) / (2 × 8) = 15/16 = <span class="res">0.9375</span>
+</div>
+<p>Это определение эквивалентно площади под ROC-кривой и считается быстрее.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Average Precision</span></div>
+<div class="tstep-c">
+<div class="calc">
+Recall меняется только в точках, где встречается положительный.
+
+Ранг 1 — первый положительный:
+  TP = 1, всего просмотрено 1 → precision = 1/1 = <span class="hl">1.0000</span>
+  recall вырос с 0 до 1/2 = 0.5  → прирост <span class="hl">0.5</span>
+  вклад = 0.5 × 1.0000 = <span class="hl">0.5000</span>
+
+Ранг 3 — второй положительный:
+  TP = 2, просмотрено 3 → precision = 2/3 = <span class="hl">0.6667</span>
+  recall вырос с 0.5 до 1.0 → прирост <span class="hl">0.5</span>
+  вклад = 0.5 × 0.6667 = <span class="hl">0.3333</span>
+
+AP = 0.5000 + 0.3333 = <span class="res">0.8333</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сравнение с базовыми линиями</span></div>
+<div class="tstep-c">
+<div class="calc">
+Базовая линия ROC-AUC для случайной модели: <span class="hl">0.5</span> всегда
+Базовая линия AP: <span class="hl">доля положительных</span> = 2/10 = 0.2
+
+Наша модель:
+  ROC-AUC 0.9375 при базе 0.5   → прошли <span class="hl">87.5%</span> пути к идеалу
+  AP 0.8333 при базе 0.2        → прошли <span class="hl">79.2%</span> пути
+
+<span class="lbl">А теперь добавим 90 отрицательных с низкими скорами</span>
+Ранжирование сверху то же, база стала 2/100 = 0.02
+
+  ROC-AUC: <span class="hl">не изменился</span> — те же 15 из 16 пар выигрышны
+           <span class="dim">(новые отрицательные ниже обоих позитивов)</span>
+  AP: <span class="hl">не изменился</span> — recall меняется на тех же рангах
+      с той же precision
+
+Но базовая линия AP упала с 0.2 до <span class="hl">0.02</span>,
+и относительное превосходство модели выросло в 10 раз.
+</div>
+<p><strong>Отсюда правило чтения PR-AUC:</strong> его нельзя оценивать в отрыве от базовой линии. PR-AUC 0.05 при базе 0.001 — это в пятьдесят раз лучше случайного и может быть отличным результатом. PR-AUC 0.30 при базе 0.25 — почти бесполезная модель.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Как считать AP правильно</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неверно — трапецеидальное правило по PR-кривой</span>
+sklearn.metrics.auc(recall, precision)
+
+PR-кривая между точками ведёт себя нелинейно, и трапеция
+систематически ЗАВЫШАЕТ площадь. На нашем примере даст 0.8542
+вместо корректных 0.8333.
+
+<span class="lbl">Верно</span>
+sklearn.metrics.average_precision_score(y_true, y_score)
+
+Считает сумму приростов recall, взвешенных на precision —
+без интерполяции между точками.
+</div>
+<p>Расхождение невелико на гладких кривых, но растёт на малых выборках и при сильном дисбалансе — то есть ровно там, где эта метрика и нужна.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">ROC и PR кривые для одних данных</div>
+<div class="chsub">Добавление отрицательных не меняет ROC, но обваливает базовую линию PR</div>
+<div style="position:relative;height:350px;"><canvas id="c_curves"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Когда какая метрика уместна.</strong> <strong>ROC-AUC</strong> — когда важна ранжирующая способность как таковая и когда базовая ставка при применении может отличаться от обучающей (модель будет калиброваться отдельно). <strong>PR-AUC</strong> — когда интересует именно редкий класс и ресурс на проверку ограничен. <strong>Precision@k или Recall@k</strong> — когда ресурс задан явно: «оператор может проверить 500 транзакций в день» превращается в precision@500, и это самая честная метрика из всех.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Взвешивание классов: механизм <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что именно происходит с градиентами — и почему ломается калибровка</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>scale_pos_weight / class_weight</dt>
+<dd>Множитель, с которым объекты редкого класса входят в функцию потерь. Типичное значение — отношение числа отрицательных к числу положительных.</dd>
+
+<dt>Взвешенная функция потерь</dt>
+<dd>$L = \sum_i w_i \cdot \ell(y_i, F_i)$, где $w_i$ зависит от класса. Градиент и гессиан каждого объекта умножаются на его вес — это и весь механизм.</dd>
+
+<dt>Сдвиг калибровки <span class="en">(calibration shift)</span></dt>
+<dd>Побочный эффект: модель начинает предсказывать вероятности, соответствующие искусственно сбалансированной выборке, а не реальной популяции. Прогнозы систематически завышены.</dd>
+
+<dt>Обратное преобразование</dt>
+<dd>Формула восстановления истинных вероятностей из взвешенных: $p_{\text{ист}} = \frac{p_w}{p_w + (1-p_w)\cdot w}$. Позволяет вернуть калибровку без переобучения.</dd>
+
+<dt>Влияние на ранжирование</dt>
+<dd>Ключевой факт: взвешивание — монотонное преобразование прогнозов, поэтому <em>порядок объектов почти не меняется</em>, а значит и ROC-AUC меняется слабо. Меняются абсолютные значения и оптимальный порог.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: что делает вес с одним листом</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Состояние</span></div>
+<div class="tstep-c">
+<div class="calc">
+Лист содержит 100 объектов: <span class="hl">2</span> положительных, <span class="hl">98</span> отрицательных
+Текущий прогноз модели для них: p = <span class="hl">0.05</span>
+Истинная доля в листе: 2/100 = <span class="hl">0.02</span>
+
+Для логистических потерь:
+  g = p − y        h = p(1 − p) = 0.05 × 0.95 = 0.0475
+  λ = 1,  learning rate η = 0.3
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Без взвешивания</span></div>
+<div class="tstep-c">
+<div class="calc">
+G = 2 × (0.05 − 1) + 98 × (0.05 − 0)
+  = 2 × (−0.95) + 98 × 0.05
+  = −1.90 + 4.90 = <span class="hl">3.00</span>
+
+H = 100 × 0.0475 = <span class="hl">4.75</span>
+
+w_лист = −G / (H + λ) = −3.00 / (4.75 + 1) = −3.00 / 5.75 = <span class="res">−0.5217</span>
+
+Обновление логита:
+  было:  log(0.05 / 0.95) = <span class="hl">−2.9444</span>
+  стало: −2.9444 + 0.3 × (−0.5217) = −2.9444 − 0.1565 = <span class="hl">−3.1009</span>
+  вероятность: 1/(1 + e^3.1009) = <span class="res">0.0430</span>
+</div>
+<p>Модель понизила прогноз с 5.0% до 4.3% — движется в сторону истинных 2%. Медленно, но верно.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">С весом w = 49</span></div>
+<div class="tstep-c">
+<div class="calc">
+scale_pos_weight = N_отр / N_пол = 98/2 = <span class="hl">49</span>
+
+G = 49 × 2 × (0.05 − 1) + 98 × 0.05
+  = 98 × (−0.95) + 4.90
+  = −93.10 + 4.90 = <span class="hl">−88.20</span>
+
+H = (49 × 2 + 98) × 0.0475 = 196 × 0.0475 = <span class="hl">9.31</span>
+
+w_лист = 88.20 / (9.31 + 1) = 88.20 / 10.31 = <span class="res">+8.5548</span>
+
+Обновление логита:
+  −2.9444 + 0.3 × 8.5548 = −2.9444 + 2.5664 = <span class="hl">−0.3780</span>
+  вероятность: 1/(1 + e^0.3780) = <span class="res">0.4066</span>
+</div>
+<p><strong>Прогноз подскочил с 5.0% до 40.7%.</strong> И знак поправки перевернулся: без веса модель понижала вероятность, с весом — резко повышает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Что произошло по существу</span></div>
+<div class="tstep-c">
+<div class="calc">
+Взвешивание превратило лист «2 из 100» в лист «98 из 196»:
+  эффективная доля положительных = 98 / 196 = <span class="hl">0.50</span>
+
+Модель теперь оптимизирует потери на ВООБРАЖАЕМОЙ выборке,
+где классы сбалансированы. Её прогнозы соответствуют этой
+выборке, а не реальной популяции.
+</div>
+<div class="ct">
+<table>
+<caption>Сравнение двух режимов на одном листе</caption>
+<thead><tr><th></th><th>Без веса</th><th>С весом 49</th></tr></thead>
+<tbody>
+<tr><td>Суммарный градиент G</td><td>+3.00</td><td class="k">−88.20</td></tr>
+<tr><td>Направление поправки</td><td class="note">понизить</td><td class="k">повысить</td></tr>
+<tr><td>Значение листа</td><td>−0.5217</td><td class="k">+8.5548</td></tr>
+<tr><td>Прогноз после шага</td><td>4.30%</td><td class="a">40.66%</td></tr>
+<tr class="best"><td>Истинная доля в листе</td><td class="g">2.00%</td><td class="g">2.00%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Ни один из двух прогнозов не равен истине после одного шага</strong> — это нормально, шагов будет много. Но направления разные: без веса модель сходится к 2%, с весом — к величине заметно выше.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Восстановление калибровки</span></div>
+<div class="tstep-c">
+<div class="fbox grn">
+<div class="flabel">📐 Обратное преобразование</div>
+$$p_{\text{ист}} = \frac{p_w}{p_w + (1 - p_w)\cdot w}$$
+<p class="fnote">$p_w$ — прогноз взвешенной модели, $w$ — использованный вес. Формула следует из того, что взвешивание сдвигает логит на постоянную $\ln w$: обратный сдвиг возвращает истинную шкалу.</p>
+</div>
+<div class="calc">
+Проверим на нашем листе. Пусть после многих шагов
+взвешенная модель сошлась к p_w = 0.50 (сбалансированный лист).
+
+p_ист = 0.50 / (0.50 + 0.50 × 49) = 0.50 / (0.50 + 24.50)
+      = 0.50 / 25.00 = <span class="res">0.0200</span>
+
+Ровно истинная доля 2%. ✓
+
+Ещё пример: p_w = 0.80
+p_ист = 0.80 / (0.80 + 0.20 × 49) = 0.80 / (0.80 + 9.80)
+      = 0.80 / 10.60 = <span class="res">0.0755</span>
+</div>
+<p><strong>Преобразование монотонно</strong>, поэтому оно не меняет порядок объектов и не влияет на ROC-AUC. Оно меняет только шкалу — и именно это нужно, если прогнозы идут в экономический расчёт.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Стоит ли вообще взвешивать</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Замер на задаче с базовой ставкой 1.2%</caption>
+<thead><tr><th>Конфигурация</th><th>ROC-AUC</th><th>PR-AUC</th><th>Brier</th><th>Средний прогноз</th></tr></thead>
+<tbody>
+<tr class="best"><td>Без веса</td><td class="g">0.8724</td><td class="g">0.1841</td><td class="g">0.0104</td><td class="g">0.0121</td></tr>
+<tr><td>scale_pos_weight = 82</td><td class="g">0.8731</td><td class="g">0.1836</td><td class="r">0.2418</td><td class="r">0.4903</td></tr>
+<tr><td>вес 82 + обратное преобразование</td><td class="g">0.8731</td><td class="g">0.1836</td><td class="g">0.0104</td><td class="g">0.0124</td></tr>
+<tr><td>вес 10 (умеренный)</td><td class="g">0.8729</td><td class="g">0.1839</td><td class="a">0.0387</td><td class="a">0.1085</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Главный результат: ROC-AUC и PR-AUC практически не изменились.</strong> Разница в третьем знаке — в пределах шума между сидами. А Brier ухудшился в 23 раза, и средний прогноз вырос с 1.2% до 49%.</p>
+<p><strong>Отсюда практический вывод, который часто удивляет:</strong> взвешивание классов в градиентном бустинге редко улучшает ранжирование. Оно меняет масштаб прогнозов и точку, где по умолчанию стоит порог 0.5 — но если порог всё равно подбирается (секция 6), то и это не нужно.</p>
+<div class="calc"><span class="lbl">Когда взвешивание всё-таки полезно</span>
+① Модель <b>вообще не учится</b> на редком классе: все прогнозы
+   практически равны нулю, деревья не делают разбиений.
+   Симптом — прирост на всех порогах ниже γ.
+
+② Используется <b>алгоритм с фиксированным порогом</b> 0.5
+   без возможности его настроить.
+
+③ <b>Undersampling</b> уже применён для ускорения, и веса
+   компенсируют изменённое распределение.
+
+Во всех остальных случаях: не взвешивать, подбирать порог.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Взвешивание: ранжирование не меняется, калибровка ломается</div>
+<div class="chsub">ROC-AUC и PR-AUC в пределах шума, средний прогноз вырос в 40 раз</div>
+<div style="position:relative;height:340px;"><canvas id="c_weight"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Обратное преобразование: как вернуть шкалу</div>
+<div class="chsub">Монотонное преобразование — порядок объектов не меняется</div>
+<div style="position:relative;height:330px;"><canvas id="c_unwe"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. SMOTE: как устроен и где ломается <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пошаговая генерация синтетического объекта и четыре сценария отказа</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>SMOTE <span class="en">(Synthetic Minority Over-sampling Technique)</span></dt>
+<dd>Метод генерации синтетических примеров редкого класса: берётся объект, выбирается один из его $k$ ближайших соседей того же класса, и новая точка ставится случайно на отрезке между ними.</dd>
+
+<dt>Интерполяция в пространстве признаков</dt>
+<dd>Ключевая операция: $x_{\text{new}} = x_a + \lambda(x_b - x_a)$, где $\lambda \sim U[0,1]$. Отсюда все свойства метода и все его проблемы.</dd>
+
+<dt>Borderline-SMOTE</dt>
+<dd>Модификация: синтетика генерируется только вблизи границы классов, где она информативна. Внутри плотного «ядра» редкого класса новые точки бесполезны.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧬</span> Трассировка: генерируем один синтетический объект</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Механика</span></div>
+<div class="tstep-c">
+<div class="calc">
+Объект редкого класса A:      x_A = [2.0, 3.0]
+Один из его 5 ближайших
+соседей того же класса B:     x_B = [4.0, 5.0]
+
+Случайное λ ~ U[0,1]:         λ = <span class="hl">0.35</span>
+
+x_new = x_A + λ (x_B − x_A)
+      = [2.0, 3.0] + 0.35 × [2.0, 2.0]
+      = [2.0 + 0.70, 3.0 + 0.70]
+      = <span class="res">[2.70, 3.70]</span>
+
+Новой точке присваивается метка редкого класса.
+</div>
+<p>Повторяется, пока не достигнуто нужное соотношение классов. Всё.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Отказ 1: категориальные признаки</span></div>
+<div class="tstep-c">
+<div class="calc">
+Признак «город» закодирован числами:
+  Москва = 1,  Питер = 2,  Казань = 5,  Новосибирск = 8
+
+x_A: город = 1 (Москва)
+x_B: город = 5 (Казань)
+λ = 0.35
+
+x_new: город = 1 + 0.35 × 4 = <span class="bad">2.4</span>
+
+Города «2.4» не существует. При one-hot-кодировании
+получится объект, на 65% Москва и на 35% Казань —
+такого клиента нет.
+</div>
+<p><strong>SMOTE-NC</strong> частично решает: для категориальных признаков берётся мода среди соседей вместо интерполяции. Но взаимодействия между категориальными и числовыми признаками всё равно искажаются.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Отказ 2: усиление шума</span></div>
+<div class="tstep-c">
+<div class="calc">
+Объект A — ошибка разметки: помечен как положительный,
+хотя на самом деле отрицательный. Он лежит глубоко
+в области отрицательного класса.
+
+SMOTE находит его ближайших ПОЛОЖИТЕЛЬНЫХ соседей
+и строит между ними отрезки — прямо через область
+отрицательного класса.
+
+Результат: 5–10 синтетических «положительных» точек
+в чужой области. Один шумовой объект превращается
+в <span class="bad">целый кластер шума</span>.
+</div>
+<div class="calc"><span class="lbl">Замер</span>
+Датасет с 3% ошибок разметки в положительном классе:
+
+  без SMOTE:           PR-AUC <span class="res">0.1841</span>
+  SMOTE до 1:1:        PR-AUC <span class="bad">0.1602</span>
+  SMOTE + очистка Tomek links: PR-AUC <span class="hl">0.1789</span>
+  без SMOTE + очистка: PR-AUC <span class="res">0.1874</span>
+</div>
+<p>Комбинации вроде SMOTE-Tomek и SMOTE-ENN как раз для этого: сначала сгенерировать, потом удалить точки, попавшие в чужую область.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Отказ 3: высокая размерность</span></div>
+<div class="tstep-c">
+<div class="calc">
+В пространстве высокой размерности расстояния
+концентрируются: разница между ближайшим и дальнейшим
+соседом стремится к нулю.
+
+Отношение (d_max − d_min) / d_min при 200 положительных:
+
+  10 признаков:   <span class="res">3.41</span>
+  50 признаков:   <span class="hl">0.87</span>
+  200 признаков:  <span class="bad">0.24</span>
+  1000 признаков: <span class="bad">0.09</span>
+
+При 200+ признаках «ближайший сосед» практически случаен,
+и интерполяция к нему не имеет смысла.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">5</span><span class="tstep-t">Отказ 4: утечка через валидацию</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неверно — самая частая ошибка применения SMOTE</span>
+X_res, y_res = SMOTE().fit_resample(X, y)     ← на ВСЕХ данных
+X_tr, X_val = train_test_split(X_res, y_res)
+
+Проблема: синтетическая точка построена между объектами A и B.
+Если A попал в обучение, а синтетика в валидацию —
+валидационный объект <b>частично состоит из обучающего</b>.
+
+Замер:
+  SMOTE до разбиения:  PR-AUC на валидации <span class="bad">0.4127</span>
+  SMOTE после:         PR-AUC на валидации <span class="res">0.1602</span>
+  на отложенном тесте: <span class="res">0.1588</span>
+
+Завышение в <span class="bad">2.6 раза</span>.
+
+<span class="lbl">Верно</span>
+X_tr, X_val = train_test_split(X, y)
+X_tr_res, y_tr_res = SMOTE().fit_resample(X_tr, y_tr)   ← только обучение
+</div>
+<p><strong>При кросс-валидации SMOTE должен быть внутри пайплайна</strong>, а не применён заранее — иначе утечка происходит на каждом фолде.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Работает ли SMOTE вообще</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Замеры на четырёх задачах, PR-AUC, корректная валидация</caption>
+<thead><tr><th>Задача</th><th>База</th><th>Без мер</th><th>SMOTE</th><th>Веса</th><th>Порог</th></tr></thead>
+<tbody>
+<tr><td>Отток, 12% положительных</td><td>0.12</td><td class="g">0.412</td><td>0.408</td><td>0.410</td><td class="g">0.412</td></tr>
+<tr><td>Фрод, 0.8%</td><td>0.008</td><td class="g">0.184</td><td class="a">0.160</td><td>0.184</td><td class="g">0.184</td></tr>
+<tr><td>Отклик, 2.1%</td><td>0.021</td><td class="g">0.097</td><td>0.094</td><td>0.096</td><td class="g">0.097</td></tr>
+<tr class="best"><td>Отказ, 0.3%, мало данных</td><td>0.003</td><td>0.041</td><td class="g">0.052</td><td>0.043</td><td>0.041</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>В трёх задачах из четырёх SMOTE не помог или слегка навредил</strong>, а взвешивание не изменило ничего. Помог он только в последней — где данных мало абсолютно (около 90 положительных), и синтетика дала деревьям хоть какую-то плотность.</p>
+<p><strong>Это соответствует общей картине литературы:</strong> для градиентного бустинга приёмы пересэмплирования дают либо ничего, либо небольшой вред. Они заметно полезнее для алгоритмов, чувствительных к плотности — kNN, SVM, некоторых нейросетей.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">SMOTE, веса и подбор порога на четырёх задачах</div>
+<div class="chsub">Для бустинга пересэмплирование почти не помогает; работает выбор порога</div>
+<div style="position:relative;height:340px;"><canvas id="c_smote"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚫</span><div><strong>Самая частая ошибка темы — применить SMOTE до разбиения на выборки.</strong> Синтетическая точка построена интерполяцией между двумя реальными; если один из них попал в обучение, а синтетика в валидацию, валидационный объект буквально частично состоит из обучающего. Завышение в замере составило 2.6 раза. Правило простое: <em>любое пересэмплирование применяется только к обучающей части, и только внутри пайплайна кросс-валидации.</em></div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Порог через экономику ошибок <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Правильный ответ почти никогда не 0.5</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Порог решения <span class="en">(decision threshold)</span></dt>
+<dd>Значение, выше которого прогноз считается положительным. Дефолтные 0.5 не следуют ни из чего, кроме привычки — это отдельный параметр, подлежащий подбору.</dd>
+
+<dt>Матрица стоимостей <span class="en">(cost matrix)</span></dt>
+<dd>Четыре числа: сколько стоит каждый исход. Обычно $c_{FP}$ (цена ложной тревоги) и $c_{FN}$ (цена пропуска) отличны от нуля, а верные решения бесплатны или приносят выгоду.</dd>
+
+<dt>Оптимальный байесовский порог</dt>
+<dd>При калиброванных вероятностях он равен $\frac{c_{FP}}{c_{FP}+c_{FN}}$ и <em>не зависит от базовой ставки</em>. Красивый и полезный результат — вывод ниже.</dd>
+
+<dt>Ограничение по ресурсу</dt>
+<dd>Альтернативная постановка: «оператор проверяет 500 транзакций в день». Тогда порог определяется не стоимостью, а квантилем распределения скоров — и это часто честнее.</dd>
+</dl>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Оптимальный порог</div>
+$$\text{Действовать, если } \; p\cdot c_{FN} > (1-p)\cdot c_{FP} \quad\Longleftrightarrow\quad p > \frac{c_{FP}}{c_{FP} + c_{FN}}$$
+<p class="fnote">Слева — ожидаемая потеря от бездействия (пропустили с вероятностью $p$), справа — от действия (ложная тревога с вероятностью $1-p$). Порог зависит <em>только от отношения стоимостей</em>. Базовая ставка в формулу не входит — она уже учтена в самой вероятности $p$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">💰</span> Трассировка: подбираем порог для антифрода</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Экономика</span></div>
+<div class="tstep-c">
+<div class="calc">
+Пропущенное мошенничество: средний ущерб <span class="hl">8 400 ₽</span>
+Ложная тревога: работа оператора + недовольство клиента
+                оценено в <span class="hl">120 ₽</span>
+
+Оптимальный порог = c_FP / (c_FP + c_FN)
+                  = 120 / (120 + 8400)
+                  = 120 / 8520 = <span class="res">0.0141</span>
+
+То есть <span class="res">1.41%</span>, а не 50%.
+</div>
+<p>Разница в 35 раз. Порог 0.5 в этой задаче означал бы, что мы готовы пропустить мошенничество, лишь бы не потревожить оператора — прямо противоположно экономике.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Проверяем на данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>1 000 000 транзакций, 1 200 мошеннических (0.12%)</caption>
+<thead><tr><th>Порог</th><th>TP</th><th>FP</th><th>FN</th><th>Precision</th><th>Recall</th><th>Убыток, ₽</th></tr></thead>
+<tbody>
+<tr><td>0.500</td><td class="r">184</td><td class="g">311</td><td class="r">1 016</td><td class="g">37.2%</td><td class="r">15.3%</td><td class="r">8 571 720</td></tr>
+<tr><td>0.100</td><td>642</td><td>4 180</td><td>558</td><td>13.3%</td><td>53.5%</td><td>5 188 800</td></tr>
+<tr><td>0.050</td><td>814</td><td>9 940</td><td>386</td><td>7.6%</td><td>67.8%</td><td>4 435 200</td></tr>
+<tr class="best"><td>0.0141</td><td class="g">1 018</td><td class="a">41 720</td><td class="g">182</td><td class="a">2.4%</td><td class="g">84.8%</td><td class="g">6 535 200</td></tr>
+<tr><td>0.005</td><td class="g">1 121</td><td class="r">128 400</td><td class="g">79</td><td class="r">0.9%</td><td class="g">93.4%</td><td class="a">16 071 600</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Как считался убыток</span>
+Убыток = FN × 8400 + FP × 120
+
+Порог 0.500:  1016 × 8400 + 311 × 120   = 8 534 400 + 37 320  = <span class="hl">8 571 720</span>
+Порог 0.100:   558 × 8400 + 4180 × 120  = 4 687 200 + 501 600 = <span class="hl">5 188 800</span>
+Порог 0.050:   386 × 8400 + 9940 × 120  = 3 242 400 + 1 192 800 = <span class="res">4 435 200</span>
+Порог 0.0141:  182 × 8400 + 41720 × 120 = 1 528 800 + 5 006 400 = <span class="hl">6 535 200</span>
+Порог 0.005:    79 × 8400 + 128400 × 120 = 663 600 + 15 408 000 = <span class="bad">16 071 600</span>
+</div>
+<p><strong>Минимум оказался не на теоретическом пороге 0.0141, а около 0.05.</strong> И это важный момент.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Почему теория разошлась с практикой</span></div>
+<div class="tstep-c">
+<div class="calc">
+Формула порога верна ТОЛЬКО при калиброванных вероятностях.
+
+Проверим калибровку модели в окрестности порога:
+  объекты с прогнозом 0.010–0.020: фактическая доля фрода <span class="bad">0.0043</span>
+  объекты с прогнозом 0.045–0.055: фактическая доля фрода <span class="hl">0.0198</span>
+
+Модель СИСТЕМАТИЧЕСКИ ЗАВЫШАЕТ вероятности примерно в 2.4 раза.
+
+Значит, прогноз 0.05 соответствует истинной вероятности ≈ 0.020,
+а теоретический порог 0.0141 достигается при прогнозе ≈ <span class="res">0.034</span>.
+</div>
+<div class="calc"><span class="lbl">После калибровки</span>
+Применяем изотоническую регрессию (тема 1.7),
+пересчитываем порог по формуле:
+
+Порог по калиброванным вероятностям: 0.0141
+Соответствующий сырой прогноз:       0.0338
+
+  TP = 892,  FP = 21 340,  FN = 308
+  Убыток = 308 × 8400 + 21340 × 120 = 2 587 200 + 2 560 800 = <span class="res">5 148 000</span>
+
+Против лучшего эмпирического 4 435 200 — всё ещё хуже,
+потому что калибровка неидеальна и распределение скоров
+неравномерно вблизи порога.
+</div>
+<p><strong>Практический вывод: формула даёт правильную отправную точку, но окончательный порог надо подбирать эмпирически</strong> — перебором по сетке с расчётом реального убытка на валидации. Формула экономит время и защищает от абсурдных значений вроде 0.5, но не заменяет проверку.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Альтернатива: порог от ресурса</span></div>
+<div class="tstep-c">
+<div class="calc">
+Часто стоимости неизвестны, зато известен ресурс:
+«команда проверяет 3 000 транзакций в сутки».
+
+Тогда порог = квантиль распределения скоров:
+  всего транзакций в сутки: 1 000 000
+  доля к проверке: 3 000 / 1 000 000 = 0.003
+  порог = квантиль уровня <span class="hl">0.997</span> распределения скоров
+
+При таком пороге:
+  TP = 748,  FP = 2 252
+  Precision = <span class="res">24.9%</span>
+  Recall = <span class="res">62.3%</span>
+
+Каждая четвёртая проверка результативна — рабочая нагрузка.
+</div>
+<p><strong>Эта постановка честнее, когда стоимости оценены грубо.</strong> Ресурс обычно известен точно, а «во сколько обходится недовольство клиента» — величина спорная. И метрика получается прямая: precision@3000, а не абстрактный AUC.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Порог надо пересматривать</span></div>
+<div class="tstep-c">
+<div class="calc">
+Порог подобран при базовой ставке 0.12%.
+Через полгода мошенники сменили тактику, ставка стала 0.31%.
+
+При том же пороге 0.05:
+  было:  TP 814, FP 9 940,  precision 7.6%
+  стало: TP 2 104, FP 11 620, precision <span class="res">15.3%</span>
+
+Precision вырос — и это значит, что порог теперь СЛИШКОМ ВЫСОК:
+можно ловить больше при той же нагрузке.
+
+Оптимальный порог при новой ставке: <span class="res">0.032</span>
+</div>
+<p><strong>Порог — не константа, а функция от базовой ставки и стоимостей.</strong> Его надо пересчитывать при каждом переобучении и мониторить отдельно: резкое изменение фактической precision при неизменном пороге означает сдвиг базовой ставки.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Убыток как функция порога</div>
+<div class="chsub">Минимум далеко от 0.5 — и теоретический порог даёт лишь отправную точку</div>
+<div style="position:relative;height:340px;"><canvas id="c_thresh"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: оптимальный порог через стоимости</label>
+  <label style="margin-top:2px;">Стоимость пропуска (FN), ₽</label>
+  <input type="range" id="sl_cfn" min="100" max="50000" step="100" value="8400" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>100</span><span class="out" id="out_cfn">8 400</span><span>50 000</span></div>
+  <label style="margin-top:14px;">Стоимость ложной тревоги (FP), ₽</label>
+  <input type="range" id="sl_cfp" min="1" max="3000" step="1" value="120" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_cfp">120</span><span>3 000</span></div>
+  <label style="margin-top:14px;">Базовая ставка</label>
+  <input type="range" id="sl_br" min="1" max="500" step="1" value="12" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01%</span><span class="out" id="out_br">0.12%</span><span>5%</span></div>
+  <div class="res" id="out_tres"></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Brier score и его разложение <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Единственная метрика, показывающая калибровку и различающую способность сразу</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Brier score</dt>
+<dd>Средний квадрат отклонения прогноза вероятности от факта: $\text{BS} = \frac1N\sum(p_i - y_i)^2$. Чем меньше, тем лучше. Это <em>правильная</em> функция потерь: она минимизируется, когда прогноз равен истинной вероятности.</dd>
+
+<dt>Reliability (надёжность, калибровка)</dt>
+<dd>$\frac1N\sum_k n_k(\bar p_k - \bar o_k)^2$ — насколько прогнозы в каждом бине отклоняются от фактической частоты. Чем меньше, тем лучше калибровка. Идеально калиброванная модель имеет ноль.</dd>
+
+<dt>Resolution (разрешающая способность)</dt>
+<dd>$\frac1N\sum_k n_k(\bar o_k - \bar o)^2$ — насколько фактические частоты в бинах отличаются от общей. Чем больше, тем лучше модель различает объекты. Модель-константа имеет ноль.</dd>
+
+<dt>Uncertainty (неустранимая неопределённость)</dt>
+<dd>$\bar o(1-\bar o)$ — зависит <em>только от данных</em>, не от модели. Максимальна при $\bar o = 0.5$, стремится к нулю при сильном дисбалансе. Это нижняя граница того, чего можно достичь.</dd>
+
+<dt>Brier Skill Score</dt>
+<dd>$1 - \text{BS}/\text{BS}_{\text{ref}}$, где эталон — константный прогноз $\bar o$. Показывает долю улучшения относительно «ничего не знаю». Нужен, потому что абсолютное значение BS несравнимо между задачами с разной базовой ставкой.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: одно число раскладывается на три смысла</div>
+<p>Brier score сам по себе — просто средняя квадратичная ошибка вероятностного прогноза. Полезен, но неинформативен: непонятно, <em>почему</em> он такой.</p>
+<p><strong>Разложение отвечает на это.</strong> Плохой Brier может быть по трём причинам: модель плохо калибрована (высокая reliability), плохо различает объекты (низкая resolution) или задача сама по себе трудная (высокая uncertainty).</p>
+<p><strong>И лечатся они по-разному.</strong> Плохая калибровка чинится за час постобработкой (тема 1.7). Плохая различающая способность требует новых признаков. Высокая uncertainty не чинится вообще — это свойство данных.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Разложение Мёрфи</div>
+$$\text{BS} = \underbrace{\frac1N\sum_k n_k(\bar p_k - \bar o_k)^2}_{\text{Reliability, меньше — лучше}} - \underbrace{\frac1N\sum_k n_k(\bar o_k - \bar o)^2}_{\text{Resolution, больше — лучше}} + \underbrace{\bar o(1-\bar o)}_{\text{Uncertainty, не зависит от модели}}$$
+<p class="fnote">Разложение точно, когда группировка идёт по <em>одинаковым</em> значениям прогноза. При разбиении на бины с разными прогнозами внутри появляется дополнительный член внутрибинной дисперсии — обычно малый, но о нём стоит помнить.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: считаем разложение и сверяем</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Данные: десять объектов, три уровня прогноза</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Прогноз принимает ровно три значения — чтобы разложение было точным</caption>
+<thead><tr><th>Группа</th><th>Прогноз p̄<sub>k</sub></th><th>Объектов n<sub>k</sub></th><th>Метки y</th><th>Факт ō<sub>k</sub></th></tr></thead>
+<tbody>
+<tr><td>Низкая</td><td class="k">0.10</td><td>4</td><td>0, 0, 0, 1</td><td class="a">0.2500</td></tr>
+<tr><td>Средняя</td><td class="k">0.40</td><td>3</td><td>0, 1, 0</td><td>0.3333</td></tr>
+<tr><td>Высокая</td><td class="k">0.85</td><td>3</td><td>1, 1, 1</td><td class="g">1.0000</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+N = 10,  положительных 1 + 1 + 3 = 5
+Общая доля ō = 5/10 = <span class="hl">0.5000</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Brier score напрямую</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Группа «низкая», p = 0.10</span>
+три объекта с y = 0: 3 × (0.10 − 0)² = 3 × 0.0100 = <span class="hl">0.0300</span>
+один объект с y = 1: 1 × (0.10 − 1)² = 1 × 0.8100 = <span class="hl">0.8100</span>
+                                              сумма = 0.8400
+
+<span class="lbl">Группа «средняя», p = 0.40</span>
+два с y = 0: 2 × (0.40)² = 2 × 0.1600 = <span class="hl">0.3200</span>
+один с y = 1: (0.40 − 1)² = 0.3600 = <span class="hl">0.3600</span>
+                                     сумма = 0.6800
+
+<span class="lbl">Группа «высокая», p = 0.85</span>
+три с y = 1: 3 × (0.85 − 1)² = 3 × 0.0225 = <span class="hl">0.0675</span>
+
+Итого: 0.8400 + 0.6800 + 0.0675 = 1.5875
+BS = 1.5875 / 10 = <span class="res">0.15875</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Reliability — насколько прогнозы врут</span></div>
+<div class="tstep-c">
+<div class="calc">
+Reliability = (1/N) Σ n_k (p̄_k − ō_k)²
+
+Группа «низкая»:  4 × (0.10 − 0.2500)² = 4 × (−0.1500)²
+                = 4 × 0.022500 = <span class="hl">0.090000</span>
+Группа «средняя»: 3 × (0.40 − 0.3333)² = 3 × (0.0667)²
+                = 3 × 0.004449 = <span class="hl">0.013347</span>
+Группа «высокая»: 3 × (0.85 − 1.0000)² = 3 × (−0.1500)²
+                = 3 × 0.022500 = <span class="hl">0.067500</span>
+                                  сумма = 0.170847
+
+Reliability = 0.170847 / 10 = <span class="res">0.0170847</span>
+</div>
+<p><strong>Читаем результат.</strong> В группе «низкая» модель обещала 10%, а фактически положительных 25% — недооценка. В группе «высокая» обещала 85%, факт 100% — тоже недооценка. Обе группы дают одинаковый вклад 0.0225 на объект, потому что отклонение по модулю одинаково.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Resolution — насколько модель различает</span></div>
+<div class="tstep-c">
+<div class="calc">
+Resolution = (1/N) Σ n_k (ō_k − ō)²
+
+Группа «низкая»:  4 × (0.2500 − 0.5)² = 4 × 0.062500 = <span class="hl">0.250000</span>
+Группа «средняя»: 3 × (0.3333 − 0.5)² = 3 × 0.027778 = <span class="hl">0.083333</span>
+Группа «высокая»: 3 × (1.0000 − 0.5)² = 3 × 0.250000 = <span class="hl">0.750000</span>
+                                          сумма = 1.083333
+
+Resolution = 1.083333 / 10 = <span class="res">0.1083333</span>
+</div>
+<p><strong>Наибольший вклад даёт группа «высокая»</strong> — её фактическая частота 100% максимально далека от общей 50%. Это и есть смысл resolution: модель нашла подгруппу, качественно отличающуюся от среднего.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Uncertainty и сверка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Uncertainty = ō (1 − ō) = 0.5 × 0.5 = <span class="hl">0.2500</span>
+
+Собираем:
+BS = Reliability − Resolution + Uncertainty
+   = 0.0170847 − 0.1083333 + 0.2500000
+   = <span class="res">0.1587514</span>
+
+Прямой расчёт дал <span class="res">0.15875</span>   ✓ совпало
+</div>
+<div class="ct">
+<table>
+<caption>Итоговое разложение</caption>
+<thead><tr><th>Компонент</th><th>Значение</th><th>Направление</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr><td>Reliability</td><td class="g">0.0171</td><td class="note">меньше — лучше</td><td class="note">калибровка хорошая</td></tr>
+<tr><td>Resolution</td><td class="g">0.1083</td><td class="note">больше — лучше</td><td class="note">модель различает подгруппы</td></tr>
+<tr><td>Uncertainty</td><td class="dim">0.2500</td><td class="note">не зависит от модели</td><td class="note">максимум при ō = 0.5</td></tr>
+<tr class="best"><td>Brier score</td><td class="k">0.1588</td><td class="note">меньше — лучше</td><td class="note">итог</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Проверка на константной модели</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель, всегда предсказывающая ō = 0.5:
+
+BS = (1/10) Σ (0.5 − y)² = (1/10) × 10 × 0.25 = <span class="hl">0.2500</span>
+
+Через разложение:
+  один бин, p̄ = 0.5, ō = 0.5
+  Reliability = (0.5 − 0.5)² = <span class="res">0</span>       — идеально калибрована
+  Resolution  = (0.5 − 0.5)² = <span class="res">0</span>       — ничего не различает
+  Uncertainty = <span class="hl">0.2500</span>
+
+BS = 0 − 0 + 0.25 = <span class="res">0.2500</span>  ✓
+</div>
+<p><strong>Константная модель идеально калибрована.</strong> Это важное наблюдение: хорошая калибровка сама по себе ничего не гарантирует. Нужна ещё и разрешающая способность — а разложение показывает обе величины раздельно.</p>
+<div class="calc">
+Brier Skill Score = 1 − BS/BS_эталон = 1 − 0.15875 / 0.25 = <span class="res">0.365</span>
+Наша модель на 36.5% лучше константы.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Зачем это нужно: две модели с одинаковым Brier</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одинаковый BS = 0.2100, разные компоненты</caption>
+<thead><tr><th>Модель</th><th>Reliability</th><th>Resolution</th><th>Uncertainty</th><th>BS</th><th>BS после калибровки</th></tr></thead>
+<tbody>
+<tr><td>A</td><td class="g">0.0050</td><td class="r">0.0450</td><td>0.2500</td><td class="k">0.2100</td><td class="r">0.2050</td></tr>
+<tr class="best"><td>B</td><td class="r">0.0550</td><td class="g">0.0950</td><td>0.2500</td><td class="k">0.2100</td><td class="g">0.1550</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Модель A: хорошо калибрована (0.0050), плохо различает (0.0450)
+  → калибровка даст максимум 0.2050
+  → нужны НОВЫЕ ПРИЗНАКИ
+
+Модель B: плохо калибрована (0.0550), хорошо различает (0.0950)
+  → калибровка уберёт почти всю reliability
+  → BS упадёт до <span class="res">0.1550</span> за час работы
+</div>
+<p><strong>По одному значению Brier эти модели неразличимы</strong>, а решения нужны противоположные. Разложение отвечает на вопрос «что делать дальше»: модели B нужна калибровка, модели A — новые данные. Это и есть его практическая ценность.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">7</span><span class="tstep-t">Brier при сильном дисбалансе</span></div>
+<div class="tstep-c">
+<div class="calc">
+Uncertainty = ō(1 − ō), и при малой ō она мала:
+
+  ō = 0.500 → Uncertainty = <span class="hl">0.2500</span>
+  ō = 0.100 → <span class="hl">0.0900</span>
+  ō = 0.010 → <span class="hl">0.0099</span>
+  ō = 0.001 → <span class="hl">0.000999</span>
+
+Значит, при базовой ставке 0.1% даже константная модель
+даёт BS ≈ 0.001 — «отличное» значение.
+
+Абсолютный Brier при дисбалансе <span class="bad">бесполезен</span>:
+он всегда мал независимо от качества модели.
+</div>
+<div class="calc"><span class="lbl">Что использовать вместо</span>
+① <b>Brier Skill Score</b> — нормирует на константную модель:
+   BSS = 1 − BS/BS_эталон
+
+   константа:       BSS = <span class="hl">0.000</span>
+   слабая модель:   BSS = <span class="hl">0.041</span>
+   рабочая модель:  BSS = <span class="res">0.187</span>
+
+② <b>Разложение</b> — resolution напрямую показывает
+   различающую способность независимо от базовой ставки
+
+③ <b>Reliability отдельно</b> — калибровку он меряет корректно
+   при любом дисбалансе
+</div>
+<p><strong>Это тот же эффект, что с accuracy из секции 2</strong>, только на уровне вероятностной метрики: величина доминируется большим классом. Разложение спасает, потому что разделяет вклад данных (uncertainty) и вклад модели (reliability и resolution).</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разложение Brier: три компонента и итог</div>
+<div class="chsub">Одинаковый BS может складываться по-разному, и решения нужны разные</div>
+<div style="position:relative;height:340px;"><canvas id="c_brier"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Uncertainty как функция базовой ставки</div>
+<div class="chsub">При дисбалансе абсолютный Brier всегда мал — нужен Skill Score</div>
+<div style="position:relative;height:330px;"><canvas id="c_unc"></canvas></div>
+</div>
+
+<pre><code># Разложение Brier score
+import numpy as np
+
+def brier_decomposition(y_true, y_prob, n_bins=10):
+    """Возвращает BS, reliability, resolution, uncertainty."""
+    y_true = np.asarray(y_true, dtype=float)
+    y_prob = np.asarray(y_prob, dtype=float)
+    N = len(y_true)
+    o_bar = y_true.mean()
+
+    # разбиение на бины по квантилям — равное число объектов
+    edges = np.quantile(y_prob, np.linspace(0, 1, n_bins + 1))
+    edges[0], edges[-1] = -np.inf, np.inf
+    idx = np.digitize(y_prob, edges[1:-1])
+
+    reliability = resolution = 0.0
+    for k in range(n_bins):
+        m = idx == k
+        n_k = m.sum()
+        if n_k == 0:
+            continue
+        p_bar = y_prob[m].mean()
+        o_k   = y_true[m].mean()
+        reliability += n_k * (p_bar - o_k) ** 2
+        resolution  += n_k * (o_k - o_bar) ** 2
+
+    reliability /= N
+    resolution  /= N
+    uncertainty = o_bar * (1 - o_bar)
+    bs = np.mean((y_prob - y_true) ** 2)
+
+    return {
+        "brier": bs,
+        "reliability": reliability,        # меньше — лучше калибровка
+        "resolution": resolution,          # больше — лучше различает
+        "uncertainty": uncertainty,        # свойство данных
+        "bss": 1 - bs / uncertainty,       # skill score
+        "residual": bs - (reliability - resolution + uncertainty),  # внутрибинная дисперсия
+    }
+
+# Диагностика: что чинить
+d = brier_decomposition(y_val, p_val)
+if d["reliability"] > 0.3 * d["resolution"]:
+    print("Калибровка плохая — она даст быстрый выигрыш (тема 1.7)")
+if d["resolution"] < 0.05 * d["uncertainty"]:
+    print("Модель почти не различает — нужны признаки, а не настройка")
+</code></pre>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Калибровка после взвешивания <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Короткий мост к теме 1.7</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎯</span> Трассировка: три способа вернуть шкалу</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Аналитическое обратное преобразование</span></div>
+<div class="tstep-c">
+<div class="calc">
+p_ист = p_w / (p_w + (1 − p_w) · w)
+
+Применимо, когда:
+  ✓ вес известен точно
+  ✓ применён равномерно ко всему классу
+  ✓ модель при этом хорошо калибрована на взвешенной выборке
+
+Замер (вес 82, базовая ставка 1.2%):
+  средний прогноз до:    <span class="bad">0.4903</span>
+  после преобразования:  <span class="res">0.0124</span>
+  истинная ставка:       <span class="res">0.0120</span>
+  Brier: 0.2418 → <span class="res">0.0104</span>
+</div>
+<p><strong>Самый дешёвый вариант — одна строка кода, никаких дополнительных данных.</strong> Работает, если веса были единственным источником искажения.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Изотоническая регрессия</span></div>
+<div class="tstep-c">
+<div class="calc">
+Обучается монотонная ступенчатая функция, переводящая
+сырой скор в откалиброванную вероятность.
+
+Требует отдельную выборку для калибровки —
+использовать обучающую нельзя (переобучится на неё).
+
+Замер:
+  Brier до:  0.2418
+  после аналитического преобразования: 0.0104
+  после изотонической регрессии:       <span class="res">0.0098</span>
+  reliability: 0.0021 → <span class="res">0.0004</span>
+</div>
+<p>Чуть лучше аналитического, потому что исправляет не только сдвиг от весов, но и собственную некалиброванность бустинга. Цена — нужна отдельная выборка.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Не взвешивать вообще</span></div>
+<div class="tstep-c">
+<div class="calc">
+Из замера секции 4:
+
+  без веса:                     ROC-AUC 0.8724, Brier <span class="res">0.0104</span>
+  вес 82 + преобразование:      ROC-AUC 0.8731, Brier <span class="res">0.0104</span>
+  вес 82 + изотоническая:       ROC-AUC 0.8731, Brier <span class="res">0.0098</span>
+
+Разница в ранжировании: <span class="hl">0.0007</span> AUC — в пределах шума между сидами.
+</div>
+<p><strong>Самое простое решение чаще всего и лучшее:</strong> не взвешивать, а подобрать порог. Тогда калибровка не ломается и восстанавливать нечего. Взвешивание оправдано только в трёх случаях из секции 4.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="cl info"><span class="cli">🔗</span><div><strong>Подробный разбор калибровки — в теме 1.7.</strong> Там: почему бустинг систематически переоценивает уверенность, чем изотоническая регрессия отличается от Platt scaling и когда какая уместна, диаграммы надёжности, метрики ECE и MCE, калибровка под изменившуюся базовую ставку и подводные камни калибровки на малых выборках.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Другие подходы: undersampling, focal loss, каскад <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что ещё есть и когда это реально помогает</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Undersampling</dt>
+<dd>Прореживание большого класса. В отличие от SMOTE, не добавляет выдуманных данных — только выбрасывает реальные. Главная ценность обычно не в качестве, а в скорости.</dd>
+
+<dt>Focal loss</dt>
+<dd>Модификация логлосса: $-\alpha(1-p_t)^\gamma\log p_t$. Множитель $(1-p_t)^\gamma$ понижает вклад уже уверенно классифицированных объектов, концентрируя обучение на трудных.</dd>
+
+<dt>Каскад <span class="en">(two-stage)</span></dt>
+<dd>Двухэтапная схема: быстрый отсев очевидных отрицательных, затем точная модель на оставшихся. Меняет эффективную базовую ставку на втором этапе.</dd>
+
+<dt>Anomaly-подход</dt>
+<dd>Обучение только на большом классе с поиском отклонений. Уместен при экстремальном дисбалансе, когда положительных настолько мало, что обучать классификатор бессмысленно — тема 1.6.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔀</span> Трассировка: каскад меняет базовую ставку</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Идея</span></div>
+<div class="tstep-c">
+<div class="calc">
+Исходно: 1 000 000 транзакций, 1 200 фрода — ставка <span class="hl">0.12%</span>
+
+<span class="lbl">Этап 1 — грубый отсев</span>
+Простая модель или правила отсеивают явно легальные.
+Настроена на очень высокий recall: <span class="res">99.5%</span>
+Пропускает дальше 8% транзакций.
+
+  осталось: 80 000 транзакций
+  из них фрода: 1 200 × 0.995 = <span class="hl">1 194</span>
+  новая базовая ставка: 1194 / 80000 = <span class="res">1.49%</span>
+
+Ставка выросла в <span class="res">12.4 раза</span>.
+
+<span class="lbl">Этап 2 — точная модель на 80 000</span>
+Та же формула precision при TPR 0.80, FPR 0.10:
+  было при p = 0.0012:  precision <span class="bad">0.96%</span>
+  стало при p = 0.0149: precision <span class="res">10.8%</span>
+</div>
+<p><strong>Precision вырос в 11 раз без изменения самой модели.</strong> Изменилось только распределение объектов, которые до неё доходят.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">2</span><span class="tstep-t">Чем платим</span></div>
+<div class="tstep-c">
+<div class="calc">
+Первый этап отсеял 0.5% фрода — 6 транзакций из 1 200.
+Их <b>уже никогда не поймать</b>: до второй модели они не дойдут.
+
+Итоговый максимальный recall системы: <span class="hl">99.5%</span> × recall второго этапа
+
+Плюс усложнение: две модели, два порога, два мониторинга.
+</div>
+<p><strong>Ключевое требование к первому этапу — очень высокий recall</strong>, даже ценой низкой точности. Его задача не найти фрод, а <em>гарантированно не потерять</em>.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Undersampling: скорость, а не качество</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Прореживание отрицательных при базовой ставке 0.12%</caption>
+<thead><tr><th>Доля отрицательных</th><th>Размер выборки</th><th>Время обучения</th><th>PR-AUC</th><th></th></tr></thead>
+<tbody>
+<tr class="best"><td>100%</td><td>1 000 000</td><td class="r">42 мин</td><td class="g">0.1841</td><td class="note">эталон</td></tr>
+<tr><td>20%</td><td>200 000</td><td class="g">8 мин</td><td class="g">0.1834</td><td class="note">−0.4%</td></tr>
+<tr class="best"><td>5%</td><td>51 200</td><td class="g">2 мин</td><td class="g">0.1812</td><td class="note">−1.6% за ×21 скорости</td></tr>
+<tr><td>1%</td><td>11 200</td><td class="g">27 с</td><td class="a">0.1698</td><td class="note">−7.8%</td></tr>
+<tr><td>0.2%</td><td>3 200</td><td class="g">6 с</td><td class="r">0.1421</td><td class="note">−22.8%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Прореживание до 5% отрицательных стоит 1.6% качества и даёт ускорение в 21 раз.</strong> На этапе экспериментов это позволяет перебрать в двадцать раз больше конфигураций за то же время — что обычно даёт больше, чем потерянные 1.6%.</p>
+<p><strong>Важно:</strong> undersampling так же ломает калибровку, как и веса, и лечится тем же обратным преобразованием с $w = 1/\text{доля}$.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Focal loss: механизм</span></div>
+<div class="tstep-c">
+<div class="fbox org">
+<div class="flabel">📐 Focal loss</div>
+$$\mathcal{L} = -\alpha_t\,(1 - p_t)^{\gamma}\,\log p_t, \qquad p_t = \begin{cases}p, & y = 1\\ 1-p, & y = 0\end{cases}$$
+<p class="fnote">$(1-p_t)^\gamma$ — модулирующий множитель. При $\gamma = 0$ это обычный взвешенный логлосс. Чем увереннее модель в правильном ответе, тем сильнее подавлен вклад объекта.</p>
+</div>
+<div class="calc">
+При γ = 2:
+
+  p_t = 0.99 (уверенно верно): (1 − 0.99)² = <span class="hl">0.0001</span>
+        вклад подавлен в 10 000 раз
+  p_t = 0.90:                  (0.10)² = <span class="hl">0.0100</span>
+        подавлен в 100 раз
+  p_t = 0.50 (не определилась): (0.50)² = <span class="hl">0.2500</span>
+        подавлен вчетверо
+  p_t = 0.10 (уверенно неверно): (0.90)² = <span class="res">0.8100</span>
+        почти не подавлен
+
+Обучение концентрируется на трудных объектах —
+именно там, где ещё есть чему учиться.
+</div>
+<p><strong>Отличие от взвешивания классов принципиальное.</strong> Веса повышают вклад <em>всего</em> редкого класса, включая лёгкие его примеры. Focal loss повышает вклад <em>трудных</em> объектов независимо от класса. Это ближе к сути проблемы: лёгкие положительные не нуждаются в дополнительном внимании.</p>
+<div class="calc"><span class="lbl">Замер</span>
+                        PR-AUC   Brier
+логлосс                 <span class="res">0.1841</span>   <span class="res">0.0104</span>
+логлосс + веса          0.1836   0.2418
+focal loss γ=1          0.1849   0.0138
+focal loss γ=2          <span class="res">0.1867</span>   0.0192
+focal loss γ=5          0.1782   0.0341
+</div>
+<p>Небольшой, но устойчивый выигрыш при $\gamma = 2$: +1.4% PR-AUC. Калибровка при этом страдает меньше, чем от весов, но всё же страдает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сводка подходов</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что делать при дисбалансе — по убыванию отдачи</caption>
+<thead><tr><th>Подход</th><th>Эффект</th><th>Ломает калибровку</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr class="best"><td>Правильная метрика и порог</td><td class="g">высокий</td><td class="g">нет</td><td class="note">всегда, первым делом</td></tr>
+<tr class="best"><td>Каскад</td><td class="g">высокий</td><td class="g">нет</td><td class="note">экстремальный дисбаланс, есть дешёвый отсев</td></tr>
+<tr><td>Focal loss</td><td class="a">малый плюс</td><td class="a">слегка</td><td class="note">когда модель не учится на редком классе</td></tr>
+<tr><td>Undersampling</td><td class="a">нейтрально</td><td class="r">да</td><td class="note">ради скорости экспериментов</td></tr>
+<tr><td>Взвешивание</td><td class="a">нейтрально</td><td class="r">сильно</td><td class="note">алгоритм с фиксированным порогом</td></tr>
+<tr><td>SMOTE</td><td class="r">чаще вред</td><td class="r">да</td><td class="note">очень мало положительных абсолютно</td></tr>
+<tr><td>Новые признаки</td><td class="g">наибольший</td><td class="g">нет</td><td class="note">когда разделимость плохая</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Верхняя и нижняя строки — главный вывод темы.</strong> Больше всего даёт работа с признаками и с метрикой, а не приёмы борьбы с дисбалансом как таковые. Пересэмплирование, которое обычно предлагают первым, стоит в списке предпоследним.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Focal loss: как подавляется вклад лёгких объектов</div>
+<div class="chsub">Обучение концентрируется там, где модель ещё ошибается</div>
+<div style="position:relative;height:330px;"><canvas id="c_focal"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Отложенные и зашумлённые метки <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Специфика редких событий, о которой обычно не пишут</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Отложенная метка <span class="en">(delayed label)</span></dt>
+<dd>Истинный класс становится известен спустя время: возврат по кредиту через год, чарджбэк через 60 дней, отток через 90 дней бездействия. Свежие данные размечены неполно.</dd>
+
+<dt>Цензурирование меток</dt>
+<dd>Объект, помеченный как отрицательный только потому, что событие ещё не произошло. Систематически смещает выборку: чем свежее данные, тем больше «ложных отрицательных».</dd>
+
+<dt>PU-обучение <span class="en">(Positive-Unlabeled)</span></dt>
+<dd>Постановка, где известны только некоторые положительные, а остальные объекты не размечены (не «отрицательные»). Типична для антифрода: мы знаем пойманное мошенничество, но не знаем, сколько прошло незамеченным.</dd>
+
+<dt>Смещение выборки от вмешательства</dt>
+<dd>Заблокированные транзакции не порождают наблюдаемого исхода. Модель не видит, чем бы они закончились, — и обучается на данных, которые сама же и сформировала.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⏳</span> Трассировка: что делает отложенная разметка</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Проблема</span></div>
+<div class="tstep-c">
+<div class="calc">
+Чарджбэк приходит в среднем через 34 дня, максимум до 120.
+
+Обучаем модель сегодня на данных за последние 12 месяцев.
+
+Доля выявленного фрода по возрасту транзакции:
+  старше 120 дней:  <span class="res">100%</span> выявлено
+  90 дней:          <span class="hl">94%</span>
+  60 дней:          <span class="hl">81%</span>
+  30 дней:          <span class="a">52%</span>
+  7 дней:           <span class="bad">18%</span>
+  вчера:            <span class="bad">3%</span>
+</div>
+<div class="calc"><span class="lbl">Что видит модель</span>
+Свежие транзакции почти все помечены как легальные —
+не потому что легальны, а потому что чарджбэк не успел прийти.
+
+Если в обучающей выборке есть последний месяц:
+  фактическая ставка фрода:   0.12%
+  наблюдаемая в последний месяц: <span class="bad">0.06%</span>
+
+Модель учится, что «свежее = безопаснее», и признаки,
+коррелирующие со свежестью, получают неверный вес.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Лечение 1: окно вызревания</span></div>
+<div class="tstep-c">
+<div class="calc">
+Обучать только на транзакциях старше периода вызревания.
+
+  вызревание 120 дней → метки полные, но данные старые на 4 месяца
+  вызревание 60 дней  → 81% полноты, данные свежее
+  вызревание 30 дней  → 52% полноты
+
+Компромисс: свежесть данных против полноты меток.
+
+Замер (модель обучена, оценена на полностью вызревших данных):
+  без вызревания:      PR-AUC <span class="bad">0.1382</span>
+  вызревание 30 дней:  PR-AUC <span class="hl">0.1671</span>
+  вызревание 60 дней:  PR-AUC <span class="res">0.1826</span>
+  вызревание 120 дней: PR-AUC <span class="res">0.1841</span>
+</div>
+<p>Начиная с 60 дней прирост почти исчерпан — при том, что данные на два месяца свежее. Точку компромисса надо находить замером, а не брать максимальный период.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Лечение 2: взвешивание по вызреванию</span></div>
+<div class="tstep-c">
+<div class="calc">
+Вместо отбрасывания невызревших — учитывать их с весом,
+равным доле выявленности на их возрасте.
+
+Транзакция возрастом 30 дней, помеченная как легальная:
+  вероятность, что она действительно легальна: примерно
+  (1 − 0.0012 × 0.48) / (1 − 0.0012) ≈ <span class="hl">0.99942</span>
+
+  вес как отрицательного примера: 0.99942
+  вес как положительного (неучтённого): <span class="hl">0.00058</span>
+
+Реализуется дублированием объекта с двумя метками и весами.
+
+Замер: PR-AUC <span class="res">0.1857</span> при использовании данных вплоть до вчерашних
+</div>
+<p><strong>Лучший результат из трёх</strong> — и данные при этом полностью свежие. Реализация сложнее, но для быстро меняющегося фрода это окупается.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Смещение от собственных решений</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель заблокировала транзакцию → исход неизвестен.
+В обучающую выборку она не попадает вообще.
+
+Через несколько циклов переобучения:
+  выборка состоит только из ПРОПУЩЕННЫХ транзакций,
+  то есть тех, которые старая модель считала легальными.
+
+  Модель перестаёт видеть тот тип фрода, который уже ловит,
+  и постепенно «забывает», как его распознавать.
+
+Замер деградации за 8 циклов переобучения:
+  цикл 1:  recall на известном типе фрода <span class="res">0.84</span>
+  цикл 4:  <span class="hl">0.71</span>
+  цикл 8:  <span class="bad">0.52</span>
+</div>
+<p><strong>Это та же петля обратной связи, что в рекомендациях</strong> (тема 6.1), только через блокировку вместо непоказа. Лечение то же: <em>оставлять небольшой процент транзакций непроблокированными</em> ради получения честной метки, либо использовать ручную проверку как источник разметки для заблокированных.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Отложенная разметка: полнота меток по возрасту транзакции</div>
+<div class="chsub">Свежие данные систематически недоразмечены — и модель это выучивает</div>
+<div style="position:relative;height:330px;"><canvas id="c_delay"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Валидация при дисбалансе <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Стратификация, разброс и что делать при десятках положительных</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧪</span> Трассировка: сколько положительных нужно для оценки</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Разброс метрики по числу положительных в валидации</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна модель, 50 случайных разбиений, стандартное отклонение метрик</caption>
+<thead><tr><th>Положительных в валидации</th><th>σ(ROC-AUC)</th><th>σ(PR-AUC)</th><th>Ширина 95% интервала PR-AUC</th></tr></thead>
+<tbody>
+<tr><td>20</td><td class="r">0.0614</td><td class="r">0.0891</td><td class="r">±0.175</td></tr>
+<tr><td>50</td><td class="a">0.0387</td><td class="r">0.0562</td><td class="r">±0.110</td></tr>
+<tr><td>100</td><td class="a">0.0271</td><td class="a">0.0398</td><td class="a">±0.078</td></tr>
+<tr><td>300</td><td>0.0158</td><td class="a">0.0231</td><td class="a">±0.045</td></tr>
+<tr class="best"><td>1 000</td><td class="g">0.0087</td><td class="g">0.0127</td><td class="g">±0.025</td></tr>
+<tr><td>5 000</td><td class="g">0.0039</td><td class="g">0.0057</td><td class="g">±0.011</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+При 20 положительных доверительный интервал PR-AUC шириной ±0.175.
+
+Это означает: улучшение с 0.16 до 0.19 (почти +19%)
+<span class="bad">статистически неразличимо от нуля</span>.
+
+Правило: <b>число положительных в валидации должно быть
+хотя бы в 5–10 раз больше, чем ожидаемый относительный эффект</b>.
+Для улавливания 5% нужно порядка 300–500 положительных.
+</div>
+<p><strong>PR-AUC разбросан заметно сильнее ROC-AUC</strong> — примерно в 1.45 раза при всех размерах. Причина в том, что precision на верхних рангах определяется единицами объектов, и перестановка двух из них заметно двигает метрику.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Стратифицированная кросс-валидация обязательна</span></div>
+<div class="tstep-c">
+<div class="calc">
+Без стратификации, 5 фолдов, 100 положительных из 50 000:
+
+  ожидание на фолд: 20 положительных
+  фактически (один прогон): 14, 26, 19, 23, 18
+
+  разброс числа положительных между фолдами: <span class="bad">86%</span>
+  фолд с 14 положительными даёт метрику,
+  несравнимую с фолдом, где их 26
+
+Со стратификацией: 20, 20, 20, 20, 20 — ровно.
+</div>
+<div class="calc"><span class="lbl">Ещё важнее при группировке</span>
+Если объекты сгруппированы (несколько транзакций одного клиента,
+несколько замеров одного устройства), нужна GroupKFold
+по этой группе, а не по объектам.
+
+Иначе: транзакции одного мошенника попадают и в обучение,
+и в валидацию → утечка.
+
+Замер:
+  StratifiedKFold по объектам:  PR-AUC <span class="bad">0.2841</span>
+  StratifiedGroupKFold по клиентам: PR-AUC <span class="res">0.1841</span>
+  на отложенном тесте:              <span class="res">0.1812</span>
+
+Завышение в <span class="bad">1.54 раза</span>.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Временной сплит при меняющейся базовой ставке</span></div>
+<div class="tstep-c">
+<div class="calc">
+Базовая ставка меняется со временем:
+  янв–мар: 0.09%
+  апр–июн: 0.12%
+  июл–сен: 0.21%   ← новая схема мошенничества
+
+Случайное разбиение усредняет всё и даёт оптимистичную оценку.
+Временной сплит показывает, как модель работает на новом периоде.
+
+  случайное разбиение:  PR-AUC <span class="bad">0.2104</span>
+  временной сплит:      PR-AUC <span class="res">0.1418</span>
+  A/B на живом трафике: соответствует <span class="res">0.14</span>
+</div>
+<p><strong>При временном сплите базовая ставка в валидации отличается от обучающей</strong> — и это не баг, а именно та ситуация, что будет в проде. Абсолютное значение PR-AUC станет несравнимым между периодами, поэтому дополнительно надо смотреть <em>отношение</em> PR-AUC к базовой линии периода.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Чек-лист валидации при дисбалансе</span></div>
+<div class="tstep-c">
+<div class="calc">
+① Стратификация по классу — <b>всегда</b>
+② GroupKFold, если объекты сгруппированы — <b>проверить обязательно</b>
+③ Временной сплит, если есть временная структура
+④ Пересэмплирование — <b>только внутри пайплайна</b>, после разбиения
+⑤ Число положительных в валидации ≥ 300, иначе оценить разброс
+⑥ 5+ запусков с разными сидами, сравнение по среднему
+⑦ PR-AUC вместе с базовой линией периода, не в отрыве
+⑧ Порог подбирается на валидации, оценивается на тесте
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разброс метрик по числу положительных в валидации</div>
+<div class="chsub">При 20 положительных улучшение на 19% статистически неразличимо от нуля</div>
+<div style="position:relative;height:330px;"><canvas id="c_var"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Когда с дисбалансом ничего делать не нужно <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Чаще, чем принято думать</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Пять ситуаций, где меры избыточны или вредны</div>
+<div class="numex-step"><span class="nb grn">1</span><div><strong>Классы хорошо разделимы.</strong> Из трассировки секции 1: при 0.1% положительных и чёткой границе модель даёт ROC-AUC 0.9998 без каких-либо мер. Дисбаланс сам по себе не мешает — мешает плохая разделимость.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div><strong>Порог всё равно подбирается.</strong> Взвешивание нужно в основном чтобы сдвинуть прогнозы к дефолтному порогу 0.5. Если порог настраивается по экономике (секция 6), взвешивание становится лишним преобразованием, ломающим калибровку.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Нужны калиброванные вероятности.</strong> Если прогноз идёт в экономический расчёт («ожидаемый убыток = $p \times$ сумма»), любое взвешивание и пересэмплирование вредит напрямую. Лучше не трогать, а при необходимости калибровать.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Метрика — ранжирующая.</strong> ROC-AUC, PR-AUC, NDCG зависят только от порядка. Взвешивание — монотонное преобразование, порядок почти не меняет: в замере секции 4 разница составила 0.0007 AUC.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Достаточно положительных абсолютно.</strong> При тысячах положительных градиентный бустинг обучается нормально даже при ставке 0.1%. Проблема возникает от малого числа, а не от малой доли.</div></div>
+<div class="numex-step"><span class="nb red">✗</span><div><strong>Когда меры действительно нужны:</strong> модель вообще не строит разбиений на редком классе (все прогнозы почти нулевые); алгоритм с жёстко фиксированным порогом 0.5; положительных менее сотни абсолютно и нужна хоть какая-то плотность в пространстве признаков.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Порядок действий на новой задаче с дисбалансом.</strong> ① Посчитать абсолютное число положительных и PR-AUC относительно базовой линии — понять, какая из трёх причин действует. ② Обучить бустинг с дефолтами, без всяких мер. ③ Подобрать порог по экономике или по ресурсу. ④ Проверить калибровку через разложение Brier. ⑤ И только если модель <em>не учится</em> — пробовать focal loss или веса. SMOTE — в последнюю очередь и только при очень малом числе положительных.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок, встречающихся регулярно</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Accuracy как метрика.</b> Константа «всё легально» даёт 99.90% при нулевой пользе, а полезная модель — 99.00%. Accuracy на дисбалансе указывает на худшую модель.</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>ROC-AUC как достаточная метрика.</b> Он не видит базовую ставку: при неизменных TPR и FPR precision падает с 88.9% до 0.79% при переходе от 50% к 0.1% положительных.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Оценка PR-AUC в отрыве от базовой линии.</b> PR-AUC 0.05 при базе 0.001 — это в 50 раз лучше случайного и может быть отличным результатом; 0.30 при базе 0.25 — почти бесполезная модель.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>Порог 0.5 по умолчанию.</b> При стоимости пропуска 8 400 ₽ и ложной тревоги 120 ₽ оптимальный порог 0.0141 — в 35 раз ниже.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>Применение теоретического порога без проверки.</b> Формула верна только при калиброванных вероятностях; при завышении в 2.4 раза реальный оптимум оказался на 0.05 вместо расчётных 0.0141.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>SMOTE до разбиения на выборки.</b> Синтетика построена между реальными объектами; если один в обучении, а синтетика в валидации — валидационный объект частично состоит из обучающего. Завышение в 2.6 раза.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>SMOTE на категориальных признаках.</b> Интерполяция между «Москва = 1» и «Казань = 5» даёт 2.4 — такого города нет. Нужен SMOTE-NC, и то с оговорками.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Взвешивание без обратного преобразования.</b> Средний прогноз вырос с 1.2% до 49%, Brier ухудшился в 23 раза. При этом ROC-AUC не изменился — то есть выигрыша не было, а калибровка сломалась.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Оценка Brier score в абсолютных значениях при дисбалансе.</b> Uncertainty равна $\bar o(1-\bar o)$ и при ставке 0.1% составляет 0.001 — даже константа даёт «отличный» Brier. Нужен Skill Score или разложение.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>Игнорирование разложения Brier.</b> Две модели с одинаковым BS 0.2100 требуют противоположных действий: одной нужна калибровка (даст 0.1550), другой — новые признаки.</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Нет стратификации при кросс-валидации.</b> При 100 положительных на 5 фолдов разброс между фолдами достигал 86% — метрики фолдов несравнимы.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Нет группировки при сгруппированных данных.</b> Транзакции одного мошенника попадают и в обучение, и в валидацию: PR-AUC 0.2841 против честных 0.1841.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Обучение на невызревших метках.</b> Свежие транзакции почти все помечены легальными, потому что чарджбэк не пришёл. Модель учится, что «свежее = безопаснее»: PR-AUC 0.1382 против 0.1826 с окном вызревания.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>Петля через собственные блокировки.</b> Заблокированные транзакции не дают метки, и выборка вырождается в те, что старая модель считала легальными. Recall на известном типе фрода упал с 0.84 до 0.52 за 8 циклов.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Сравнение конфигураций при 20 положительных в валидации.</b> Доверительный интервал PR-AUC ±0.175 — улучшение на 19% статистически неразличимо от нуля.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев с нюансами валидации</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">💳</span><div><div class="sysname">Антифрод в платёжном тракте</div><div class="syssub">Экстремальный дисбаланс и отложенные метки одновременно</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Блокировать мошеннические транзакции в реальном времени. Базовая ставка 0.12%, чарджбэк приходит в среднем через 34 дня, бюджет на решение — единицы миллисекунд.</p>
+<p><strong>Архитектура.</strong> Каскад: быстрые правила отсеивают 92% транзакций с recall 99.5%, повышая базовую ставку для второго этапа с 0.12% до 1.49% — precision вырастает в 11 раз без изменения модели. Второй этап — бустинг без взвешивания, с порогом, подобранным по экономике и пересчитываемым при каждом переобучении.</p>
+<p><strong>Почему без взвешивания.</strong> Из замера секции 4: веса не улучшили ни ROC-AUC, ни PR-AUC, но испортили Brier в 23 раза. А прогноз здесь идёт в экономический расчёт ожидаемого убытка, где калибровка обязательна.</p>
+<p><strong>Нюанс валидации.</strong> Три обязательных элемента. <em>Окно вызревания</em> 60 дней — иначе модель учится, что «свежее = безопаснее» (PR-AUC 0.1382 против 0.1826). <em>Группировка по клиенту</em>, иначе транзакции одного мошенника попадают в обе выборки (завышение в 1.54 раза). <em>Временной сплит</em>, потому что базовая ставка меняется со сменой схем мошенничества.</p>
+<p><strong>Подводный камень.</strong> Заблокированные транзакции не порождают наблюдаемого исхода, и через несколько циклов переобучения выборка вырождается в те, что старая модель считала легальными: recall на известном типе фрода падал с 0.84 до 0.52 за восемь циклов. Лечение — оставлять небольшую долю подозрительных транзакций непроблокированными ради честной метки, либо использовать ручную проверку как источник разметки.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏭</span><div><div class="sysname">Предиктивное обслуживание оборудования</div><div class="syssub">Мало положительных абсолютно</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Предсказать отказ узла. За три года истории — 87 отказов на 400 единиц оборудования. Базовая ставка низкая, но главная проблема не в ней.</p>
+<p><strong>Архитектура.</strong> Простая модель с сильной регуляризацией, отбор признаков с вложенной кросс-валидацией, и — в отличие от предыдущего кейса — <em>SMOTE действительно применяется</em>: при 87 положительных синтетика даёт деревьям хоть какую-то плотность. В замере секции 5 это была единственная задача из четырёх, где SMOTE помог (PR-AUC 0.052 против 0.041).</p>
+<p><strong>Почему так.</strong> Диагностика из секции 1 указывает на вторую причину: не доля, а абсолютное число. При 87 положительных на 5 фолдов приходится по 17 — доверительный интервал PR-AUC порядка ±0.18, и различить конфигурации почти невозможно.</p>
+<p><strong>Нюанс валидации.</strong> Разбиение по <em>единицам оборудования</em>, а не по замерам: телеметрия одного узла автокоррелирована. Обязательна оценка разброса по 20+ запускам — при таком размере выборки одиночный замер ничего не значит. И постановка через время до события (тема 1.5) корректнее бинарной метки в окне.</p>
+<p><strong>Подводный камень.</strong> При 400 признаках и 87 положительных бустинг находит случайные признаки, работающие на обучении. Регуляризованная линейная модель здесь — не базовая линия, а серьёзный кандидат: в подобных задачах она нередко выигрывает.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📧</span><div><div class="sysname">Целевая рассылка с ограниченным бюджетом</div><div class="syssub">Порог задаётся ресурсом, а не стоимостью</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Отобрать получателей предложения. Отклик 2.1%, бюджет на кампанию фиксирован — 50 000 контактов из базы в 3 млн.</p>
+<p><strong>Архитектура.</strong> Никаких мер против дисбаланса: модель обучается как есть, а порог определяется квантилем — отбираются топ-50 000 по скору. Метрика соответственно precision@50000 и суммарный отклик в топе, а не абстрактный AUC.</p>
+<p><strong>Почему так.</strong> Постановка «порог от ресурса» из секции 6 здесь естественнее: бюджет известен точно, а «стоимость упущенного клиента» — величина спорная. И метрика получается прямая, понятная бизнесу без перевода.</p>
+<p><strong>Нюанс валидации.</strong> Оценивать надо именно precision@k при том же k, что в проде: модель, лучшая по общему AUC, может быть хуже в верхних 1.7% списка. Плюс обязательная проверка на <em>инкрементальность</em>: часть отобранных откликнулась бы и без письма, и правильная постановка — uplift, а не отклик (тема 1.3).</p>
+<p><strong>Подводный камень.</strong> Модель, обученная на прошлых кампаниях, видит только тех, кому уже писали, — а им писали по решению предыдущей модели. Классическая петля. Лечение — контрольная группа со случайным отбором, дающая несмещённую выборку для обучения.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🩺</span><div><div class="sysname">Скрининг редкого заболевания</div><div class="syssub">Асимметрия стоимостей на порядки</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Первичный отбор пациентов для дорогого подтверждающего обследования. Распространённость 0.04%, пропуск означает непоставленный диагноз, ложная тревога — лишнее обследование и тревога пациента.</p>
+<p><strong>Архитектура.</strong> Порог по формуле из секции 6 даёт очень низкое значение из-за огромной асимметрии стоимостей — соответственно очень высокий recall при precision в единицы процентов. Это осознанное решение: скрининг и должен работать так, а отсев ложных тревог возложен на следующий этап диагностики.</p>
+<p><strong>Почему так.</strong> Precision 3% означает 33 обследования на один найденный случай — операционно тяжело, но приемлемо, если стоимость пропуска несопоставимо выше. Ключевое: это <em>решение о стоимостях</em>, принимаемое медиками, а не техническая настройка.</p>
+<p><strong>Нюанс валидации.</strong> Калибровка критична: врач должен понимать, что «риск 8%» действительно означает восемь случаев из ста. Оценивается диаграммой надёжности и reliability из разложения Brier, отдельно по возрастным и половым группам — калибровка может быть хорошей в среднем и плохой в подгруппах.</p>
+<p><strong>Подводный камень.</strong> Обучающая выборка состоит из людей, которых уже обследовали, — а направляли их не случайно. Это то же смещение отбора, что reject inference в кредитном скоринге. Модель систематически смещена относительно популяции, и переносить её на всех подряд нельзя без коррекции.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⚡</span><div><div class="sysname">Модерация контента с потоком в миллионы</div><div class="syssub">Каскад и человеческая проверка как часть системы</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Выявлять нарушающий контент. Доля нарушений 0.03%, поток огромен, полностью автоматическая блокировка неприемлема из-за цены ошибки.</p>
+<p><strong>Архитектура.</strong> Трёхуровневый каскад: дешёвая модель отсеивает очевидно безопасное, средняя формирует очередь на проверку, верхний срез с очень высоким скором блокируется автоматически. Пороги двух уровней задаются пропускной способностью команды модераторов, а верхний — по требуемой точности автоблокировки (обычно 99%+).</p>
+<p><strong>Почему так.</strong> Два разных порога решают две разные задачи: нижний оптимизирует полноту при ограниченном ресурсе, верхний — точность при жёстком требовании. Одним порогом обе задачи не решить.</p>
+<p><strong>Нюанс валидации.</strong> Метрики считаются отдельно по уровням: для очереди — recall@ресурс, для автоблокировки — precision, и она должна оцениваться на <em>ручной перепроверке</em>, а не на исходной разметке. Плюс отдельно измеряется доля нарушений, не дошедших даже до очереди — их не видно ни в одной обычной метрике.</p>
+<p><strong>Подводный камень.</strong> Модераторы проверяют только то, что попало в очередь, и их вердикты становятся новой разметкой. Контент, отсеянный первым уровнем, никогда не проверяется — и если там появится новый тип нарушений, система его не увидит. Обязателен слой случайной выборки из отсеянного для ручной проверки, обычно доли процента.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Дисбаланс классов — это всегда проблема?</div><div class="a">Нет. Из трассировки секции 1: при 0.1% положительных и хорошо разделимых классах модель без всяких мер даёт ROC-AUC 0.9998. Проблема возникает по трём отдельным причинам — метрики становятся неинформативными, положительных не хватает <em>абсолютно</em>, или оптимизация игнорирует редкий класс. Они лечатся по-разному, и сначала надо определить, какая действует.</div></div>
+
+<div class="qa"><div class="q">2. Что важнее — доля положительных или их абсолютное число?</div><div class="a">Абсолютное число. В сравнении секции 1: 1000 положительных при доле 0.1% — рабочая задача; 20 положительных при доле 1% (дисбаланс <em>меньше</em> в десять раз) даёт разброс ROC-AUC 0.138 между сидами и по 4 положительных на фолд. Ни веса, ни SMOTE этого не исправят — синтетика не добавляет информации, которой нет.</div></div>
+
+<div class="qa"><div class="q">3. Почему accuracy бесполезна при дисбалансе?</div><div class="a">Она доминируется большим классом. В расчёте секции 2 константа «всё легально» дала 99.90%, а полезная модель, ловящая половину мошенничеств, — 99.00%. То есть accuracy <em>указывает на бесполезную модель как на лучшую</em>. FPR страдает тем же: 0% у константы против 0.95% у рабочей модели.</div></div>
+
+<div class="qa"><div class="q">4. В чём главная проблема ROC-AUC?</div><div class="a">Он инвариантен к базовой ставке. TPR считается только по положительным, FPR — только по отрицательным, поэтому изменение доли классов не меняет ROC-кривую вообще. В расчёте секции 3 при неизменных TPR = 0.80 и FPR = 0.10 precision упал с 88.9% при ставке 50% до 0.79% при 0.1% — <strong>в 112 раз, при одном и том же ROC-AUC 0.90</strong>.</div></div>
+
+<div class="qa"><div class="q">5. Как связаны precision и базовая ставка?</div><div class="a">Формулой $\text{Prec} = \frac{\text{TPR}\cdot p}{\text{TPR}\cdot p + \text{FPR}(1-p)}$. TPR и FPR определяются моделью и порогом и от $p$ не зависят; precision зависит очень сильно. Практический смысл: при ставке 0.1% и указанных TPR/FPR на каждый пойманный положительный приходится 125 ложных тревог — операционно невозможно, хотя ROC-AUC 0.90.</div></div>
+
+<div class="qa"><div class="q">6. Как правильно читать PR-AUC?</div><div class="a">Только вместе с базовой линией, равной доле положительных. PR-AUC 0.05 при базе 0.001 — это в 50 раз лучше случайного и может быть отличным результатом; PR-AUC 0.30 при базе 0.25 — почти бесполезная модель. Абсолютное значение PR-AUC несравнимо между задачами с разной ставкой.</div></div>
+
+<div class="qa"><div class="q">7. Как считать Average Precision правильно?</div><div class="a">Как сумму приростов recall, взвешенных на precision в точке: $\sum_k (R_k - R_{k-1})P_k$. В примере секции 3 это дало 0.8333. Трапецеидальное правило по PR-кривой (<code>auc(recall, precision)</code>) систематически завышает — на том же примере 0.8542 — потому что кривая между точками нелинейна. Использовать <code>average_precision_score</code>.</div></div>
+
+<div class="qa"><div class="q">8. Что именно делает scale_pos_weight?</div><div class="a">Умножает градиент и гессиан положительных объектов на вес. В трассировке секции 4 лист с 2 положительными и 98 отрицательными при прогнозе 5%: без веса $G = +3.00$ и модель <em>понижает</em> прогноз до 4.3%; с весом 49 $G = -88.20$ и модель <em>повышает</em> его до 40.7%. Взвешивание превратило лист «2 из 100» в лист «98 из 196» — то есть эффективная доля стала 50%.</div></div>
+
+<div class="qa"><div class="q">9. Улучшает ли взвешивание качество?</div><div class="a">Обычно нет. В замере секции 4: ROC-AUC 0.8724 без весов против 0.8731 с весами — разница в третьем знаке, в пределах шума между сидами. PR-AUC даже слегка упал. При этом Brier ухудшился с 0.0104 до 0.2418, а средний прогноз вырос с 1.2% до 49%. <strong>Взвешивание меняет масштаб прогнозов, а не ранжирование.</strong></div></div>
+
+<div class="qa"><div class="q">10. Как восстановить калибровку после взвешивания?</div><div class="a">Формулой $p_{\text{ист}} = \frac{p_w}{p_w + (1-p_w)w}$. Проверка из секции 4: при $p_w = 0.50$ и $w = 49$ получаем ровно 0.0200 — истинную долю в листе. Преобразование монотонно, поэтому не меняет порядок объектов и не влияет на ROC-AUC. Восстанавливает Brier с 0.2418 до 0.0104 — то есть до уровня модели без весов.</div></div>
+
+<div class="qa"><div class="q">11. Когда взвешивание всё-таки нужно?</div><div class="a">Три случая. ① Модель <em>вообще не учится</em> на редком классе: все прогнозы почти нулевые, деревья не делают разбиений. ② Используется алгоритм с жёстко фиксированным порогом 0.5. ③ Уже применён undersampling ради скорости, и веса компенсируют изменённое распределение. Во всех остальных случаях: не взвешивать, а подбирать порог.</div></div>
+
+<div class="qa"><div class="q">12. Как устроен SMOTE и где он ломается?</div><div class="a">Берёт объект редкого класса, выбирает случайного соседа того же класса и ставит новую точку на отрезке: $x_{\text{new}} = x_A + \lambda(x_B - x_A)$. Четыре сценария отказа: интерполяция категорий даёт бессмысленные значения («город 2.4»); шумовой объект превращается в кластер шума; в высокой размерности ближайший сосед практически случаен; и главное — применение до разбиения даёт утечку.</div></div>
+
+<div class="qa"><div class="q">13. Почему SMOTE до разбиения — это утечка?</div><div class="a">Синтетическая точка построена интерполяцией между двумя реальными. Если один из них попал в обучение, а синтетика в валидацию, валидационный объект <em>буквально частично состоит из обучающего</em>. В замере секции 5: PR-AUC 0.4127 при SMOTE до разбиения против 0.1602 после — завышение в 2.6 раза, и отложенный тест подтвердил вторую цифру.</div></div>
+
+<div class="qa"><div class="q">14. SMOTE вообще работает?</div><div class="a">Для градиентного бустинга — редко. В замере на четырёх задачах он помог только в одной: где положительных было около 90 абсолютно и синтетика дала деревьям хоть какую-то плотность. В трёх остальных он не изменил ничего или слегка навредил. Пересэмплирование заметно полезнее для алгоритмов, чувствительных к плотности, — kNN, SVM, некоторых нейросетей.</div></div>
+
+<div class="qa"><div class="q">15. Как выбрать порог?</div><div class="a">По формуле $p^* = \frac{c_{FP}}{c_{FP}+c_{FN}}$. При стоимости пропуска 8 400 ₽ и ложной тревоги 120 ₽ это 0.0141 — в 35 раз ниже дефолтных 0.5. Заметь, что <em>базовая ставка в формулу не входит</em>: она уже учтена в самой вероятности. Формула даёт правильную отправную точку, но окончательный порог надо подбирать перебором по сетке с расчётом реального убытка.</div></div>
+
+<div class="qa"><div class="q">16. Почему теоретический порог разошёлся с эмпирическим?</div><div class="a">Формула верна только при калиброванных вероятностях. В замере секции 6 модель завышала вероятности примерно в 2.4 раза: объекты с прогнозом 0.010–0.020 имели фактическую долю 0.0043. Поэтому теоретические 0.0141 достигались при сыром прогнозе около 0.034, а эмпирический минимум убытка оказался около 0.05.</div></div>
+
+<div class="qa"><div class="q">17. Когда порог задавать от ресурса, а не от стоимости?</div><div class="a">Когда стоимости оценены грубо, а ресурс известен точно. «Команда проверяет 3 000 транзакций в сутки» превращается в квантиль 0.997 распределения скоров, и метрика получается прямая — precision@3000. Это честнее абстрактного AUC и не требует спорной оценки «во сколько обходится недовольство клиента».</div></div>
+
+<div class="qa"><div class="q">18. Что такое Brier score и чем он лучше логлосса?</div><div class="a">Средний квадрат отклонения прогноза от факта: $\frac1N\sum(p_i-y_i)^2$. Как и логлосс, это <em>правильная</em> функция потерь — минимизируется при истинной вероятности. Главное преимущество — <strong>разложимость</strong> на три интерпретируемых компонента, чего у логлосса нет. Плюс он ограничен и не взрывается на уверенно неверных прогнозах.</div></div>
+
+<div class="qa"><div class="q">19. На что раскладывается Brier?</div><div class="a">$\text{BS} = \text{Reliability} - \text{Resolution} + \text{Uncertainty}$. <strong>Reliability</strong> — насколько прогнозы в бинах отклоняются от факта, меньше лучше. <strong>Resolution</strong> — насколько бины отличаются от общего среднего, больше лучше. <strong>Uncertainty</strong> $= \bar o(1-\bar o)$ — свойство данных, от модели не зависит. В расчёте секции 7: $0.0171 - 0.1083 + 0.2500 = 0.15875$, что точно совпало с прямым расчётом.</div></div>
+
+<div class="qa"><div class="q">20. Зачем нужно разложение практически?</div><div class="a">Оно отвечает на вопрос «что делать дальше». В примере секции 7 две модели имеют одинаковый BS = 0.2100, но у одной Reliability 0.0050 и Resolution 0.0450, у другой — 0.0550 и 0.0950. Первой калибровка даст максимум 0.2050 — ей <em>нужны новые признаки</em>. Второй калибровка уберёт почти всю reliability и даст 0.1550 за час работы. По одному значению BS эти модели неразличимы.</div></div>
+
+<div class="qa"><div class="q">21. Почему константная модель идеально калибрована?</div><div class="a">Потому что она предсказывает ровно среднюю частоту: $\bar p = \bar o$, значит Reliability = 0. Но и Resolution = 0 — она ничего не различает. Brier получается равным Uncertainty. <strong>Это важное наблюдение: хорошая калибровка сама по себе ничего не гарантирует</strong>, нужна ещё разрешающая способность, и разложение показывает обе величины раздельно.</div></div>
+
+<div class="qa"><div class="q">22. Почему абсолютный Brier бесполезен при дисбалансе?</div><div class="a">Потому что Uncertainty $= \bar o(1-\bar o)$ мала при малой ставке: при 0.1% она равна 0.000999. Даже константная модель даёт BS около 0.001 — «отличное» значение. Использовать надо Brier Skill Score ($1 - \text{BS}/\text{BS}_{\text{ref}}$), который нормирует на константу, либо смотреть Resolution напрямую — она показывает различающую способность независимо от ставки.</div></div>
+
+<div class="qa"><div class="q">23. Что даёт каскад при экстремальном дисбалансе?</div><div class="a">Он меняет базовую ставку для второго этапа. В расчёте секции 9: первый этап с recall 99.5% пропускает дальше 8% транзакций, и ставка растёт с 0.12% до 1.49% — в 12.4 раза. Precision второй модели при этом вырастает с 0.96% до 10.8% <em>без изменения самой модели</em>. Цена — 0.5% фрода отсеяно навсегда, и это задаёт потолок recall всей системы.</div></div>
+
+<div class="qa"><div class="q">24. Чем focal loss отличается от взвешивания?</div><div class="a">Веса повышают вклад <em>всего</em> редкого класса, включая лёгкие его примеры. Focal loss через множитель $(1-p_t)^\gamma$ повышает вклад <em>трудных</em> объектов независимо от класса: при $\gamma=2$ уверенно верный прогноз подавлен в 10 000 раз, а уверенно неверный почти не подавлен. Это ближе к сути проблемы — лёгкие положительные не нуждаются в дополнительном внимании. Даёт +1.4% PR-AUC в замере.</div></div>
+
+<div class="qa"><div class="q">25. Стоит ли применять undersampling?</div><div class="a">Ради скорости — да. В замере прореживание до 5% отрицательных стоило 1.6% PR-AUC и дало ускорение обучения в 21 раз, что позволяет перебрать в двадцать раз больше конфигураций. Ради качества — нет, эффект нейтральный или слегка отрицательный. И он так же ломает калибровку, как веса, лечась тем же обратным преобразованием.</div></div>
+
+<div class="qa"><div class="q">26. Что делать с отложенными метками?</div><div class="a">Три варианта. <em>Окно вызревания</em> — обучаться только на данных старше периода созревания меток; в замере 60 дней дали PR-AUC 0.1826 против 0.1382 без окна, при этом прирост от увеличения до 120 дней почти исчерпан. <em>Взвешивание по вызреванию</em> — учитывать невызревшие объекты с весом, равным доле выявленности на их возрасте; дало лучший результат 0.1857 при полностью свежих данных. Игнорировать нельзя: модель выучит, что «свежее = безопаснее».</div></div>
+
+<div class="qa"><div class="q">27. Что такое петля через собственные блокировки?</div><div class="a">Заблокированная транзакция не порождает наблюдаемого исхода и в обучающую выборку не попадает. Через несколько циклов переобучения выборка состоит только из тех, что старая модель считала легальными, и модель постепенно «забывает» тот тип фрода, который уже ловит: recall на нём падал с 0.84 до 0.52 за восемь циклов. Это та же петля обратной связи, что в рекомендациях, только через блокировку вместо непоказа.</div></div>
+
+<div class="qa"><div class="q">28. Сколько положительных нужно в валидации?</div><div class="a">Не менее 300 для надёжного сравнения конфигураций. При 20 положительных доверительный интервал PR-AUC составляет ±0.175 — улучшение с 0.16 до 0.19 (почти 19%) статистически неразличимо от нуля. PR-AUC разбросан примерно в 1.45 раза сильнее ROC-AUC, потому что precision на верхних рангах определяется единицами объектов.</div></div>
+
+<div class="qa"><div class="q">29. Какие требования к схеме валидации при дисбалансе?</div><div class="a">Стратификация по классу всегда — без неё при 100 положительных на 5 фолдов разброс достигал 86%. Группировка, если объекты сгруппированы — иначе транзакции одного мошенника попадают в обе выборки, завышение в 1.54 раза. Временной сплит при временной структуре. Пересэмплирование только внутри пайплайна. И оценка разброса по нескольким сидам.</div></div>
+
+<div class="qa"><div class="q">30. Каков правильный порядок действий на новой задаче?</div><div class="a">① Посчитать абсолютное число положительных и PR-AUC относительно базовой линии — определить, какая из трёх причин действует. ② Обучить бустинг с дефолтами, <em>без всяких мер</em>. ③ Подобрать порог по экономике или ресурсу. ④ Проверить калибровку через разложение Brier. ⑤ И только если модель не учится — пробовать focal loss или веса. SMOTE в последнюю очередь и только при очень малом числе положительных. <strong>Больше всего даёт работа с признаками и метрикой, а не приёмы борьбы с дисбалансом.</strong></div></div>
+</div>
+
+<div class="pnav">
+  <a href="block1_01_gradient_boosting.html">← Назад: 1.1 — Градиентный бустинг</a>
+  <a href="block1_03_uplift.html" class="next">Дальше: 1.3 — Uplift-моделирование →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#1d4ed8', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_S='#0284c7', C_T='#0d9488', C_GR='#94a3b8', C_V='#7c3aed';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---------- S1: три случая ---------- */
+(function(){
+  mk('c_cases', {type:'bar', data:{labels:['А — разделимы\n1000 полож., 0.1%','Б — не разделимы\n1000 полож., 0.1%','В — разделимы\n20 полож., 1%'], datasets:[
+    {label:'PR-AUC', data:[0.9971,0.0184,0.6420],
+     backgroundColor:['rgba(22,163,74,.82)','rgba(220,38,38,.80)','rgba(217,119,6,.75)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Разброс метрики между сидами', data:[0.004,0.011,0.138], type:'line',
+     borderColor:C_R, borderWidth:3, pointRadius:7, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'PR-AUC'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Разброс'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return '✓ Дисбаланс 1:1000 не помешал вообще';
+        if(i===1) return '⚠ Тот же дисбаланс, но классы не разделимы —\nникакие приёмы не помогут';
+        return '⚠ Дисбаланс в 10 раз МЕНЬШЕ, но проблема серьёзнее:\nдело в абсолютном числе'; }}}}}});
+})();
+
+/* ---------- S2: метрики трёх моделей ---------- */
+(function(){
+  mk('c_metrics', {type:'bar', data:{labels:['Accuracy','Recall','Precision','F1','FPR'], datasets:[
+    {label:'A — константа', data:[99.90,0,0,0,0], backgroundColor:'rgba(220,38,38,.78)', borderColor:'#fff', borderWidth:2},
+    {label:'B — полнота', data:[99.00,50,5,9.09,0.95], backgroundColor:'rgba(217,119,6,.75)', borderColor:'#fff', borderWidth:2},
+    {label:'C — точность', data:[99.86,30,30,30,0.07], backgroundColor:'rgba(22,163,74,.82)', borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Значение метрики, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return '⚠ По accuracy побеждает бесполезная константа';
+        if(i===4) return '⚠ FPR тоже указывает на константу —\nи именно на нём построен ROC-AUC';
+        return ''; }}}}}});
+})();
+
+/* ---------- S3: precision vs базовая ставка ---------- */
+(function(){
+  var p=[0.5,0.3,0.2,0.1,0.05,0.02,0.01,0.005,0.002,0.001];
+  var tpr=0.80, fpr=0.10;
+  var prec=p.map(function(v){ return +(100*(tpr*v)/(tpr*v+fpr*(1-v))).toFixed(2); });
+  var ratio=p.map(function(v){ var pr=(tpr*v)/(tpr*v+fpr*(1-v)); return +((1-pr)/pr).toFixed(1); });
+  mk('c_prec', {type:'line', data:{labels:p.map(function(v){return (100*v).toFixed(1)+'%';}), datasets:[
+    {label:'Precision, %', data:prec, borderColor:C_R, backgroundColor:'rgba(220,38,38,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'ROC-AUC (не меняется)', data:p.map(function(){return 90;}), borderColor:C_GR, borderDash:[4,3], pointRadius:5, borderWidth:2.5},
+    {label:'Ложных тревог на 1 пойманного', data:ratio, borderColor:C_A, tension:.3, pointRadius:6, borderWidth:2.5, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Базовая ставка (доля положительных)'}},NOG),
+             y:Object.assign({title:{display:true,text:'Проценты'}},GRID),
+             y2:{position:'right', type:'logarithmic', title:{display:true,text:'Ложных на 1 (лог)'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        return i>=7 ? '⚠ Precision менее 1% — на каждый пойманный\nболее сотни ложных тревог. Операционно невозможно.'
+                    : 'ROC-AUC 0.90 во всех точках — он не видит долю классов'; }}}}}});
+})();
+
+/* ---------- S3: ROC и PR кривые ---------- */
+(function(){
+  var rocFpr=[0,0,0.125,0.125,0.25,0.375,0.50,0.625,0.75,0.875,1.0];
+  var rocTpr=[0,0.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0];
+  var prR=[0,0.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0];
+  var prP=[1,1.0,0.5,0.667,0.5,0.4,0.333,0.286,0.25,0.222,0.2];
+  var prP100=[1,1.0,0.5,0.667,0.5,0.4,0.333,0.286,0.25,0.222,0.02];
+  mk('c_curves', {type:'scatter', data:{datasets:[
+    {label:'ROC-кривая (AUC = 0.9375)', data:rocFpr.map(function(v,i){return {x:v,y:rocTpr[i]};}), type:'line', showLine:true, borderColor:C_B, backgroundColor:'rgba(29,78,216,.10)', fill:true, pointRadius:5, borderWidth:3, tension:0},
+    {label:'Случайная модель (ROC)', data:[{x:0,y:0},{x:1,y:1}], type:'line', showLine:true, borderColor:C_GR, borderDash:[4,3], pointRadius:0, borderWidth:2},
+    {label:'PR-кривая (AP = 0.8333), база 0.2', data:prR.map(function(v,i){return {x:v,y:prP[i]};}), type:'line', showLine:true, borderColor:C_G, pointRadius:5, borderWidth:3, tension:0},
+    {label:'Базовая линия PR при базе 0.2', data:[{x:0,y:0.2},{x:1,y:0.2}], type:'line', showLine:true, borderColor:C_G, borderDash:[3,3], pointRadius:0, borderWidth:2},
+    {label:'Базовая линия PR при базе 0.02', data:[{x:0,y:0.02},{x:1,y:0.02}], type:'line', showLine:true, borderColor:C_R, borderDash:[3,3], pointRadius:0, borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({min:0,max:1,title:{display:true,text:'FPR (для ROC) / Recall (для PR)'}},GRID),
+             y:Object.assign({min:0,max:1.05,title:{display:true,text:'TPR / Precision'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Добавление отрицательных не меняет ни ROC, ни AP —\nно обваливает базовую линию PR с 0.2 до 0.02,\nи относительное превосходство модели растёт в 10 раз.';}}}}}});
+})();
+
+/* ---------- S4: взвешивание ---------- */
+(function(){
+  mk('c_weight', {type:'bar', data:{labels:['Без веса','Вес 82','Вес 82 +\nпреобразование','Вес 10'], datasets:[
+    {label:'ROC-AUC', data:[0.8724,0.8731,0.8731,0.8729], backgroundColor:'rgba(29,78,216,.75)', borderColor:'#fff', borderWidth:2, order:2},
+    {label:'PR-AUC', data:[0.1841,0.1836,0.1836,0.1839], backgroundColor:'rgba(22,163,74,.75)', borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Brier (правая шкала)', data:[0.0104,0.2418,0.0104,0.0387], type:'line', borderColor:C_R, borderWidth:3, pointRadius:7, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'AUC'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Brier'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return '⚠ Ранжирование не изменилось, Brier ухудшился в 23 раза';
+        if(i===2) return '✓ Обратное преобразование вернуло калибровку'; return ''; }}}}}});
+})();
+
+/* ---------- S4: обратное преобразование ---------- */
+(function(){
+  var pw=[]; for(var v=0.01;v<=0.99;v+=0.02) pw.push(+v.toFixed(3));
+  function inv(p,w){ return +(p/(p+(1-p)*w)).toFixed(5); }
+  mk('c_unwe', {type:'line', data:{labels:pw, datasets:[
+    {label:'w = 10', data:pw.map(function(p){return inv(p,10);}), borderColor:C_A, tension:.25, pointRadius:0, borderWidth:2.5},
+    {label:'w = 49', data:pw.map(function(p){return inv(p,49);}), borderColor:C_B, tension:.25, pointRadius:0, borderWidth:3},
+    {label:'w = 82', data:pw.map(function(p){return inv(p,82);}), borderColor:C_R, tension:.25, pointRadius:0, borderWidth:2.5},
+    {label:'w = 1 (без веса)', data:pw, borderColor:C_GR, borderDash:[4,3], pointRadius:0, borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Прогноз взвешенной модели p_w'}},NOG),
+             y:Object.assign({title:{display:true,text:'Истинная вероятность'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Преобразование монотонно — порядок объектов\nне меняется, ROC-AUC остаётся тем же.';}}}}}});
+})();
+
+/* ---------- S5: SMOTE ---------- */
+(function(){
+  mk('c_smote', {type:'bar', data:{labels:['Отток\n12%','Фрод\n0.8%','Отклик\n2.1%','Отказ\n0.3%, мало данных'], datasets:[
+    {label:'Без мер', data:[0.412,0.184,0.097,0.041], backgroundColor:'rgba(29,78,216,.78)', borderColor:'#fff', borderWidth:2},
+    {label:'SMOTE', data:[0.408,0.160,0.094,0.052], backgroundColor:'rgba(220,38,38,.72)', borderColor:'#fff', borderWidth:2},
+    {label:'Веса', data:[0.410,0.184,0.096,0.043], backgroundColor:'rgba(217,119,6,.72)', borderColor:'#fff', borderWidth:2},
+    {label:'Подбор порога', data:[0.412,0.184,0.097,0.041], backgroundColor:'rgba(22,163,74,.82)', borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({type:'logarithmic', title:{display:true,text:'PR-AUC (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===3) return '✓ Единственная задача, где SMOTE помог:\nоколо 90 положительных абсолютно';
+        if(i===1) return '⚠ SMOTE навредил на 13%'; return ''; }}}}}});
+})();
+
+/* ---------- S6: убыток от порога ---------- */
+(function(){
+  var thr=[0.500,0.200,0.100,0.050,0.034,0.0141,0.005];
+  var loss=[8571720,6412800,5188800,4435200,5148000,6535200,16071600];
+  mk('c_thresh', {type:'line', data:{labels:thr.map(function(v){return v.toFixed(4);}), datasets:[
+    {label:'Суммарный убыток, ₽', data:loss, borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:7, borderWidth:3},
+    {label:'Теоретический порог 0.0141', data:thr.map(function(v){ return Math.abs(v-0.0141)<1e-6 ? 6535200 : null; }), borderColor:C_A, backgroundColor:C_A, pointRadius:13, pointStyle:'triangle', showLine:false},
+    {label:'Эмпирический минимум', data:thr.map(function(v){ return Math.abs(v-0.050)<1e-6 ? 4435200 : null; }), borderColor:C_G, backgroundColor:C_G, pointRadius:13, pointStyle:'star', showLine:false}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Порог (по убыванию)'}},NOG),
+             y:Object.assign({title:{display:true,text:'Убыток, ₽'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return '⚠ Дефолтные 0.5 дают почти вдвое больший убыток,\nчем оптимум';
+        if(i===3) return '✓ Эмпирический минимум';
+        if(i===6) return '⚠ Слишком низкий порог: 128 400 ложных тревог'; return ''; }}}}}});
+})();
+
+/* ---------- S7: разложение Brier ---------- */
+(function(){
+  mk('c_brier', {type:'bar', data:{labels:['Наш пример','Константа','Модель A','Модель B'], datasets:[
+    {label:'Reliability (меньше — лучше)', data:[0.0171,0,0.0050,0.0550], backgroundColor:'rgba(220,38,38,.78)', borderColor:'#fff', borderWidth:2, stack:'a'},
+    {label:'Uncertainty (свойство данных)', data:[0.2500,0.2500,0.2500,0.2500], backgroundColor:'rgba(148,163,184,.70)', borderColor:'#fff', borderWidth:2, stack:'a'},
+    {label:'−Resolution (больше — лучше)', data:[-0.1083,0,-0.0450,-0.0950], backgroundColor:'rgba(22,163,74,.80)', borderColor:'#fff', borderWidth:2, stack:'a'},
+    {label:'Итоговый Brier', data:[0.1588,0.2500,0.2100,0.2100], type:'line', borderColor:C_B, borderWidth:3, pointRadius:8, pointStyle:'rectRot', tension:.2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({stacked:true},NOG), y:Object.assign({stacked:true, title:{display:true,text:'Вклад в Brier'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return 'Константа идеально калибрована (Rel = 0),\nно ничего не различает (Res = 0)';
+        if(i===2) return 'Одинаковый Brier с B, но калибровка уже хорошая —\nнужны новые признаки';
+        if(i===3) return 'Одинаковый Brier с A, но плохая калибровка —\nчас работы даст Brier 0.1550'; return ''; }}}}}});
+})();
+
+/* ---------- S7: uncertainty ---------- */
+(function(){
+  var o=[0.5,0.3,0.2,0.1,0.05,0.02,0.01,0.005,0.002,0.001];
+  mk('c_unc', {type:'line', data:{labels:o.map(function(v){return (100*v).toFixed(1)+'%';}), datasets:[
+    {label:'Uncertainty = ō(1−ō)', data:o.map(function(v){return +(v*(1-v)).toFixed(6);}), borderColor:C_B, backgroundColor:'rgba(29,78,216,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Brier константной модели', data:o.map(function(v){return +(v*(1-v)).toFixed(6);}), borderColor:C_R, borderDash:[4,3], pointRadius:5, borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Базовая ставка ō'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Значение (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex>=6
+        ? '⚠ Даже константа даёт Brier ≈ 0.001 —\n«отличное» значение. Нужен Skill Score.' : ''; }}}}}});
+})();
+
+/* ---------- S9: focal loss ---------- */
+(function(){
+  var pt=[]; for(var v=0.02;v<=0.99;v+=0.02) pt.push(+v.toFixed(2));
+  function fl(p,g){ return +(Math.pow(1-p,g)*(-Math.log(p))).toFixed(4); }
+  mk('c_focal', {type:'line', data:{labels:pt, datasets:[
+    {label:'γ = 0 (обычный логлосс)', data:pt.map(function(p){return fl(p,0);}), borderColor:C_GR, borderDash:[4,3], tension:.2, pointRadius:0, borderWidth:2.5},
+    {label:'γ = 1', data:pt.map(function(p){return fl(p,1);}), borderColor:C_A, tension:.2, pointRadius:0, borderWidth:2.5},
+    {label:'γ = 2 (рабочее)', data:pt.map(function(p){return fl(p,2);}), borderColor:C_B, backgroundColor:'rgba(29,78,216,.10)', fill:true, tension:.2, pointRadius:0, borderWidth:3},
+    {label:'γ = 5', data:pt.map(function(p){return fl(p,5);}), borderColor:C_R, tension:.2, pointRadius:0, borderWidth:2.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'p_t — вероятность правильного класса'}},NOG),
+             y:Object.assign({max:4, title:{display:true,text:'Вклад в функцию потерь'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var p=pt[c[0].dataIndex];
+        return p>0.85 ? 'Уверенно верные объекты почти не дают градиента —\nобучение концентрируется на трудных'
+                      : 'Трудные объекты сохраняют почти весь вклад'; }}}}}});
+})();
+
+/* ---------- S10: отложенные метки ---------- */
+(function(){
+  var age=[1,7,30,60,90,120,180];
+  mk('c_delay', {type:'line', data:{labels:age, datasets:[
+    {label:'Доля выявленного фрода, %', data:[3,18,52,81,94,100,100], borderColor:C_R, backgroundColor:'rgba(220,38,38,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Наблюдаемая ставка фрода, %', data:[0.004,0.022,0.062,0.097,0.113,0.120,0.120], borderColor:C_B, tension:.3, pointRadius:6, borderWidth:2.5, yAxisID:'y2'},
+    {label:'Истинная ставка 0.12%', data:age.map(function(){return 0.120;}), borderColor:C_G, borderDash:[3,3], pointRadius:0, borderWidth:2, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Возраст транзакции, дней'}},NOG),
+             y:Object.assign({max:105, title:{display:true,text:'Полнота меток, %'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Наблюдаемая ставка, %'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex<=2
+        ? '⚠ Свежие данные почти все помечены легальными.\nМодель выучит, что «свежее = безопаснее».' : ''; }}}}}});
+})();
+
+/* ---------- S11: разброс ---------- */
+(function(){
+  var n=[20,50,100,300,1000,5000];
+  mk('c_var', {type:'line', data:{labels:n, datasets:[
+    {label:'σ(ROC-AUC)', data:[0.0614,0.0387,0.0271,0.0158,0.0087,0.0039], borderColor:C_B, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'σ(PR-AUC)', data:[0.0891,0.0562,0.0398,0.0231,0.0127,0.0057], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Типичный эффект улучшения (0.01)', data:n.map(function(){return 0.01;}), borderColor:C_G, borderDash:[3,3], pointRadius:0, borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({type:'logarithmic', title:{display:true,text:'Положительных в валидации (лог)'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Стандартное отклонение (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var v=n[c[0].dataIndex];
+        return v<=100 ? '⚠ Разброс больше типичного эффекта —\nсравнивать конфигурации бессмысленно'
+                      : '✓ Разброс меньше эффекта, сравнение осмысленно'; }}}}}});
+})();
+
+/* ---------- Интерактив: precision ---------- */
+function updPrec(){
+  var p = +document.getElementById('sl_p').value/1000;
+  var tpr = +document.getElementById('sl_tpr').value/100;
+  var fpr = +document.getElementById('sl_fpr').value/1000;
+  document.getElementById('out_p').textContent = (100*p).toFixed(2)+'%';
+  document.getElementById('out_tpr').textContent = tpr.toFixed(2);
+  document.getElementById('out_fpr').textContent = fpr.toFixed(3);
+  var prec = (tpr*p)/(tpr*p + fpr*(1-p));
+  var perCatch = prec>0 ? (1-prec)/prec : Infinity;
+  var N = 1000000;
+  var TP = Math.round(N*p*tpr), FP = Math.round(N*(1-p)*fpr), FN = Math.round(N*p*(1-tpr));
+  var html = '<b>Precision = '+(100*prec).toFixed(2)+'%</b> &nbsp;·&nbsp; на 1 пойманного <b>'+perCatch.toFixed(1)+'</b> ложных тревог<br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'на 1 000 000 объектов: TP = '+TP.toLocaleString('ru')+', FP = '+FP.toLocaleString('ru')+', FN = '+FN.toLocaleString('ru')+'</span><br>';
+  html += '<span style="font-size:12.5px;color:#1e3a8a;">';
+  if(prec > 0.5) html += '✓ Каждая вторая тревога настоящая — комфортная нагрузка';
+  else if(prec > 0.15) html += '✓ Рабочий режим: примерно каждая '+Math.round(1/prec)+'-я проверка результативна';
+  else if(prec > 0.03) html += '⚠️ Тяжело: '+Math.round(1/prec)+' проверок на один результат. Нужен каскад или более высокий порог';
+  else html += '⚠️ Операционно невозможно: '+Math.round(1/prec)+' проверок на один результат';
+  html += '<br>ℹ️ ROC-AUC при этих TPR и FPR примерно '+(0.5+0.5*(tpr-fpr)).toFixed(3)+' и <b>не меняется</b> при смене базовой ставки';
+  html += '</span>';
+  document.getElementById('out_pres').innerHTML = html;
+}
+
+/* ---------- Интерактив: порог ---------- */
+function updThr(){
+  var cfn = +document.getElementById('sl_cfn').value;
+  var cfp = +document.getElementById('sl_cfp').value;
+  var br  = +document.getElementById('sl_br').value/10000;
+  document.getElementById('out_cfn').textContent = cfn.toLocaleString('ru');
+  document.getElementById('out_cfp').textContent = cfp.toLocaleString('ru');
+  document.getElementById('out_br').textContent = (100*br).toFixed(2)+'%';
+  var thr = cfp/(cfp+cfn);
+  var ratio = cfn/cfp;
+  var html = '<b>Оптимальный порог = '+thr.toFixed(4)+'</b> ('+(100*thr).toFixed(2)+'%)<br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'пропуск дороже ложной тревоги в <b>'+ratio.toFixed(1)+'</b> раза &nbsp;·&nbsp; ';
+  html += 'порог ниже дефолтных 0.5 в <b>'+(0.5/thr).toFixed(1)+'</b> раза</span><br>';
+  html += '<span style="font-size:12.5px;color:#1e3a8a;">';
+  if(thr > 0.4) html += 'Стоимости почти симметричны — дефолтный порог 0.5 близок к оптимуму';
+  else if(thr > 0.1) html += '✓ Умеренная асимметрия: порог заметно ниже 0.5, но не экстремален';
+  else if(thr > 0.01) html += '⚠️ Сильная асимметрия: модель должна тревожиться при вероятности всего '+(100*thr).toFixed(1)+'%';
+  else html += '⚠️ Экстремальная асимметрия: почти любое подозрение требует действия. Проверь, реалистична ли оценка стоимостей';
+  html += '<br>ℹ️ Базовая ставка ('+(100*br).toFixed(2)+'%) в формулу <b>не входит</b> — она уже учтена в самой вероятности. ';
+  html += 'Но она определяет, сколько объектов преодолеет порог.';
+  html += '</span>';
+  document.getElementById('out_tres').innerHTML = html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updPrec(); updThr();
+</script>
+</body>
+</html>

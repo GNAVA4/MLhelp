@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2.1 · RFM-сегментация и вероятностные модели клиентской базы</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#9333ea;--rf-l:#faf5ff;--rf-b:#e9d5ff;--rf-d:#3b0764;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#3b0764,#9333ea 50%,#c084fc);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.9;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(147,51,234,.12);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#3b0764;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#3b0764!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);} .nb.teal{background:var(--teal);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#3b0764;border:1px solid #9333ea;border-radius:8px;padding:9px 13px;font-size:12px;color:#e9d5ff;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--rf-l),#f3e8ff);border:1px solid var(--rf-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--rf);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#3b0764;margin:0 0 8px;}
+.casebox p,.casebox li{color:#581c87;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rf{border-top:3px solid var(--rf);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.cy{border-top:3px solid var(--cy);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--rf-l);color:#3b0764;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--rf);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--rf);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#7e22ce;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--rf);border:2px solid var(--rf);}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- RFM-сетка ---------- */
+.rfmgrid{display:grid;grid-template-columns:auto repeat(5,1fr);gap:4px;margin:16px 0;}
+.rfmhdr{font-size:11px;font-weight:700;color:var(--text3);display:flex;align-items:center;justify-content:center;padding:4px;text-align:center;}
+.rfmcell{border-radius:7px;padding:9px 6px;font-size:10.5px;text-align:center;line-height:1.35;font-weight:600;color:#fff;}
+/* ---------- Клиентские треки ---------- */
+.tracks{margin:16px 0;}
+.trk{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.trklbl{font-size:11.5px;font-weight:700;color:var(--text3);min-width:92px;}
+.trkline{flex:1;height:28px;background:#f1f5f9;border-radius:7px;position:relative;border:1px solid var(--border);}
+.trkpt{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:var(--rf);}
+.trknow{position:absolute;top:0;bottom:0;width:2px;background:var(--red);right:0;}
+.trkverd{font-size:11px;min-width:118px;font-weight:700;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#3b0764;line-height:1.72;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--rf-l);border-color:var(--rf-b);color:#3b0764;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--rf);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .trklbl{min-width:56px;font-size:10px;}.trkverd{min-width:74px;font-size:9.5px;}.rfmcell{font-size:9px;padding:6px 3px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 2 · Retention & CRM · Тема 1 из 6 · расширенная</div>
+  <h1>RFM-сегментация и вероятностные модели базы</h1>
+  <p class="sub">От эвристической сетки к строгим моделям покупательского поведения: BG/NBD, Pareto/NBD,
+     Gamma-Gamma и расчёт CLV — с полными выкладками и разбором, где эвристика ломается.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–5</span>
+    <span>🔵 средний — секции 6–10</span>
+    <span>🟣 продвинутый — секции 11–15</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем сегментация</a>
+  <a href="#s2">2. Три измерения</a>
+  <a href="#s3">3. Построение сетки</a>
+  <a href="#s4">4. Сегменты и экономика</a>
+  <a href="#s5">5. Где RFM ломается</a>
+  <a href="#s6">6. BTYD-модели</a>
+  <a href="#s7">7. BG/NBD</a>
+  <a href="#s8">8. Pareto/NBD</a>
+  <a href="#s9">9. Gamma-Gamma</a>
+  <a href="#s10">10. Расчёт CLV</a>
+  <a href="#s11">11. Кластеризация</a>
+  <a href="#s12">12. Supervised-сегментация</a>
+  <a href="#s13">13. Метрики качества</a>
+  <a href="#s14">14. Подводные камни</a>
+  <a href="#s15">15. System Design</a>
+  <a href="#qa">16. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–5</strong> — классический RFM: три измерения, построение сетки, канонические сегменты и их экономика. И главное — <em>где эвристика ломается</em>.</li>
+<li><strong>Секции 6–10</strong> — вероятностные BTYD-модели: BG/NBD и Pareto/NBD под капотом, Gamma-Gamma для денег, полный расчёт CLV.</li>
+<li><strong>Секции 11–13</strong> — ML-подходы: кластеризация, supervised-сегментация, метрики качества сегментов.</li>
+<li><strong>Секции 14–16</strong> — подводные камни, System Design CRM-контура и 30 вопросов.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем сегментация и почему RFM пережил всё <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Метод из 1990-х, который до сих пор в проде почти везде</div>
+
+<p>Основная задача CRM — <strong>распределить ограниченный бюджет коммуникаций</strong> между миллионами клиентов. Отправить всем одно и то же дорого и неэффективно; персонализировать каждого невозможно. Сегментация — компромисс: делим базу на группы, для каждой свой сценарий.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему именно RFM, а не что-то умнее</div>
+<p>RFM (Recency, Frequency, Monetary) появился в директ-маркетинге до всякого ML и до сих пор используется, потому что удовлетворяет четырём требованиям <em>одновременно</em>:</p>
+<p><strong>① Данные всегда есть.</strong> Дата покупки, число покупок, сумма — минимально возможный набор. Не нужны ни признаки профиля, ни поведение на сайте, ни разметка.</p>
+<p><strong>② Понятно бизнесу.</strong> «Покупал недавно, часто, на большие суммы» — маркетолог поймёт без объяснений и сможет сам построить сценарий.</p>
+<p><strong>③ Действенно.</strong> Каждый сегмент напрямую отображается на действие: «спящих будим», «чемпионов не трогаем», «уходящих возвращаем».</p>
+<p><strong>④ Работает.</strong> Recency — один из сильнейших предикторов повторной покупки почти в любом бизнесе. Простая сетка часто даёт 70–80% эффекта сложной модели.</p>
+<p>Именно поэтому <strong>RFM — правильная точка старта</strong>, а не устаревший метод. Вопрос не «заменить ли его ML», а «где именно он ломается и что там добавить».</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько даёт даже примитивная сегментация</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>База:</strong> 500 000 клиентов. Рассылка стоит 12 ₽ на человека. Средняя маржа с покупки 1800 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Рассылка всем:</strong> конверсия 1.4% → 7000 покупок. Прибыль $7000\times1800 = 12.6$ млн. Затраты $500\,000\times12 = 6$ млн. <strong>Итого +6.6 млн ₽.</strong></div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>RFM, топ-3 сегмента (120 тыс. человек):</strong> конверсия 4.1% → 4920 покупок. Прибыль 8.86 млн. Затраты $120\,000\times12 = 1.44$ млн. <strong>Итого +7.4 млн ₽.</strong></div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>Прибыль выросла на 12% при <strong>сокращении охвата в 4 раза</strong>. Освободившиеся 4.5 млн ₽ можно потратить на другие каналы.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Но заметь, чего RFM не сделал:</strong> он не сказал, кто купил бы <em>и без рассылки</em>. Среди «чемпионов» такие почти все — им мы просто подарили коммуникацию. Это ограничение снимается только uplift-моделью (тема 2.4), и оно фундаментально для любой сегментации по <em>склонности</em>, а не по <em>приросту</em>.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Конверсия по децилям RFM-скора</div>
+<div class="chsub">Recency даёт наибольший вклад в разделение — типичная картина почти для любого бизнеса</div>
+<div style="position:relative;height:300px;"><canvas id="c_dec"></canvas></div>
+</div>
+
+<h3>Место RFM среди подходов к сегментации</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Что нужно</th><th>Что даёт</th><th>Ограничение</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>RFM-сетка</b></td><td>только транзакции</td><td>Понятные сегменты, мгновенное внедрение</td><td><strong>Описывает прошлое, не предсказывает будущее</strong></td></tr>
+<tr><td>BTYD-модели</td><td>транзакции + время</td><td>Вероятность «жив», прогноз числа покупок, CLV</td><td>Допущения о процессе покупок</td></tr>
+<tr><td>Кластеризация</td><td>любые признаки</td><td>Сегменты, найденные данными</td><td>Неинтерпретируемы; нестабильны</td></tr>
+<tr><td>Supervised-скоринг</td><td>признаки + разметка</td><td>Прямое предсказание целевого события</td><td>Нужна разметка; не даёт «портретов»</td></tr>
+<tr><td>Uplift</td><td>+ контрольная группа</td><td>Кого воздействие реально изменит</td><td>Нужен RCT, много данных</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Ключевая мысль, к которой мы вернёмся несколько раз.</strong> Эти подходы <em>не конкурируют</em>, а отвечают на разные вопросы. RFM — «как выглядит база сейчас». BTYD — «сколько клиент принесёт дальше». Supervised — «кто уйдёт». Uplift — «на кого подействует». Зрелый CRM-контур использует все четыре одновременно, и путаница между ними — источник большинства провальных кампаний.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Три измерения и их неочевидные тонкости <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Каждое из трёх определяется не так однозначно, как кажется</div>
+
+<div class="grid3">
+<div class="card rf"><h5>R — Recency</h5><p><strong>Дней с последней покупки.</strong> Чем меньше, тем лучше.</p><p>Сильнейший предиктор: клиент, купивший вчера, вернётся с гораздо большей вероятностью, чем купивший год назад.</p></div>
+<div class="card cy"><h5>F — Frequency</h5><p><strong>Число покупок за период.</strong> Чем больше, тем лучше.</p><p>Отражает встроенную привычку. Требует явного окна наблюдения.</p></div>
+<div class="card gr"><h5>M — Monetary</h5><p><strong>Сумма или средний чек.</strong> Чем больше, тем лучше.</p><p>Самое спорное измерение — сильно коррелирует с F и имеет тяжёлый хвост.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Первая ловушка: Monetary как сумма или как средний чек — это разные метрики.</strong> «Сумма за период» почти линейно зависит от Frequency: клиент с 20 покупками по 1000 ₽ и клиент с 2 покупками по 10 000 ₽ дают одну сумму, но это <em>совершенно разные</em> клиенты. Если брать сумму, M дублирует F, и трёхмерная сетка вырождается в двумерную. <strong>Правильно:</strong> M = <em>средний чек</em>, тогда три измерения действительно независимы.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько сильно коррелируют F и M при разных определениях</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> 200 000 клиентов интернет-магазина, окно 12 месяцев.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>M = суммарные траты:</strong> корреляция Спирмена с F равна <strong>0.83</strong>. Измерения почти дублируют друг друга — в сетке 5×5×5 заполненными окажутся в основном ячейки по диагонали F–M.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>M = средний чек:</strong> корреляция с F равна <strong>−0.11</strong>. Слабо отрицательная — частые покупатели берут понемногу. Измерения независимы, сетка заполняется равномерно.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Проверка на практике:</strong> при M = сумма из 125 ячеек сетки заполнены 43 (34%). При M = средний чек — 108 (86%).</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Диагностика для твоих данных:</strong> посчитай ранговую корреляцию F и M. Если выше 0.6 — ты фактически работаешь с двумерной сегментацией и теряешь измерение.</div></div>
+</div>
+
+<h3>Тонкости Recency</h3>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: Recency зависит от цикла покупки</div>
+<p>«30 дней с последней покупки» означает совершенно разное для продуктового ритейла (клиент почти ушёл) и для автосалона (только что купил).</p>
+<p><strong>Правильный подход — нормировать на индивидуальный цикл:</strong></p>
+$$R_{\text{norm}} = \frac{\text{дней с последней покупки}}{\text{средний межпокупочный интервал клиента}}$$
+<p>Значение $R_{\text{norm}} = 1$ означает «пора бы купить», $R_{\text{norm}} = 3$ — «просрочил втрое, скорее всего ушёл». Это работает одинаково для любых категорий и для клиентов с разной интенсивностью.</p>
+<p><strong>Проблема:</strong> для клиента с одной покупкой межпокупочный интервал не определён. Тогда используют медианный интервал по когорте или по сегменту.</p>
+</div>
+
+<div class="tracks">
+  <div class="trk"><span class="trklbl">Клиент A</span>
+    <div class="trkline">
+      <span class="trkpt" style="left:8%"></span><span class="trkpt" style="left:20%"></span>
+      <span class="trkpt" style="left:33%"></span><span class="trkpt" style="left:45%"></span>
+      <span class="trkpt" style="left:58%"></span><span class="trkpt" style="left:88%"></span>
+      <span class="trknow"></span></div>
+    <span class="trkverd" style="color:var(--grn);">R=12д, цикл 30д<br>R_norm = 0.4 ✓</span></div>
+  <div class="trk"><span class="trklbl">Клиент B</span>
+    <div class="trkline">
+      <span class="trkpt" style="left:6%"></span><span class="trkpt" style="left:14%"></span>
+      <span class="trkpt" style="left:22%"></span><span class="trkpt" style="left:30%"></span>
+      <span class="trknow"></span></div>
+    <span class="trkverd" style="color:var(--red);">R=84д, цикл 10д<br>R_norm = 8.4 🚨</span></div>
+  <div class="trk"><span class="trklbl">Клиент C</span>
+    <div class="trkline">
+      <span class="trkpt" style="left:15%"></span><span class="trkpt" style="left:72%"></span>
+      <span class="trknow"></span></div>
+    <span class="trkverd" style="color:var(--amber);">R=34д, цикл 70д<br>R_norm = 0.5 ⚠️</span></div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-4px;">Одна и та же абсолютная Recency (десятки дней) означает разное. Клиент B в глубоком оттоке, хотя купил позже, чем C.</p>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Тонкость Frequency: окно наблюдения обязано быть явным и одинаковым.</strong> «Число покупок» без указания периода бессмысленно. Хуже: если считать «за всю историю», то клиенты, пришедшие 5 лет назад, автоматически получат высокую F — <strong>сегментация начнёт измерять возраст клиента, а не его активность</strong>. Правильно: фиксированное окно (12 месяцев) для всех, либо нормировка на длительность жизни клиента $F/T$.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Тонкость Monetary: тяжёлые хвосты ломают квантили.</strong> Распределение чеков логнормальное; один корпоративный клиент с чеком в 200 раз выше медианы попадёт в верхний квинтиль вместе с обычными «дорогими» клиентами — и утянет туда статистику сегмента. <strong>Меры:</strong> ① логарифмировать перед разбиением; ② винзоризовать верхний 1%; ③ вынести корпоративных клиентов в отдельный сегмент до всякой сетки. Третий вариант обычно самый честный.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Построение сетки: квантили против бизнес-порогов <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Два способа, дающие разные результаты и разные проблемы</div>
+
+<div class="grid2">
+<div class="card bl"><h5>Квантильное разбиение</h5><p>Каждое измерение делим на 5 равных по численности групп (квинтили). Скор 1–5 по каждой оси.</p><p><strong>Плюс:</strong> сегменты гарантированно непустые, метод переносим между бизнесами.</p><p><strong>Минус:</strong> границы <em>плавают</em> при изменении базы — сегмент сегодня и через месяц означают разное.</p></div>
+<div class="card am"><h5>Бизнес-пороги</h5><p>Границы задаются доменно: «активен» — покупка за 30 дней, «частый» — от 6 покупок в год.</p><p><strong>Плюс:</strong> границы стабильны, сегменты сравнимы во времени, понятны бизнесу.</p><p><strong>Минус:</strong> требует экспертизы; при смене продукта пороги устаревают.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная проблема квантилей: сегменты «дышат».</strong> Если база в целом стала активнее (сезон, удачная кампания), границы квинтилей сдвинутся, и клиент с <em>неизменным</em> поведением перейдёт из R=5 в R=4. Отчёт покажет «отток из чемпионов», хотя ничего не произошло. <strong>Правило:</strong> для отслеживания динамики во времени <em>фиксируй границы</em>, посчитанные на референсном периоде, и применяй их дальше. Пересчитывай не чаще раза в квартал, явно документируя момент пересчёта.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как «дыхание» квантилей создаёт фантомный отток</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Январь.</strong> Граница R=5 (лучший квинтиль) — покупка за последние 18 дней. Клиент купил 15 дней назад → <strong>R=5</strong>.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Март, сезонный подъём.</strong> База стала активнее, граница верхнего квинтиля сдвинулась до 9 дней.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>Тот же клиент снова купил 15 дней назад — <em>поведение не изменилось</em> — но теперь попадает в <strong>R=4</strong>.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div>В отчёте: «Champions сократились на 12%, начался отток». Запускается спасательная кампания на 3 млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Ничего не произошло.</strong> Изменилась не база, а линейка, которой её мерили. С фиксированными порогами (R=5 при покупке за 18 дней) клиент остался бы в том же сегменте, и отчёт показал бы <em>рост</em> активности — что и было на самом деле.</div></div>
+</div>
+
+<h3>Сетка 5×5 по R и F</h3>
+
+<div class="rfmgrid">
+  <div class="rfmhdr"></div>
+  <div class="rfmhdr">F=1<br>редко</div><div class="rfmhdr">F=2</div><div class="rfmhdr">F=3</div><div class="rfmhdr">F=4</div><div class="rfmhdr">F=5<br>часто</div>
+
+  <div class="rfmhdr">R=5<br>недавно</div>
+  <div class="rfmcell" style="background:#22c55e">Новые</div>
+  <div class="rfmcell" style="background:#16a34a">Новые<br>перспект.</div>
+  <div class="rfmcell" style="background:#15803d">Лояльные</div>
+  <div class="rfmcell" style="background:#166534">Лояльные</div>
+  <div class="rfmcell" style="background:#14532d">Champions</div>
+
+  <div class="rfmhdr">R=4</div>
+  <div class="rfmcell" style="background:#4ade80">Недавние</div>
+  <div class="rfmcell" style="background:#22c55e">Растущие</div>
+  <div class="rfmcell" style="background:#16a34a">Лояльные</div>
+  <div class="rfmcell" style="background:#15803d">Лояльные</div>
+  <div class="rfmcell" style="background:#166534">Champions</div>
+
+  <div class="rfmhdr">R=3</div>
+  <div class="rfmcell" style="background:#94a3b8">Неопред.</div>
+  <div class="rfmcell" style="background:#94a3b8">Неопред.</div>
+  <div class="rfmcell" style="background:#a3a3a3">Требуют<br>внимания</div>
+  <div class="rfmcell" style="background:#f59e0b">Требуют<br>внимания</div>
+  <div class="rfmcell" style="background:#f59e0b">Требуют<br>внимания</div>
+
+  <div class="rfmhdr">R=2</div>
+  <div class="rfmcell" style="background:#cbd5e1;color:#334155">Почти<br>потеряны</div>
+  <div class="rfmcell" style="background:#f59e0b">Засыпают</div>
+  <div class="rfmcell" style="background:#f97316">В зоне<br>риска</div>
+  <div class="rfmcell" style="background:#ea580c">В зоне<br>риска</div>
+  <div class="rfmcell" style="background:#dc2626">Нельзя<br>терять</div>
+
+  <div class="rfmhdr">R=1<br>давно</div>
+  <div class="rfmcell" style="background:#e2e8f0;color:#475569">Потеряны</div>
+  <div class="rfmcell" style="background:#cbd5e1;color:#334155">Спящие</div>
+  <div class="rfmcell" style="background:#f97316">Спящие<br>ценные</div>
+  <div class="rfmcell" style="background:#dc2626">Нельзя<br>терять</div>
+  <div class="rfmcell" style="background:#991b1b">Нельзя<br>терять</div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-2px;">Классическая карта сегментов. Обрати внимание на правый нижний угол: клиенты с высокой F и низкой R — самые дорогие потери.</p>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Сколько сегментов делать.</strong> 5×5×5 = 125 ячеек — слишком много: маркетолог не построит 125 сценариев, а часть ячеек будет почти пустой. Практика: ① <strong>объединять ячейки в 8–12 именованных сегментов</strong> по бизнес-смыслу (как на карте выше); ② часто достаточно только R и F, а M использовать как <em>приоритет внутри сегмента</em>, а не как третью ось; ③ число сегментов должно равняться числу различных сценариев коммуникации, которые команда реально способна поддерживать.</div></div>
+
+<pre><code># RFM с фиксированными границами и стабильными сегментами
+import pandas as pd, numpy as np
+
+SNAP = pd.Timestamp("2026-01-01")
+
+rfm = (df.groupby("customer_id")
+         .agg(recency   = ("order_date", lambda s: (SNAP - s.max()).days),
+              frequency = ("order_id", "nunique"),
+              monetary  = ("amount", "mean"))       # СРЕДНИЙ чек, не сумма
+         .reset_index())
+
+# Фиксированные границы, посчитанные один раз на референсном периоде
+R_BINS = [-1, 18, 45, 90, 180, 10**9]      # чем меньше дней — тем выше скор
+F_BINS = [0, 1, 2, 4, 8, 10**9]
+M_BINS = [0, 1200, 2500, 5000, 12000, 10**9]
+
+rfm["R"] = 5 - pd.cut(rfm.recency,   R_BINS, labels=False)
+rfm["F"] = 1 + pd.cut(rfm.frequency, F_BINS, labels=False)
+rfm["M"] = 1 + pd.cut(rfm.monetary,  M_BINS, labels=False)
+rfm["RFM"] = rfm.R.astype(str) + rfm.F.astype(str) + rfm.M.astype(str)
+
+def segment(r):
+    if r.R >= 4 and r.F >= 4: return "Champions"
+    if r.R >= 4 and r.F >= 2: return "Loyal"
+    if r.R >= 4:              return "New"
+    if r.R == 3:              return "Need attention"
+    if r.F >= 4:              return "Cannot lose"        # высокая F, низкая R
+    if r.R <= 2 and r.F >= 2: return "At risk"
+    return "Lost"
+rfm["segment"] = rfm.apply(segment, axis=1)
+</code></pre>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Сегменты и их экономика <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Сегмент без привязанного действия и бюджета бесполезен</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Сегмент</th><th>Профиль</th><th>Доля базы</th><th>Доля выручки</th><th>Действие</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Champions</b></td><td>R↑ F↑ M↑</td><td>5–8%</td><td><strong>30–45%</strong></td><td>Не мешать. Ранний доступ, программа лояльности, реферальные механики</td></tr>
+<tr><td>Loyal</td><td>R↑ F↑ M~</td><td>10–15%</td><td>20–30%</td><td>Кросс-сейл, апсейл — они уже доверяют</td></tr>
+<tr><td>New</td><td>R↑ F=1</td><td>15–25%</td><td>5–10%</td><td><strong>Онбординг</strong> — довести до второй покупки, это ключевой переход</td></tr>
+<tr><td>Need attention</td><td>R~ F~</td><td>10–15%</td><td>10–15%</td><td>Персонализированное предложение, реактивация</td></tr>
+<tr class="trh"><td><b>Cannot lose</b></td><td>R↓ F↑ M↑</td><td>2–4%</td><td>8–15%</td><td><strong>Приоритет №1: дорогие клиенты на грани ухода</strong></td></tr>
+<tr><td>At risk</td><td>R↓ F~</td><td>8–12%</td><td>5–10%</td><td>Кампания удержания — но проверь uplift, тут много sleeping dogs</td></tr>
+<tr><td>Lost</td><td>R↓ F↓</td><td>25–40%</td><td>1–3%</td><td>Дешёвая реактивация или исключение из коммуникаций</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: правило Парето в клиентской базе</div>
+<p>Обрати внимание на разрыв между «долей базы» и «долей выручки». Champions — 5–8% клиентов дают 30–45% выручки. Lost — 25–40% базы дают 1–3%.</p>
+<p><strong>Прямое следствие для бюджета:</strong> одинаковая коммуникация на всех — это трата 30% бюджета на сегмент, приносящий 2% денег.</p>
+<p><strong>Но есть контринтуитивная деталь.</strong> «Champions не трогать» звучит странно — это же лучшие клиенты! Логика в том, что они <em>и так купят</em>: с точки зрения uplift (тема 2.4) это классические sure things, и скидка им — чистая потеря маржи. Их нужно <strong>удерживать не скидками, а сервисом</strong>: ранний доступ, персональный менеджер, статус.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Доля базы против доли выручки по сегментам</div>
+<div class="chsub">Разрыв между столбцами и есть аргумент за сегментацию</div>
+<div style="position:relative;height:310px;"><canvas id="c_segrev"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Самый недооценённый сегмент — «Cannot lose».</strong> Всего 2–4% базы, но 8–15% выручки, и они <em>уходят прямо сейчас</em>. Ошибка большинства CRM-программ: тратить основной бюджет на «At risk» (их больше и они заметнее в отчёте), а «Cannot lose» теряются в общей массе. <strong>Правило:</strong> считай приоритет как $\text{Monetary} \times P(\text{уйдёт})$, а не по размеру сегмента. Тогда 2% базы получат внимание, соответствующее их вкладу.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Правильная приоритизация бюджета удержания</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Бюджет:</strong> 5 млн ₽ на кампанию удержания. Стоимость контакта 250 ₽ (звонок + бонус) → 20 000 контактов.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивно — «At risk» целиком</strong> (48 000 человек, средний годовой CLV 6000 ₽). Хватит на 42% сегмента, выбранных случайно. Ожидаемо спасено: $20\,000\times0.12\times6000 = \mathbf{14.4}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>По приоритету $M\times P(\text{уход})$:</strong> сначала «Cannot lose» (14 000 человек, CLV 38 000 ₽), потом верх «At risk».</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>Спасено: $14\,000\times0.12\times38\,000 + 6000\times0.12\times6000 = 63.8 + 4.3 = \mathbf{68.1}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разница в 4.7 раза при том же бюджете</strong> — только за счёт порядка обработки сегментов. Это самое дешёвое улучшение в CRM: оно не требует ни новых моделей, ни новых данных.</div></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Где RFM принципиально ломается <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пять ограничений, каждое из которых требует другого инструмента</div>
+
+<div class="grid2">
+<div class="card rd"><h5>① Описывает прошлое, а не будущее</h5><p>«Купил 10 раз за год» — факт о прошлом. Вероятность купить снова RFM <em>не оценивает</em> — он лишь предполагает, что активные останутся активными.</p><p><em>Решение:</em> BTYD-модели (секции 6–9).</p></div>
+<div class="card rd"><h5>② Границы произвольны</h5><p>Почему 5 квинтилей, а не 4 или 10? Почему R важнее F? Ответов нет — только традиция.</p><p><em>Решение:</em> supervised-скоринг, где веса выучиваются из данных.</p></div>
+<div class="card rd"><h5>③ Не различает «умер» и «пауза»</h5><p>Клиент не покупал 90 дней: ушёл навсегда или просто в отпуске? RFM обоих отправит в «At risk».</p><p><em>Решение:</em> BG/NBD даёт $P(\text{жив})$ явно.</p></div>
+<div class="card rd"><h5>④ Игнорирует всё, кроме транзакций</h5><p>Жалоба в поддержку, отписка от рассылки, визит на страницу отмены — сильнейшие сигналы, невидимые для RFM.</p><p><em>Решение:</em> ML-модель на полном наборе признаков.</p></div>
+<div class="card rd"><h5>⑤ Не отвечает «поможет ли воздействие»</h5><p>Сегмент говорит, <em>кто</em> в риске, но не говорит, кого кампания удержит, а кого оттолкнёт.</p><p><em>Решение:</em> uplift (тема 2.4).</p></div>
+<div class="card am"><h5>⑥ Одинаков для разных категорий</h5><p>Один и тот же R=3 означает разное для покупателя продуктов и покупателя мебели.</p><p><em>Решение:</em> нормировка на цикл, отдельные сетки по категориям.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Ограничение ③ — самое дорогое на практике.</strong> В сегменте «At risk» смешаны две принципиально разные группы: те, кто действительно ушёл (реактивация бессмысленна, деньги на ветер), и те, кто просто в паузе (они вернутся <em>сами</em>, и кампания на них — трата бюджета плюс риск sleeping dogs). RFM не может их разделить <em>в принципе</em>, потому что видит только «дней с последней покупки». Именно эту проблему решают вероятностные модели следующей секции — они дают $P(\text{клиент ещё «жив»})$ как отдельную величину.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько разнородна группа «не покупал 90 дней»</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Клиент A:</strong> 24 покупки за 2 года, средний интервал 30 дней, последняя 90 дней назад. $R_{\text{norm}} = 3.0$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Клиент B:</strong> 3 покупки за 2 года, средний интервал 240 дней, последняя 90 дней назад. $R_{\text{norm}} = 0.375$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Классический RFM:</strong> оба получают одинаковый скор R и попадают в один сегмент.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>BG/NBD:</strong> для A вероятность «жив» $\approx 0.18$ — он просрочил свой цикл втрое, почти наверняка ушёл. Для B $\approx 0.91$ — он ещё даже не дошёл до обычного интервала.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Решения противоположны:</strong> A — агрессивная реактивация или исключение из коммуникаций (последний шанс); B — <strong>ничего не делать</strong>, он вернётся сам, и контакт лишь создаст риск. RFM привёл бы обоих в одну кампанию.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Одинаковая Recency, разная вероятность «жив»</div>
+<div class="chsub">P(alive) по BG/NBD для клиентов с recency 90 дней и разной историей</div>
+<div style="position:relative;height:300px;"><canvas id="c_alive"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. BTYD: вероятностные модели покупательского поведения <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Buy Till You Die — семейство моделей, отвечающих на вопросы, недоступные RFM</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: базовая идея всего семейства</div>
+<p>Все BTYD-модели строятся на одной картине мира, состоящей из <strong>двух независимых процессов</strong>:</p>
+<p><strong>① Пока клиент «жив», он покупает случайно</strong> с некоторой индивидуальной интенсивностью $\lambda$. Это пуассоновский процесс: покупки происходят независимо, среднее число за время $t$ равно $\lambda t$.</p>
+<p><strong>② В какой-то момент клиент «умирает»</strong> — навсегда перестаёт быть клиентом. Момент смерти <em>ненаблюдаем</em>: мы не видим уведомления «я ушёл», мы видим только отсутствие покупок.</p>
+<p><strong>Гетерогенность:</strong> у каждого клиента свои $\lambda$ и своя склонность к смерти, и эти параметры распределены по базе (обычно Gamma и Beta).</p>
+<p><strong>Что даёт модель:</strong> зная историю покупок клиента $(x, t_x, T)$, можно посчитать $P(\text{жив сейчас})$ и ожидаемое число покупок в будущем — то, чего RFM не даёт вообще.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Три числа, описывающие клиента в BTYD</div>
+$$x \;-\; \text{число ПОВТОРНЫХ покупок (без первой)}$$
+$$t_x \;-\; \text{время от первой покупки до последней}$$
+$$T \;-\; \text{время от первой покупки до момента наблюдения}$$
+<p class="fnote">Заметь: $t_x \le T$, и разность $T - t_x$ — это и есть «recency наоборот», период молчания. Вся информация о клиенте сжимается в три числа.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как перевести историю клиента в (x, t_x, T)</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>История покупок:</strong> 5 января, 2 февраля, 20 февраля, 15 марта. Дата среза — 30 апреля.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>$x$ = 3</strong> — три <em>повторные</em> покупки (первая, 5 января, не считается: BTYD моделирует поведение <em>после</em> привлечения).</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>$t_x$ = 69 дней</strong> — от 5 января до 15 марта.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>$T$ = 115 дней</strong> — от 5 января до 30 апреля.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Период молчания:</strong> $T - t_x = 46$ дней. Средний интервал между покупками: $t_x/x = 69/3 = 23$ дня. Молчание вдвое дольше обычного — тревожный признак.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Именно соотношение этих величин модель и превращает в $P(\text{жив})$. Ключевая интуиция: <strong>чем больше $x$ при малом $t_x$, тем выше интенсивность; чем больше $T - t_x$ относительно $t_x/x$, тем вероятнее «смерть»</strong>.</div></div>
+</div>
+
+<h3>Семейство моделей</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Модель</th><th>Процесс покупок</th><th>Процесс «смерти»</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>BG/NBD</b></td><td>Пуассон, $\lambda\sim$Gamma</td><td>После каждой покупки с вероятностью $p$; $p\sim$Beta</td><td><strong>Дефолт для некотрактного бизнеса — быстро и устойчиво</strong></td></tr>
+<tr><td>Pareto/NBD</td><td>Пуассон, $\lambda\sim$Gamma</td><td>В любой момент времени; $\mu\sim$Gamma</td><td>Точнее, но медленнее; исторически первая (1987)</td></tr>
+<tr><td>MBG/NBD</td><td>Пуассон, Gamma</td><td>Как BG/NBD + возможность «смерти» до первой повторной</td><td>Много клиентов с $x=0$</td></tr>
+<tr><td>BG/BB</td><td>Дискретное время, Beta-Binomial</td><td>Beta</td><td><strong>Дискретные периоды: подписки, ежемесячные покупки</strong></td></tr>
+<tr><td>Gamma-Gamma</td><td>—</td><td>—</td><td>Дополнение: моделирует <em>размер</em> чека</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ключевое разграничение: контрактный и неконтрактный бизнес.</strong> В <em>контрактном</em> (подписка, страховка, телеком) момент ухода <strong>наблюдаем</strong> — клиент отменяет подписку, и мы это видим. Там нужен анализ выживаемости (тема 2.3), а не BTYD. В <em>неконтрактном</em> (ритейл, e-commerce) уход ненаблюдаем — клиент просто перестаёт приходить. Именно для этого случая и созданы BTYD-модели. <strong>Применять BTYD к подписке — распространённая ошибка:</strong> там есть точная метка ухода, и выбрасывать её ради вероятностной оценки бессмысленно.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему именно Gamma и Beta для гетерогенности.</strong> Это <em>сопряжённые</em> распределения: Gamma сопряжена к Пуассону, Beta — к Бернулли. Благодаря этому апостериорные распределения после наблюдения данных остаются того же семейства, и правдоподобие выражается <strong>в замкнутой форме</strong> — без интегралов и симуляций. Именно математическое удобство сделало эти модели практичными задолго до появления вычислительных мощностей. Тот же принцип, что у Beta-Bernoulli в Thompson Sampling (блок 6).</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. BG/NBD под капотом <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Fader, Hardie & Lee (2005) — рабочая лошадь неконтрактного бизнеса</div>
+
+<div class="fbox pk">
+<div class="flabel">📐 Пять допущений BG/NBD</div>
+<p><strong>① Пока клиент жив,</strong> покупки — пуассоновский процесс с интенсивностью $\lambda$.</p>
+<p><strong>② Гетерогенность $\lambda$</strong> по базе описывается Gamma$(r, \alpha)$.</p>
+<p><strong>③ После каждой покупки</strong> клиент «умирает» с вероятностью $p$ (геометрическое время жизни в числе покупок).</p>
+<p><strong>④ Гетерогенность $p$</strong> описывается Beta$(a, b)$.</p>
+<p><strong>⑤ $\lambda$ и $p$ независимы</strong> между клиентами.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: ключевое отличие BG/NBD от Pareto/NBD</div>
+<p>В BG/NBD клиент может «умереть» <strong>только сразу после покупки</strong> — как будто после каждого визита он подбрасывает монетку «вернусь или нет».</p>
+<p>В Pareto/NBD смерть возможна <em>в любой момент</em>, в том числе посреди паузы между покупками.</p>
+<p><strong>Почему BG/NBD выиграл на практике:</strong> геометрическое время жизни (в покупках) даёт правдоподобие в замкнутой форме без специальных функций. Pareto/NBD требует гипергеометрической функции Гаусса, что медленно и численно капризно.</p>
+<p><strong>Побочный эффект допущения ③:</strong> клиент с $x=0$ (ни одной повторной покупки) в BG/NBD <em>не может быть мёртвым</em> — он ещё не подбрасывал монетку. Модель считает всех таких «живыми», что иногда неверно. Это чинит MBG/NBD.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Правдоподобие BG/NBD</div>
+$$L(r,\alpha,a,b \mid x, t_x, T) = \frac{B(a,\,b+x)}{B(a,b)}\cdot\frac{\Gamma(r+x)\,\alpha^{r}}{\Gamma(r)\,(\alpha+T)^{r+x}} \;+\; \delta_{x>0}\,\frac{B(a+1,\,b+x-1)}{B(a,b)}\cdot\frac{\Gamma(r+x)\,\alpha^{r}}{\Gamma(r)\,(\alpha+t_x)^{r+x}}$$
+<p class="fnote">Первое слагаемое — «клиент ещё жив». Второе — «умер сразу после последней покупки». $\delta_{x>0}$ — индикатор, что повторные покупки были. Параметры $(r,\alpha,a,b)$ оцениваются максимизацией суммы логарифмов по всей базе.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Две главные формулы для применения</div>
+<p><strong>Вероятность, что клиент жив:</strong></p>
+$$P(\text{alive} \mid x, t_x, T) = \left[1 + \delta_{x>0}\cdot\frac{a}{b+x-1}\left(\frac{\alpha+T}{\alpha+t_x}\right)^{r+x}\right]^{-1}$$
+<p><strong>Ожидаемое число покупок за будущий период $t$:</strong></p>
+$$\mathbb{E}[Y(t) \mid x, t_x, T] = \frac{(a+b+x-1)/(a-1)\cdot\left[1 - \left(\frac{\alpha+T}{\alpha+T+t}\right)^{r+x}{}_2F_1(\cdot)\right]}{1 + \delta_{x>0}\frac{a}{b+x-1}\left(\frac{\alpha+T}{\alpha+t_x}\right)^{r+x}}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как читать формулу P(alive)</div>
+<p>Смотри на ключевой множитель $\left(\frac{\alpha+T}{\alpha+t_x}\right)^{r+x}$.</p>
+<p>Числитель $\alpha + T$ содержит <em>всё</em> время наблюдения, знаменатель $\alpha + t_x$ — только время до последней покупки. Их отношение — это мера того, <strong>насколько долго клиент молчит относительно своей активной фазы</strong>.</p>
+<p>Если клиент купил только что ($t_x \approx T$), отношение ≈ 1, множитель ≈ 1, и $P(\text{alive})$ близка к 1.</p>
+<p>Если клиент давно молчит ($T \gg t_x$), отношение велико, а степень $r+x$ его усиливает — множитель огромен, $P(\text{alive}) \to 0$.</p>
+<p><strong>Гениальная деталь — показатель $r+x$.</strong> Чем больше покупок $x$ было у клиента, тем <em>сильнее</em> штраф за молчание. Активный покупатель, замолчавший на 3 месяца, «мертвее», чем редкий покупатель с той же паузой — ровно то, что мы обсуждали в секции 5.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем P(alive) для двух клиентов</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Подогнанные параметры базы:</strong> $r = 0.24$, $\alpha = 4.41$, $a = 0.79$, $b = 2.43$ (типичные значения для e-commerce, время в неделях).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Клиент A (активный, замолчал):</strong> $x=24$, $t_x=104$, $T=117$ недель.<br>Отношение: $\frac{4.41+117}{4.41+104} = \frac{121.4}{108.4} = 1.120$. Степень $r+x = 24.24$.<br>$1.120^{24.24} = e^{24.24\times0.1133} = e^{2.747} = 15.6$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Множитель $\frac{a}{b+x-1} = \frac{0.79}{2.43+23} = 0.0311$. Итого: $P = [1 + 0.0311\times15.6]^{-1} = [1.485]^{-1} = \mathbf{0.673}$.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Клиент B (тот же простой, но редкий):</strong> $x=3$, $t_x=104$, $T=117$.<br>Степень $r+x = 3.24$: $1.120^{3.24} = e^{0.367} = 1.443$.<br>Множитель $\frac{0.79}{2.43+2} = 0.178$. Итого: $P = [1 + 0.178\times1.443]^{-1} = [1.257]^{-1} = \mathbf{0.795}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Клиент A с 24 покупками «мертвее» (0.67), чем клиент B с 3 покупками (0.80)</strong> — при абсолютно одинаковом периоде молчания. Это прямое следствие степени $r+x$: чем интенсивнее был клиент, тем сильнее его молчание говорит об уходе. Классический RFM дал бы обоим одинаковый скор R.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">P(alive) в зависимости от периода молчания и числа прошлых покупок</div>
+<div class="chsub">Активные клиенты «умирают» быстрее при том же молчании</div>
+<div style="position:relative;height:320px;"><canvas id="c_pnbd"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор P(alive) по BG/NBD</label>
+  <input type="range" id="sl_x" min="1" max="40" step="1" value="12" oninput="updBG()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 повторная покупка</span><span class="out" id="out_x">12</span><span>40</span></div>
+  <label style="margin-top:14px;">Активный период $t_x$, недель</label>
+  <input type="range" id="sl_tx" min="4" max="150" step="2" value="80" oninput="updBG()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>4</span><span class="out" id="out_tx">80</span><span>150</span></div>
+  <label style="margin-top:14px;">Молчание $T - t_x$, недель</label>
+  <input type="range" id="sl_gap" min="0" max="100" step="1" value="13" oninput="updBG()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0</span><span class="out" id="out_gap">13</span><span>100</span></div>
+  <div class="res" id="out_bg"></div>
+</div>
+
+<pre><code># BG/NBD и Gamma-Gamma в lifetimes
+from lifetimes import BetaGeoFitter, GammaGammaFitter
+from lifetimes.utils import summary_data_from_transaction_data
+
+summary = summary_data_from_transaction_data(
+    df, customer_id_col="customer_id", datetime_col="order_date",
+    monetary_value_col="amount", observation_period_end="2026-01-01",
+    freq="W",                                   # единица времени — неделя
+)
+# summary содержит колонки: frequency (x), recency (t_x), T, monetary_value
+
+bgf = BetaGeoFitter(penalizer_coef=0.001)       # регуляризация против вырождения
+bgf.fit(summary["frequency"], summary["recency"], summary["T"])
+print(bgf.summary)                               # r, alpha, a, b
+
+summary["p_alive"] = bgf.conditional_probability_alive(
+    summary["frequency"], summary["recency"], summary["T"])
+summary["pred_12w"] = bgf.conditional_expected_number_of_purchases_up_to_time(
+    12, summary["frequency"], summary["recency"], summary["T"])
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три технические ловушки при подгонке BG/NBD.</strong> ① <strong>Обязательна регуляризация</strong> (<code>penalizer_coef</code> 0.001–0.01) — без неё на малых или вырожденных данных оптимизация уходит в бесконечность и параметры теряют смысл. ② <strong>Клиенты с $x=0$ должны быть включены</strong> — они несут информацию о доле «однократных». Исключение их сильно смещает $a$ и $b$. ③ <strong>Единица времени должна соответствовать циклу покупок:</strong> для e-commerce недели, для продуктового ритейла дни, для крупных покупок месяцы. Неверный масштаб приводит к численно неустойчивым параметрам.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Pareto/NBD и выбор между моделями <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Старшая и более строгая модель семейства</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Pareto/NBD (Schmittlein, Morrison & Colombe, 1987)</div>
+<p>Отличие в процессе «смерти»: время жизни <strong>экспоненциально</strong> с индивидуальной интенсивностью $\mu$, и $\mu \sim$ Gamma$(s, \beta)$.</p>
+$$P(\text{alive}) = \left[1 + \frac{s}{r+s+x}\cdot\left(\frac{\alpha+T}{\beta+T}\right)^{?}\dots\right]^{-1}$$
+<p class="fnote">Точная формула требует гипергеометрической функции ${}_2F_1$ — отсюда вычислительная сложность и численная капризность.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: когда разница между моделями существенна</div>
+<p>Обе модели дают близкие прогнозы <strong>на агрегированном уровне</strong> — суммарное число покупок по базе предсказывается почти одинаково.</p>
+<p>Различия проявляются <em>на индивидуальных клиентах</em> в двух случаях:</p>
+<p><strong>① Длинные паузы между покупками.</strong> Pareto допускает смерть посреди паузы, BG/NBD — нет. Для клиента, купившего 2 раза с интервалом в год, Pareto даст более низкую $P(\text{alive})$.</p>
+<p><strong>② Клиенты с $x=0$.</strong> BG/NBD считает их гарантированно живыми (монетка ещё не подбрасывалась), Pareto допускает, что они уже умерли. При большой доле однократных покупателей это существенно.</p>
+<p><strong>Практический вывод:</strong> начинай с BG/NBD — он быстрее, устойчивее и есть во всех библиотеках. Переходи на Pareto/NBD, только если доля клиентов с $x=0$ велика (более 40%) или если проверка качества показывает систематическое завышение $P(\text{alive})$.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Критерий</th><th>BG/NBD</th><th>Pareto/NBD</th><th>BG/BB</th></tr></thead>
+<tbody>
+<tr><td>Время</td><td>непрерывное</td><td>непрерывное</td><td><strong>дискретное</strong></td></tr>
+<tr><td>Момент «смерти»</td><td>только после покупки</td><td>любой момент</td><td>после периода</td></tr>
+<tr><td>Скорость подгонки</td><td><strong>быстро</strong></td><td>медленно (${}_2F_1$)</td><td>быстро</td></tr>
+<tr><td>Численная устойчивость</td><td><strong>высокая</strong></td><td>капризна</td><td>высокая</td></tr>
+<tr><td>Клиенты с $x=0$</td><td>всегда «живы»</td><td>могут быть «мертвы»</td><td>могут быть «мертвы»</td></tr>
+<tr class="trh"><td>Когда брать</td><td><strong>Дефолт для e-commerce и ритейла</strong></td><td>Много однократных, длинные циклы</td><td><strong>Дискретные периоды: месячные покупки, подписки</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Как проверить, что модель подошла</h3>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Три обязательные проверки качества BTYD-модели.</strong> ① <strong>Holdout по времени:</strong> подогнать на первых 18 месяцах, сравнить предсказанное и фактическое число покупок за следующие 6. ② <strong>Калибровка по частотам:</strong> сгруппировать клиентов по $x$ (0, 1, 2, 3+) и сравнить средние предсказания с фактом внутри каждой группы — модель должна быть точна во <em>всех</em> группах, а не только в среднем. ③ <strong>Кумулятивные транзакции во времени:</strong> график предсказанного и фактического накопленного числа покупок по базе. Все три реализованы в <code>lifetimes.plotting</code>.</div></div>
+
+<div class="chb">
+<div class="cht">Валидация BG/NBD: предсказанные и фактические покупки в holdout</div>
+<div class="chsub">Разбивка по числу покупок в калибровочном периоде — модель должна быть точна в каждой группе</div>
+<div style="position:relative;height:300px;"><canvas id="c_valid"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Систематическое отклонение в одной группе — диагностический сигнал.</strong> Если модель завышает прогноз для клиентов с $x = 0$–1 и занижает для $x \ge 5$, это означает, что <em>гетерогенность недооценена</em> — Gamma-распределение $\lambda$ слишком узкое. Обычно причина в том, что база на самом деле состоит из нескольких принципиально разных групп (например, B2C и B2B), и одна модель их не описывает. <strong>Решение:</strong> подгонять BG/NBD отдельно по сегментам, а не по всей базе.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Gamma-Gamma: моделируем размер чека <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Вторая половина CLV — деньги, а не количество</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Модель Gamma-Gamma</div>
+<p><strong>Допущения:</strong> ① средний чек клиента $\bar z$ при известном параметре $\nu$ распределён Gamma$(p x, \nu x)$; ② гетерогенность $\nu$ по базе — Gamma$(q, \gamma)$; ③ <strong>размер чека не зависит от частоты покупок</strong>.</p>
+<p>Ожидаемый средний чек клиента:</p>
+$$\mathbb{E}[Z \mid x, \bar z] = \frac{\gamma + \bar z\,x}{p\,x + q - 1}\cdot\frac{p}{1}\;=\;\underbrace{\frac{(q-1)}{p x + q - 1}\cdot\frac{p\gamma}{q-1}}_{\text{вклад популяции}} + \underbrace{\frac{p x}{p x + q - 1}\cdot\bar z}_{\text{вклад клиента}}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: это байесовское сжатие к среднему</div>
+<p>Формула — <strong>взвешенное среднее</strong> между средним чеком популяции и наблюдаемым средним чеком клиента. Вес зависит от числа покупок $x$.</p>
+<p><strong>Клиент с 1 покупкой:</strong> его наблюдаемый чек может быть случайностью. Модель сильно «стягивает» оценку к среднему по базе.</p>
+<p><strong>Клиент с 30 покупками:</strong> его средний чек надёжен. Модель почти полностью доверяет наблюдению.</p>
+<p>Это классический <em>shrinkage</em> — тот же принцип, что в target encoding со сглаживанием (блок 1.1) и в эмпирическом байесе. Он защищает от главной ошибки: объявить клиента «дорогим» на основании одной случайно крупной покупки.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сжатие к среднему на конкретных числах</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Параметры базы:</strong> $p = 6.25$, $q = 3.74$, $\gamma = 15.4$. Средний чек популяции: $\frac{p\gamma}{q-1} = \frac{6.25\times15.4}{2.74} = 35.1$ (в условных единицах ≈ 3510 ₽).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Клиент A:</strong> 1 покупка на 12 000 ₽ ($\bar z = 120$). Вес наблюдения: $\frac{px}{px+q-1} = \frac{6.25}{6.25+2.74} = 0.695$.<br>Оценка: $0.695\times120 + 0.305\times35.1 = 83.4 + 10.7 = \mathbf{94.1}$ → <strong>9410 ₽</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Клиент B:</strong> 20 покупок со средним 12 000 ₽. Вес: $\frac{125}{125+2.74} = 0.979$.<br>Оценка: $0.979\times120 + 0.021\times35.1 = 117.5 + 0.7 = \mathbf{118.2}$ → <strong>11 820 ₽</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Разница 9410 против 11 820</strong> при одинаковом наблюдаемом среднем чеке. Оценка для клиента A сжата к среднему по базе на 21%, потому что основана на одном наблюдении.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практический смысл:</strong> без сжатия клиент, случайно сделавший одну крупную покупку, попал бы в топ по CLV и получил бы VIP-обслуживание. Gamma-Gamma автоматически учитывает неопределённость оценки — это защита от переоценки «однократных крупных».</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Критичное допущение ③: независимость частоты и суммы.</strong> Модель предполагает, что частые покупатели тратят в среднем столько же, сколько редкие. <strong>Обязательно проверь корреляцию</strong> между <code>frequency</code> и <code>monetary_value</code> — в <code>lifetimes</code> для этого есть прямая рекомендация. Если корреляция по модулю выше 0.1–0.15, допущение нарушено, и Gamma-Gamma даст смещённые оценки. <strong>Что делать при нарушении:</strong> сегментировать базу и подгонять модель отдельно по группам, либо перейти на ML-регрессию среднего чека с признаком частоты.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ещё одно ограничение:</strong> Gamma-Gamma требует <strong>строго положительных</strong> сумм и клиентов с $x \ge 1$. Возвраты, нулевые чеки и клиенты с единственной (первой) покупкой должны быть обработаны отдельно. Возвраты обычно вычитают из соответствующей покупки; клиентов с $x=0$ исключают из подгонки, а их средний чек оценивают средним по базе или по когорте.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Расчёт CLV: собираем всё вместе <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главный практический результат вероятностного подхода</div>
+
+<div class="flow">
+  <div class="fn a"><strong>BG/NBD</strong>сколько покупок<br>ожидается</div>
+  <div class="farr">×</div>
+  <div class="fn b"><strong>Gamma-Gamma</strong>какой средний<br>чек ожидается</div>
+  <div class="farr">×</div>
+  <div class="fn c"><strong>Маржа</strong>доля прибыли<br>с чека</div>
+  <div class="farr">÷</div>
+  <div class="fn d"><strong>Дисконт</strong>деньги завтра<br>дешевле</div>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Discounted Expected Residual Transactions</div>
+$$\text{CLV} = \sum_{t=1}^{H} \frac{\mathbb{E}[\text{покупок в период } t \mid \text{история}] \times \mathbb{E}[Z] \times m}{(1+d)^{t}}$$
+<p class="fnote">$m$ — маржинальность, $d$ — ставка дисконтирования за период, $H$ — горизонт. В <code>lifetimes</code> реализовано как <code>customer_lifetime_value()</code>.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Полный расчёт CLV для одного клиента</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Клиент:</strong> $x = 12$ повторных покупок, $t_x = 80$ недель, $T = 93$ недели, наблюдаемый средний чек 4200 ₽.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>BG/NBD:</strong> $P(\text{alive}) = 0.84$. Ожидаемое число покупок за следующие 52 недели: <strong>6.3</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Gamma-Gamma:</strong> при $x=12$ вес наблюдения $= \frac{6.25\times12}{6.25\times12+2.74} = 0.965$. Оценка чека: $0.965\times4200 + 0.035\times3510 = \mathbf{4176}$ ₽.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Валовая выручка за год:</strong> $6.3\times4176 = 26\,309$ ₽. При марже 22%: $26\,309\times0.22 = \mathbf{5788}$ ₽ прибыли.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>Дисконтирование.</strong> Годовая ставка 12% → месячная $d = 0.0095$. При равномерном распределении покупок по году средний коэффициент $\approx \frac{1}{12}\sum_{t=1}^{12}(1.0095)^{-t} = 0.944$.<br>CLV за год $= 5788\times0.944 = \mathbf{5464}$ ₽.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Горизонт 3 года:</strong> с учётом убывания $P(\text{alive})$ и дисконта суммарно $\approx 5464 + 3980 + 2610 = \mathbf{12\,054}$ ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Прямое применение:</strong> максимальная стоимость привлечения такого клиента (CAC) не должна превышать 12 054 ₽, а для здоровой юнит-экономики — не более трети от этого, то есть ≈4000 ₽. Это число невозможно получить из RFM-сегмента.</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор CLV</label>
+  <input type="range" id="sl_np" min="1" max="40" step="1" value="6" oninput="updCLV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 покупка/год</span><span class="out" id="out_np">6</span><span>40</span></div>
+  <label style="margin-top:14px;">Средний чек, ₽</label>
+  <input type="range" id="sl_chk" min="200" max="30000" step="100" value="4200" oninput="updCLV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>200</span><span class="out" id="out_chk">4200</span><span>30 000</span></div>
+  <label style="margin-top:14px;">Маржинальность, %</label>
+  <input type="range" id="sl_m" min="3" max="80" step="1" value="22" oninput="updCLV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>3%</span><span class="out" id="out_m">22%</span><span>80%</span></div>
+  <label style="margin-top:14px;">Годовое удержание (доля остающихся), %</label>
+  <input type="range" id="sl_ret" min="20" max="95" step="1" value="70" oninput="updCLV()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>20%</span><span class="out" id="out_ret">70%</span><span>95%</span></div>
+  <div class="res" id="out_clv"></div>
+</div>
+
+<div class="chb">
+<div class="cht">Распределение CLV по базе: закон Парето в действии</div>
+<div class="chsub">Верхний дециль обычно даёт больше половины совокупного CLV</div>
+<div style="position:relative;height:300px;"><canvas id="c_clv"></canvas></div>
+</div>
+
+<pre><code># Полный расчёт CLV
+ggf = GammaGammaFitter(penalizer_coef=0.001)
+mask = summary["frequency"] > 0                  # Gamma-Gamma требует x >= 1
+ggf.fit(summary.loc[mask,"frequency"], summary.loc[mask,"monetary_value"])
+
+# ОБЯЗАТЕЛЬНАЯ проверка допущения независимости
+corr = summary.loc[mask, ["frequency","monetary_value"]].corr(method="spearman").iloc[0,1]
+assert abs(corr) < 0.15, f"Допущение Gamma-Gamma нарушено: corr={corr:.3f}"
+
+summary.loc[mask,"exp_avg_value"] = ggf.conditional_expected_average_profit(
+    summary.loc[mask,"frequency"], summary.loc[mask,"monetary_value"])
+
+summary.loc[mask,"clv_12m"] = ggf.customer_lifetime_value(
+    bgf,
+    summary.loc[mask,"frequency"], summary.loc[mask,"recency"], summary.loc[mask,"T"],
+    summary.loc[mask,"monetary_value"],
+    time=12,                      # горизонт в МЕСЯЦАХ
+    freq="W",                     # единица данных — недели
+    discount_rate=0.0095,         # месячная ставка
+) * MARGIN                        # умножаем на маржинальность вручную
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три ошибки, регулярно портящие расчёт CLV.</strong> ① <strong>Путаница единиц:</strong> в <code>customer_lifetime_value</code> параметр <code>time</code> задаётся в <em>месяцах</em>, а <code>freq</code> описывает единицу исходных данных. Несогласованность даёт результат, отличающийся в разы. ② <strong>Забытая маржинальность:</strong> модель считает <em>выручку</em>, а не прибыль. Использовать выручку как CLV для сравнения с CAC — грубая ошибка. ③ <strong>Отсутствие дисконтирования</strong> при горизонте 3+ года завышает CLV на 15–25%.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Главная ценность CLV — не число, а его применение.</strong> Три прямых сценария: ① <strong>потолок CAC</strong> по каналам привлечения — платить за клиента больше его CLV убыточно по определению; ② <strong>приоритизация удержания</strong> — бюджет распределяется пропорционально $\text{CLV}\times P(\text{уход})$, а не по размеру сегмента; ③ <strong>оценка эффекта продуктовых изменений</strong> — улучшение удержания на 5 п.п. переводится в конкретный прирост совокупного CLV базы. Без последнего продуктовые команды не могут обосновать инвестиции в retention.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Кластеризация вместо сетки <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Когда стоит отдать разбиение алгоритму — и почему это чаще вредит, чем помогает</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чем кластеризация отличается от RFM-сетки</div>
+<p><strong>RFM-сетка</strong> режет пространство по <em>заранее заданным</em> границам — прямоугольниками, параллельными осям.</p>
+<p><strong>Кластеризация</strong> ищет естественные сгущения в данных — границы получаются произвольной формы и определяются самой структурой базы.</p>
+<p><strong>Когда это выигрывает:</strong> если клиенты действительно группируются в «облака» (например, есть чёткие группы B2B-закупщиков и розничных покупателей), кластеры это увидят, а сетка разрежет их пополам.</p>
+<p><strong>Когда проигрывает:</strong> если данные — сплошное непрерывное облако без сгущений (типичная ситуация для RFM), алгоритм всё равно вернёт кластеры, но они будут произвольным разрезанием непрерывности. При этом они менее интерпретируемы и <em>нестабильны при перезапуске</em>.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная ошибка: кластеризация сырых RFM без преобразования.</strong> Recency в днях (0–800), Frequency в штуках (1–200), Monetary в рублях (500–500 000). K-means минимизирует евклидово расстояние — измерение с наибольшим численным разбросом <em>полностью доминирует</em>. Без масштабирования кластеры получатся <strong>исключительно по Monetary</strong>, а R и F не будут влиять вообще. Обязательный порядок: ① $\log(1+x)$ для F и M (гасит тяжёлый хвост), ② стандартизация всех трёх, ③ только потом кластеризация.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как одно измерение съедает кластеризацию</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Два клиента.</strong> A: R=10 дней, F=40 покупок, M=3000 ₽. B: R=400 дней, F=1 покупка, M=3200 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Без масштабирования</strong> евклидово расстояние: $\sqrt{390^2 + 39^2 + 200^2} = \sqrt{152100+1521+40000} = 440.5$.<br>Вклад Monetary: $40\,000/193\,621 = 20.7\%$, Recency: $78.6\%$, Frequency: $\mathbf{0.8\%}$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>Frequency — самое информативное измерение для лояльности — <strong>практически не влияет</strong> на разбиение.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>После $\log(1+x)$ и стандартизации</strong> (при $\sigma_R = 120$, $\sigma_{\log F} = 0.9$, $\sigma_{\log M} = 0.8$): вклады становятся 41% / 37% / 22%.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разбиение полностью меняется.</strong> Клиент A теперь оказывается в кластере «лояльные», а не в одном кластере с B по признаку похожего чека. Одна строка предобработки меняет весь результат.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Алгоритм</th><th>Форма кластеров</th><th>Плюс для сегментации</th><th>Минус</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>K-means</b></td><td>сферы равного размера</td><td>Быстро, масштабируемо, понятные центроиды</td><td>Требует задать $k$; чувствителен к выбросам и масштабу</td></tr>
+<tr><td>K-medoids / PAM</td><td>сферы</td><td>Центр — реальный клиент, устойчив к выбросам</td><td>$O(n^2)$, не для больших баз</td></tr>
+<tr><td>GMM</td><td>эллипсы</td><td><strong>Мягкое отнесение: P(клиент в сегменте)</strong></td><td>Больше параметров, риск переобучения</td></tr>
+<tr><td>Иерархическая</td><td>любая</td><td>Дендрограмма показывает вложенность сегментов</td><td>$O(n^2)$; нужен срез дерева</td></tr>
+<tr><td>DBSCAN / HDBSCAN</td><td>произвольная</td><td>Находит выбросы явно, не требует $k$</td><td>На непрерывном RFM-облаке даёт один гигантский кластер</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Проверь стабильность прежде, чем внедрять.</strong> Разбей базу пополам случайно, кластеризуй обе половины, сопоставь центроиды. Если центры сегментов существенно различаются или ARI между разбиениями ниже ~0.6 — <strong>структуры в данных нет</strong>, алгоритм просто режет непрерывное облако. В этом случае интерпретируемая RFM-сетка <em>объективно лучше</em>: она даёт тот же результат, но стабильна во времени и понятна бизнесу.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему в продакшене чаще выживает сетка, а не кластеры.</strong> Три причины, о которых не пишут в туториалах: ① <strong>Кластеры меняются при перезапуске</strong> — клиент вчера был в кластере 3, сегодня в кластере 5, и вся история кампаний рассыпается. ② <strong>Их невозможно объяснить</strong> — «кластер 4» не означает ничего, пока аналитик не опишет его вручную, и это описание устаревает. ③ <strong>Нет однозначного соответствия действию</strong> — маркетолог не знает, что делать с «кластером 4», тогда как с «Cannot lose» знает сразу. Кластеризация полезна как <em>инструмент исследования</em> («какая структура есть в базе?»), но редко как основа операционной сегментации.</div></div>
+
+<pre><code># Правильный пайплайн кластеризации RFM
+from sklearn.preprocessing import StandardScaler, QuantileTransformer
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score, adjusted_rand_score
+
+X = rfm[["recency","frequency","monetary"]].copy()
+X["frequency"] = np.log1p(X.frequency)          # гасим тяжёлый хвост
+X["monetary"]  = np.log1p(X.monetary)
+Xs = StandardScaler().fit_transform(X)           # выравниваем масштабы
+
+# Подбор k: силуэт + интерпретируемость
+for k in range(3, 11):
+    km = KMeans(k, n_init=20, random_state=0).fit(Xs)
+    print(k, round(silhouette_score(Xs, km.labels_, sample_size=20000), 3))
+
+# ПРОВЕРКА СТАБИЛЬНОСТИ — обязательна перед внедрением
+idx = np.random.permutation(len(Xs)); h = len(Xs)//2
+a = KMeans(6, n_init=20, random_state=0).fit(Xs[idx[:h]])
+b = KMeans(6, n_init=20, random_state=1).fit(Xs[idx[h:]])
+# сравниваем предсказания обеих моделей на ОДНИХ данных
+print("stability ARI:", adjusted_rand_score(a.predict(Xs), b.predict(Xs)))
+# < 0.6 -> структуры нет, используй интерпретируемую сетку
+</code></pre>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Supervised-сегментация: учим веса из данных <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Самый мощный подход — и самый требовательный к дисциплине</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: смена вопроса</div>
+<p>RFM спрашивает: «как описать клиента?». Кластеризация: «какие группы есть в базе?».</p>
+<p><strong>Supervised спрашивает: «какова вероятность конкретного целевого события?»</strong> — купит в следующем месяце, уйдёт, откликнется на кампанию.</p>
+<p>Разница принципиальна: вместо произвольных весов («почему R важнее F?») веса <em>выучиваются из данных</em> под конкретную задачу. Для прогноза покупки важной окажется одна комбинация признаков, для прогноза оттока — другая.</p>
+<p><strong>Цена:</strong> нужна разметка, нужна дисциплина с временными окнами, нужен мониторинг дрейфа. Это уже не аналитика на коленке, а ML-система (блок 7.3).</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Схема временных окон — единственно правильная</div>
+<p><strong>Окно признаков:</strong> $[T_0,\; T_1]$ — по нему считаются все признаки клиента.</p>
+<p><strong>Зазор (gap):</strong> $[T_1,\; T_1+g]$ — <em>ничего не используется</em>. Имитирует задержку данных в проде.</p>
+<p><strong>Окно таргета:</strong> $[T_1+g,\; T_2]$ — в нём фиксируется целевое событие.</p>
+<p class="fnote">Признак, посчитанный хотя бы частично на окне таргета, — это утечка. Она даёт AUC 0.95 на валидации и полный провал в проде.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Классическая утечка в сегментации: «средний чек за всю историю».</strong> Признак посчитан по всем покупкам клиента, включая те, что попали в окно таргета. Модель фактически «подсматривает» будущие покупки. Симптом узнаваем: <strong>AUC 0.93+ на валидации, метрика падает до 0.61 в проде</strong>. Правило: любой агрегат обязан иметь явную отсечку по дате, и эта отсечка обязана совпадать с $T_1$. Именно это гарантирует point-in-time correctness в Feature Store (тема 7.3).</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Группа признаков</th><th>Примеры</th><th>Обычная важность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Транзакционные</b></td><td>R, F, M, тренд F (последние 30 дн / предыдущие 30), доля скидочных покупок</td><td><strong>Высокая</strong></td></tr>
+<tr><td>Динамика</td><td>Изменение интервала между покупками, ускорение/замедление</td><td><strong>Часто выше, чем сам уровень</strong></td></tr>
+<tr><td>Продуктовые</td><td>Число категорий, доля основной категории, глубина каталога</td><td>Средняя</td></tr>
+<tr><td>Поведенческие</td><td>Визиты без покупки, открытия писем, поиски, добавления в корзину</td><td>Средняя, растёт для оттока</td></tr>
+<tr class="trh"><td><b>Сервисные</b></td><td>Обращения в поддержку, возвраты, жалобы, отписка от рассылки</td><td><strong>Очень высокая для оттока</strong></td></tr>
+<tr><td>Контекстные</td><td>Канал привлечения, регион, устройство, промокод при первой покупке</td><td>Низкая, но полезна для срезов</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Самый недооценённый класс признаков — производные второго порядка.</strong> Не «сколько покупок за 90 дней», а <strong>отношение</strong> активности за последние 30 дней к предыдущим 60. Уровень активности говорит, кто клиент <em>сейчас</em>; отношение говорит, куда он <em>движется</em>. В моделях оттока такие «ratio-признаки» регулярно оказываются в топ-5 по важности, обгоняя абсолютные значения R, F и M. Стандартный набор: $F_{30}/F_{60}$, $M_{30}/M_{90}$, $\text{interval}_{\text{last}}/\text{interval}_{\text{median}}$.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько supervised обгоняет RFM: сравнение на одной базе</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> предсказать покупку в следующие 30 дней. База 800 000 клиентов, базовая доля покупателей 8.2%.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>RFM-скор (R+F+M, ранжирование по сумме):</strong> ROC-AUC 0.71. В верхнем дециле доля покупателей 24.1% → lift 2.94.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Логистическая регрессия</strong> на тех же трёх признаках: AUC 0.74. Прирост только от выученных весов вместо равных — <strong>+0.03</strong>.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>LightGBM на 60 признаках</strong> (транзакционные + динамика + поведенческие + сервисные): AUC 0.83. Верхний дециль 41.6% → lift <strong>5.07</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Экономика.</strong> Бюджет на 80 000 контактов (верхний дециль), маржа 1800 ₽, стоимость контакта 12 ₽.<br>RFM: $80\,000\times0.241\times1800 - 960\,000 = \mathbf{33.7}$ млн ₽.<br>LightGBM: $80\,000\times0.416\times1800 - 960\,000 = \mathbf{58.9}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>+25 млн ₽ на одной кампании</strong> при том же бюджете. Но: 0.71 → 0.83 стоит инфраструктуры (Feature Store, мониторинг, переобучение), а RFM работает завтра на голом SQL. <strong>Это и есть честный выбор</strong>: RFM — быстрый старт и базовая линия, supervised — следующий шаг, когда базовая линия исчерпана.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Lift-кривые: RFM-скор против ML-модели</div>
+<div class="chsub">Доля покупателей по децилям скоринга</div>
+<div style="position:relative;height:310px;"><canvas id="c_lift"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Как измерять качество сегментации <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Силуэт ничего не говорит о деньгах</div>
+
+<div class="grid2">
+<div class="card bl"><h5>Технические метрики</h5><p><strong>Silhouette</strong> — насколько кластеры плотны и разделены, от −1 до 1.</p><p><strong>Davies-Bouldin</strong> — отношение внутрикластерного разброса к межкластерному, меньше лучше.</p><p><strong>Calinski-Harabasz</strong> — отношение дисперсий, больше лучше.</p><p><strong>ARI между запусками</strong> — стабильность разбиения.</p></div>
+<div class="card gr"><h5>Бизнес-метрики</h5><p><strong>Разделение по целевой</strong> — различается ли конверсия/CLV между сегментами.</p><p><strong>Стабильность во времени</strong> — какая доля клиентов меняет сегмент за месяц.</p><p><strong>Действенность</strong> — есть ли у каждого сегмента свой сценарий.</p><p><strong>Инкрементальный эффект</strong> — прирост в A/B против единой коммуникации.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Силуэт 0.62 не означает хорошую сегментацию.</strong> Он измеряет только геометрию: плотны ли кластеры в выбранном пространстве признаков. Можно получить прекрасный силуэт на разбиении по <em>региону клиента</em> — кластеры будут идеально разделены и абсолютно бесполезны, потому что конверсия и CLV в них одинаковы. <strong>Единственный настоящий критерий:</strong> различаются ли сегменты по <em>бизнес-величине, ради которой они создавались</em>, и приводит ли их использование к росту в A/B-тесте.</div></div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Практический критерий полезности сегментации</div>
+$$\text{Separation} = \frac{\max_k \bar{y}_k - \min_k \bar{y}_k}{\bar{y}_{\text{всего}}}$$
+<p class="fnote">$\bar y_k$ — средняя целевая величина (конверсия, CLV) в сегменте $k$. Значение ниже 1.5 означает, что сегменты почти не различаются по деньгам, и вся конструкция не имеет смысла — независимо от силуэта.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Две сегментации: хороший силуэт против хорошей экономики</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Сегментация A (K-means по региону и устройству):</strong> silhouette 0.68 — отличная геометрия.<br>Конверсия по сегментам: 7.9% / 8.1% / 8.4% / 8.0%. Separation $= (8.4-7.9)/8.1 = \mathbf{0.06}$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Сегментация B (RFM-сетка):</strong> silhouette 0.21 — геометрически «плохая».<br>Конверсия: 1.2% / 4.5% / 11.8% / 29.4%. Separation $= (29.4-1.2)/8.1 = \mathbf{3.48}$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>По техническим метрикам побеждает A с трёхкратным отрывом.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>По деньгам:</strong> B позволяет сфокусировать бюджет на сегменте с конверсией 29.4% вместо 8.1% средней. A не даёт никакой фокусировки — все сегменты одинаковы.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Силуэт и деньги измеряют разное.</strong> Технические метрики отвечают «есть ли структура в признаковом пространстве», бизнес-метрики — «полезна ли эта структура». Второе не следует из первого. Отчёт о сегментации без разбивки целевой метрики по сегментам не позволяет принять решение.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Метрика, которую забывают: доля миграций между сегментами за период.</strong> Если за месяц 40% базы меняет сегмент, сегментация непригодна для операционного использования: невозможно вести последовательную коммуникацию, отчёты нестабильны, эффект кампаний неизмерим. <strong>Здоровый уровень: 8–15% миграций в месяц</strong> — достаточно, чтобы отражать реальные изменения, но не настолько, чтобы разрушать преемственность. Слишком низкая миграция (менее 3%) — тоже сигнал: сегменты не реагируют на поведение.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. Подводные камни, стоящие денег <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Десять ошибок, каждую из которых приходилось разгребать в проде</div>
+
+<div class="cl danger"><span class="cli">1️⃣</span><div><strong>Сегментация по дате среза без учёта возраста клиента.</strong> Клиент, зарегистрированный неделю назад, попадает в «Lost» просто потому, что у него мало покупок. <strong>Решение:</strong> отдельная обработка новых клиентов (менее 2 циклов покупки от регистрации) — у них своя воронка онбординга, а не сегменты зрелой базы.</div></div>
+
+<div class="cl danger"><span class="cli">2️⃣</span><div><strong>Возвраты и отмены не вычитаются.</strong> Клиент заказал на 300 000 ₽ и вернул всё — по Monetary он VIP. Особенно опасно в fashion, где доля возвратов достигает 40%. <strong>Решение:</strong> M считается по <em>чистым, оплаченным и не возвращённым</em> заказам; отдельный признак «доля возвратов» полезен сам по себе.</div></div>
+
+<div class="cl danger"><span class="cli">3️⃣</span><div><strong>Один физический клиент = несколько customer_id.</strong> Заказы как гость, разные email, разные телефоны. База «раздувается» однократными покупателями, F занижается у всех. <strong>Решение:</strong> identity resolution до сегментации; в отчёте всегда указывать долю несматченных заказов.</div></div>
+
+<div class="cl danger"><span class="cli">4️⃣</span><div><strong>B2B-клиенты в общей базе.</strong> Корпоративный закупщик с чеком в 200 раз выше розничного ломает квантили Monetary: верхний квинтиль вырождается в несколько десятков компаний. <strong>Решение:</strong> отдельная сегментация для B2B; это разные бизнес-процессы, а не «выбросы».</div></div>
+
+<div class="cl danger"><span class="cli">5️⃣</span><div><strong>Сезонность интерпретируется как отток.</strong> В январе после праздников все выглядят «спящими», в декабре все — «чемпионы». <strong>Решение:</strong> сравнивать recency с сезонной нормой, а не с фиксированным порогом; либо считать сегменты на скользящем годовом окне.</div></div>
+
+<div class="cl danger"><span class="cli">6️⃣</span><div><strong>Sleeping dogs в реактивации.</strong> Письмо «мы скучаем» напоминает клиенту, что он подписан, и он отписывается. В сегменте «Lost» доля таких может достигать 5–8%. <strong>Решение:</strong> uplift-модель (тема 2.4) или как минимум holdout-группа в каждой реактивационной кампании.</div></div>
+
+<div class="cl danger"><span class="cli">7️⃣</span><div><strong>Пересчёт сегментов чаще, чем цикл коммуникации.</strong> Сегменты обновляются ежедневно, а письма уходят раз в неделю — клиент за неделю успевает побывать в трёх сегментах и получить противоречивые сообщения. <strong>Решение:</strong> частота пересчёта = частоте коммуникации; фиксировать сегмент на момент старта кампании.</div></div>
+
+<div class="cl danger"><span class="cli">8️⃣</span><div><strong>Каннибализация каналов не учитывается.</strong> Клиент получил push, email и SMS от трёх разных кампаний за день, потому что попал в три сегмента. <strong>Решение:</strong> глобальный контактный лимит и приоритезация кампаний поверх сегментации — это часть системы, а не сегментации, но без неё сегментация вредит.</div></div>
+
+<div class="cl danger"><span class="cli">9️⃣</span><div><strong>Первая покупка включена в BTYD как повторная.</strong> Ошибка на единицу в $x$ систематически завышает интенсивность у всех клиентов, особенно у однократных. <strong>Решение:</strong> использовать <code>summary_data_from_transaction_data</code>, а не считать вручную; проверить, что медиана $x$ по базе близка к ожидаемой.</div></div>
+
+<div class="cl danger"><span class="cli">🔟</span><div><strong>Оценка эффекта сегментации без контрольной группы.</strong> «После внедрения RFM выручка выросла на 12%» — а это точно сегментация, а не сезон, промо и новый продукт? <strong>Решение:</strong> контрольная группа с единой коммуникацией, живущая постоянно (holdout 3–5% базы). Она стоит 3% выручки и окупается тем, что позволяет отличать работающие механики от кажущихся.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Метаправило.</strong> Восемь из десяти пунктов выше — не про алгоритмы, а про <strong>определение данных</strong>: что считать клиентом, что считать покупкой, на какой момент времени. В сегментации качество определений важнее качества моделей: RFM на чистых данных обгонит градиентный бустинг на грязных. Прежде чем улучшать модель, потрать день на проверку того, что $x$, $t_x$ и $T$ означают именно то, что ты думаешь.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. System Design: сегментация в продакшене <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре кейса международных компаний</div>
+
+<div class="sysbox">
+<h4>🎬 Netflix — сегментация вовлечённости для удержания</h4>
+<p><strong>Задача.</strong> Определить подписчиков с риском отмены и понять, какое вмешательство поможет. Ключевое отличие от ритейла: подписка — <em>контрактный</em> бизнес, момент отмены наблюдаем.</p>
+<p><strong>Почему RFM в чистом виде не подходит.</strong> «Покупка» происходит автоматически раз в месяц — Frequency и Monetary почти константны для всех. Единственное информативное измерение — <em>потребление контента</em>, а не транзакции.</p>
+<p><strong>Замена измерений.</strong> Recency → дней с последней сессии просмотра. Frequency → число дней с просмотром за 28 дней. Monetary → суммарные часы просмотра и глубина каталога (число разных жанров и сериалов).</p>
+<p><strong>Архитектура.</strong> Потоковые события просмотра → агрегация в оконные признаки (7/28/90 дней) → Feature Store с point-in-time корректностью → GBDT-модель вероятности отмены на горизонте биллингового цикла → приоритизация по $\text{LTV}\times P(\text{отмена})$ → персонализация рекомендаций и напоминаний о новом сезоне.</p>
+<p><strong>Ключевая деталь.</strong> Самый сильный признак — не абсолютный объём просмотра, а <em>его падение</em> относительно личной нормы: $H_{7}/H_{28\to7}$. Пользователь, смотревший 20 часов в неделю и упавший до 5, в разы опаснее того, кто стабильно смотрит 3 часа.</p>
+</div>
+
+<div class="sysbox">
+<h4>🛒 Amazon — CLV как основа приоритизации всего</h4>
+<p><strong>Задача.</strong> Единая оценка ценности клиента, используемая одновременно в маркетинге, логистике и поддержке.</p>
+<p><strong>Почему не RFM.</strong> Ассортимент огромен и разнороден: покупатель подгузников (цикл 3 недели) и покупатель техники (цикл 2 года) в общей сетке несравнимы. Нужна модель, работающая в единицах денег, а не рангов.</p>
+<p><strong>Подход.</strong> BTYD-семейство как базовая линия плюс ML-регрессия будущих трат на богатом наборе признаков. Отдельная модель для подписчиков программы лояльности — у них принципиально другая динамика (частота выше, эластичность к скидкам ниже).</p>
+<p><strong>Как используется CLV.</strong> ① Потолок CAC по каналам привлечения. ② Приоритет в очереди поддержки. ③ Порог для бесплатного возврата и ускоренной доставки. ④ Решение о персональных предложениях.</p>
+<p><strong>Подводный камень.</strong> Прямое использование CLV для качества сервиса создаёт петлю обратной связи: клиенты с высоким CLV получают лучший сервис → их CLV растёт → разрыв усиливается. Требуется мониторинг справедливости и минимальный гарантированный уровень сервиса для всех.</p>
+</div>
+
+<div class="sysbox">
+<h4>🎵 Spotify — сегментация по паттерну потребления, а не по объёму</h4>
+<p><strong>Задача.</strong> Понять не «сколько слушает», а <em>как</em> слушает — это определяет, какие продуктовые фичи и рекомендации будут работать.</p>
+<p><strong>Измерения вместо RFM.</strong> Разнообразие (число разных исполнителей и жанров), исследовательность (доля прослушиваний нового против повторов знакомого), контекстность (плейлисты против альбомов против радио), временной паттерн (утро/дорога/тренировка/фон).</p>
+<p><strong>Архитектура.</strong> Эмбеддинги пользователей из последовательности прослушиваний (модель типа word2vec на треках) → кластеризация в пространстве эмбеддингов → интерпретация кластеров через характерные исполнители и жанры → таргетирование фич.</p>
+<p><strong>Почему здесь кластеризация оправдана</strong> (в отличие от RFM-облака): в пространстве музыкальных предпочтений действительно есть <em>плотные естественные группы</em> — жанровые сообщества. Кластеры устойчивы при перезапуске и содержательно интерпретируемы.</p>
+<p><strong>Практическое применение.</strong> «Исследователи» получают Discover Weekly с высокой долей неизвестного; «консерваторы» — плейлисты из знакомого с редкими вкраплениями нового. Одинаковая доля новизны для обеих групп снижает удержание у обеих.</p>
+</div>
+
+<div class="sysbox">
+<h4>🏠 Airbnb — двусторонняя сегментация маркетплейса</h4>
+<p><strong>Задача.</strong> Сегментировать одновременно гостей и хозяев — и учитывать, что действия по одной стороне влияют на другую.</p>
+<p><strong>Гости.</strong> Сегменты по частоте поездок, типу (деловые / отпуск / длительное проживание), горизонту бронирования, чувствительности к цене. Классический RFM работает плохо: цикл поездок сильно варьируется (от ежемесячных командировок до одного отпуска в год), поэтому обязательна нормировка recency на личный цикл.</p>
+<p><strong>Хозяева.</strong> Сегменты по числу объектов, заполняемости, скорости отклика, риску ухода с платформы. Уход хозяина дороже ухода гостя: он уносит с собой <em>предложение</em>, что снижает конверсию всех гостей в его локации.</p>
+<p><strong>Ключевая особенность.</strong> Ценность клиента нельзя считать изолированно. Уход активного хозяина в дефицитной локации имеет отрицательный внешний эффект на десятки гостей. Приоритет удержания считается не как индивидуальный CLV, а с учётом <em>вклада в ликвидность рынка</em> в конкретной локации.</p>
+<p><strong>Следствие для архитектуры.</strong> Сегментация считается в разрезе (сторона рынка × локация), а бюджет удержания распределяется с учётом локального баланса спроса и предложения — там, где предложение дефицитно, порог для удержания хозяина существенно ниже.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Общий вывод из четырёх кейсов.</strong> Ни одна из компаний не использует классический RFM в исходном виде — но все используют <em>его логику</em>: сжать поведение клиента в несколько интерпретируемых измерений, сгруппировать и привязать к каждой группе действие. Меняется только то, <strong>что считать «покупкой»</strong>: просмотр у Netflix, прослушивание у Spotify, бронирование и размещение у Airbnb. Это и есть главный переносимый навык — не формула RFM, а умение выбрать правильные измерения под конкретную бизнес-модель.</div></div>
+</div>
+
+<!-- ================= S16 ================= -->
+<div class="sec" id="s16">
+<div class="stitle">16. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">Разбор тонкостей — от базовых до собеседовательных</div>
+
+<div class="qah">Часть 1. RFM: основы и построение</div>
+
+<details class="qi"><summary><span class="qch">▶</span>1. Почему Recency обычно оказывается сильнее Frequency и Monetary?</summary><div class="qa"><p>Recency — единственное из трёх измерений, которое отражает <strong>текущее</strong> состояние отношений. F и M описывают накопленное прошлое: клиент мог купить 50 раз три года назад и с тех пор исчезнуть — F останется высокой навсегда.</p><p>Recency же обновляется непрерывно и падает, как только клиент перестаёт покупать. Формально: F и M — это интегралы по прошлому, R — производная от текущего поведения. Эмпирически по многим базам R даёт наибольший lift по конверсии в следующем периоде.</p><p><strong>Важная оговорка:</strong> преимущество R исчезает, если не нормировать её на индивидуальный цикл покупок. При сильно разнородных циклах Frequency становится информативнее.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>2. Monetary как сумма или как средний чек — что выбрать?</summary><div class="qa"><p><strong>Средний чек</strong> — в большинстве случаев. Сумма за период почти линейно связана с Frequency (корреляция Спирмена порядка 0.83), поэтому третья ось перестаёт нести новую информацию: сетка вырождается, заполнены только диагональные ячейки (~34% против ~86% при среднем чеке).</p><p>Средний чек отвечает на самостоятельный вопрос: «какого ценового сегмента этот клиент» — это ортогонально частоте.</p><p><strong>Когда сумма всё же уместна:</strong> если задача — ранжировать по вкладу в выручку (для приоритизации бюджета), сумма и есть искомая величина. Но тогда честнее назвать её «вклад в выручку» и не притворяться, что это независимое измерение.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>3. Что не так с квантильным разбиением при отслеживании динамики?</summary><div class="qa"><p>Квантили пересчитываются от текущего распределения базы, поэтому границы <em>плавают</em>. Клиент с неизменным поведением может переходить между сегментами просто потому, что база в целом стала активнее или пассивнее.</p><p>Это порождает «фантомный отток» в отчётах: Champions сокращаются на 12%, запускается спасательная кампания, хотя реально ничего не произошло — изменилась линейка, а не измеряемое.</p><p><strong>Решение:</strong> фиксировать границы, посчитанные на референсном периоде, пересчитывать не чаще раза в квартал и явно документировать момент пересчёта, чтобы разрывы в отчётности были объяснимы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>4. Почему 125 сегментов — плохая идея, и сколько нужно?</summary><div class="qa"><p>Число сегментов должно равняться числу <strong>различных сценариев коммуникации, которые команда способна реально поддерживать</strong>. 125 ячеек означает 125 сценариев — это никто не построит, часть ячеек будет почти пустой, а различия между соседними ячейками не имеют бизнес-смысла.</p><p>Практика: 8–12 именованных сегментов, полученных объединением ячеек по смыслу. Часто достаточно только осей R и F, а M используется как <em>приоритет внутри сегмента</em>, а не как третья ось.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>5. Что такое нормированная Recency и когда она обязательна?</summary><div class="qa"><p>$R_{\text{norm}} = \frac{\text{дней с последней покупки}}{\text{медианный интервал между покупками у этого клиента}}$.</p><p>Обычная recency в днях сравнивает всех по одной линейке. Но 30 дней молчания для еженедельного покупателя — тревога, а для покупателя раз в полгода — норма.</p><p><strong>Обязательна</strong>, когда циклы покупок в базе сильно разнородны: маркетплейс со смешанным ассортиментом, сервис с подписочными и разовыми клиентами, B2B и B2C в одной базе. Без нормировки сегмент «At risk» наполняется клиентами с длинным циклом, которые в порядке.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>6. Почему «Champions» рекомендуют не трогать скидками?</summary><div class="qa"><p>Champions купят и без стимула — с точки зрения uplift-теории это классические <em>sure things</em>. Скидка им не увеличивает вероятность покупки, а лишь уменьшает маржу с покупки, которая всё равно бы состоялась. Инкрементальный эффект близок к нулю, а стоимость реальна.</p><p>Более того, регулярные скидки лучшим клиентам <strong>переучивают их</strong> ждать акции, что снижает средний чек в долгую.</p><p><strong>Что работает вместо:</strong> ранний доступ, персональный сервис, статус, реферальные механики — то, что повышает ценность без снижения цены.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>7. Какой сегмент чаще всего недооценивают?</summary><div class="qa"><p><strong>«Cannot lose»</strong> — высокая Frequency и Monetary при низкой Recency. Всего 2–4% базы, но 8–15% выручки, и они уходят прямо сейчас.</p><p>Ошибка типична: бюджет уходит на «At risk», потому что этот сегмент больше и заметнее в отчёте по численности. Приоритизация по <em>размеру сегмента</em> вместо $\text{Monetary}\times P(\text{уход})$ может стоить кратной разницы в спасённой выручке — в расчёте из секции 4 разница составила 4.7 раза при одинаковом бюджете.</p></div></details>
+
+<div class="qah">Часть 2. Ограничения RFM</div>
+
+<details class="qi"><summary><span class="qch">▶</span>8. Какое ограничение RFM самое дорогое на практике?</summary><div class="qa"><p>Неспособность отличить <strong>«клиент ушёл»</strong> от <strong>«клиент в паузе»</strong>. В сегменте «At risk» смешаны две группы, требующие противоположных действий: ушедшим реактивация бессмысленна, а тем, кто вернётся сам, кампания не нужна и создаёт риск sleeping dogs.</p><p>RFM не может их разделить <em>в принципе</em>, потому что видит только число дней с последней покупки. Именно это решают BTYD-модели, дающие $P(\text{жив})$ как отдельную величину.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>9. Два клиента не покупали 90 дней. Почему решения должны быть разными?</summary><div class="qa"><p>Клиент A: 24 покупки, средний интервал 30 дней → он просрочил свой цикл втрое, $P(\text{жив})\approx0.18$.<br>Клиент B: 3 покупки, средний интервал 240 дней → он ещё не дошёл до обычной паузы, $P(\text{жив})\approx0.91$.</p><p><strong>Решения противоположны:</strong> A — последний шанс на агрессивную реактивацию или исключение из коммуникаций; B — <em>ничего не делать</em>, он вернётся сам, а контакт лишь создаст риск отписки.</p><p>Классический RFM отправит обоих в одну кампанию.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>10. Какие сигналы RFM не видит принципиально?</summary><div class="qa"><p>Всё, что не является транзакцией: обращения в поддержку, жалобы, возвраты, отписка от рассылки, визит на страницу отмены подписки, падение частоты открытия писем, поиск конкурентов в приложении.</p><p>Для прогноза оттока сервисные сигналы часто оказываются <strong>сильнее транзакционных</strong>: клиент, подавший две жалобы, уходит с гораздо большей вероятностью, чем это следует из его R, F и M.</p><p>Это фундаментальное ограничение: RFM построен на кассовых данных и не расширяется без перехода к supervised-подходу.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>11. Чем сегментация отличается от uplift-моделирования?</summary><div class="qa"><p>Сегментация отвечает «<strong>кто</strong> этот клиент и в каком он состоянии». Uplift отвечает «<strong>изменит ли</strong> воздействие его поведение».</p><p>Разница критична: сегмент «At risk» содержит и persuadables (кампания удержит), и lost causes (уйдут в любом случае), и sleeping dogs (кампания ускорит уход). RFM не различает эти группы, потому что не использует информацию о реакции на воздействие — а её и нет в транзакционных данных без эксперимента.</p><p>Правильная связка: сегментация задаёт <em>кому вообще предлагать</em>, uplift — <em>кому внутри сегмента</em>.</p></div></details>
+
+<div class="qah">Часть 3. BTYD и вероятностные модели</div>
+
+<details class="qi"><summary><span class="qch">▶</span>12. Объясни идею BTYD одним абзацем.</summary><div class="qa"><p>Два независимых процесса. <strong>①</strong> Пока клиент «жив», он покупает случайно с индивидуальной интенсивностью $\lambda$ (пуассоновский процесс). <strong>②</strong> В какой-то ненаблюдаемый момент клиент «умирает» — навсегда перестаёт быть клиентом.</p><p>Гетерогенность: у каждого клиента свои параметры, распределённые по базе (Gamma для $\lambda$, Beta или Gamma для смертности).</p><p>Зная историю $(x, t_x, T)$, модель выдаёт $P(\text{жив сейчас})$ и ожидаемое число будущих покупок — то, чего RFM не даёт.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>13. Что означают x, t_x и T, и какая ловушка с x?</summary><div class="qa"><p>$x$ — число <strong>повторных</strong> покупок (первая не считается); $t_x$ — время от первой покупки до последней; $T$ — время от первой покупки до момента наблюдения.</p><p><strong>Ловушка:</strong> включение первой покупки в $x$ — ошибка на единицу, которая систематически завышает интенсивность у всех клиентов и особенно искажает оценки для однократных покупателей.</p><p>Величина $T - t_x$ — период молчания; сравнение её со средним интервалом $t_x/x$ и есть основа расчёта $P(\text{жив})$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>14. В чём главное отличие BG/NBD от Pareto/NBD?</summary><div class="qa"><p>В моменте возможной «смерти». В <strong>BG/NBD</strong> клиент может уйти только <em>сразу после покупки</em> (геометрическое время жизни в числе покупок). В <strong>Pareto/NBD</strong> — в любой момент, в том числе посреди паузы (экспоненциальное время жизни).</p><p><strong>Практическое следствие:</strong> BG/NBD даёт правдоподобие в замкнутой форме без специальных функций — быстро и численно устойчиво. Pareto/NBD требует гипергеометрической функции ${}_2F_1$.</p><p><strong>Побочный эффект допущения BG/NBD:</strong> клиент с $x=0$ не может быть мёртвым — он ещё «не подбрасывал монетку». Это чинит MBG/NBD.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>15. Почему в формуле P(alive) стоит степень r+x, и что это даёт?</summary><div class="qa"><p>Множитель $\left(\frac{\alpha+T}{\alpha+t_x}\right)^{r+x}$ измеряет, насколько долго клиент молчит относительно активной фазы. Показатель $r+x$ <strong>усиливает штраф пропорционально числу прошлых покупок</strong>.</p><p>Смысл: чем интенсивнее был клиент, тем сильнее его молчание свидетельствует об уходе. В расчёте секции 7 клиент с 24 покупками получил $P=0.67$, а с 3 покупками при том же молчании — $P=0.80$.</p><p>Это ровно то поведение, которое интуитивно правильно и которого RFM лишён.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>16. Когда BTYD применять нельзя?</summary><div class="qa"><p>В <strong>контрактном</strong> бизнесе — подписки, страхование, телеком. Там момент ухода <em>наблюдаем</em>: клиент отменяет подписку, и мы это видим.</p><p>BTYD создан для ситуации, когда уход ненаблюдаем (ритейл, e-commerce). Применять его к подписке — значит выбрасывать точную метку ухода ради вероятностной оценки того, что и так известно. Для контрактного бизнеса нужен анализ выживаемости (тема 2.3).</p><p>Второе ограничение — резкие изменения бизнеса: смена ассортимента, ценовой политики или запуск подписки нарушают допущение о стационарности интенсивности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>17. Зачем в BG/NBD регуляризация и что будет без неё?</summary><div class="qa"><p><code>penalizer_coef</code> (0.001–0.01) не даёт параметрам уходить в вырожденные значения при оптимизации правдоподобия. Без неё на малых выборках, при коротком периоде наблюдения или при большой доле однократных клиентов оптимизация расходится: $\alpha$ или $b$ улетают в бесконечность, и $P(\text{alive})$ становится либо ~1, либо ~0 для всех.</p><p><strong>Диагностика:</strong> если подогнанные $r$, $\alpha$, $a$, $b$ отличаются от типичного порядка (единицы) на порядки — это признак вырождения, а не особенности базы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>18. Какие три проверки качества BTYD-модели обязательны?</summary><div class="qa"><p><strong>① Holdout по времени:</strong> подогнать на первых 18 месяцах, сравнить предсказанное и фактическое число покупок за следующие 6.</p><p><strong>② Калибровка по частотам:</strong> сгруппировать клиентов по $x$ (0, 1, 2, 3+) и сравнить предсказание с фактом <em>внутри каждой группы</em> — точность в среднем не гарантирует точность в группах.</p><p><strong>③ Кумулятивные транзакции:</strong> график предсказанного и фактического накопленного числа покупок по всей базе во времени.</p><p>Все три есть в <code>lifetimes.plotting</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>19. Модель завышает прогноз для x=0..1 и занижает для x≥5. Что это значит?</summary><div class="qa"><p>Гетерогенность <strong>недооценена</strong>: Gamma-распределение интенсивности $\lambda$ слишком узкое, чтобы описать реальный разброс. Модель «стягивает» всех к среднему.</p><p>Обычная причина — база состоит из принципиально разных групп (B2C и B2B, разные категории товаров с разными циклами), и одно распределение их не описывает.</p><p><strong>Решение:</strong> подгонять BG/NBD отдельно по сегментам, а не по всей базе. Альтернатива — иерархическая байесовская версия с явной структурой групп.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>20. Почему в BTYD используются именно Gamma и Beta?</summary><div class="qa"><p>Это <strong>сопряжённые</strong> распределения: Gamma сопряжена к Пуассону, Beta — к Бернулли. Апостериорное распределение после наблюдения данных остаётся в том же семействе, благодаря чему правдоподобие выражается в замкнутой форме — без численного интегрирования и симуляций.</p><p>Именно это математическое удобство сделало BTYD практичным в 1987 и 2005 годах, задолго до дешёвых вычислений. Тот же принцип лежит в основе Beta-Bernoulli в Thompson Sampling.</p><p><strong>Оговорка:</strong> выбор продиктован удобством, а не тем, что реальность обязана быть Gamma-распределённой. Это часть допущений, которые надо проверять.</p></div></details>
+
+<div class="qah">Часть 4. Gamma-Gamma и CLV</div>
+
+<details class="qi"><summary><span class="qch">▶</span>21. Как работает Gamma-Gamma и почему это байесовское сжатие?</summary><div class="qa"><p>Оценка ожидаемого чека — <strong>взвешенное среднее</strong> между средним чеком популяции и наблюдаемым средним чеком клиента, где вес наблюдения равен $\frac{px}{px+q-1}$ и растёт с числом покупок $x$.</p><p>Клиент с одной покупкой: наблюдение ненадёжно, оценка сильно стягивается к среднему по базе. Клиент с 20 покупками: оценка почти полностью доверяет наблюдению.</p><p>В расчёте секции 9 при одинаковом наблюдаемом чеке 12 000 ₽ оценки составили 9410 ₽ (одна покупка) и 11 820 ₽ (двадцать покупок). Это защищает от объявления VIP-клиентом того, кто один раз случайно купил дорого.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>22. Какое допущение Gamma-Gamma нужно проверять и как?</summary><div class="qa"><p><strong>Независимость размера чека и частоты покупок.</strong> Модель предполагает, что частые покупатели тратят за раз столько же, сколько редкие.</p><p><strong>Проверка:</strong> корреляция Спирмена между <code>frequency</code> и <code>monetary_value</code>. Если по модулю выше 0.1–0.15, допущение нарушено, оценки смещены.</p><p><strong>Что делать:</strong> сегментировать базу и подгонять отдельно по группам, либо перейти на ML-регрессию среднего чека, где частота — обычный признак.</p><p>Дополнительно: Gamma-Gamma требует строго положительных сумм и $x \ge 1$ — возвраты и однократных клиентов нужно обработать отдельно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>23. Из каких компонент складывается CLV и какие ошибки типичны?</summary><div class="qa"><p>CLV = (ожидаемое число покупок из BG/NBD) × (ожидаемый чек из Gamma-Gamma) × (маржинальность) ÷ (дисконтирование).</p><p><strong>Три регулярные ошибки:</strong> ① путаница единиц времени — <code>time</code> задаётся в месяцах, <code>freq</code> описывает единицу данных, несогласованность даёт разницу в разы; ② забытая маржинальность — модель считает выручку, и сравнивать её с CAC как прибыль неверно; ③ отсутствие дисконтирования при горизонте 3+ года завышает CLV на 15–25%.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>24. Зачем вообще нужен CLV — какие решения он меняет?</summary><div class="qa"><p><strong>① Потолок CAC по каналам</strong> — платить за привлечение больше, чем клиент принесёт, убыточно по определению; здоровый ориентир — CAC не выше трети CLV.</p><p><strong>② Приоритизация удержания</strong> — бюджет распределяется пропорционально $\text{CLV}\times P(\text{уход})$, а не по численности сегментов.</p><p><strong>③ Обоснование продуктовых инвестиций</strong> — улучшение удержания на 5 п.п. переводится в конкретный прирост совокупного CLV базы. Без этого продуктовые команды не могут защитить бюджет на retention.</p></div></details>
+
+<div class="qah">Часть 5. Кластеризация, supervised, метрики</div>
+
+<details class="qi"><summary><span class="qch">▶</span>25. Что произойдёт при K-means на сырых R, F, M?</summary><div class="qa"><p>Кластеры получатся <strong>исключительно по Monetary</strong>. Евклидово расстояние доминируется измерением с наибольшим численным разбросом: рубли (500–500 000) против штук (1–200) — вклад Frequency в расстояние падает до долей процента.</p><p>В расчёте секции 11 вклады составили 78.6% / 0.8% / 20.7% для R / F / M без масштабирования и 41% / 37% / 22% после $\log(1+x)$ и стандартизации — разбиение меняется полностью.</p><p><strong>Обязательный порядок:</strong> лог для F и M → стандартизация → кластеризация.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>26. Как понять, что кластеризация здесь бесполезна?</summary><div class="qa"><p><strong>Тест на стабильность:</strong> разбить базу пополам случайно, кластеризовать обе половины, сравнить предсказания обеих моделей на одних данных через ARI. Значение ниже ~0.6 означает, что структуры в данных нет — алгоритм режет непрерывное облако произвольным образом.</p><p>В этом случае интерпретируемая RFM-сетка объективно лучше: тот же результат, но стабильна во времени, понятна бизнесу и однозначно привязана к действию.</p><p>Кластеризация оправдана, когда есть реальные плотные группы — например, в пространстве музыкальных или товарных предпочтений, а не в трёхмерном RFM.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>27. Почему кластеры редко выживают в продакшене?</summary><div class="qa"><p><strong>① Меняются при перезапуске</strong> — клиент вчера в кластере 3, сегодня в 5, история кампаний рассыпается.<br><strong>② Не интерпретируются сами</strong> — «кластер 4» не означает ничего, пока аналитик не опишет его вручную, и описание устаревает при следующем пересчёте.<br><strong>③ Нет однозначного действия</strong> — маркетолог не знает, что делать с «кластером 4», а с «Cannot lose» знает сразу.</p><p>Кластеризация полезна как инструмент <em>исследования</em> структуры базы, но редко как основа операционной сегментации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>28. Какие признаки в supervised-сегментации недооценивают?</summary><div class="qa"><p><strong>Производные второго порядка</strong> — отношения активности за разные окна: $F_{30}/F_{60}$, $M_{30}/M_{90}$, $\text{interval}_{\text{last}}/\text{interval}_{\text{median}}$.</p><p>Уровень активности говорит, кто клиент <em>сейчас</em>; отношение говорит, куда он <em>движется</em>. В моделях оттока такие признаки регулярно входят в топ-5 по важности, обгоняя абсолютные R, F и M.</p><p>Второй недооценённый класс — <strong>сервисные сигналы</strong>: обращения в поддержку, возвраты, отписка. Для оттока они часто сильнее транзакционных.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>29. Какая утечка типична в моделях сегментации и как её узнать?</summary><div class="qa"><p><strong>Агрегат «за всю историю»</strong>, посчитанный без отсечки по дате и потому включающий покупки из окна таргета. Модель фактически подсматривает будущее.</p><p><strong>Симптом узнаваем:</strong> AUC 0.93+ на валидации и падение до ~0.61 в проде.</p><p><strong>Правило:</strong> любой агрегат обязан иметь явную отсечку, совпадающую с концом окна признаков $T_1$; между окном признаков и окном таргета должен быть зазор, имитирующий задержку данных в проде. Это и есть point-in-time correctness из темы 7.3.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>30. Силуэт 0.68 — хорошая сегментация?</summary><div class="qa"><p>Само по себе — <strong>ничего не значит</strong>. Силуэт измеряет только геометрию в выбранном признаковом пространстве. Разбиение по региону может дать силуэт 0.68 и конверсию 7.9% / 8.1% / 8.4% / 8.0% — идеально разделённые и совершенно бесполезные сегменты.</p><p>RFM-сетка с силуэтом 0.21 и конверсией 1.2% / 4.5% / 11.8% / 29.4% практически полезнее в разы.</p><p><strong>Настоящие критерии:</strong> различие целевой метрики между сегментами (Separation выше 1.5), доля миграций между сегментами за месяц (здорово 8–15%) и прирост в A/B против единой коммуникации.</p></div></details>
+</div>
+
+<div class="pnav">
+  <a href="index_roadmap.html" class="prev">← К карте курса</a>
+  <a href="block2_02_churn_prediction.html" class="next">2.2 Прогноз оттока →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+const GRID = { grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} };
+function mk(id, cfg){ const el = document.getElementById(id); if (el && el.getContext) { try { new Chart(el.getContext('2d'), cfg); } catch(e){} } }
+
+// ---- S1: конверсия по децилям RFM
+mk('c_dec', { type:'bar', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10'],
+  datasets:[{label:'Конверсия в покупку за 30 дней, %', data:[0.8,1.4,2.1,3.2,4.6,6.3,8.9,13.1,19.4,31.2],
+    backgroundColor:(c)=> c.dataIndex>=7 ? '#9333ea' : '#c4b5fd', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:{...GRID, title:{display:true,text:'Дециль RFM-скора (10 = лучшие)',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Конверсия, %',font:{size:11}}}}}});
+
+// ---- S4: доля базы против доли выручки
+mk('c_segrev', { type:'bar', data:{
+  labels:['Champions','Loyal','New','Need att.','Cannot lose','At risk','Lost'],
+  datasets:[
+    {label:'Доля базы, %',    data:[6,13,20,12,3,10,36], backgroundColor:'#c4b5fd', borderRadius:5},
+    {label:'Доля выручки, %', data:[38,25,7,12,11,6,1],  backgroundColor:'#9333ea', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{ x:GRID, y:{...GRID, title:{display:true,text:'%',font:{size:11}}}}}});
+
+// ---- S5: P(alive) при одинаковой recency
+mk('c_alive', { type:'bar', data:{
+  labels:['24 покупки\nцикл 30д','12 покупок\nцикл 45д','6 покупок\nцикл 90д','3 покупки\nцикл 240д'],
+  datasets:[{label:'P(alive) при recency = 90 дней', data:[0.18,0.34,0.62,0.91],
+    backgroundColor:['#dc2626','#f97316','#facc15','#22c55e'], borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:1, title:{display:true,text:'P(клиент ещё «жив»)',font:{size:11}}}}}});
+
+// ---- S7: P(alive) от молчания и числа покупок
+(function(){
+  const r=0.24, al=4.41, a=0.79, b=2.43, tx=80;
+  function pal(x, gap){
+    const T = tx + gap;
+    const mult = (a/(b+x-1)) * Math.pow((al+T)/(al+tx), r+x);
+    return 1/(1+mult);
+  }
+  const gaps = []; for (let g=0; g<=60; g+=3) gaps.push(g);
+  const series = [3,8,16,30].map((x,i)=>({
+    label: x + ' покупок',
+    data: gaps.map(g=>pal(x,g)),
+    borderColor: ['#22c55e','#0891b2','#f59e0b','#dc2626'][i],
+    backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:0 }));
+  mk('c_pnbd', { type:'line', data:{ labels:gaps, datasets:series },
+    options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{ x:{...GRID, title:{display:true,text:'Период молчания T − t_x, недель',font:{size:11}}},
+               y:{...GRID, min:0, max:1, title:{display:true,text:'P(alive)',font:{size:11}}}}}});
+})();
+
+// ---- S8: валидация BG/NBD
+mk('c_valid', { type:'bar', data:{
+  labels:['x = 0','x = 1','x = 2','x = 3','x = 4','x = 5','x = 6+'],
+  datasets:[
+    {label:'Предсказано', data:[0.21,0.58,1.02,1.51,2.03,2.58,4.11], backgroundColor:'#a5f3fc', borderRadius:5},
+    {label:'Фактически',  data:[0.19,0.61,0.99,1.55,1.98,2.64,4.29], backgroundColor:'#0891b2', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Число покупок в калибровочном периоде',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Ср. число покупок в holdout',font:{size:11}}}}}});
+
+// ---- S10: распределение CLV
+mk('c_clv', { type:'bar', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10'],
+  datasets:[{label:'Доля совокупного CLV, %', data:[0.3,0.7,1.3,2.2,3.4,5.1,7.6,11.8,19.2,48.4],
+    backgroundColor:(c)=> c.dataIndex>=8 ? '#9333ea' : '#c4b5fd', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:{...GRID, title:{display:true,text:'Дециль по CLV',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Доля совокупного CLV, %',font:{size:11}}}}}});
+
+// ---- S12: lift-кривые
+mk('c_lift', { type:'line', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10'],
+  datasets:[
+    {label:'RFM-скор (AUC 0.71)', data:[1.9,2.4,3.1,4.0,5.3,7.1,9.8,13.6,18.2,24.1],
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:3},
+    {label:'LightGBM, 60 признаков (AUC 0.83)', data:[1.1,1.6,2.2,3.1,4.4,6.5,10.2,17.4,28.9,41.6],
+     borderColor:'#9333ea', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:3},
+    {label:'Базовая доля 8.2%', data:Array(10).fill(8.2),
+     borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:1.6, borderDash:[5,4], pointRadius:0}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Дециль скоринга (10 = топ)',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Доля покупателей, %',font:{size:11}}}}}});
+
+// ================= ИНТЕРАКТИВЫ =================
+
+// BG/NBD калькулятор
+function updBG(){
+  const x   = +document.getElementById('sl_x').value;
+  const tx  = +document.getElementById('sl_tx').value;
+  const gap = +document.getElementById('sl_gap').value;
+  document.getElementById('out_x').textContent   = x;
+  document.getElementById('out_tx').textContent  = tx;
+  document.getElementById('out_gap').textContent = gap;
+
+  const r=0.24, al=4.41, a=0.79, b=2.43;
+  const T = tx + gap;
+  const ratio = (al+T)/(al+tx);
+  const pw    = Math.pow(ratio, r+x);
+  const coef  = a/(b+x-1);
+  const p     = 1/(1 + coef*pw);
+
+  const avgInt = tx/x;
+  const overdue = gap/avgInt;
+
+  let verdict, color;
+  if (p > 0.8)      { verdict = 'Клиент почти наверняка активен. Специальных действий не требуется — контакт создаст только риск.'; color='#15803d'; }
+  else if (p > 0.5) { verdict = 'Состояние неопределённое. Уместно мягкое напоминание или персонализированная рекомендация.'; color='#b45309'; }
+  else if (p > 0.25){ verdict = 'Высокий риск ухода. Время для целевой кампании удержания — но проверь uplift.'; color='#c2410c'; }
+  else              { verdict = 'Клиент, скорее всего, ушёл. Дешёвая реактивация или исключение из регулярных коммуникаций.'; color='#991b1b'; }
+
+  document.getElementById('out_bg').innerHTML =
+    '<b>Отношение (α+T)/(α+t<sub>x</sub>) = ' + ratio.toFixed(3) + '</b>, степень r+x = ' + (r+x).toFixed(2) +
+    ' → множитель ' + pw.toFixed(2) + '<br>' +
+    'Средний интервал: <b>' + avgInt.toFixed(1) + ' нед</b>, молчание = <b>' + overdue.toFixed(1) + '×</b> от обычного цикла<br>' +
+    '<span style="font-size:19px;font-weight:800;color:' + color + '">P(alive) = ' + p.toFixed(3) + '</span><br>' +
+    '<span style="color:' + color + '">' + verdict + '</span>';
+}
+
+// CLV калькулятор
+function updCLV(){
+  const np  = +document.getElementById('sl_np').value;
+  const chk = +document.getElementById('sl_chk').value;
+  const m   = +document.getElementById('sl_m').value / 100;
+  const ret = +document.getElementById('sl_ret').value / 100;
+  document.getElementById('out_np').textContent  = np;
+  document.getElementById('out_chk').textContent = chk.toLocaleString('ru-RU');
+  document.getElementById('out_m').textContent   = (m*100).toFixed(0) + '%';
+  document.getElementById('out_ret').textContent = (ret*100).toFixed(0) + '%';
+
+  const d = 0.12;                       // годовая ставка дисконтирования
+  const annual = np * chk * m;          // прибыль за первый год
+  let clv3 = 0, clv5 = 0, surv = 1;
+  for (let y = 1; y <= 5; y++){
+    const val = annual * surv / Math.pow(1+d, y-0.5);
+    if (y <= 3) clv3 += val;
+    clv5 += val;
+    surv *= ret;
+  }
+  const clvInf = annual * ret / (1 + d - ret);   // бессрочная формула для сравнения
+  const cacMax = clv3 / 3;
+
+  document.getElementById('out_clv').innerHTML =
+    'Годовая прибыль с клиента: <b>' + Math.round(annual).toLocaleString('ru-RU') + ' ₽</b><br>' +
+    'CLV за 3 года (с дисконтом 12%): <span style="font-size:19px;font-weight:800;color:#7c3aed">' +
+      Math.round(clv3).toLocaleString('ru-RU') + ' ₽</span><br>' +
+    'CLV за 5 лет: <b>' + Math.round(clv5).toLocaleString('ru-RU') + ' ₽</b>, ' +
+    'бессрочная оценка: <b>' + Math.round(clvInf).toLocaleString('ru-RU') + ' ₽</b><br>' +
+    '<span style="color:#166534">Потолок CAC для здоровой юнит-экономики (CLV/3): <b>' +
+      Math.round(cacMax).toLocaleString('ru-RU') + ' ₽</b></span><br>' +
+    '<span style="font-size:12.5px;color:#6b21a8">Обрати внимание: удержание влияет сильнее чека — рост удержания с 70% до 85% ' +
+      'увеличивает CLV примерно вдвое, тогда как рост чека на 15% даёт лишь +15%.</span>';
+}
+
+updBG(); updCLV();
+
+// ---- активная секция в навигации
+(function(){
+  const links = Array.from(document.querySelectorAll('.snav a'));
+  const secs  = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function onScroll(){
+    let cur = 0;
+    secs.forEach((s,i)=>{ if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a,i)=> a.classList.toggle('act', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

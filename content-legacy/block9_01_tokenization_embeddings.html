@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9.1 · Токенизация, эмбеддинги и классический NLP</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#059669;--rf-l:#ecfdf5;--rf-b:#a7f3d0;--rf-d:#064e3b;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#064e3b,#059669 50%,#6ee7b7);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.92;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(5,150,105,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.vi{border-left-color:var(--vi);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.vi .flabel{color:var(--vi);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#064e3b;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#064e3b!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.vi{background:var(--vi);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#6ee7b7;font-style:normal;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rf{border-top:3px solid var(--rf);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.cy{border-top:3px solid var(--cy);} .card.rd{border-top:3px solid var(--red);}
+.card.vi{border-top:3px solid var(--vi);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--rf-l);color:#064e3b;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--rf);margin:26px 0 12px;}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play select,.play input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;font-family:inherit;color:var(--text2);background:#fff;}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#064e3b;line-height:1.72;}
+/* ---------- Токены ---------- */
+.toks{display:flex;flex-wrap:wrap;gap:3px;margin:12px 0;line-height:2.1;}
+.tok{display:inline-block;border-radius:5px;padding:3px 7px;font-size:12.5px;font-family:'SF Mono',monospace;border:1px solid;}
+.tok.t0{background:#ecfdf5;border-color:#a7f3d0;color:#065f46;}
+.tok.t1{background:#eff6ff;border-color:#bfdbfe;color:#1e40af;}
+.tok.t2{background:#fef3c7;border-color:#fcd34d;color:#78350f;}
+.tok.t3{background:#fce7f3;border-color:#f9a8d4;color:#9d174d;}
+.tok.bad{background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;}
+/* ---------- BPE-шаги ---------- */
+.bpe{margin:16px 0;}
+.bperow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:#fff;border:1px solid var(--border);margin-bottom:6px;font-size:12.5px;font-family:'SF Mono',monospace;}
+.bpestep{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;font-family:inherit;}
+.bpemerge{background:#fef3c7;color:#78350f;border-radius:4px;padding:1px 6px;font-weight:700;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes popIn{0%{transform:scale(.7);opacity:0;}60%{transform:scale(1.08);}100%{transform:scale(1);opacity:1;}}
+.pop{animation:popIn .45s ease both;}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--rf-l);border-color:var(--rf-b);color:#064e3b;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--vi-l);border-color:var(--vi-b);color:#4c1d95;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--rf);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .bperow{font-size:10.5px;flex-wrap:wrap;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 9 · NLP, поиск и LLM · Тема 1 из 6</div>
+  <h1>Токенизация, эмбеддинги и классический NLP</h1>
+  <p class="sub">Фундамент, который остаётся актуальным независимо от моды. Токенизация объясняет
+     половину странностей LLM, а правильный sentence-эмбеддинг отличается от «взять CLS-токен»
+     на десятки процентов качества. Плюс честный ответ на вопрос, когда TF-IDF + логрег
+     всё ещё обгоняет трансформер.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–5</span>
+    <span>🔵 средний — секции 6–10</span>
+    <span>🟣 продвинутый — секции 11–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем классический NLP</a>
+  <a href="#s2">2. Токенизация: алгоритмы</a>
+  <a href="#s3">3. Странности токенизации</a>
+  <a href="#s4">4. От TF-IDF к word2vec</a>
+  <a href="#s5">5. Контекстные эмбеддинги</a>
+  <a href="#s6">6. Sentence embeddings</a>
+  <a href="#s7">7. Классификация текста</a>
+  <a href="#s8">8. NER и разметка</a>
+  <a href="#s9">9. Метрики NLP</a>
+  <a href="#s10">10. Baseline vs трансформер</a>
+  <a href="#s11">11. Валидация и утечки</a>
+  <a href="#s12">12. Многоязычность</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секции 2–3 — самые практичные.</strong> Токенизация объясняет, почему LLM не умеет считать буквы, путается в числах и стоит в 3 раза дороже на русском.</li>
+    <li>Секции 4–6 — эволюция представлений и главная практическая ошибка: неправильное получение эмбеддинга предложения.</li>
+    <li>Секции 7–10 — прикладные задачи и честное сравнение простого baseline с трансформером.</li>
+    <li>Секции 11–12 — валидация, утечки через дубликаты и стоимость многоязычности.</li>
+    <li>Секции 13–15 — подводные камни, кейсы и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем классический NLP, когда есть LLM <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Три причины, по которым модели на 100 МБ никуда не делись</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: вопрос не «что лучше», а «что дешевле при нужном качестве»</div>
+<p>LLM решает почти любую NLP-задачу «из коробки» — но с задержкой в секунды и ценой в центы за запрос. Классификатор на 100 МБ решает <em>конкретную</em> задачу за миллисекунды и доли копейки.</p>
+<p><strong>При 50 запросах в день</strong> разница несущественна — бери LLM, экономь время разработки.</p>
+<p><strong>При 50 миллионах запросов в день</strong> разница составляет миллионы рублей в месяц и разницу между 8 мс и 900 мс задержки. Здесь специализированная модель не «legacy», а единственный работающий вариант.</p>
+<p><strong>Третья причина — качество на узкой задаче.</strong> Дообученный BERT на 200 000 размеченных обращений <em>обгоняет</em> LLM с промптом на той же задаче, потому что видел ровно это распределение. LLM выигрывает там, где разметки нет.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Критерий</th><th>Классическая модель</th><th>Дообученный энкодер</th><th>LLM через API</th></tr></thead>
+<tbody>
+<tr><td>Задержка</td><td><strong>1–5 мс</strong></td><td>10–40 мс</td><td>300–3000 мс</td></tr>
+<tr><td>Стоимость 1M запросов</td><td><strong>~100 ₽</strong></td><td>~2 000 ₽</td><td>50 000–800 000 ₽</td></tr>
+<tr><td>Нужна разметка</td><td>Да, много</td><td>Да, средне</td><td><strong>Нет или мало</strong></td></tr>
+<tr><td>Время до первой версии</td><td>Дни</td><td>Дни–недели</td><td><strong>Часы</strong></td></tr>
+<tr class="trh"><td><b>Качество при обильной разметке</b></td><td>Хорошее</td><td><strong>Лучшее</strong></td><td>Хорошее</td></tr>
+<tr class="trh"><td><b>Качество без разметки</b></td><td>Неприменимо</td><td>Неприменимо</td><td><strong>Единственный вариант</strong></td></tr>
+<tr><td>Новые классы</td><td>Переобучение</td><td>Переобучение</td><td><strong>Правка промпта</strong></td></tr>
+<tr><td>Объяснимость</td><td><strong>Высокая</strong></td><td>Средняя</td><td>Низкая</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Экономика выбора на реальной нагрузке</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача.</strong> Классификация входящих обращений в поддержку по 34 категориям. Объём — 2.4 млн обращений в месяц.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Вариант A — LLM через API.</strong> Промпт 800 токенов + текст 300 + ответ 20. При цене 0.15 ₽ за 1000 входных и 0.6 ₽ за 1000 выходных:<br>$2.4\text{M}\times(1.1\times0.15 + 0.02\times0.6)/1000 \times 1000 = \mathbf{424}$ тыс ₽/мес. Точность 0.87.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Вариант B — дообученный энкодер</strong> (RuBERT-base, 180 МБ). Инференс на одной GPU T4 при батчинге: 2.4M запросов ≈ 14 часов GPU.<br>Стоимость: <strong>≈ 1.8 тыс ₽/мес</strong>. Точность <strong>0.91</strong> (обучен на 180 тыс размеченных обращений).</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Вариант C — TF-IDF + линейный SVM.</strong> Инференс на CPU, 0.4 мс на запрос.<br>Стоимость: <strong>≈ 300 ₽/мес</strong>. Точность 0.84.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Победитель — B:</strong> и точнее LLM на 4 п.п., и дешевле в 235 раз. LLM здесь проигрывает по обоим измерениям, потому что разметка есть.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Но:</strong> для 6 новых редких категорий, где размечено по 40 примеров, B работает плохо (F1 0.31), а LLM даёт 0.72. <strong>Рабочее решение — каскад:</strong> энкодер на частые категории, LLM на остаток и на «не уверен». Это снижает поток к LLM до 7% и сохраняет качество на хвосте.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Стоимость и качество трёх подходов на 2.4 млн запросов в месяц</div>
+<div class="chsub">Логарифмическая шкала стоимости — разрыв в сотни раз</div>
+<div style="position:relative;height:310px;"><canvas id="c_cost"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Правило выбора, работающее в большинстве случаев.</strong> Спроси три вопроса: ① <em>Есть ли разметка?</em> Нет — начинай с LLM, она же поможет разметить. ② <em>Какой объём запросов?</em> Больше миллиона в месяц — считай экономику специализированной модели. ③ <em>Стабильна ли задача?</em> Если классы меняются еженедельно, дообучение не успеет, и промпт выигрывает. <strong>Самая частая ошибка 2020-х — брать LLM туда, где есть 200 000 размеченных примеров и жёсткий SLA по задержке.</strong></div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Токенизация: как строится словарь <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Четыре алгоритма и почему субсловные единицы победили</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем вообще subword</div>
+<p><strong>Словарь из слов</strong> не работает: русский язык даёт сотни форм от одного корня, и любое незнакомое слово превращается в <code>&lt;UNK&gt;</code>. Словарь пришлось бы делать на миллионы записей — это огромная матрица эмбеддингов, большая часть которой почти не обучается.</p>
+<p><strong>Словарь из символов</strong> тоже плох: последовательности становятся в 5–8 раз длиннее, а внимание стоит квадратично по длине. Модель тратит ёмкость на то, чтобы заново выучить, что «к-о-т» — это одно понятие.</p>
+<p><strong>Subword — компромисс:</strong> частые слова остаются целыми токенами, редкие разбиваются на осмысленные куски. «Токенизация» → «токен» + «изация». Незнакомых слов не существует в принципе: в худшем случае слово разложится на символы.</p>
+<p><strong>Размер словаря — гиперпараметр:</strong> больше словарь → короче последовательности (дешевле инференс), но больше матрица эмбеддингов и реже встречается каждый токен при обучении.</p>
+</div>
+
+<h3>BPE: как это работает по шагам</h3>
+
+<div class="bpe">
+  <div class="bperow"><span class="bpestep">старт</span><span>l o w · l o w e r · n e w e s t · w i d e s t</span></div>
+  <div class="bperow"><span class="bpestep">1</span><span>самая частая пара: <span class="bpemerge">e + s → es</span></span></div>
+  <div class="bperow"><span class="bpestep">→</span><span>l o w · l o w e r · n e w <b>es</b> t · w i d <b>es</b> t</span></div>
+  <div class="bperow"><span class="bpestep">2</span><span>самая частая пара: <span class="bpemerge">es + t → est</span></span></div>
+  <div class="bperow"><span class="bpestep">→</span><span>l o w · l o w e r · n e w <b>est</b> · w i d <b>est</b></span></div>
+  <div class="bperow"><span class="bpestep">3</span><span>самая частая пара: <span class="bpemerge">l + o → lo</span></span></div>
+  <div class="bperow"><span class="bpestep">→</span><span><b>lo</b> w · <b>lo</b> w e r · n e w est · w i d est</span></div>
+  <div class="bperow"><span class="bpestep">4</span><span>самая частая пара: <span class="bpemerge">lo + w → low</span></span></div>
+  <div class="bperow"><span class="bpestep">→</span><span><b>low</b> · <b>low</b> e r · n e w est · w i d est</span></div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-2px;">Алгоритм жадный и детерминированный: на каждом шаге сливается самая частая соседняя пара. Список слияний в порядке их выполнения и есть «модель» токенизатора — при применении к новому тексту слияния выполняются в том же порядке.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Алгоритм</th><th>Критерий слияния</th><th>Где используется</th><th>Особенность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>BPE</b></td><td>Самая частая пара</td><td>GPT-2/3/4, RoBERTa, LLaMA</td><td><strong>Простой, детерминированный, быстрый</strong></td></tr>
+<tr><td>WordPiece</td><td>Максимум прироста правдоподобия: $\frac{P(ab)}{P(a)P(b)}$</td><td>BERT, DistilBERT</td><td>Учитывает не только частоту, но и «неожиданность» пары</td></tr>
+<tr><td>Unigram LM</td><td>Итеративное <em>удаление</em> токенов с минимальной потерей правдоподобия</td><td>ALBERT, T5, XLNet</td><td><strong>Идёт сверху вниз; даёт вероятностную сегментацию</strong></td></tr>
+<tr class="trh"><td><b>SentencePiece</b></td><td>Обёртка (реализует BPE или Unigram)</td><td>T5, LLaMA, mT5, многоязычные</td><td><strong>Работает с сырым текстом, включая пробелы; не требует предтокенизации</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>SentencePiece решает проблему, о которой редко думают: языки без пробелов.</strong> Классические токенизаторы сначала режут текст по пробелам, потом применяют subword. Для японского, китайского и тайского это не работает — там пробелов нет. SentencePiece обрабатывает <em>сырую строку</em>, включая пробел как обычный символ (обозначается <code>▁</code>). Побочная выгода: токенизация полностью обратима — из токенов восстанавливается исходный текст байт в байт, включая двойные пробелы и переносы. Для генеративных моделей это принципиально.</div></div>
+
+<div class="fbox">
+<div class="flabel">📐 WordPiece: критерий слияния</div>
+$$\text{score}(a, b) = \frac{\text{count}(ab)}{\text{count}(a)\cdot\text{count}(b)}$$
+<p class="fnote">Это отношение — тот же PMI, что и в анализе корзины (тема 2.6): «во сколько раз пара встречается чаще, чем при независимости». Отличие от BPE принципиально: BPE сольёт частую пару даже если оба элемента и так частые (например, «the» + « »), WordPiece предпочтёт пару, которая <em>специфична</em> — где элементы редко встречаются порознь.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 BPE и WordPiece выбирают разные пары</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Корпус.</strong> Частоты: «e» — 120 000, «s» — 95 000, «es» — 18 000; «q» — 800, «u» — 40 000, «qu» — 780.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>BPE</strong> смотрит на частоту пары: «es» (18 000) &gt;&gt; «qu» (780). <strong>Сливает «es».</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>WordPiece</strong> считает score:<br>«es»: $\frac{18\,000}{120\,000\times95\,000} = 1.58\times10^{-9}$.<br>«qu»: $\frac{780}{800\times40\,000} = 2.44\times10^{-8}$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>WordPiece сливает «qu»</strong> — его score в 15 раз выше, потому что «q» практически <em>всегда</em> идёт с «u» (780 из 800 = 97.5%).</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Смысл различия.</strong> BPE оптимизирует <em>длину</em> последовательности — сливает то, что чаще встречается. WordPiece оптимизирует <em>информативность</em> — сливает то, что образует устойчивую единицу. На практике различия в итоговом качестве невелики, но WordPiece обычно даёт чуть более «лингвистичные» разбиения, а BPE — чуть более короткие последовательности.</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Unigram LM устроен противоположно двум другим.</strong> BPE и WordPiece строят словарь <em>снизу вверх</em>, добавляя слияния. Unigram начинает с большого набора кандидатов и <em>удаляет</em> те, чьё удаление меньше всего ухудшает правдоподобие корпуса (EM-алгоритм). Практическое следствие: Unigram даёт <strong>вероятностную сегментацию</strong> — одно слово может быть разбито несколькими способами с разными вероятностями. Это позволяет делать <em>subword regularization</em>: при обучении сэмплировать разные разбиения одного слова, что работает как аугментация и заметно помогает на малых данных и редких языках.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Токенизация как источник странностей LLM <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Шесть известных «багов», которые на самом деле следствия одного механизма</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Модель не видит букв.</strong> Она видит последовательность идентификаторов токенов. Вопрос «сколько букв «р» в слове «клубника»» требует от модели информации, которой в её входе <em>физически нет</em> — слово могло прийти как один токен с id 24815. Модель может выучить состав частых слов косвенно, но это дорогое и ненадёжное знание, а не прямое наблюдение.</div></div>
+
+<h3>Как одно и то же выглядит для модели</h3>
+
+<div class="toks">
+  <span class="tok t0">Прив</span><span class="tok t0">ет</span><span class="tok t0">,</span><span class="tok t0">▁как</span><span class="tok t0">▁дела</span><span class="tok t0">?</span>
+  <span style="margin-left:12px;font-size:12px;color:var(--text3);">6 токенов на 17 символов</span>
+</div>
+<div class="toks">
+  <span class="tok t1">Hello</span><span class="tok t1">,</span><span class="tok t1">▁how</span><span class="tok t1">▁are</span><span class="tok t1">▁you</span><span class="tok t1">?</span>
+  <span style="margin-left:12px;font-size:12px;color:var(--text3);">6 токенов на 18 символов</span>
+</div>
+<div class="toks">
+  <span class="tok t2">17</span><span class="tok t2">42</span>
+  <span style="margin-left:12px;font-size:12px;color:var(--text3);">«1742» → два токена</span>
+  <span class="tok t2" style="margin-left:20px;">1</span><span class="tok t2">743</span>
+  <span style="margin-left:12px;font-size:12px;color:var(--text3);">«1743» → совсем другое разбиение</span>
+</div>
+<div class="toks">
+  <span class="tok bad">▁клуб</span><span class="tok bad">н</span><span class="tok bad">ика</span>
+  <span style="margin-left:12px;font-size:12px;color:var(--text3);">модель не «видит» отдельные буквы внутри токенов</span>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Наблюдаемая «странность»</th><th>Реальная причина</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Не может посчитать буквы в слове</b></td><td>Слово — один токен; состав символов не входит во вход модели</td></tr>
+<tr class="trh"><td><b>Ошибается в арифметике с большими числами</b></td><td>«1742» и «1743» разбиваются по-разному; разряды не выровнены между слагаемыми</td></tr>
+<tr><td>Плохо переворачивает строки, играет в слова</td><td>Та же причина: операции на уровне символов недоступны напрямую</td></tr>
+<tr><td>Хуже пишет код с непривычным форматированием</td><td>Отступы и переносы — тоже токены; необычная комбинация редка в обучении</td></tr>
+<tr class="trh"><td><b>Дороже и хуже на неанглийских языках</b></td><td>Словарь оптимизирован под английский; русский текст даёт в 2–3 раза больше токенов</td></tr>
+<tr><td>Странно реагирует на редкие «глючные» токены</td><td>Токены, попавшие в словарь, но почти не встречавшиеся при обучении — их эмбеддинги почти не обучены</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему сложение больших чисел ломается</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> 4736 + 2891.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Токенизация типичным BPE:</strong> «4736» → [«47», «36»]; «2891» → [«289», «1»].</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Разряды не выровнены.</strong> Модель видит [47][36] и [289][1] — чтобы сложить, ей нужно внутри активаций восстановить позиционное значение каждой цифры, зная границы токенов.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Это выучиваемо, но хрупко.</strong> Точность сложения падает с ростом числа разрядов: на 3-значных ~99%, на 5-значных ~85%, на 8-значных ~40% для моделей без специальной обработки чисел.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Решение на уровне токенизатора:</strong> принудительно разбивать числа на отдельные цифры или на группы по 3 справа. Некоторые современные модели делают именно это — и точность арифметики скачкообразно растёт.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практический вывод для инженера:</strong> не поручай LLM точные вычисления. Дай ей инструмент (калькулятор, Python, SQL) — это дешевле, надёжнее и не требует ни дообучения, ни борьбы с токенизатором. Тот же принцип действует для дат, единиц измерения и любых точных преобразований.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Точность арифметики LLM в зависимости от числа разрядов</div>
+<div class="chsub">Падение — прямое следствие невыровненной токенизации чисел</div>
+<div style="position:relative;height:300px;"><canvas id="c_arith"></canvas></div>
+</div>
+
+<h3>Стоимость языка: сколько токенов на один смысл</h3>
+
+<div class="play">
+  <label>Поиграй: стоимость запроса в зависимости от языка</label>
+  <label style="margin-top:2px;">Длина текста, символов</label>
+  <input type="range" id="sl_len" min="200" max="20000" step="100" value="4000" oninput="updLang()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>200</span><span class="out" id="out_len">4 000</span><span>20 000</span></div>
+  <label style="margin-top:14px;">Запросов в месяц, тыс.</label>
+  <input type="range" id="sl_req" min="1" max="5000" step="1" value="300" oninput="updLang()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 тыс</span><span class="out" id="out_req">300 тыс</span><span>5 млн</span></div>
+  <label style="margin-top:14px;">Цена за 1000 входных токенов, ₽</label>
+  <input type="range" id="sl_price" min="1" max="500" step="1" value="15" oninput="updLang()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01 ₽</span><span class="out" id="out_price">0.15 ₽</span><span>5.00 ₽</span></div>
+  <div class="res" id="out_lang"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Разница в токенизации языков — это разница в трёх вещах одновременно.</strong> ① <strong>Стоимость</strong> — русский текст стоит в 2–3 раза дороже английского того же смысла. ② <strong>Эффективная длина контекста</strong> — в окно 128k токенов помещается втрое меньше русского текста, чем английского. ③ <strong>Качество</strong> — при более дробной токенизации модели труднее удерживать длинные зависимости, потому что то же содержание занимает больше позиций. Для языков с иероглифами или сложной морфологией разрыв ещё больше.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как проверить токенизатор за 5 минут перед выбором модели.</strong> Возьми 200 характерных текстов из своего домена, прогони через токенизаторы кандидатов и посчитай <em>отношение токенов к символам</em>. Разница в 1.5–2 раза между моделями — обычное дело, и она прямо переходит в стоимость и в эффективный контекст. Дополнительно посмотри глазами на разбиение доменных терминов, артикулов и кодов: если ключевые для тебя сущности рассыпаются на 8 токенов каждая, модель будет работать с ними хуже.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. От TF-IDF к word2vec <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Разреженные представления и первый шаг к плотным</div>
+
+<div class="fbox">
+<div class="flabel">📐 TF-IDF</div>
+$$w_{t,d} = \underbrace{\text{tf}_{t,d}}_{\text{частота в документе}} \cdot \underbrace{\log\frac{N}{\text{df}_t}}_{\text{редкость в корпусе}}$$
+<p class="fnote">Смысл: слово важно для документа, если оно часто в нём и редко в остальных. Слово «и» встречается везде, поэтому $\log(N/\text{df}) \approx 0$ и оно автоматически обнуляется — стоп-слова отфильтровываются без списка стоп-слов.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что TF-IDF умеет и чего не умеет</div>
+<p><strong>Умеет:</strong> различать документы по характерным словам, работать мгновенно, объясняться (видно, какие слова дали вклад), масштабироваться на миллионы документов.</p>
+<p><strong>Не умеет главного:</strong> для него «автомобиль» и «машина» — <em>полностью разные</em> измерения с нулевой связью. Документ про автомобили и документ про машины имеют косинусную близость 0, если не пересекаются словарно.</p>
+<p>Это и есть фундаментальное ограничение разрежённых представлений: <strong>нет понятия похожести между словами.</strong> Каждое слово — отдельная ортогональная ось.</p>
+<p><strong>word2vec решает ровно это:</strong> слова получают плотные векторы, и близкие по смыслу оказываются рядом. Ценой становится потеря интерпретируемости и точного совпадения — что позже вернётся как проблема гибридного поиска (тема 9.2).</p>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 word2vec skip-gram с negative sampling</div>
+$$\mathcal{L} = -\log\sigma(v_c^{\top}v_w) - \sum_{k=1}^{K}\mathbb{E}_{n\sim P_{\text{neg}}}\log\sigma(-v_n^{\top}v_w)$$
+<p>Для центрального слова $w$ и слова из контекста $c$ максимизируем их скалярное произведение; для $K$ случайных «негативов» — минимизируем.</p>
+<p class="fnote">Распределение негативов $P_{\text{neg}} \propto f(w)^{3/4}$ — сглаженная униграммная частота. Степень 3/4 подобрана эмпирически: она подтягивает редкие слова, не давая частым доминировать среди негативов.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Красивый результат: word2vec — это неявная факторизация PMI-матрицы.</strong> Levy и Goldberg (2014) показали, что skip-gram с negative sampling неявно факторизует матрицу сдвинутого поточечного взаимного информационного веса: $v_w^\top v_c \approx \text{PMI}(w,c) - \log K$. То есть за нейросетевой формулировкой стоит классическая матричная факторизация статистики совстречаемости — той же самой PMI, что появлялась в анализе корзины (тема 2.6) и в WordPiece (секция 2). Это объясняет, почему word2vec работает: он сжимает статистику «какие слова встречаются в одних контекстах».</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему TF-IDF проигрывает на перефразировках</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Два запроса.</strong> A: «как вернуть товар». B: «оформление возврата покупки».</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>TF-IDF.</strong> Пересечение словарей: пусто («вернуть» и «возврата» — разные токены при отсутствии стемминга; «товар» и «покупки» — разные слова).<br>Косинусная близость: <strong>0.00</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>TF-IDF со стеммингом.</strong> «вернуть»→«верну», «возврата»→«возврат» — всё ещё разные. Близость: <strong>0.00</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>word2vec (среднее векторов слов).</strong> «вернуть» и «возврат» близки (косинус 0.71), «товар» и «покупка» близки (0.68).<br>Близость документов: <strong>0.62</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Sentence-BERT.</strong> Учитывает контекст и порядок: близость <strong>0.84</strong>.</div></div>
+<div class="numex-step"><span class="nb red">6</span><div><strong>Но обратный случай.</strong> Запрос «артикул BX-4471». TF-IDF найдёт документ с этим артикулом точно. word2vec и BERT — <em>с трудом</em>: артикул рассыпается на токены, а его «смысл» модели неизвестен.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Отсюда главный вывод, к которому вернёмся в теме 9.2:</strong> лексический и векторный поиск ловят разное и не заменяют друг друга. Гибридный подход — не компромисс, а необходимость.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Где выигрывает лексика, где — вектора</div>
+<div class="chsub">Пять типов запросов, доля успешных попаданий в топ-10</div>
+<div style="position:relative;height:310px;"><canvas id="c_lexvec"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Контекстные эмбеддинги <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Один вектор на слово против вектора на слово в контексте</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: главная проблема word2vec</div>
+<p>У word2vec ровно <strong>один вектор на слово</strong>. Слово «лук» получает единственный вектор — усреднение между овощем и оружием. В результате он не близок ни к «морковь», ни к «стрела», а находится где-то между, не описывая ни одно из значений.</p>
+<p><strong>Контекстные модели (ELMo, BERT)</strong> дают вектор слова <em>в конкретном предложении</em>. «Лук» в «купил лук и морковь» и «натянул лук» получают разные векторы.</p>
+<p><strong>Механизм — self-attention</strong> (тема 8.4): представление каждого токена строится как взвешенная сумма представлений всех токенов последовательности, и веса зависят от содержания. Слово буквально «смотрит» на свой контекст.</p>
+<p><strong>Цена:</strong> нельзя предрассчитать таблицу векторов. Для каждого нового текста нужен прогон модели — на порядки дороже, чем look-up в таблице word2vec.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Поколение</th><th>Представление</th><th>Размерность</th><th>Стоимость получения</th><th>Ключевое ограничение</th></tr></thead>
+<tbody>
+<tr><td>One-hot / BoW</td><td>Разрежённое, ортогональное</td><td>|V| (10⁴–10⁶)</td><td>Мгновенно</td><td>Нет похожести между словами</td></tr>
+<tr><td>TF-IDF</td><td>Разрежённое, взвешенное</td><td>|V|</td><td>Мгновенно</td><td>То же + нет порядка слов</td></tr>
+<tr><td>word2vec / GloVe / fastText</td><td>Плотное, статическое</td><td>100–300</td><td>Look-up</td><td><strong>Один вектор на слово вне контекста</strong></td></tr>
+<tr class="trh"><td><b>BERT и потомки</b></td><td>Плотное, контекстное</td><td>768–1024</td><td><strong>Прогон модели</strong></td><td>Дорого; «из коробки» плохой sentence-эмбеддинг</td></tr>
+<tr><td>Sentence-BERT и подобные</td><td>Плотное, на уровне текста</td><td>384–1024</td><td>Прогон модели</td><td>Нужно дообучение на парах</td></tr>
+<tr><td>LLM-эмбеддеры</td><td>Плотное, инструкционное</td><td>1024–4096</td><td>Дороже, часто через API</td><td>Стоимость и задержка</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>fastText — недооценённый промежуточный вариант.</strong> Он строит вектор слова как сумму векторов его символьных n-грамм, поэтому: ① умеет давать вектор <em>незнакомому</em> слову (собирает из n-грамм); ② отлично работает с морфологически богатыми языками, где формы одного слова делят n-граммы; ③ остаётся быстрым look-up-ом. Для русского языка на задачах классификации fastText часто оказывается сильнее word2vec и при этом на порядки дешевле BERT. Если задача не требует контекста — это разумная точка на кривой «качество/стоимость».</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Sentence embeddings: как получать правильно <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самая частая практическая ошибка во всей теме</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>CLS-токен ванильного BERT — плохой эмбеддинг предложения.</strong> Это не мнение, а измеренный факт: на задачах семантической близости он проигрывает <em>усреднённому GloVe</em>. Причина в том, что CLS обучался под задачу Next Sentence Prediction, а не под то, чтобы косинус между CLS двух похожих предложений был велик. Никакая часть претрейна BERT не оптимизировала геометрию пространства предложений — поэтому она и не получилась хорошей.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сравнение способов получить эмбеддинг предложения</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> семантическая близость предложений (STS-подобная), метрика — корреляция Спирмена с человеческими оценками.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>BERT, CLS-токен «из коробки»:</strong> ρ ≈ <strong>0.29</strong>.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>BERT, среднее по токенам «из коробки»:</strong> ρ ≈ <strong>0.54</strong> — уже заметно лучше CLS, но всё ещё слабо.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Усреднённые GloVe-векторы:</strong> ρ ≈ <strong>0.58</strong>. <em>Простое усреднение статических векторов обгоняет CLS-токен BERT.</em></div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Sentence-BERT</strong> (тот же BERT, дообученный сиамской схемой на парах): ρ ≈ <strong>0.77</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Современный эмбеддер, обученный контрастивно на больших данных:</strong> ρ ≈ <strong>0.83–0.86</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разрыв между «взял BERT и CLS» и «взял правильный эмбеддер» — 0.29 против 0.85.</strong> Это не тонкая настройка, а разница между нерабочей и рабочей системой. При этом обе строчки кода выглядят одинаково коротко, и ошибка не даёт никакого сигнала — она проявится только как «поиск плохо ищет».</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество sentence-эмбеддингов разными способами</div>
+<div class="chsub">Корреляция Спирмена с человеческими оценками близости</div>
+<div style="position:relative;height:300px;"><canvas id="c_sent"></canvas></div>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Правильный mean pooling с учётом маски</div>
+$$\mathbf{e} = \frac{\sum_{i} m_i \cdot \mathbf{h}_i}{\sum_i m_i}, \qquad m_i \in \{0, 1\} - \text{attention mask}$$
+<p>Затем — L2-нормализация, если используется косинусная близость:</p>
+$$\hat{\mathbf{e}} = \frac{\mathbf{e}}{\|\mathbf{e}\|_2}$$
+<p class="fnote">Без умножения на маску в среднее попадают представления padding-токенов. Эффект зависит от доли паддинга: в батче, где короткие тексты добиты до длины самого длинного, эмбеддинг короткого текста может на 60–80% состоять из шума паддинга.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Цена забытой attention-маски</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Батч.</strong> Тексты длиной 12, 45, 190 токенов. Паддинг до 190 (максимум в батче).</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Для первого текста:</strong> 12 реальных токенов и 178 паддингов. Наивное среднее по всем 190 позициям даёт вектор, на <strong>93.7%</strong> состоящий из представлений <code>[PAD]</code>.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Следствие:</strong> все короткие тексты в батче получают почти одинаковые эмбеддинги — доминирует общий «вектор паддинга». Косинус между двумя разными короткими текстами: <strong>0.98</strong> независимо от содержания.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Ещё хуже:</strong> результат <em>зависит от состава батча</em>. Тот же текст в батче с максимальной длиной 30 даст другой эмбеддинг, чем в батче с максимумом 190. Индексация и запрос дают несогласованные векторы.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>С маской</strong> усредняются только 12 реальных позиций — эмбеддинг детерминирован и не зависит от батча.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Диагностика этой ошибки:</strong> посчитай косинусы между случайными парами коротких текстов. Если они стабильно выше 0.9 — почти наверняка забыта маска. Второй тест: прогони один и тот же текст в батчах разного состава и сравни векторы — они обязаны совпадать побитово.</div></div>
+</div>
+
+<pre><code># Правильное получение sentence embedding
+import torch, torch.nn.functional as F
+from transformers import AutoTokenizer, AutoModel
+
+tok = AutoTokenizer.from_pretrained(MODEL)
+mdl = AutoModel.from_pretrained(MODEL).eval()
+
+@torch.no_grad()
+def embed(texts, batch_size=32, max_len=512):
+    out = []
+    for i in range(0, len(texts), batch_size):
+        enc = tok(texts[i:i+batch_size], padding=True, truncation=True,
+                  max_length=max_len, return_tensors="pt")
+        h = mdl(**enc).last_hidden_state                    # (B, L, H)
+        m = enc["attention_mask"].unsqueeze(-1).float()     # (B, L, 1)
+        # МАСКИРОВАННОЕ среднее — паддинг не участвует
+        e = (h * m).sum(1) / m.sum(1).clamp(min=1e-9)
+        out.append(F.normalize(e, p=2, dim=1))              # L2 для косинуса
+    return torch.cat(out)
+
+# ПРОВЕРКА №1: эмбеддинг не должен зависеть от состава батча
+a = embed(["короткий текст"])
+b = embed(["короткий текст", "очень " * 200 + "длинный текст"])[0:1]
+assert torch.allclose(a, b, atol=1e-5), "маска не применена или применена неверно"
+
+# ПРОВЕРКА №2: случайные короткие тексты не должны быть почти идентичны
+import numpy as np
+E = embed(random_short_texts[:200]).numpy()
+sims = (E @ E.T)[np.triu_indices(200, k=1)]
+print("медиана косинуса случайных пар:", np.median(sims))   # ждём 0.1-0.5, не 0.95
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Современные эмбеддеры часто требуют префикса-инструкции.</strong> Многие модели обучены различать роль текста: запрос и документ кодируются по-разному, например с префиксами <code>query:</code> и <code>passage:</code>. Забыть префикс — тихая деградация на 5–15% качества поиска без единой ошибки в логах. Аналогично: часть моделей ожидает <em>не</em> mean pooling, а CLS или последний токен — это указано в карточке модели, и отклонение так же молча ухудшает результат. <strong>Всегда читай карточку модели и воспроизводи её схему получения эмбеддинга точно.</strong></div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Асимметричные задачи требуют асимметричных моделей.</strong> «Найти документ по короткому запросу» — задача, где запрос и документ имеют разную природу и длину. Модели, обученные на симметричной близости (предложение ↔ предложение), работают здесь хуже моделей, обученных на парах «запрос ↔ пассаж». При выборе эмбеддера смотри не только на общий рейтинг, но и на то, <strong>под какой тип задачи он обучался</strong>: retrieval, симметричная близость, классификация или кластеризация — это разные оптимумы, и лидер одного раздела бенчмарка может быть посредственным в другом.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Классификация текста <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самая частая NLP-задача в бизнесе — и её неочевидные детали</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Вариант задачи</th><th>Примеры</th><th>Что меняется</th></tr></thead>
+<tbody>
+<tr><td>Бинарная</td><td>Спам, тональность, релевантность</td><td>Простейший случай</td></tr>
+<tr class="trh"><td><b>Многоклассовая</b></td><td>Категория обращения, тема статьи</td><td><strong>Softmax; классы взаимоисключающие</strong></td></tr>
+<tr class="trh"><td><b>Многометочная</b></td><td>Теги, несколько причин обращения</td><td><strong>Sigmoid на класс; порог на каждый отдельно</strong></td></tr>
+<tr><td>Иерархическая</td><td>Категория → подкатегория → тип</td><td>Каскад моделей или совместное обучение</td></tr>
+<tr><td>Экстремальная многоклассовая</td><td>Тысячи–миллионы классов</td><td>Приближённый softmax, retrieval-подход</td></tr>
+<tr><td>Zero-shot</td><td>Новые классы без разметки</td><td>NLI-модель или LLM</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Многометочную задачу регулярно решают как многоклассовую — и теряют половину качества.</strong> Обращение «не пришёл заказ и списали дважды» относится к двум категориям. Softmax заставляет модель выбрать одну и «размазывает» вероятность между двумя правильными вариантами, из-за чего обе оказываются ниже порога. <strong>Признак проблемы:</strong> много обращений с низкой максимальной вероятностью и «спорной» разметкой. <strong>Решение:</strong> sigmoid на каждый класс, BCE-лосс и <em>отдельный порог для каждого класса</em>, подобранный по F1 на валидации.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Пороги на класс против единого порога</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> 34 категории обращений, многометочная. Частоты классов различаются в 400 раз: от 18% до 0.045%.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Единый порог 0.5.</strong> Частые классы ловятся хорошо (F1 0.88), редкие почти не срабатывают: у них максимальная вероятность редко превышает 0.5.<br>Macro-F1 = <strong>0.412</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Единый порог, подобранный по macro-F1</strong> (оказался 0.23): редкие классы начинают срабатывать, но частые набирают ложных срабатываний.<br>Macro-F1 = <strong>0.518</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Отдельный порог на каждый класс</strong>, подобранный по F1 этого класса на валидации. Разброс порогов: от 0.61 (частые) до 0.09 (редкие).<br>Macro-F1 = <strong>0.641</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Прирост +0.229 macro-F1</strong> без единого изменения в модели — только подбор порогов.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Важная деталь:</strong> пороги подбираются на <em>отдельной</em> выборке, не на тесте. Подбор 34 порогов по тесту — это 34 степени свободы, и оценка окажется завышенной на 0.02–0.05 F1. Схема: train → valid (ранняя остановка) → threshold (подбор порогов) → test.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">F1 по классам при едином и индивидуальных порогах</div>
+<div class="chsub">Индивидуальные пороги вытягивают редкие классы, не ломая частые</div>
+<div style="position:relative;height:310px;"><canvas id="c_thr"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Иерархия классов даёт бесплатное улучшение.</strong> Если категории образуют дерево (доставка → задержка → курьер не пришёл), используй это: ① обучай на всех уровнях сразу многометочно, включая родительские метки — это даёт редким листьям сигнал от родителя; ② при инференсе применяй ограничение согласованности (лист не может быть предсказан без родителя); ③ при неуверенности отдавай ответ на уровне родителя, а не гадай лист. Последнее особенно ценно операционно: «доставка» с уверенностью 0.9 полезнее, чем «курьер не пришёл» с уверенностью 0.3.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. NER и разметка последовательностей <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Извлечение сущностей и главная тонкость выравнивания меток</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: схема BIO и зачем она нужна</div>
+<p>Задача — найти в тексте сущности: имена, организации, даты, суммы. Метки ставятся <em>на токены</em>, но сущность может занимать несколько токенов.</p>
+<p><strong>Схема BIO:</strong> <code>B-ORG</code> — начало организации, <code>I-ORG</code> — продолжение, <code>O</code> — не сущность. Это позволяет различить «две подряд идущие организации» и «одну организацию из двух слов».</p>
+<p>Есть расширения: <strong>BIOES</strong> добавляет <code>E</code> (конец) и <code>S</code> (одиночный токен). Это даёт модели более явный сигнал о границах и обычно чуть повышает качество ценой удвоения числа меток.</p>
+<p><strong>Ключевая практическая проблема</strong> — разметка сделана на уровне слов или символьных спанов, а модель работает с subword-токенами. Выравнивание меток с токенами — источник большинства багов в NER-пайплайнах.</p>
+</div>
+
+<div class="toks">
+  <span class="tok t0">ООО</span><span class="tok t0">▁«</span><span class="tok t0">Ромаш</span><span class="tok t0">ка</span><span class="tok t0">»</span><span class="tok t1">▁оплатил</span><span class="tok t1">о</span><span class="tok t2">▁12</span><span class="tok t2">▁500</span><span class="tok t2">▁руб</span><span class="tok t3">▁15</span><span class="tok t3">▁марта</span>
+</div>
+<div style="font-size:11.5px;color:var(--text3);margin-top:-4px;">
+  <span style="background:#ecfdf5;border:1px solid #a7f3d0;padding:1px 6px;border-radius:4px;color:#065f46;">B-ORG I-ORG I-ORG I-ORG I-ORG</span>
+  <span style="background:#eff6ff;border:1px solid #bfdbfe;padding:1px 6px;border-radius:4px;color:#1e40af;margin-left:4px;">O O</span>
+  <span style="background:#fef3c7;border:1px solid #fcd34d;padding:1px 6px;border-radius:4px;color:#78350f;margin-left:4px;">B-MONEY I-MONEY I-MONEY</span>
+  <span style="background:#fce7f3;border:1px solid #f9a8d4;padding:1px 6px;border-radius:4px;color:#9d174d;margin-left:4px;">B-DATE I-DATE</span>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главный баг NER-пайплайнов — сдвиг меток при токенизации.</strong> Разметка хранится как символьные спаны (позиции 0–17 = ORG), а модель видит subword-токены. Если для выравнивания используются наивные смещения, а токенизатор нормализует текст (убирает двойные пробелы, приводит регистр, заменяет кавычки), спаны «уезжают» на 1–3 символа. Модель обучается на слегка сдвинутых метках, метрики выглядят приемлемо (F1 0.7 вместо 0.9), и никто не понимает почему. <strong>Решение:</strong> использовать <code>return_offsets_mapping=True</code> и выравнивать по фактическим смещениям токенизатора, а не считать позиции самостоятельно.</div></div>
+
+<pre><code># Корректное выравнивание символьных спанов с subword-токенами
+enc = tok(text, return_offsets_mapping=True, truncation=True, max_length=512)
+offsets = enc["offset_mapping"]          # [(start_char, end_char), ...]
+
+labels = ["O"] * len(offsets)
+for ent_start, ent_end, ent_type in entities:      # символьные спаны из разметки
+    started = False
+    for i, (s, e) in enumerate(offsets):
+        if s == e:                                  # спецтокены [CLS]/[SEP]/[PAD]
+            labels[i] = -100                        # игнорируются в лоссе
+            continue
+        # токен пересекается со спаном сущности
+        if s &lt; ent_end and e &gt; ent_start:
+            labels[i] = ("B-" if not started else "I-") + ent_type
+            started = True
+
+# ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА: декодируем метки обратно и сверяем с исходной разметкой
+def spans_from_labels(offsets, labels):
+    spans, cur = [], None
+    for (s, e), lab in zip(offsets, labels):
+        if isinstance(lab, str) and lab.startswith("B-"):
+            if cur: spans.append(cur)
+            cur = [s, e, lab[2:]]
+        elif isinstance(lab, str) and lab.startswith("I-") and cur:
+            cur[1] = e
+        else:
+            if cur: spans.append(cur); cur = None
+    if cur: spans.append(cur)
+    return spans
+
+restored = spans_from_labels(offsets, labels)
+for (s, e, t) in restored:
+    print(repr(text[s:e]), t)      # глазами сверяем с исходной разметкой
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Метки только на первый subword слова или на все?</strong> Обе схемы используются. Вариант «первый subword — метка, остальные <code>-100</code>» проще и обычно даёт то же качество; вариант «все subword'ы получают метку» даёт больше обучающего сигнала, но может создавать несогласованные предсказания внутри слова. <strong>Главное — согласованность между обучением и инференсом:</strong> если обучал на первых subword'ах, то и агрегировать предсказания надо по первым. Рассогласование здесь даёт тихую потерю 3–8 п.п. F1.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>CRF-слой поверх энкодера всё ещё полезен.</strong> Обычная классификация токенов независима: модель может предсказать <code>I-ORG</code> сразу после <code>O</code>, что невозможно по схеме BIO. CRF моделирует переходы между метками и запрещает невалидные последовательности. Прирост обычно 1–3 п.п. F1 на уровне сущностей — небольшой, но почти бесплатный. <strong>Альтернатива без CRF:</strong> постобработка, исправляющая невалидные переходы (<code>O → I-X</code> трактуется как <code>B-X</code>). Часто даёт сопоставимый эффект без усложнения модели.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Метрики NLP: token-level против entity-level <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Почему одна и та же модель показывает F1 0.94 и 0.71</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Token-level F1 систематически завышает качество NER.</strong> Он считает каждый токен отдельно, поэтому модель, угадавшая 4 токена из 5 в названии организации, получает почти полный балл. Но сущность извлечена <em>неправильно</em>: «ООО Ромашка Плюс» вместо «ООО Ромашка Плюс Инвест» — это неверный ответ для любого потребителя. <strong>Entity-level (span-level) F1</strong> требует точного совпадения границ и типа: частичное совпадение засчитывается как <em>и</em> ложноположительное, <em>и</em> ложноотрицательное.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Одна модель, две метрики</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Тест:</strong> 1 000 предложений, 2 400 сущностей, 38 000 токенов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Ошибки модели:</strong> 180 сущностей с неверными границами (задет лишний или пропущен один токен), 95 полностью пропущено, 60 ложных, 45 с неверным типом.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Token-level.</strong> Ошибочных токенов: $180\times1.2 + 95\times2.8 + 60\times2.4 + 45\times2.6 = 216 + 266 + 144 + 117 = 743$ из 38 000.<br>Точность на токенах: <strong>98.0%</strong>. Token-F1 (по не-O классам) ≈ <strong>0.94</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Entity-level.</strong> Верно извлечено: $2400 - 180 - 95 - 45 = 2080$.<br>Precision $= \frac{2080}{2080+180+60+45} = \frac{2080}{2365} = 0.879$.<br>Recall $= \frac{2080}{2400} = 0.867$. <strong>Entity-F1 = 0.873</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Строгое совпадение с учётом того, что частичное = 2 ошибки:</strong> если считать по строгой схеме seqeval, 180 частичных дают и FP, и FN → F1 падает до <strong>0.83</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>0.94 против 0.83 — разрыв 0.11.</strong> Обе цифры «правильные», но описывают разное. <strong>Для отчёта заказчику всегда entity-level:</strong> его волнует, сколько сущностей извлечено верно целиком, а не сколько токенов классифицировано. Token-level полезен только как диагностика при обучении.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Token-level против entity-level F1</div>
+<div class="chsub">Разрыв тем больше, чем длиннее сущности</div>
+<div style="position:relative;height:300px;"><canvas id="c_seqeval"></canvas></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Схема оценки</th><th>Как засчитывает частичное совпадение</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Strict (seqeval default)</b></td><td>Не засчитывает: и FP, и FN</td><td><strong>Стандарт для отчётности</strong></td></tr>
+<tr><td>Exact</td><td>Границы точно, тип игнорируется</td><td>Диагностика: отдельно границы, отдельно типы</td></tr>
+<tr><td>Partial (MUC-style)</td><td>Половина балла за пересечение</td><td>Когда потребитель терпим к границам</td></tr>
+<tr><td>Type-match</td><td>Достаточно пересечения и верного типа</td><td>Поиск по сущностям, где точные границы не критичны</td></tr>
+<tr><td>Token-level</td><td>Потокенно</td><td><strong>Только для диагностики обучения</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Macro-F1 против micro-F1 в NLP решает, что ты оптимизируешь.</strong> Micro суммирует TP/FP/FN по всем классам — в нём доминируют частые сущности. Macro усредняет F1 по классам — редкие классы весят столько же, сколько частые. Если у тебя 3 частых типа и 12 редких, micro-F1 будет 0.91, а macro-F1 — 0.58, и оба честны. <strong>Правило:</strong> отчитывайся обоими и явно указывай, какой оптимизировал. Оптимизация micro при том, что бизнесу важны редкие типы, — распространённая рассогласованность метрики и цели.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Baseline против трансформера: честное сравнение <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Когда TF-IDF + логрег всё ещё выигрывает</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три фактора, определяющие разрыв</div>
+<p><strong>① Объём разметки.</strong> При 500 примерах трансформер выигрывает уверенно — он приносит знание языка из претрейна. При 500 000 примерах разрыв сокращается: линейная модель тоже успевает выучить нужное.</p>
+<p><strong>② Роль порядка слов.</strong> Если задача решается по наличию ключевых слов (спам, тематика), мешок слов почти не теряет. Если важен порядок и отрицания («не работает» против «работает»), трансформер выигрывает много.</p>
+<p><strong>③ Длина текста.</strong> На коротких текстах (запросы, заголовки) сигнала мало, и мешок слов близок к пределу. На длинных документах контекстная модель извлекает больше.</p>
+<p><strong>Практический вывод:</strong> baseline надо не «для приличия», а как <em>реальный кандидат в прод</em>. В классификации коротких текстов по ключевым словам при обильной разметке разница часто 2–4 п.п. при разнице в стоимости в 50 раз.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Кривые обучения: где проходит граница</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> классификация обращений, 34 класса, тексты 40–600 слов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>500 размеченных примеров:</strong> TF-IDF+LinearSVC — macro-F1 <strong>0.31</strong>; дообученный энкодер — <strong>0.58</strong>. Разрыв <strong>+0.27</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>5 000:</strong> 0.52 против 0.71. Разрыв +0.19.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>50 000:</strong> 0.66 против 0.78. Разрыв +0.12.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>500 000:</strong> 0.73 против 0.81. Разрыв <strong>+0.08</strong> — и он продолжает сокращаться.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Экономика при 500 000 примеров и 2.4 млн запросов/мес:</strong> baseline — 300 ₽/мес и 0.4 мс; энкодер — 1 800 ₽/мес и 18 мс.<br>Плюс 0.08 macro-F1 стоит 1 500 ₽/мес и ×45 задержки.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Решение зависит от цены ошибки.</strong> Для маршрутизации обращений между отделами +0.08 F1 окупается многократно (меньше переадресаций). Для предварительной фильтрации перед оператором, который всё равно проверит, — вероятно нет. <strong>Всегда переводи прирост метрики в операционные последствия</strong>, а не сравнивай F1 в вакууме.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Кривые обучения: baseline и трансформер</div>
+<div class="chsub">Разрыв максимален на малых данных и сокращается с ростом разметки</div>
+<div style="position:relative;height:310px;"><canvas id="c_learn"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Сильный baseline — это не «TF-IDF по умолчанию».</strong> Прежде чем объявлять, что трансформер выиграл, доведи baseline до ума: ① char n-граммы (3–5) вдобавок к словам — резко помогают на морфологически богатых языках и опечатках; ② <code>sublinear_tf=True</code> (логарифм частоты); ③ подбор <code>min_df</code> и <code>max_df</code>; ④ калиброванный LinearSVC или логрег с подбором C; ⑤ отдельные пороги на класс (секция 7). Такой baseline часто прибавляет 0.06–0.10 F1 к наивному и меняет вывод сравнения. <strong>Проигрыш слабому baseline — не доказательство преимущества сложной модели.</strong></div></div>
+
+<pre><code># Сильный baseline — реальный кандидат в прод
+from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
+
+feats = FeatureUnion([
+    ("word", TfidfVectorizer(analyzer="word", ngram_range=(1,2),
+                             min_df=3, max_df=0.6, sublinear_tf=True)),
+    ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(3,5),
+                             min_df=3, sublinear_tf=True)),   # спасает от опечаток и морфологии
+])
+
+clf = Pipeline([
+    ("feats", feats),
+    ("svc", CalibratedClassifierCV(LinearSVC(C=1.0), method="sigmoid", cv=3)),
+])
+clf.fit(X_train, y_train)
+
+# Пороги на класс подбираются на ОТДЕЛЬНОЙ выборке
+import numpy as np
+from sklearn.metrics import f1_score
+P = clf.predict_proba(X_thresh)
+thresholds = []
+for k in range(P.shape[1]):
+    grid = np.linspace(0.02, 0.9, 60)
+    f1s = [f1_score(y_thresh[:, k], (P[:, k] &gt;= t).astype(int), zero_division=0) for t in grid]
+    thresholds.append(grid[int(np.argmax(f1s))])
+thresholds = np.array(thresholds)
+print("разброс порогов:", thresholds.min().round(2), "–", thresholds.max().round(2))
+</code></pre>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Валидация и утечки в NLP <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Дубликаты текстов — самая частая и самая тихая утечка</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Дубликаты и почти-дубликаты между train и test встречаются в NLP-данных постоянно.</strong> Источники: шаблонные обращения («не могу войти в аккаунт» — тысячи почти идентичных), пересылки и цитирование, автоматически сгенерированные тексты, повторная отправка одного обращения. Случайное разбиение помещает копии по обе стороны, и модель на тесте фактически <em>вспоминает</em>, а не обобщает. Завышение метрики — 0.05–0.20 F1, и оно полностью проявляется только в проде.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько даёт дедупликация</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> 340 000 обращений в поддержку. Случайное разбиение 80/20.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Метрика на тесте:</strong> macro-F1 <strong>0.812</strong>. Выглядит отлично.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Проверка на дубликаты.</strong> Точных дубликатов (после нормализации): 41 000 (12%). Почти-дубликатов (MinHash-сходство &gt; 0.85): ещё 68 000 (20%).</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Из тестовых 68 000 примеров у 21 400 (31%) есть близкий двойник в train.</strong></div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>После дедупликации и разбиения по кластерам</strong> (все близкие тексты — в одну сторону): macro-F1 <strong>0.694</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Фактическое качество в проде за первый месяц:</strong> 0.688. <strong>Совпадает с дедуплицированной оценкой, а не с исходной.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разрыв 0.118 F1</strong> — это разница между «модель отличная» и «модель приемлемая». Дедупликация занимает полчаса через MinHash + LSH и должна быть обязательным шагом любого NLP-пайплайна, а не опцией.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Тип утечки</th><th>Механизм</th><th>Как ловить</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Дубликаты текстов</b></td><td>Один текст в train и test</td><td><strong>Хеш нормализованного текста; MinHash + LSH для почти-дубликатов</strong></td></tr>
+<tr class="trh"><td><b>Групповая утечка</b></td><td>Несколько обращений одного клиента / треда в разных сплитах</td><td><strong>GroupKFold по клиенту, тикету, документу</strong></td></tr>
+<tr><td>Временная утечка</td><td>Модель обучена на будущем; лексика и темы дрейфуют</td><td>Разбиение по времени</td></tr>
+<tr><td>Утечка через метку в тексте</td><td>Текст содержит служебную приписку («категория: доставка»)</td><td>Проверка топ-признаков; поиск подозрительных шаблонов</td></tr>
+<tr><td>Утечка при аугментации</td><td>Аугментированные копии train попали в test</td><td>Аугментировать <em>только после</em> разбиения</td></tr>
+<tr><td>Утечка через претрейн</td><td>Тестовый корпус был в претрейне модели</td><td>Актуально для публичных бенчмарков; для своих данных редко</td></tr>
+</tbody>
+</table>
+</div>
+
+<pre><code># Дедупликация: точные и почти-дубликаты
+import re, hashlib
+from datasketch import MinHash, MinHashLSH
+
+def norm(t):
+    t = t.lower()
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"[^\wа-яё ]+", "", t)
+    return t.strip()
+
+# 1) точные дубликаты
+seen, keep = set(), []
+for i, t in enumerate(texts):
+    h = hashlib.md5(norm(t).encode()).hexdigest()
+    if h not in seen:
+        seen.add(h); keep.append(i)
+print(f"точных дубликатов удалено: {len(texts) - len(keep)}")
+
+# 2) почти-дубликаты через MinHash + LSH
+def mh(t, num_perm=128):
+    m = MinHash(num_perm=num_perm)
+    toks = norm(t).split()
+    for sh in {" ".join(toks[i:i+3]) for i in range(max(len(toks)-2, 1))}:
+        m.update(sh.encode())
+    return m
+
+lsh = MinHashLSH(threshold=0.85, num_perm=128)
+sigs, cluster = {}, {}
+for i in keep:
+    m = mh(texts[i]); sigs[i] = m
+    dup = lsh.query(m)
+    cluster[i] = cluster[dup[0]] if dup else i     # id кластера = первый встреченный
+    lsh.insert(i, m)
+
+# 3) РАЗБИЕНИЕ ПО КЛАСТЕРАМ, а не по строкам
+from sklearn.model_selection import GroupShuffleSplit
+groups = [cluster[i] for i in keep]
+tr, te = next(GroupShuffleSplit(test_size=0.2, random_state=0)
+              .split(keep, groups=groups))
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Разбиение по времени в NLP важнее, чем кажется.</strong> Лексика меняется: появляются названия новых продуктов, акций, сезонных тем; меняются формулировки шаблонов поддержки. Модель, обученная на случайном срезе, видит те же темы в тесте. В проде через три месяца распределение другое. <strong>Практика:</strong> основной тест — по времени (последние N недель), дополнительный — случайный с дедупликацией. Разрыв между этими двумя оценками показывает, насколько быстро задача дрейфует, и задаёт частоту переобучения.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Многоязычность и её цена <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Одна модель на все языки или отдельные — и во что это обходится</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Плюсы</th><th>Минусы</th><th>Когда</th></tr></thead>
+<tbody>
+<tr><td>Отдельная модель на язык</td><td>Лучшее качество на каждом; компактный словарь</td><td>N моделей в обслуживании; нет переноса между языками</td><td>2–3 крупных языка, много данных на каждом</td></tr>
+<tr class="trh"><td><b>Многоязычная модель</b></td><td><strong>Одна модель; перенос знаний на языки с малой разметкой</strong></td><td>«Проклятие многоязычности»: качество на каждом чуть ниже</td><td><strong>Много языков, неравномерная разметка</strong></td></tr>
+<tr><td>Перевод на английский + англоязычная модель</td><td>Доступ к лучшим англоязычным моделям</td><td>Ошибки перевода накапливаются; задержка и стоимость</td><td>Языки с очень малыми ресурсами</td></tr>
+<tr><td>Дообучение многоязычной под целевой язык</td><td>Компромисс: перенос + специализация</td><td>Теряется часть многоязычности</td><td>Один основной язык + хвост</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: «проклятие многоязычности»</div>
+<p>Многоязычная модель фиксированного размера делит ёмкость между языками. Добавление новых языков улучшает результат на языках с малыми ресурсами (за счёт переноса), но <em>ухудшает</em> на языках с большими — им достаётся меньше параметров и меньше места в словаре.</p>
+<p>Отсюда компромисс: до определённого числа языков перенос перевешивает, после — начинается деградация.</p>
+<p><strong>Практический ориентир:</strong> если у тебя один доминирующий язык с обильной разметкой, монолингвальная модель этого языка почти всегда лучше многоязычной того же размера — типично на 2–5 п.п.</p>
+<p><strong>Обратный случай:</strong> 15 языков, из них 12 с сотнями примеров. Тут многоязычная модель — единственный вариант получить приемлемое качество на хвосте.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Стоимость токенизации по языкам</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Один и тот же смысл</strong> (описание товара, ~1 200 символов) на разных языках, токенизатор с англоцентричным словарём.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Английский:</strong> ~290 токенов (4.1 символа/токен).<br><strong>Испанский:</strong> ~370 (3.4).<br><strong>Немецкий:</strong> ~420 (3.0).</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Русский:</strong> ~700 токенов (1.8 символа/токен) — <strong>в 2.4 раза больше английского.</strong><br><strong>Хинди / тайский:</strong> ~950–1 100 — в 3.5 раза.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Следствия сразу три.</strong> ① Стоимость API в 2.4 раза выше. ② В контекст 128k влезает 2.4× меньше содержания. ③ Латентность prefill выше пропорционально.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>С русскоязычным или сбалансированным токенизатором:</strong> ~340 токенов (3.5 символа/токен) — почти паритет с английским.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>При 3 млн запросов в месяц по 1 200 символов и цене 0.15 ₽/1k токенов:</strong> англоцентричный токенизатор даёт $3\text{M}\times0.7\times0.15 = 315$ тыс ₽/мес, сбалансированный — $153$ тыс ₽/мес. <strong>Разница 162 тыс ₽/мес — только от выбора токенизатора</strong>, при прочих равных.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Токенов на 1 200 символов текста по языкам</div>
+<div class="chsub">Англоцентричный словарь против сбалансированного</div>
+<div style="position:relative;height:310px;"><canvas id="c_langs"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Кросс-язычный перенос работает лучше, чем ожидается.</strong> Многоязычная модель, дообученная на разметке <em>только английского</em>, часто показывает приличное качество на других языках без единого примера на них (zero-shot cross-lingual transfer). Типично 70–85% от качества при обучении на целевом языке. Это практичный приём, когда разметка есть только на одном языке: обучаешь на нём, проверяешь на остальных, и доразмечаешь только там, где качество недостаточно. Экономия на разметке — кратная.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Двенадцать ошибок, каждая из которых даёт тихую деградацию</div>
+
+<div class="cl danger"><span class="cli">1️⃣</span><div><strong>Mean pooling без attention-маски.</strong> Эмбеддинг короткого текста на 90%+ состоит из паддинга, все короткие тексты становятся почти идентичны, а результат зависит от состава батча. Диагностика: косинус случайных коротких пар выше 0.9.</div></div>
+
+<div class="cl danger"><span class="cli">2️⃣</span><div><strong>CLS-токен ванильного BERT как sentence-эмбеддинг.</strong> ρ ≈ 0.29 против 0.85 у правильного эмбеддера — хуже, чем усреднённый GloVe.</div></div>
+
+<div class="cl danger"><span class="cli">3️⃣</span><div><strong>Забытый префикс-инструкция</strong> (<code>query:</code> / <code>passage:</code>) у моделей, которые его требуют. Тихая потеря 5–15% качества поиска без единой ошибки в логах.</div></div>
+
+<div class="cl danger"><span class="cli">4️⃣</span><div><strong>Разные токенизаторы у модели и препроцессинга.</strong> Классика: индексация делалась одной версией, поиск — другой. Векторы несопоставимы, поиск деградирует постепенно по мере переиндексации.</div></div>
+
+<div class="cl danger"><span class="cli">5️⃣</span><div><strong>Нет L2-нормализации при использовании косинуса.</strong> Часть индексов ANN считают скалярное произведение, и без нормализации длинные векторы систематически выигрывают вне зависимости от релевантности.</div></div>
+
+<div class="cl danger"><span class="cli">6️⃣</span><div><strong>Дубликаты между train и test.</strong> В разборе секции 11 завышение составило 0.118 F1; 31% тестовых примеров имели двойника в train.</div></div>
+
+<div class="cl danger"><span class="cli">7️⃣</span><div><strong>Случайное разбиение вместо группового.</strong> Несколько обращений одного клиента или сообщений одного треда попадают в разные сплиты.</div></div>
+
+<div class="cl danger"><span class="cli">8️⃣</span><div><strong>Сдвиг меток при выравнивании NER.</strong> Символьные спаны считаются вручную, а токенизатор нормализует текст. Метки уезжают на 1–3 символа, F1 падает с 0.9 до 0.7 без видимой причины.</div></div>
+
+<div class="cl danger"><span class="cli">9️⃣</span><div><strong>Отчёт по token-level F1 вместо entity-level.</strong> 0.94 против 0.83 — обе цифры верны, но заказчика интересует вторая.</div></div>
+
+<div class="cl danger"><span class="cli">🔟</span><div><strong>Единый порог в многометочной задаче.</strong> Редкие классы не срабатывают вовсе. Индивидуальные пороги дали +0.229 macro-F1 без изменения модели.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣1️⃣</span><div><strong>Подбор порогов на тесте.</strong> 34 порога — это 34 степени свободы; оценка завышается на 0.02–0.05 F1. Нужна отдельная выборка под пороги.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣2️⃣</span><div><strong>Слабый baseline в сравнении.</strong> Без char n-грамм, sublinear tf и подбора порогов baseline проигрывает искусственно. Доведённый до ума, он часто прибавляет 0.06–0.10 F1 и меняет вывод.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Метавывод.</strong> Одиннадцать из двенадцати ошибок — <em>тихие</em>: они не бросают исключений, не портят логи и не видны в метриках обучения. Система работает, метрики приемлемы, качество ниже возможного на 10–30%. Это специфика NLP: между текстом и моделью много слоёв преобразований, и рассогласование любого из них проходит незамеченным. <strong>Практическое следствие:</strong> в NLP-пайплайне нужны <em>тесты инвариантов</em>, а не только метрики — эмбеддинг не зависит от батча, декодирование меток восстанавливает исходную разметку, токенизатор на индексации и на запросе один и тот же.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре кейса: как это устроено в продакшене</div>
+
+<div class="sysbox">
+<h4>🎫 Классификация обращений в поддержке — каскадная архитектура</h4>
+<p><strong>Задача.</strong> 2.4 млн обращений в месяц, 34 категории, требование по задержке — до 200 мс, часть категорий появляется и исчезает.</p>
+<p><strong>Почему не одна модель.</strong> Частые категории имеют десятки тысяч примеров и решаются дёшево. Редкие и новые — единицы примеров, там нужен LLM. Одна модель на всё либо дорога, либо плоха на хвосте.</p>
+<p><strong>Каскад из трёх уровней.</strong> ① <em>Правила</em> — детерминированные шаблоны (автоответы систем, известные форматы) ловят ~12% потока за микросекунды. ② <em>Дообученный энкодер</em> с индивидуальными порогами на класс — основная масса, ~81% потока. ③ <em>LLM</em> — только то, где энкодер не уверен ни в одном классе, ~7% потока.</p>
+<p><strong>Экономика каскада.</strong> Без каскада всё через LLM — 424 тыс ₽/мес. С каскадом — 1.8 тыс (энкодер) + 30 тыс (7% через LLM) ≈ <em>32 тыс ₽/мес</em> при более высокой средней точности.</p>
+<p><strong>Ключевая деталь порога эскалации.</strong> Он подбирается не по уверенности модели, а по <em>экономике</em>: стоимость эскалации против стоимости ошибки маршрутизации. Это тот же расчёт порога $c/(e\cdot\text{ущерб})$, что в теме 2.2.</p>
+<p><strong>Нюанс валидации.</strong> Каскад нельзя оценивать по метрике каждого уровня отдельно: важна метрика системы целиком при фактическом распределении потока. Улучшение энкодера, снижающее долю эскалаций, может <em>ухудшить</em> общее качество, если снятые с эскалации примеры были как раз теми, где он ошибается.</p>
+</div>
+
+<div class="sysbox">
+<h4>🔎 Семантический поиск по внутренней базе знаний</h4>
+<p><strong>Задача.</strong> Поиск по 400 тыс. внутренних документов; запросы на русском, документы смешанные (русский + английские термины + код).</p>
+<p><strong>Выбор эмбеддера — не по общему рейтингу.</strong> Проверяются три вещи на <em>своих</em> данных: качество на асессорской выборке из 500 пар «запрос–документ», токенизация доменных терминов (артикулы, названия систем), стоимость инференса при переиндексации всего корпуса.</p>
+<p><strong>Почему только вектора не работают.</strong> Запросы вида «ошибка ORA-01555» или «инструкция BX-4471» требуют точного совпадения; эмбеддер их «размывает». Поэтому <em>гибридный</em> retrieval — лексика плюс вектора (подробно в теме 9.2).</p>
+<p><strong>Обработка длинных документов.</strong> Документ режется на чанки, каждый эмбеддится отдельно; при выдаче возвращается документ, но подсвечивается релевантный чанк. Наивное эмбеддирование документа целиком через усечение до 512 токенов теряет 90% содержания длинных инструкций.</p>
+<p><strong>Нюанс валидации.</strong> Асессорская разметка дорога, поэтому основной источник оценки — клики. Но клики смещены позицией: верхние результаты кликают чаще независимо от релевантности. Без коррекции position bias любая новая модель, поставленная на верхние позиции, будет выглядеть лучше (тема 9.2).</p>
+</div>
+
+<div class="sysbox">
+<h4>🏦 Извлечение сущностей из документов — NER в регулируемом домене</h4>
+<p><strong>Задача.</strong> Извлечение реквизитов, сумм, дат и контрагентов из платёжных документов и договоров.</p>
+<p><strong>Требование, меняющее архитектуру:</strong> нужны не только сущности, но и <em>позиции</em> в исходном документе — для подсветки, аудита и разбора спорных случаев. Это делает корректное выравнивание offset'ов не «хорошей практикой», а требованием.</p>
+<p><strong>Гибрид правил и модели.</strong> Форматные сущности (ИНН, БИК, номера счетов) извлекаются регулярными выражениями с проверкой контрольных сумм — там модель не нужна и вредна: она даёт вероятностный ответ там, где есть детерминированная проверка. Модель работает по «мягким» сущностям: наименования, назначение платежа, роли сторон.</p>
+<p><strong>Оценка строгая.</strong> Entity-level с точным совпадением границ: частично извлечённая сумма или неполное наименование контрагента — это ошибка, а не «почти верно». Плюс отдельная метрика по каждому типу: усреднённый F1 скрывает, что критичный тип извлекается плохо.</p>
+<p><strong>Нюанс валидации.</strong> Документы приходят от разных контрагентов с разными шаблонами. Случайное разбиение помещает документы одного шаблона по обе стороны, и модель выучивает шаблон, а не язык. Правильно — <strong>разбиение по контрагенту/шаблону</strong>, чтобы тест содержал невиданные форматы.</p>
+</div>
+
+<div class="sysbox">
+<h4>🌍 Многоязычная модерация контента</h4>
+<p><strong>Задача.</strong> Классификация пользовательского контента на нарушения по 18 языкам; разметка обильна на 3 языках и скудна на 15.</p>
+<p><strong>Почему многоязычная модель.</strong> Отдельные модели на 15 языков с сотнями примеров каждый нереалистичны. Многоязычная даёт кросс-язычный перенос: обучение преимущественно на данных с богатых языков даёт 70–85% качества на бедных без единого примера на них.</p>
+<p><strong>Балансировка при обучении.</strong> Наивное смешение даёт доминирование богатых языков и слабый перенос. Применяется температурное сэмплирование: доля языка $\propto p_\ell^{\alpha}$ при $\alpha \approx 0.3$–0.5, что подтягивает редкие языки, не обнуляя частые.</p>
+<p><strong>Пороги — отдельные на язык.</strong> Калибровка модели различается между языками: один и тот же скор 0.7 означает разную вероятность нарушения на английском и на тайском. Единый порог даёт систематически разную строгость модерации по языкам — это ещё и вопрос справедливости, а не только качества.</p>
+<p><strong>Нюанс валидации.</strong> Метрика обязана считаться <em>отдельно по каждому языку</em>. Общий macro-F1 по всей выборке доминируется языками с большим объёмом и скрывает провал на редких. Плюс отдельный контроль <em>разброса</em> качества между языками: система с F1 0.85 везде лучше системы со средним 0.87 при разбросе от 0.95 до 0.55.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Что общего у четырёх кейсов.</strong> ① <strong>Каскад почти всегда лучше монолита:</strong> детерминированное — правилами, массовое — дешёвой моделью, хвост — дорогой. ② <strong>Метрика должна считаться в разрезах</strong> — по классам, по языкам, по типам сущностей: усреднение скрывает провалы там, где они важнее всего. ③ <strong>Разбиение данных отражает то, что будет ново в проде</strong> — новые шаблоны, новые контрагенты, новые периоды, а не случайные строки. ④ <strong>Выбор модели делается на своих данных</strong>, а не по публичному рейтингу: токенизация домена и распределение запросов важнее общего места в бенчмарке.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">От токенизации до валидации</div>
+
+<div class="qah">Часть 1. Выбор подхода и токенизация</div>
+
+<details class="qi"><summary><span class="qch">▶</span>1. Когда классическая модель лучше LLM?</summary><div class="qa"><p>Когда есть <strong>обильная разметка</strong>, <strong>большой объём запросов</strong> и <strong>жёсткий SLA по задержке</strong>.</p><p>В расчёте секции 1: дообученный энкодер дал точность 0.91 против 0.87 у LLM и стоил 1.8 тыс ₽/мес против 424 тыс — дешевле в 235 раз и точнее на 4 п.п.</p><p>LLM выигрывает там, где разметки нет, классы меняются часто или объём мал. <strong>Рабочее решение обычно каскад:</strong> энкодер на частые категории, LLM на хвост и на «не уверен».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>2. Зачем нужна subword-токенизация?</summary><div class="qa"><p>Словарь из слов даёт <code>&lt;UNK&gt;</code> на любом незнакомом слове и требует миллионов записей для морфологически богатых языков. Словарь из символов делает последовательности в 5–8 раз длиннее, а внимание квадратично по длине.</p><p><strong>Subword — компромисс:</strong> частые слова целиком, редкие разбиваются на осмысленные куски. Незнакомых слов не существует в принципе — в худшем случае слово разложится на символы.</p><p>Размер словаря — гиперпараметр: больше словарь → короче последовательности, но больше матрица эмбеддингов и реже встречается каждый токен при обучении.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>3. Чем BPE отличается от WordPiece?</summary><div class="qa"><p><strong>BPE</strong> сливает самую <em>частую</em> пару — оптимизирует длину последовательности.<br><strong>WordPiece</strong> сливает пару с максимальным $\frac{\text{count}(ab)}{\text{count}(a)\text{count}(b)}$ — то есть по PMI, оптимизируя информативность.</p><p>В примере секции 2: BPE сольёт «es» (частота 18 000), WordPiece — «qu» (частота 780), потому что «q» в 97.5% случаев идёт с «u».</p><p>На практике различия в итоговом качестве невелики; WordPiece даёт более «лингвистичные» разбиения, BPE — более короткие последовательности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>4. Чем Unigram LM принципиально отличается?</summary><div class="qa"><p>Он идёт <strong>сверху вниз</strong>: начинает с большого набора кандидатов и удаляет те, чьё удаление меньше всего ухудшает правдоподобие корпуса (EM-алгоритм). BPE и WordPiece строят словарь снизу вверх.</p><p><strong>Практическое следствие:</strong> Unigram даёт вероятностную сегментацию — одно слово может разбиваться несколькими способами с разными вероятностями.</p><p>Это позволяет делать <em>subword regularization</em>: сэмплировать разные разбиения при обучении как аугментацию. Заметно помогает на малых данных и редких языках.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>5. Что даёт SentencePiece?</summary><div class="qa"><p><strong>① Работает с сырым текстом</strong>, включая пробелы (обозначаются <code>▁</code>) — не требует предварительной токенизации по пробелам.</p><p><strong>② Поддерживает языки без пробелов</strong> — японский, китайский, тайский, где классическая схема «сначала режем по пробелам» неприменима.</p><p><strong>③ Полностью обратима:</strong> из токенов восстанавливается исходный текст байт в байт, включая двойные пробелы и переносы. Для генеративных моделей это принципиально.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>6. Почему LLM не может посчитать буквы в слове?</summary><div class="qa"><p>Модель не видит букв — она видит последовательность идентификаторов токенов. Слово могло прийти как один токен с id 24815, и состав его символов <em>физически отсутствует</em> во входе.</p><p>Модель может выучить состав частых слов косвенно, но это дорогое и ненадёжное знание, а не прямое наблюдение.</p><p>Та же причина за неумением переворачивать строки и играть в словесные игры на уровне символов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>7. Почему ломается арифметика с большими числами?</summary><div class="qa"><p>Числа токенизируются <em>невыровненно</em>: «4736» → [«47», «36»], «2891» → [«289», «1»]. Разряды слагаемых не соответствуют друг другу, и модели приходится восстанавливать позиционное значение каждой цифры внутри активаций.</p><p>Точность падает с ростом разрядности: ~99% на 3-значных, ~85% на 5-значных, ~40% на 8-значных.</p><p><strong>Решение на уровне токенизатора</strong> — разбивать числа на отдельные цифры или группы по 3 справа. <strong>Решение на уровне системы</strong> — дать модели калькулятор, а не бороться с токенизацией.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>8. Как токенизация влияет на стоимость многоязычных систем?</summary><div class="qa"><p>Англоцентричный словарь даёт для русского ~1.8 символа на токен против 4.1 у английского — <strong>в 2.4 раза больше токенов на тот же смысл</strong>. Для хинди и тайского разрыв достигает 3.5 раз.</p><p><strong>Три следствия сразу:</strong> стоимость API растёт пропорционально, в контекстное окно влезает во столько же раз меньше содержания, латентность prefill выше.</p><p>В расчёте секции 12 при 3 млн запросов в месяц разница между англоцентричным и сбалансированным токенизатором составила 162 тыс ₽/мес.</p></div></details>
+
+<div class="qah">Часть 2. Эмбеддинги</div>
+
+<details class="qi"><summary><span class="qch">▶</span>9. В чём фундаментальное ограничение TF-IDF?</summary><div class="qa"><p>Для него «автомобиль» и «машина» — <strong>полностью разные ортогональные измерения</strong> с нулевой связью. Документы про одно и то же с разной лексикой имеют косинус 0.</p><p>Нет понятия похожести между словами — каждое слово отдельная ось.</p><p><strong>Но обратная сторона:</strong> TF-IDF отлично находит точные совпадения — артикулы, коды ошибок, имена. Векторные модели там как раз проваливаются. Отсюда необходимость гибридного поиска.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>10. Что такое связь word2vec с PMI?</summary><div class="qa"><p>Levy и Goldberg показали, что skip-gram с negative sampling <strong>неявно факторизует матрицу сдвинутой PMI</strong>: $v_w^\top v_c \approx \text{PMI}(w,c) - \log K$.</p><p>То есть за нейросетевой формулировкой стоит классическая матричная факторизация статистики совстречаемости — той же PMI, что появляется в анализе корзины и в критерии WordPiece.</p><p>Это объясняет, почему word2vec работает: он сжимает статистику «какие слова встречаются в одних контекстах».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>11. Зачем в negative sampling степень 3/4?</summary><div class="qa"><p>Негативы сэмплируются из $P_{\text{neg}} \propto f(w)^{3/4}$ — сглаженной униграммной частоты.</p><p>При $\alpha = 1$ (сырая частота) негативами почти всегда становятся служебные слова, и обучение вырождается. При $\alpha = 0$ (равномерно) редкие слова становятся негативами слишком часто.</p><p>Степень 3/4 подобрана эмпирически: она подтягивает редкие слова, не давая частым доминировать. Тот же приём встречается в subsampling частых токенов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>12. Главная проблема word2vec и как её решают?</summary><div class="qa"><p><strong>Один вектор на слово.</strong> «Лук» получает усреднение между овощем и оружием — вектор, не описывающий ни одно из значений.</p><p><strong>Контекстные модели (BERT)</strong> дают вектор слова в конкретном предложении через self-attention: представление токена строится как взвешенная сумма представлений всех токенов, и веса зависят от содержания.</p><p><strong>Цена:</strong> нельзя предрассчитать таблицу — для каждого текста нужен прогон модели, на порядки дороже look-up.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>13. Чем полезен fastText?</summary><div class="qa"><p>Он строит вектор слова как сумму векторов его символьных n-грамм. Отсюда три свойства: ① даёт вектор <em>незнакомому</em> слову, собирая из n-грамм; ② хорошо работает с морфологически богатыми языками, где формы делят n-граммы; ③ остаётся быстрым look-up-ом.</p><p>Для русского на задачах классификации fastText часто сильнее word2vec и на порядки дешевле BERT — разумная точка на кривой «качество/стоимость», если контекст не критичен.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>14. Почему CLS-токен BERT — плохой эмбеддинг предложения?</summary><div class="qa"><p>Потому что он обучался под Next Sentence Prediction, а не под то, чтобы косинус между CLS похожих предложений был велик. <strong>Ни одна часть претрейна не оптимизировала геометрию пространства предложений.</strong></p><p>Измеримо: на задачах семантической близости CLS даёт ρ ≈ 0.29 — <em>хуже усреднённых GloVe-векторов</em> (0.58). Правильный контрастивно обученный эмбеддер даёт 0.83–0.86.</p><p>Разрыв 0.29 против 0.85 — это разница между нерабочей и рабочей системой при внешне одинаковом коде.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>15. Что происходит при mean pooling без маски?</summary><div class="qa"><p>В среднее попадают представления padding-токенов. Для текста из 12 токенов в батче с максимумом 190 эмбеддинг на <strong>93.7% состоит из паддинга</strong>.</p><p><strong>Два следствия:</strong> ① все короткие тексты получают почти идентичные векторы (косинус ~0.98 независимо от содержания); ② результат <em>зависит от состава батча</em> — тот же текст в другом батче даёт другой вектор, из-за чего индексация и запрос рассогласованы.</p><p><strong>Диагностика:</strong> прогони один текст в батчах разного состава — векторы обязаны совпадать побитово.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>16. Зачем L2-нормализация эмбеддингов?</summary><div class="qa"><p>Косинусная близость равна скалярному произведению <em>только для векторов единичной длины</em>. Многие ANN-индексы считают именно скалярное произведение (inner product).</p><p>Без нормализации длинные векторы систематически выигрывают вне зависимости от релевантности — а длина коррелирует с длиной текста и частотностью лексики, то есть с чем угодно, кроме смысла.</p><p>Нормализация делается один раз при индексации и при запросе; забыть её на одной из сторон — типичная и тихая ошибка.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>17. Что такое префикс-инструкция у эмбеддера?</summary><div class="qa"><p>Многие современные модели обучены различать роль текста: запрос и документ кодируются с разными префиксами, например <code>query:</code> и <code>passage:</code>.</p><p>Забыть префикс — тихая деградация на 5–15% качества поиска без единой ошибки в логах.</p><p>Аналогично часть моделей ожидает не mean pooling, а CLS или последний токен. <strong>Всегда читай карточку модели и воспроизводи её схему точно</strong> — отклонение не даёт никакого сигнала, кроме «поиск плохо ищет».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>18. Почему нельзя выбирать эмбеддер только по общему рейтингу?</summary><div class="qa"><p>Потому что <strong>разные задачи — разные оптимумы</strong>: retrieval (асимметричный запрос↔документ), симметричная близость предложений, классификация, кластеризация. Лидер одного раздела бенчмарка может быть посредственным в другом.</p><p>Плюс переносимость на домен: модель, обученная преимущественно на английском, деградирует на русском корпусе; токенизация доменных терминов может рассыпать ключевые сущности на 8 токенов.</p><p><strong>Проверка на своих данных</strong> — асессорская выборка из 300–500 пар — занимает день и меняет выбор чаще, чем кажется.</p></div></details>
+
+<div class="qah">Часть 3. Задачи и метрики</div>
+
+<details class="qi"><summary><span class="qch">▶</span>19. Чем многометочная задача отличается от многоклассовой?</summary><div class="qa"><p>В многоклассовой классы взаимоисключающие → softmax. В многометочной объект может иметь несколько меток → <strong>sigmoid на каждый класс и BCE-лосс</strong>.</p><p>Решать многометочную через softmax — частая ошибка: обращение «не пришёл заказ и списали дважды» заставляет модель выбрать одно и размазать вероятность между двумя верными вариантами, из-за чего обе оказываются ниже порога.</p><p><strong>Признак проблемы:</strong> много объектов с низкой максимальной вероятностью и «спорной» разметкой.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>20. Зачем индивидуальные пороги на класс?</summary><div class="qa"><p>Потому что классы сильно различаются по частоте, и калибровка модели различается между ними. При частотах от 18% до 0.045% единый порог 0.5 просто не срабатывает для редких классов.</p><p>В расчёте секции 7: единый порог 0.5 дал macro-F1 0.412; подобранный единый — 0.518; <strong>индивидуальные пороги — 0.641</strong>. Прирост +0.229 без изменения модели.</p><p><strong>Важно:</strong> пороги подбираются на отдельной выборке, не на тесте — иначе оценка завышается на 0.02–0.05 F1.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>21. Зачем нужна схема BIO?</summary><div class="qa"><p>Чтобы различать «две подряд идущие сущности» и «одну сущность из двух слов». <code>B-ORG</code> — начало, <code>I-ORG</code> — продолжение, <code>O</code> — не сущность.</p><p><strong>BIOES</strong> добавляет <code>E</code> (конец) и <code>S</code> (одиночный токен), давая более явный сигнал о границах ценой удвоения числа меток; прирост обычно небольшой.</p><p><strong>CRF-слой</strong> поверх энкодера запрещает невалидные переходы (<code>O → I-X</code>) и даёт 1–3 п.п. F1. Альтернатива — постобработка, исправляющая невалидные переходы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>22. Какая главная ошибка в NER-пайплайнах?</summary><div class="qa"><p><strong>Сдвиг меток при выравнивании.</strong> Разметка хранится как символьные спаны, модель работает с subword-токенами. Если позиции считаются вручную, а токенизатор нормализует текст (двойные пробелы, регистр, кавычки), спаны уезжают на 1–3 символа.</p><p>Модель обучается на слегка сдвинутых метках, F1 падает с 0.9 до 0.7, и причина неочевидна.</p><p><strong>Решение:</strong> <code>return_offsets_mapping=True</code> и выравнивание по фактическим смещениям токенизатора. Плюс обязательная обратная проверка: декодировать метки в спаны и сверить с исходной разметкой глазами.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>23. Чем token-level F1 отличается от entity-level?</summary><div class="qa"><p>Token-level считает каждый токен отдельно и <strong>систематически завышает</strong>: модель, угадавшая 4 токена из 5 в названии организации, получает почти полный балл, хотя сущность извлечена неверно.</p><p>Entity-level требует точного совпадения границ и типа; частичное совпадение засчитывается как и FP, и FN.</p><p>В расчёте секции 9: token-F1 = 0.94, entity-F1 (strict) = 0.83. <strong>Для отчёта — всегда entity-level:</strong> заказчика интересуют извлечённые сущности целиком, а не классифицированные токены.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>24. Macro-F1 или micro-F1?</summary><div class="qa"><p><strong>Micro</strong> суммирует TP/FP/FN по всем классам — доминируют частые. <strong>Macro</strong> усредняет F1 по классам — редкие весят столько же, сколько частые.</p><p>При 3 частых и 12 редких типах micro может быть 0.91, а macro — 0.58, и оба честны.</p><p><strong>Правило:</strong> отчитывайся обоими и явно указывай, какой оптимизировал. Оптимизация micro при том, что бизнесу важны редкие типы, — распространённая рассогласованность метрики и цели.</p></div></details>
+
+<div class="qah">Часть 4. Сравнение подходов и валидация</div>
+
+<details class="qi"><summary><span class="qch">▶</span>25. Когда TF-IDF + логрег обгоняет трансформер?</summary><div class="qa"><p>Разрыв определяют три фактора: <strong>объём разметки</strong> (при 500 примерах трансформер выигрывает +0.27 F1, при 500 000 — только +0.08), <strong>роль порядка слов</strong> (если задача решается ключевыми словами, мешок слов почти не теряет), <strong>длина текста</strong>.</p><p>При обильной разметке и коротких текстах разница часто 2–4 п.п. при разнице в стоимости в 50 раз и в задержке в 45 раз.</p><p><strong>Всегда переводи прирост метрики в операционные последствия</strong>, а не сравнивай F1 в вакууме.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>26. Что такое «сильный baseline»?</summary><div class="qa"><p>Не «TF-IDF по умолчанию», а доведённый до ума: ① char n-граммы (3–5) вдобавок к словам — резко помогают на морфологии и опечатках; ② <code>sublinear_tf=True</code>; ③ подбор <code>min_df</code>/<code>max_df</code>; ④ калиброванный LinearSVC с подбором C; ⑤ индивидуальные пороги на класс.</p><p>Такой baseline часто прибавляет 0.06–0.10 F1 к наивному и меняет вывод сравнения.</p><p><strong>Проигрыш слабому baseline не доказывает преимущества сложной модели.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>27. Насколько опасны дубликаты в NLP-данных?</summary><div class="qa"><p>Очень. В разборе секции 11: 12% точных дубликатов и 20% почти-дубликатов; <strong>31% тестовых примеров имели двойника в train</strong>.</p><p>Метрика на случайном разбиении — 0.812, после дедупликации и разбиения по кластерам — 0.694, <strong>фактически в проде — 0.688</strong>.</p><p>Завышение 0.118 F1. Дедупликация через MinHash + LSH занимает полчаса и должна быть обязательным шагом, а не опцией.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>28. Какие ещё утечки специфичны для NLP?</summary><div class="qa"><p><strong>Групповая</strong> — сообщения одного треда или обращения одного клиента в разных сплитах; лечится GroupKFold.<br><strong>Через метку в тексте</strong> — служебная приписка вроде «категория: доставка» внутри текста.<br><strong>Через аугментацию</strong> — аугментированные копии train попали в test; аугментировать надо <em>после</em> разбиения.<br><strong>Через шаблон документа</strong> — в NER случайное разбиение помещает документы одного контрагента по обе стороны, и модель учит шаблон, а не язык.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>29. Одна многоязычная модель или отдельные?</summary><div class="qa"><p><strong>Отдельные</strong> — если 2–3 крупных языка с обильной разметкой: монолингвальная модель обычно на 2–5 п.п. лучше многоязычной того же размера.</p><p><strong>Многоязычная</strong> — если много языков с неравномерной разметкой: кросс-язычный перенос даёт 70–85% качества на языках без единого обучающего примера.</p><p><strong>«Проклятие многоязычности»:</strong> модель фиксированного размера делит ёмкость между языками. До определённого числа языков перенос перевешивает, после — начинается деградация богатых языков.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>30. Почему большинство NLP-ошибок «тихие» и что с этим делать?</summary><div class="qa"><p>Между текстом и моделью много слоёв преобразований — нормализация, токенизация, паддинг, пулинг, выравнивание меток. Рассогласование любого из них <strong>не бросает исключений и не портит логи</strong>: система работает, метрики приемлемы, качество ниже возможного на 10–30%.</p><p><strong>Решение — тесты инвариантов, а не только метрики:</strong> ① эмбеддинг не зависит от состава батча; ② декодирование меток восстанавливает исходную разметку; ③ токенизатор на индексации и на запросе идентичен; ④ косинусы случайных коротких пар не выше 0.5; ⑤ версия модели и версия индекса согласованы.</p><p>Эти пять проверок ловят большинство из двенадцати подводных камней секции 13.</p></div></details>
+</div>
+
+<div class="pnav">
+  <a href="index_roadmap.html" class="prev">← К карте курса</a>
+  <a href="block9_02_search_ranking.html" class="next">9.2 Поиск и ранжирование →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+const GRID = { grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} };
+function mk(id, cfg){ const el = document.getElementById(id); if (el && el.getContext) { try { new Chart(el.getContext('2d'), cfg); } catch(e){} } }
+
+// S1 — стоимость и качество
+mk('c_cost', { type:'bar', data:{
+  labels:['TF-IDF + SVM','Дообученный энкодер','LLM через API'],
+  datasets:[
+    {label:'Стоимость, ₽/мес', data:[300,1800,424000], backgroundColor:'#a7f3d0', borderRadius:5, yAxisID:'y'},
+    {label:'Точность', data:[0.84,0.91,0.87], backgroundColor:'#059669', borderRadius:5, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{ x:GRID,
+             y:{...GRID, position:'left', type:'logarithmic', title:{display:true,text:'₽/мес (лог)',font:{size:10}}},
+             y1:{...GRID, position:'right', min:0.7, max:1, grid:{drawOnChartArea:false}, title:{display:true,text:'Точность',font:{size:10}}}}}});
+
+// S3 — арифметика
+mk('c_arith', { type:'line', data:{
+  labels:['2','3','4','5','6','7','8','10'],
+  datasets:[
+    {label:'Точность сложения, %', data:[100,99,95,85,70,55,40,18],
+     borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.09)', fill:true, borderWidth:2.8, tension:.3, pointRadius:4},
+    {label:'С поцифровой токенизацией, %', data:[100,100,99,98,96,94,91,86],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.6, tension:.3, pointRadius:4}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Число разрядов слагаемых',font:{size:11}}},
+             y:{...GRID, min:0, max:105, title:{display:true,text:'Точность, %',font:{size:11}}}}}});
+
+// S4 — лексика vs вектора
+mk('c_lexvec', { type:'bar', data:{
+  labels:['Перефразировка','Синонимы','Общий смысл','Артикул / код','Точная цитата'],
+  datasets:[
+    {label:'Лексический поиск (BM25), %', data:[18,24,31,97,99], backgroundColor:'#93c5fd', borderRadius:5},
+    {label:'Векторный поиск, %', data:[81,86,89,34,52], backgroundColor:'#059669', borderRadius:5},
+    {label:'Гибрид, %', data:[84,88,90,95,97], backgroundColor:'#0f172a', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:105, title:{display:true,text:'Попадание в топ-10, %',font:{size:11}}}}}});
+
+// S6 — sentence embeddings
+mk('c_sent', { type:'bar', data:{
+  labels:['BERT CLS\n«из коробки»','BERT mean\n«из коробки»','Усреднённый\nGloVe','Sentence-BERT','Современный\nэмбеддер'],
+  datasets:[{label:'Корреляция Спирмена (STS)', data:[0.29,0.54,0.58,0.77,0.85],
+    backgroundColor:['#dc2626','#f59e0b','#94a3b8','#34d399','#059669'], borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:0.95, title:{display:true,text:'ρ с человеческими оценками',font:{size:11}}}}}});
+
+// S7 — пороги
+mk('c_thr', { type:'bar', data:{
+  labels:['Частые\n(топ-5)','Средние\n(6–18)','Редкие\n(19–28)','Очень редкие\n(29–34)'],
+  datasets:[
+    {label:'Единый порог 0.5, F1', data:[0.88,0.61,0.19,0.02], backgroundColor:'#fca5a5', borderRadius:5},
+    {label:'Единый подобранный, F1', data:[0.85,0.66,0.41,0.18], backgroundColor:'#fcd34d', borderRadius:5},
+    {label:'Индивидуальные пороги, F1', data:[0.88,0.71,0.56,0.39], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:1, title:{display:true,text:'F1',font:{size:11}}}}}});
+
+// S9 — token vs entity
+mk('c_seqeval', { type:'line', data:{
+  labels:['1','2','3','4','5','6','8'],
+  datasets:[
+    {label:'Token-level F1', data:[0.91,0.93,0.94,0.945,0.95,0.955,0.96],
+     borderColor:'#f59e0b', backgroundColor:'transparent', borderWidth:2.6, tension:.3, pointRadius:4},
+    {label:'Entity-level F1 (strict)', data:[0.90,0.88,0.85,0.82,0.79,0.75,0.68],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:4}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Средняя длина сущности, токенов',font:{size:11}}},
+             y:{...GRID, min:0.6, max:1, title:{display:true,text:'F1',font:{size:11}}}}}});
+
+// S10 — кривые обучения
+mk('c_learn', { type:'line', data:{
+  labels:['500','2 000','5 000','20 000','50 000','200 000','500 000'],
+  datasets:[
+    {label:'TF-IDF + LinearSVC', data:[0.31,0.43,0.52,0.61,0.66,0.71,0.73],
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2.6, tension:.3, pointRadius:4},
+    {label:'Дообученный энкодер', data:[0.58,0.66,0.71,0.75,0.78,0.80,0.81],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:4}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Размер обучающей выборки',font:{size:11}}},
+             y:{...GRID, min:0.25, max:0.88, title:{display:true,text:'macro-F1',font:{size:11}}}}}});
+
+// S12 — токены по языкам
+mk('c_langs', { type:'bar', data:{
+  labels:['Английский','Испанский','Немецкий','Русский','Хинди','Тайский'],
+  datasets:[
+    {label:'Англоцентричный токенизатор', data:[290,370,420,700,950,1100], backgroundColor:'#fca5a5', borderRadius:5},
+    {label:'Сбалансированный токенизатор', data:[300,330,350,340,380,420], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, title:{display:true,text:'Токенов на 1 200 символов',font:{size:11}}}}}});
+
+// ============ ИНТЕРАКТИВ: стоимость по языкам ============
+function updLang(){
+  const len   = +document.getElementById('sl_len').value;
+  const req   = +document.getElementById('sl_req').value * 1000;
+  const price = +document.getElementById('sl_price').value / 100;
+  document.getElementById('out_len').textContent   = len.toLocaleString('ru-RU');
+  document.getElementById('out_req').textContent   = (req/1000).toLocaleString('ru-RU') + ' тыс';
+  document.getElementById('out_price').textContent = price.toFixed(2) + ' ₽';
+
+  // символов на токен при англоцентричном словаре
+  const langs = [
+    {n:'Английский', cpt:4.1},
+    {n:'Испанский',  cpt:3.4},
+    {n:'Немецкий',   cpt:3.0},
+    {n:'Русский',    cpt:1.8},
+    {n:'Тайский',    cpt:1.15},
+  ];
+  const rows = langs.map(l => {
+    const toks = Math.round(len / l.cpt);
+    const cost = toks * req * price / 1000;
+    return {...l, toks, cost};
+  });
+  const base = rows[0];
+
+  let html = '<div style="font-size:12.5px;">';
+  for (const r of rows){
+    const ratio = r.toks / base.toks;
+    const bar = Math.round(ratio / 3.6 * 100);
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">' +
+      '<span style="min-width:82px;font-weight:600;">' + r.n + '</span>' +
+      '<span style="flex:1;background:#ecfdf5;border-radius:4px;height:16px;position:relative;">' +
+        '<span style="position:absolute;left:0;top:0;bottom:0;width:' + Math.min(bar,100) + '%;' +
+        'background:' + (ratio > 2 ? '#dc2626' : ratio > 1.4 ? '#f59e0b' : '#059669') + ';border-radius:4px;"></span>' +
+      '</span>' +
+      '<span style="min-width:64px;text-align:right;font-family:monospace;">' + r.toks.toLocaleString('ru-RU') + ' т</span>' +
+      '<span style="min-width:44px;text-align:right;font-family:monospace;color:' +
+        (ratio > 2 ? '#b91c1c' : '#065f46') + ';">×' + ratio.toFixed(1) + '</span>' +
+      '<span style="min-width:96px;text-align:right;font-weight:700;">' +
+        (r.cost >= 1e6 ? (r.cost/1e6).toFixed(1) + ' млн ₽' : Math.round(r.cost).toLocaleString('ru-RU') + ' ₽') +
+      '</span></div>';
+  }
+  html += '</div>';
+
+  const diff = rows[3].cost - base.cost;
+  html += '<div style="margin-top:9px;font-size:12.5px;">' +
+    'Русский против английского: <b style="color:#b91c1c">+' +
+      (diff >= 1e6 ? (diff/1e6).toFixed(1) + ' млн ₽/мес' : Math.round(diff).toLocaleString('ru-RU') + ' ₽/мес') +
+    '</b> за тот же смысл.<br>' +
+    'В контекст 128k токенов влезет: английского <b>' + Math.round(128000*4.1/1000) + ' тыс. символов</b>, ' +
+    'русского — <b>' + Math.round(128000*1.8/1000) + ' тыс.</b></div>';
+
+  document.getElementById('out_lang').innerHTML = html;
+}
+updLang();
+
+// активная секция в навигации
+(function(){
+  const links = Array.from(document.querySelectorAll('.snav a'));
+  const secs  = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function onScroll(){
+    let cur = 0;
+    secs.forEach((s,i)=>{ if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a,i)=> a.classList.toggle('act', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

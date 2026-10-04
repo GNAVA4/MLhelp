@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7.3 · Feature Store & MLOps основы</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --em:#059669;--em-l:#ecfdf5;--em-b:#a7f3d0;--em-d:#022c22;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --in:#4f46e5;--pk:#db2777;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#022c22,#059669);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.85;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--em);border-bottom-color:var(--em);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--em);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--em);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--em-l);border:1px solid var(--em-b);border-left:4px solid var(--em);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--em);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#064e3b;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--em-l)!important;color:#064e3b!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--em);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#022c22;border:1px solid #059669;border-radius:8px;padding:9px 13px;font-size:12px;color:#a7f3d0;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--em-l),#d1fae5);border:1px solid var(--em-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--em);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#064e3b;margin:0 0 8px;}
+.casebox p,.casebox li{color:#022c22;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.em{border-top:3px solid var(--em);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--em-l);color:#064e3b;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--em);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--em);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#047857;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--em);border:2px solid var(--em);}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes flowRight{0%{transform:translateX(0);opacity:0;}15%{opacity:1;}85%{opacity:1;}100%{transform:translateX(var(--dx));opacity:0;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes growBar{from{height:0;}to{height:var(--h);}}
+@keyframes slideDrift{0%{transform:translateX(0);}100%{transform:translateX(64px);}}
+/* Таймлайн point-in-time */
+.tl{position:relative;margin:22px 0 26px;padding:26px 0 8px;}
+.tl-axis{height:3px;background:var(--sl-b);border-radius:2px;position:relative;}
+.tl-ev{position:absolute;top:-24px;transform:translateX(-50%);text-align:center;font-size:11px;color:var(--text3);width:96px;}
+.tl-dot{width:13px;height:13px;border-radius:50%;margin:0 auto 5px;border:2.5px solid #fff;box-shadow:0 0 0 2px currentColor;}
+.tl-ev.ok{color:var(--em);} .tl-ev.bad{color:var(--red);} .tl-ev.nu{color:var(--sl);}
+.tl-dot.ok{background:var(--em);} .tl-dot.bad{background:var(--red);animation:blink 1.6s infinite;} .tl-dot.nu{background:var(--sl);}
+.tl-zone{position:absolute;top:-6px;height:15px;border-radius:4px;opacity:.22;}
+/* Поток данных */
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0;}
+.pnode{background:#fff;border:1.5px solid var(--em-b);border-radius:11px;padding:12px 15px;font-size:12.5px;text-align:center;min-width:126px;line-height:1.5;color:var(--text2);animation:floatY 3.2s ease-in-out infinite;}
+.pnode strong{display:block;color:var(--em);font-size:13px;margin-bottom:3px;}
+.pnode:nth-child(3){animation-delay:.4s;} .pnode:nth-child(5){animation-delay:.8s;} .pnode:nth-child(7){animation-delay:1.2s;}
+.parr{font-size:19px;color:var(--em);animation:blink 2.2s infinite;}
+/* Дрейф-анимация */
+.driftbox{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;overflow:hidden;}
+.drift-lane{position:relative;height:66px;background:linear-gradient(90deg,#ecfdf5,#fef2f2);border-radius:9px;overflow:hidden;}
+.dcurve{position:absolute;bottom:0;width:110px;height:100%;animation:slideDrift 4s ease-in-out infinite alternate;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--em);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--em);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--em-l);border-radius:9px;font-size:13.5px;color:#064e3b;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}.tl-ev{width:66px;font-size:10px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 7 · AutoML + Tabular DL + MLOps · Тема 3 из 3</div>
+  <h1>Feature Store & MLOps основы</h1>
+  <p class="sub">Feast · Tecton · online vs offline store · дрейф данных (PSI, KS) · мониторинг · shadow deployment · champion-challenger</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем Feature Store</a>
+  <a href="#s2">2. Point-in-time</a>
+  <a href="#s3">3. Online vs Offline</a>
+  <a href="#s4">4. Feast и Tecton</a>
+  <a href="#s5">5. Виды дрейфа</a>
+  <a href="#s6">6. PSI и KS-тест</a>
+  <a href="#s7">7. Мониторинг</a>
+  <a href="#s8">8. Стратегии деплоя</a>
+  <a href="#s9">9. Переобучение</a>
+  <a href="#s10">10. System Design</a>
+  <a href="#qa">11. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем нужен Feature Store</div>
+<div class="sdesc">Четыре боли, из которых он вырос</div>
+
+<p>Feature Store — это не «база данных для фичей». Это <strong>слой, который гарантирует, что признак, посчитанный при обучении, и признак, посчитанный при инференсе, — это один и тот же признак</strong>. Всё остальное — производное.</p>
+
+<h3>Боль №1: Train/Serving Skew</h3>
+<p>Классическая ситуация без Feature Store: фичи для обучения считаются SQL-запросом в хранилище, а для инференса — кодом на Python в сервисе. Два разных человека, два разных языка, две реализации одной логики.</p>
+
+<div class="grid2">
+<div class="card rd"><h5>🔴 Оффлайн (обучение)</h5><pre style="margin:6px 0 0;font-size:11.5px;"><code>SELECT user_id,
+  AVG(amount) AS avg_30d
+FROM txn
+WHERE ts >= now() - 30d
+GROUP BY user_id</code></pre><p style="margin-top:6px;">Среднее по <strong>завершённым</strong> транзакциям за 30 дней</p></div>
+<div class="card rd"><h5>🔴 Онлайн (инференс)</h5><pre style="margin:6px 0 0;font-size:11.5px;"><code>txns = redis.lrange(
+   f"txn:{uid}", 0, -1)
+avg_30d = mean(
+   [t.amount for t in txns])</code></pre><p style="margin-top:6px;">Среднее по <strong>всем</strong> транзакциям в кэше, включая pending, за <em>примерно</em> 30 дней</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Почему это самый коварный класс багов в ML.</strong> Модель не падает. Логи чистые. Метрики инфраструктуры зелёные. Просто качество в проде на 4 п.п. ниже оффлайн-оценки — и никто не знает почему. Такие расхождения ищут неделями, потому что нет ни одного места, где ошибка бы «выстрелила».</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь, что при обучении ты мерил рост людей в сантиметрах, а в проде датчик отдаёт дюймы. Модель работает, ничего не падает — просто все предсказания смещены. Train/serving skew именно такой: <strong>тихая, систематическая ошибка в данных, а не в коде</strong>.</p>
+<p>Feature Store решает это радикально: <em>определение признака существует ровно в одном месте</em>, а система сама материализует его и в оффлайн-хранилище (для обучения), и в онлайн-хранилище (для инференса). Расхождение становится физически невозможным.</p>
+</div>
+
+<h3>Остальные три боли</h3>
+<div class="grid3">
+<div class="card am"><h5>Боль №2: Дублирование</h5><p>Пять команд независимо пишут свой «средний чек за 30 дней». Пять слегка разных определений, пять пайплайнов, пятикратные затраты на вычисление одного и того же.</p></div>
+<div class="card am"><h5>Боль №3: Утечка через время</h5><p>При сборе обучающей выборки легко случайно взять значение признака <em>после</em> момента события. Модель «видит будущее», оффлайн-метрика прекрасна, прод разваливается.</p></div>
+<div class="card am"><h5>Боль №4: Latency</h5><p>Хранилище (BigQuery/Snowflake) отвечает за секунды. Инференсу нужны миллисекунды. Нужен отдельный низколатентный слой, синхронизированный с оффлайн.</p></div>
+</div>
+
+<div class="pipe">
+  <div class="pnode"><strong>Определение</strong>одна декларация<br>признака</div>
+  <div class="parr">→</div>
+  <div class="pnode"><strong>Материализация</strong>batch / streaming<br>вычисление</div>
+  <div class="parr">↙↘</div>
+  <div class="pnode"><strong>Offline Store</strong>Parquet / BigQuery<br>вся история</div>
+  <div class="parr">＋</div>
+  <div class="pnode"><strong>Online Store</strong>Redis / DynamoDB<br>только последнее</div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Когда Feature Store НЕ нужен.</strong> Одна модель, одна команда, batch-скоринг раз в сутки, десяток признаков — Feature Store добавит инфраструктурной сложности больше, чем принесёт пользы. Он окупается при: ① нескольких командах, переиспользующих признаки; ② real-time инференсе; ③ десятках моделей; ④ регуляторных требованиях к воспроизводимости. Начинать проект с внедрения Tecton — типичная ошибка преждевременной оптимизации.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Point-in-time correctness — сердце Feature Store</div>
+<div class="sdesc">Самая важная и самая недопонимаемая концепция темы</div>
+
+<p>Задача: собрать обучающую выборку. У нас есть события с таргетом (заявка на кредит в момент $t_e$) и таблица признаков, которая обновляется во времени. Вопрос: <strong>какое значение признака взять?</strong></p>
+
+<div class="fbox red">
+<div class="flabel">📐 Правило point-in-time join</div>
+$$f(e) = f\big(\text{entity}(e),\; \tau^*\big), \qquad \tau^* = \max\{\tau : \tau \le t_e - \delta\}$$
+<p class="fnote">$t_e$ — время события, $\tau$ — временные метки версий признака, $\delta$ — <strong>задержка доступности</strong> (feature availability lag). Берём самую свежую версию признака, которая <em>физически была доступна</em> к моменту события.</p>
+</div>
+
+<div class="tl">
+  <div class="tl-axis">
+    <div class="tl-zone" style="left:0;width:52%;background:var(--em);"></div>
+    <div class="tl-zone" style="left:52%;width:48%;background:var(--red);"></div>
+    <div class="tl-ev nu" style="left:8%;"><div class="tl-dot nu"></div>обновление<br>10:00</div>
+    <div class="tl-ev ok" style="left:36%;"><div class="tl-dot ok"></div><strong>берём это</strong><br>13:00</div>
+    <div class="tl-ev nu" style="left:60%;"><div class="tl-dot nu"></div>событие<br>14:00</div>
+    <div class="tl-ev bad" style="left:86%;"><div class="tl-dot bad"></div>утечка!<br>15:00</div>
+  </div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-8px;">Зелёная зона — версии признака, доступные к моменту события. Красная — будущее, брать нельзя.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Ты моделируешь машину времени. Задача: «встань в 14:00 такого-то дня и посмотри на мир глазами системы, которая тогда работала». Система в 14:00 <strong>не знала</strong> значение признака, обновившегося в 15:00 — значит, и модель не имеет права его видеть.</p>
+<p>Наивный join <code>ON user_id</code> берёт <em>текущее</em> значение признака — то есть значение из будущего относительно события. Метрика на валидации получается прекрасной, потому что модель буквально подглядывает в ответ. В проде такого признака нет, и качество обваливается.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: как утечка даёт +0.15 AUC из воздуха</div>
+<div class="numex-step"><span class="nb red">1</span><div>Задача: предсказать дефолт по кредиту. Событие — выдача кредита 1 марта. Признак — <code>total_debt</code> (общая задолженность клиента), обновляется ежемесячно.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивный join:</strong> берём текущее значение <code>total_debt</code> из витрины — а это значение на сегодня, то есть <em>после</em> того, как клиент уже ушёл в дефолт и его долг вырос.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>Модель обнаруживает: «если total_debt огромный → дефолт». Идеальная зависимость! AUC на валидации <strong>0.97</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Point-in-time join:</strong> берём значение <code>total_debt</code> на 28 февраля — то, что реально было известно на момент выдачи. AUC <strong>0.82</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>В проде модель показывает 0.81. Разница 0.97 → 0.81 — это цена одной строчки JOIN. И заметь: <strong>ошибка не в коде модели, а в сборе данных</strong>, поэтому ни один unit-тест её не поймает.</div></div>
+</div>
+
+<h3>Feature availability lag — то, о чём забывают даже опытные</h3>
+<p>Мало взять значение «до момента события». Надо взять значение, <strong>которое реально успело доехать до системы</strong>.</p>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Тонкий и очень частый баг.</strong> Признак «средний чек за вчера» имеет timestamp «вчера 23:59». Формально он <em>раньше</em> события в 09:00 сегодня — point-in-time join его пропустит. Но батч, который его считает, отрабатывает только в 06:00, и до 06:00 его в онлайн-сторе физически нет. Если событие произошло в 03:00 — модель в проде увидит позавчерашнее значение, а обучающая выборка получит вчерашнее. <strong>Скрытая утечка внутри формально корректного point-in-time join.</strong></div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как правильно.</strong> У каждой feature view задавай <em>два</em> времени: <code>event_timestamp</code> (когда факт произошёл) и <code>created_timestamp</code> (когда запись стала доступна системе). Join делай по <code>created_timestamp ≤ t_event</code>. Feast поддерживает это нативно, и это не косметика — это разница между честной оценкой и самообманом.</div></div>
+
+<pre><code># Feast: корректная сборка обучающей выборки
+entity_df = pd.DataFrame({
+    "user_id":         [101, 102, 103],
+    "event_timestamp": pd.to_datetime(["2026-03-01 14:00",
+                                       "2026-03-02 09:30",
+                                       "2026-03-02 21:15"]),
+    "label":           [0, 1, 0],
+})
+
+training_df = store.get_historical_features(
+    entity_df=entity_df,
+    features=[
+        "user_stats:avg_amount_30d",
+        "user_stats:txn_count_7d",
+        "user_profile:tenure_days",
+    ],
+).to_df()
+# Feast сам делает ASOF JOIN по каждой feature view:
+#   берётся последняя версия с created_timestamp <= event_timestamp
+#   и не старше ttl, заданного в определении feature view
+</code></pre>
+
+<div class="fbox blue">
+<div class="flabel">📐 ASOF JOIN — что происходит под капотом</div>
+<pre style="background:#fff;border:none;padding:0;margin:6px 0;"><code>SELECT e.*, f.avg_amount_30d
+FROM entity_df e
+LEFT JOIN LATERAL (
+    SELECT avg_amount_30d
+    FROM user_stats f
+    WHERE f.user_id = e.user_id
+      AND f.created_timestamp &lt;= e.event_timestamp
+      AND f.event_timestamp &gt;  e.event_timestamp - INTERVAL '7 days'  -- ttl
+    ORDER BY f.event_timestamp DESC
+    LIMIT 1
+) f ON TRUE</code></pre>
+<p class="fnote">Ключевые элементы: <code>&lt;= event_timestamp</code> (без будущего), <code>ORDER BY DESC LIMIT 1</code> (самая свежая доступная), <code>ttl</code> (протухшие значения не берём вообще — лучше NULL, чем месячной давности).</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах про TTL</div>
+<p>TTL отвечает на вопрос «насколько старый признак ещё считается валидным». Если клиент не совершал транзакций год, его «средний чек за 30 дней» годичной давности — это не признак, это археология. Лучше отдать NULL и позволить модели явно обработать пропуск, чем кормить её протухшим значением, притворяющимся свежим.</p>
+<p>И ещё: <strong>TTL должен быть одинаковым в обучении и в проде</strong>. В онлайн-сторе значения истекают по TTL автоматически; если в оффлайн-джойне TTL забыли — снова получаешь skew.</p>
+</div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Online vs Offline vs Streaming Store</div>
+<div class="sdesc">Три хранилища, три набора требований</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Offline Store</th><th>Online Store</th><th>Streaming / On-demand</th></tr></thead>
+<tbody>
+<tr><td><strong>Назначение</strong></td><td>Обучение, бэктест, аналитика</td><td>Инференс в реальном времени</td><td>Признаки, зависящие от текущего запроса</td></tr>
+<tr><td><strong>Что хранит</strong></td><td>Всю историю всех версий</td><td>Только последнее значение на сущность</td><td>Скользящие окна из потока</td></tr>
+<tr><td><strong>Технологии</strong></td><td>BigQuery, Snowflake, S3+Parquet, Delta</td><td>Redis, DynamoDB, Cassandra, Bigtable</td><td>Flink, Kafka Streams, Spark Streaming</td></tr>
+<tr><td><strong>Latency чтения</strong></td><td>секунды–минуты</td><td><strong>&lt; 10 мс p99</strong></td><td>&lt; 10 мс (материализовано)</td></tr>
+<tr><td><strong>Объём чтения</strong></td><td>миллионы строк за запрос</td><td>единицы ключей за запрос</td><td>единицы ключей</td></tr>
+<tr><td><strong>Свежесть</strong></td><td>часы (батч)</td><td>минуты–часы</td><td>секунды</td></tr>
+<tr><td><strong>Стоимость</strong></td><td>дёшево за ГБ</td><td>дорого за ГБ (RAM)</td><td>дорого за поток</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p><strong>Offline store — это архив.</strong> Огромный, дешёвый, медленный, помнит всё. Нужен, чтобы восстановить картину мира на любой момент прошлого.</p>
+<p><strong>Online store — это шпаргалка.</strong> Маленькая, дорогая, мгновенная, помнит только «последнее известное». Нужна, чтобы за 5 мс ответить «какой средний чек у клиента 12345».</p>
+<p><strong>Streaming — это радар.</strong> Считает то, что происходит прямо сейчас: «сколько транзакций за последние 60 секунд». Такое нельзя посчитать батчем — данные устареют раньше, чем батч отработает.</p>
+</div>
+
+<h3>Три типа признаков по способу вычисления</h3>
+<div class="grid3">
+<div class="card bl"><h5>Batch features</h5><p>Считаются раз в час/сутки по расписанию. «Средний чек за 30 дней», «число заказов за год». <strong>90% признаков в типичной системе.</strong></p></div>
+<div class="card pu"><h5>Streaming features</h5><p>Обновляются из Kafka за секунды. «Число транзакций за последнюю минуту», «сумма за час». Критичны для антифрода.</p></div>
+<div class="card am"><h5>On-demand features</h5><p>Вычисляются <em>в момент запроса</em> из данных запроса. «Отклонение суммы текущей транзакции от среднего клиента». Нельзя предвычислить — сумма приходит с запросом.</p></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>On-demand transforms — самое опасное место для skew.</strong> Код этих признаков живёт в сервисе инференса, а не в пайплайне материализации, поэтому именно здесь чаще всего расходятся реализации. Feast решает это через <code>@on_demand_feature_view</code>: одна Python-функция используется и при сборе обучающей выборки, и в онлайн-запросе. Если твой Feature Store такого не умеет — этот класс признаков придётся покрывать тестами вручную, сравнивая оффлайн и онлайн вычисление на одних и тех же входах.</div></div>
+
+<pre><code>from feast import on_demand_feature_view, RequestSource, Field
+from feast.types import Float64
+
+txn_request = RequestSource(
+    name="txn_request",
+    schema=[Field(name="current_amount", dtype=Float64)],
+)
+
+@on_demand_feature_view(
+    sources=[user_stats_fv, txn_request],
+    schema=[Field(name="amount_zscore", dtype=Float64)],
+)
+def amount_anomaly(inputs: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame()
+    out["amount_zscore"] = (
+        (inputs["current_amount"] - inputs["avg_amount_30d"])
+        / inputs["std_amount_30d"].clip(lower=1e-6)
+    )
+    return out
+# ОДНА функция → используется и в get_historical_features, и в get_online_features
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Правило проектирования признаков.</strong> Спроси себя: «может ли это значение измениться между моментом материализации и моментом запроса так, что это важно?» Если нет — batch (дёшево). Если да, но окно измеряется часами — streaming. Если признак зависит от содержимого самого запроса — on-demand. Не делай streaming там, где хватает batch: стоимость поддержки потоковых пайплайнов на порядок выше.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Feast и Tecton: что выбрать</div>
+<div class="sdesc">Open-source библиотека против управляемой платформы</div>
+
+<h3>Feast — «оркестратор, а не хранилище»</h3>
+<p>Ключевое, что нужно понять про Feast: <strong>он не хранит данные и не вычисляет признаки</strong>. Он хранит <em>определения</em> и умеет доставать данные из твоих существующих хранилищ, гарантируя point-in-time корректность.</p>
+
+<pre><code># feature_repo/definitions.py
+from feast import Entity, FeatureView, Field, FileSource
+from feast.types import Float32, Int64
+from datetime import timedelta
+
+user = Entity(name="user", join_keys=["user_id"])
+
+user_stats_source = FileSource(
+    path="s3://data/user_stats.parquet",
+    timestamp_field="event_timestamp",       # когда факт произошёл
+    created_timestamp_column="created_at",   # когда стало доступно ← критично!
+)
+
+user_stats_fv = FeatureView(
+    name="user_stats",
+    entities=[user],
+    ttl=timedelta(days=7),                   # протухшие значения не отдаём
+    schema=[
+        Field(name="avg_amount_30d", dtype=Float32),
+        Field(name="std_amount_30d", dtype=Float32),
+        Field(name="txn_count_7d",   dtype=Int64),
+    ],
+    source=user_stats_source,
+    online=True,                             # материализовать в online store
+)
+</code></pre>
+
+<pre><code># Материализация: перенос из offline в online store
+$ feast apply                                    # регистрируем определения
+$ feast materialize-incremental $(date -u +%FT%T) # догоняем online store
+
+# Инференс
+features = store.get_online_features(
+    features=["user_stats:avg_amount_30d", "user_stats:txn_count_7d"],
+    entity_rows=[{"user_id": 12345}],
+).to_dict()
+</code></pre>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Feast (OSS)</th><th>Tecton</th><th>Databricks / Vertex FS</th></tr></thead>
+<tbody>
+<tr><td>Модель</td><td>Библиотека + CLI</td><td>Управляемый SaaS</td><td>Часть платформы</td></tr>
+<tr><td>Вычисление признаков</td><td><strong>Не вычисляет</strong> — только читает готовое</td><td>Вычисляет: batch + streaming + on-demand</td><td>Вычисляет (Spark)</td></tr>
+<tr><td>Streaming</td><td>Через внешний Flink/Spark, руками</td><td><strong>Встроенный</strong>, декларативно</td><td>Structured Streaming</td></tr>
+<tr><td>Backfill исторических значений</td><td>Руками</td><td>Автоматический из того же определения</td><td>Полуавтоматический</td></tr>
+<tr><td>Мониторинг признаков</td><td>Нет из коробки</td><td>Встроенный (drift, freshness, null-rate)</td><td>Частично</td></tr>
+<tr><td>Vendor lock-in</td><td>Минимальный</td><td>Высокий</td><td>Привязка к платформе</td></tr>
+<tr><td>Стоимость</td><td>Только инфраструктура</td><td>Дорого</td><td>В составе платформы</td></tr>
+<tr><td>Когда брать</td><td>Есть своя инженерная команда, нужен контроль</td><td>Нужен streaming и нет времени строить его самим</td><td>Уже живёшь в этой экосистеме</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Ключевое различие, которое часто путают на собеседовании.</strong> Feast — это <em>слой доступа</em>: он гарантирует point-in-time корректность и синхронизацию offline/online, но пайплайны, которые считают признаки, ты пишешь и оркестрируешь сам (Airflow + Spark). Tecton — это <em>вычислительная платформа</em>: ты декларируешь трансформацию, а он сам строит batch- и streaming-пайплайны из одного определения и сам делает backfill. Отсюда и разница в цене.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Подводный камень материализации.</strong> <code>materialize-incremental</code> должен запускаться по расписанию, и если джоб упал ночью — online store молча отдаёт вчерашние значения. Модель не падает, ошибок нет, качество тихо деградирует. <strong>Обязательный мониторинг:</strong> feature freshness — возраст самого свежего значения в online store по каждой feature view, с алертом при превышении порога. Это одна из самых частых причин «модель вдруг поплохела».</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Дрейф: четыре разных явления под одним словом</div>
+<div class="sdesc">Их путают постоянно, а лечатся они по-разному</div>
+
+<p>Формально любая модель учит $P(y \mid X)$ на выборке из $P(X)$. «Дрейф» — это изменение одного из этих распределений во времени. Но какого именно — принципиально важно.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Тип</th><th>Что меняется</th><th>Пример</th><th>Модель ещё валидна?</th></tr></thead>
+<tbody>
+<tr><td><strong>Covariate shift</strong><br>(data drift)</td><td>$P(X)$ меняется,<br>$P(y\mid X)$ — нет</td><td>Пришла новая возрастная аудитория, но зависимость «доход → дефолт» та же</td><td>Формально да, но экстраполирует в новую область → риск</td></tr>
+<tr><td><strong>Concept drift</strong></td><td>$P(y \mid X)$ меняется</td><td>Началась рецессия: те же признаки клиента теперь означают другой риск дефолта</td><td><strong>Нет.</strong> Нужно переобучение</td></tr>
+<tr><td><strong>Label shift</strong><br>(prior shift)</td><td>$P(y)$ меняется,<br>$P(X\mid y)$ — нет</td><td>Доля мошеннических транзакций выросла с 0.5% до 3%</td><td>Частично — калибровка сломана, можно поправить порогом</td></tr>
+<tr><td><strong>Upstream data change</strong></td><td>Не дрейф, а <em>баг</em></td><td>Апстрим-сервис сменил единицы, поле стало NULL, поменялся формат даты</td><td>Нет. Это инцидент, а не дрейф</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p><strong>Covariate shift:</strong> ты учился отличать кошек от собак по фото при дневном свете, а теперь фото ночные. Правило «у кошек острые уши» не изменилось — просто входы стали другими, и ты в них хуже уверен.</p>
+<p><strong>Concept drift:</strong> само правило изменилось. Раньше «работает в IT» означало низкий риск, а после массовых сокращений в отрасли — уже нет. Данные могут выглядеть так же, а ответ стал другим.</p>
+<p><strong>Label shift:</strong> кошек и собак ты различаешь так же, но теперь в приюте 90% собак вместо 50%. Твои вероятности систематически смещены, хотя признаки работают.</p>
+<p><strong>Ключевое практическое различие:</strong> covariate shift ты видишь <em>сразу</em> по входным данным. Concept drift ты видишь <em>только когда приедут метки</em> — а они могут приезжать через месяцы. Это делает concept drift самым опасным.</p>
+</div>
+
+<div class="driftbox">
+  <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px;">Covariate shift: распределение признака уезжает вправо</div>
+  <div class="drift-lane">
+    <svg class="dcurve" viewBox="0 0 110 66" preserveAspectRatio="none" style="left:6px;">
+      <path d="M0,66 C20,66 26,8 55,8 C84,8 90,66 110,66 Z" fill="rgba(5,150,105,.55)"/>
+    </svg>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text3);margin-top:6px;">
+    <span>обучающее распределение</span><span>продовое распределение через 6 месяцев</span>
+  </div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка мониторинга.</strong> Команда настраивает алерты только на дрейф <em>признаков</em> и успокаивается. Но concept drift <strong>не виден в распределении признаков вообще</strong> — $P(X)$ может быть идентичным, а $P(y\mid X)$ уже другим. Мониторинг входов необходим, но недостаточен: обязательно нужен отслеживание качества по мере приезда меток и мониторинг распределения <em>предсказаний</em> модели.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное: дрейф предсказаний как ранний индикатор.</strong> Распределение выходов модели $P(\hat y)$ доступно мгновенно, без меток. Если средний скор внезапно вырос с 0.12 до 0.19 — это сигнал, что что-то изменилось, задолго до того, как приедут настоящие метки. Это самая дешёвая и самая недооценённая метрика мониторинга.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Как измерять дрейф: PSI, KS, и что выбрать</div>
+<div class="sdesc">Формулы, пороги и подводные камни каждой метрики</div>
+
+<h3>PSI — Population Stability Index</h3>
+<div class="fbox">
+<div class="flabel">📐 Population Stability Index</div>
+$$\text{PSI} = \sum_{i=1}^{B} \big(a_i - e_i\big) \cdot \ln\!\left(\frac{a_i}{e_i}\right)$$
+<p class="fnote">$e_i$ — доля наблюдений в бине $i$ в <em>эталонной</em> (обучающей) выборке, $a_i$ — доля в <em>текущей</em>. Обычно $B = 10$ бинов по децилям эталона.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>PSI — это симметризованная KL-дивергенция между двумя гистограммами. Читается буквально: «для каждой корзины возьми, насколько изменилась доля ($a_i - e_i$), и умножь на то, во сколько раз она изменилась ($\ln a_i/e_i$)». Если доля не изменилась — вклад ноль. Чем сильнее сдвиг, тем больше вклад, причём двояко: и по абсолютной разнице, и по относительной.</p>
+<p>Умножение именно на логарифм отношения даёт важное свойство: перетекание из корзины с 1% в корзину с 20% штрафуется сильнее, чем такой же абсолютный сдвиг между двумя крупными корзинами. Редкие области заметнее.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>PSI</th><th>Интерпретация</th><th>Действие</th></tr></thead>
+<tbody>
+<tr><td>&lt; 0.10</td><td>Изменений нет</td><td>Ничего</td></tr>
+<tr><td>0.10 – 0.25</td><td>Умеренный сдвиг</td><td>Наблюдать, проверить качество</td></tr>
+<tr><td>&gt; 0.25</td><td>Существенный сдвиг</td><td>Разобраться в причине, вероятно переобучить</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: считаем PSI по возрасту</div>
+<div class="numex-step"><span class="nb">1</span><div>3 бина. Эталон (обучение): 18–30 лет — <strong>40%</strong>, 31–50 — <strong>45%</strong>, 51+ — <strong>15%</strong>.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Текущий месяц: 18–30 — <strong>25%</strong>, 31–50 — <strong>50%</strong>, 51+ — <strong>25%</strong>. Аудитория постарела.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Бин 1: $(0.25-0.40)\cdot\ln(0.25/0.40) = (-0.15)\cdot(-0.470) = \mathbf{0.0705}$</div></div>
+<div class="numex-step"><span class="nb">4</span><div>Бин 2: $(0.50-0.45)\cdot\ln(0.50/0.45) = 0.05\cdot 0.105 = \mathbf{0.0053}$</div></div>
+<div class="numex-step"><span class="nb">5</span><div>Бин 3: $(0.25-0.15)\cdot\ln(0.25/0.15) = 0.10\cdot 0.511 = \mathbf{0.0511}$</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>PSI = 0.0705 + 0.0053 + 0.0511 = <strong>0.127</strong> → умеренный сдвиг. Не паника, но надо проверить, не просело ли качество, и посмотреть на другие признаки.</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: как доля в бине влияет на PSI</label>
+  <input type="range" id="sl_shift" min="0" max="60" step="1" value="15" oninput="updPsi()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>нет сдвига</span><span class="out" id="out_shift">15 п.п.</span><span>сильный сдвиг</span></div>
+  <div class="res" id="out_psi"></div>
+</div>
+
+<h3>KS-тест — Kolmogorov–Smirnov</h3>
+<div class="fbox blue">
+<div class="flabel">📐 Статистика KS</div>
+$$D_{n,m} = \sup_{x} \big| F_n(x) - G_m(x) \big|$$
+<p>Критическое значение на уровне $\alpha$:</p>
+$$D_{\text{crit}} = c(\alpha)\sqrt{\frac{n+m}{n\,m}}, \qquad c(0.05) \approx 1.36$$
+<p class="fnote">$F_n$, $G_m$ — эмпирические функции распределения эталона и текущей выборки.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Нарисуй две накопленные кривые распределения — эталонную и текущую. KS-статистика — это <strong>максимальный вертикальный зазор между ними</strong>. Одно число, геометрически очевидное, не требует выбора бинов.</p>
+<p>Ключевая разница с PSI: KS чувствителен к сдвигу <em>центра</em> распределения (там кривые расходятся сильнее всего), а PSI — к изменениям в <em>любой</em> корзине, включая хвосты. Если у тебя уехал хвост, а медиана осталась — PSI это заметит, KS может почти не среагировать.</p>
+</div>
+
+<div class="chb">
+<div class="cht">KS-статистика: максимальный зазор между CDF</div>
+<div class="chsub">Пунктирная вертикаль — точка максимального расхождения, её высота и есть D</div>
+<div style="position:relative;height:310px;"><canvas id="c_ks"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главный подводный камень KS в мониторинге.</strong> KS — это <em>статистический тест</em>, и его p-value зависит от размера выборки. При $n = 10$ млн наблюдений <strong>любое</strong>, даже практически незначимое отличие даст $p &lt; 0.001$. Ты получишь алерты каждый день на дрейф в 0.2%, которого никто не замечает. Поэтому в проде смотрят на <strong>величину $D$</strong> (effect size), а не на p-value, либо сабсэмплируют до фиксированного $n$. Это ровно та же проблема, что с A/B-тестами на огромном трафике.</div></div>
+
+<h3>Сравнение метрик дрейфа</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метрика</th><th>Тип данных</th><th>Плюсы</th><th>Минусы</th></tr></thead>
+<tbody>
+<tr><td><strong>PSI</strong></td><td>Числовые и категориальные</td><td>Интерпретируемые пороги, отраслевой стандарт в банках, ловит хвосты</td><td>Зависит от биннинга; нестабилен при малых частотах; нужен $\epsilon$ против $\ln 0$</td></tr>
+<tr><td><strong>KS</strong></td><td>Только числовые</td><td>Не нужен биннинг, есть строгая статистика</td><td>p-value бесполезно при больших $n$; слаб к хвостам; неприменим к категориям</td></tr>
+<tr><td><strong>Chi-square</strong></td><td>Категориальные</td><td>Классический тест для категорий</td><td>Та же проблема с большими $n$; требует достаточных ожидаемых частот</td></tr>
+<tr><td><strong>Wasserstein</strong></td><td>Числовые</td><td>Учитывает <em>расстояние</em> между значениями, а не только частоты; устойчива</td><td>Зависит от масштаба признака — нужна нормировка</td></tr>
+<tr><td><strong>JS-divergence</strong></td><td>Любые (по гистограммам)</td><td>Симметрична, ограничена [0,1], всегда определена</td><td>Пороги менее интуитивны, чем у PSI</td></tr>
+<tr><td><strong>Domain classifier</strong></td><td>Многомерный</td><td>Ловит <strong>совместный</strong> дрейф, который одномерные метрики пропускают</td><td>Дороже; нужен отдельный пайплайн; сам может переобучиться</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Domain classifier — самый недооценённый приём.</strong> Помечаем обучающие данные меткой 0, продовые — меткой 1, и обучаем классификатор их различать. Если AUC ≈ 0.5 — распределения неотличимы, дрейфа нет. Если AUC = 0.85 — данные легко различимы, дрейф серьёзный. Бонус: <strong>feature importance этого классификатора прямо показывает, какие признаки уехали</strong>. И главное — он ловит дрейф <em>совместного</em> распределения: каждый признак по отдельности может выглядеть нормально, а их комбинация — нет. Ни PSI, ни KS этого не увидят.</div></div>
+
+<div class="chb">
+<div class="cht">PSI по признакам: типичная картина дашборда</div>
+<div class="chsub">Зелёная зона < 0.1, жёлтая 0.1–0.25, красная > 0.25</div>
+<div style="position:relative;height:300px;"><canvas id="c_psi"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Мониторинг ML-системы: четыре уровня</div>
+<div class="sdesc">Что мерить, когда алертить, и почему «модель работает» — не то же самое, что «сервис работает»</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Уровень</th><th>Метрики</th><th>Задержка сигнала</th><th>Кто обычно владеет</th></tr></thead>
+<tbody>
+<tr><td><strong>1. Инфраструктура</strong></td><td>latency p50/p95/p99, RPS, error rate, CPU/RAM, размер очереди</td><td>секунды</td><td>SRE / платформа</td></tr>
+<tr><td><strong>2. Данные</strong></td><td>PSI/KS по признакам, null-rate, доля <code>&lt;UNK&gt;</code>, feature freshness, нарушения схемы, выход за границы диапазона</td><td>минуты–часы</td><td>Data / ML</td></tr>
+<tr><td><strong>3. Модель</strong></td><td>распределение предсказаний, средний скор, доля срабатываний порога, качество по мере приезда меток, калибровка</td><td>часы–недели</td><td>ML</td></tr>
+<tr><td><strong>4. Бизнес</strong></td><td>конверсия, выручка на запрос, потери от фрода, доля ручных проверок, жалобы</td><td>дни–месяцы</td><td>Продукт</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Чем ниже уровень, тем <strong>быстрее</strong> сигнал, но тем <strong>меньше</strong> он говорит о реальной пользе. Инфраструктура ответит за секунды, но скажет только «сервис жив». Бизнес-метрика — то, что действительно важно, но узнаешь ты о проблеме через месяц.</p>
+<p>Поэтому мониторят все четыре сразу: нижние уровни — как ранние индикаторы, верхние — как источник истины. И связка между ними важнее каждого уровня в отдельности: «PSI по признаку X вырос → через два дня средний скор просел → через две недели конверсия упала» — это цепочка, по которой расследуют инциденты.</p>
+</div>
+
+<h3>Проблема отложенных меток</h3>
+<div class="fbox amber">
+<div class="flabel">📐 Оценка качества при частичных метках</div>
+<p>Если на момент $t$ метки доступны только для доли $\rho(t)$ наблюдений, наивная оценка качества смещена. Коррекция через inverse propensity:</p>
+$$\widehat{\text{AUC}}_{\text{corrected}} = \frac{\sum_i w_i \cdot \mathbb{1}[\text{correct}_i]}{\sum_i w_i}, \qquad w_i = \frac{1}{\hat{P}(\text{label observed} \mid x_i, t)}$$
+<p class="fnote">Без коррекции ты оцениваешь качество только на «быстрых» случаях, которые систематически отличаются от медленных.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Кредитный дефолт становится известен через 3–12 месяцев. Через месяц после выдачи у тебя есть метки только по тем, кто <em>очень быстро</em> ушёл в дефолт — а это не случайная подвыборка, это самые проблемные клиенты.</p>
+<p>Считать AUC по ним — всё равно что оценивать качество врача только по пациентам, которые вернулись в первую неделю. Ты систематически смотришь на нерепрезентативный срез. Поэтому в задачах с отложенными метками используют либо взвешивание по вероятности «метка уже приехала», либо прокси-метрики (см. ниже).</p>
+</div>
+
+<div class="grid2">
+<div class="card bl"><h5>Прокси-метрики при отложенных метках</h5><p>• Дрейф распределения предсказаний<br>• Согласие с champion-моделью (agreement rate)<br>• Ранние сигналы: просрочка 30 дней вместо дефолта<br>• Согласие с ручными решениями операторов</p></div>
+<div class="card am"><h5>Delayed feedback correction</h5><p>Явная модель времени приезда метки $P(\text{delay} \mid x)$. Наблюдение без метки — не негатив, а <em>цензурированное</em> наблюдение. Тот же аппарат, что в анализе выживаемости.</p></div>
+</div>
+
+<h3>Калибровка — метрика, о которой забывают</h3>
+<div class="fbox pur">
+<div class="flabel">📐 Expected Calibration Error</div>
+$$\text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\Big| \overline{\text{acc}}(b) - \overline{\text{conf}}(b) \Big|$$
+<p class="fnote">Разбиваем предсказания на $B$ бинов по уверенности; в каждом сравниваем среднюю предсказанную вероятность со средней фактической частотой события.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Модель говорит «вероятность дефолта 0.30» тысяче клиентов. Если реально дефолтнули примерно 300 — модель <strong>калибрована</strong>. Если 500 — она систематически недооценивает риск, хотя ранжирует, возможно, идеально.</p>
+<p>Почему это критично: <strong>AUC не видит калибровку вообще</strong>. Умножь все предсказания на 0.5 — AUC не изменится ни на йоту, а решения, принимаемые по порогу или по ожидаемым потерям, полностью сломаются. Если ты используешь вероятность в формуле (ожидаемая прибыль, ценообразование, резервирование) — ECE важнее AUC.</p>
+<p><strong>Label shift ломает именно калибровку.</strong> Выросла доля фрода с 0.5% до 3% → модель систематически занижает вероятности, хотя ранжирует по-прежнему хорошо. Лечится перекалибровкой (Platt scaling, isotonic) без полного переобучения.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Reliability diagram: как выглядит плохая калибровка</div>
+<div class="chsub">Идеал — диагональ. Ниже диагонали — модель переоценивает, выше — недооценивает</div>
+<div style="position:relative;height:300px;"><canvas id="c_cal"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Алерты: главная ошибка — слишком чувствительные пороги.</strong> Если дежурный получает 15 алертов в день, он перестаёт их читать через неделю — и пропустит настоящий. Практика: ① алерт по <em>величине эффекта</em>, а не по p-value; ② требование устойчивости — сработало N дней подряд, а не разово; ③ разделение severity: «warning в дашборд» против «page дежурному ночью»; ④ регулярный аудит — какая доля алертов привела к действию (если &lt;20%, пороги надо поднимать).</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Стратегии деплоя: shadow, canary, champion-challenger</div>
+<div class="sdesc">Как выкатить модель и не сломать продукт</div>
+
+<div class="grid2">
+<div class="card bl"><h5>🌑 Shadow deployment</h5><p>Новая модель получает <strong>весь</strong> реальный трафик и считает предсказания, но они <strong>никак не влияют</strong> на решения — только логируются.</p><p><strong>Ловит:</strong> train/serving skew, падения по latency, ошибки на реальных данных, расхождение распределений предсказаний.</p><p><strong>Не ловит:</strong> влияние на поведение пользователей — обратная связь-то отсутствует.</p></div>
+<div class="card pu"><h5>🐤 Canary deployment</h5><p>Новая модель получает <strong>малую долю</strong> трафика (1% → 5% → 25% → 100%), и её решения <strong>реально применяются</strong>.</p><p><strong>Ловит:</strong> всё, что shadow, плюс реальное влияние на бизнес-метрики.</p><p><strong>Риск:</strong> плохая модель успевает навредить, но ограниченному числу пользователей.</p></div>
+<div class="card gr"><h5>🏆 Champion-Challenger</h5><p>Постоянно действующий режим: champion обслуживает трафик, один или несколько challenger'ов работают в тени и сравниваются с ним. При устойчивом превосходстве — смена ролей.</p><p>Это не разовая процедура, а <strong>непрерывный процесс отбора</strong>.</p></div>
+<div class="card am"><h5>🔀 A/B / Interleaving</h5><p>Строгий статистический тест на разделённом трафике. Для ранжирования — interleaving (см. блок 6): в разы меньше трафика за счёт within-user сравнения.</p></div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Канонический путь модели в прод</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Offline eval</strong>holdout, не видевший<br>тюнинга</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Shadow</strong>1–2 недели,<br>0% влияния</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Canary 1–5%</strong>реальные решения,<br>усиленный мониторинг</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>A/B 50/50</strong>статистически<br>значимый вывод</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>100%</strong>+ старая модель<br>остаётся как fallback</div>
+</div>
+<div class="sysnote"><strong>Что проверяется на каждом этапе:</strong> <em>Offline</em> — метрика на «святом» holdout, стабильность по сидам, парето по latency. <em>Shadow</em> — совпадают ли распределения признаков и предсказаний с оффлайном (это прямой тест на train/serving skew), укладывается ли p99 latency в SLA, нет ли ошибок на редких входах. <em>Canary</em> — не просели ли бизнес-метрики на сегменте, работает ли автоматический откат. <em>A/B</em> — статистическая значимость и размер эффекта. <strong>Критично:</strong> на каждом этапе должен быть заранее описанный <em>автоматический откат</em> по конкретным порогам — решение об откате нельзя принимать в момент инцидента.</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах про shadow</div>
+<p>Shadow — это <strong>единственный способ поймать train/serving skew до того, как он навредит</strong>, и именно поэтому его нельзя пропускать. Логика простая: берём объекты, прошедшие через прод, и сравниваем признаки, которые модель увидела онлайн, с признаками, которые для тех же объектов посчитал бы оффлайн-пайплайн. Расхождение хотя бы в 1% строк — это баг, который в оффлайн-тестах невидим.</p>
+<p>Дополнительный бонус: shadow даёт честное измерение latency под реальным профилем нагрузки, а не под синтетическим бенчмарком.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Подводный камень canary: непредставительная выборка трафика.</strong> Если canary-трафик роутится по хешу user_id, а модель по-разному работает на новых и старых пользователях — можно получить смещённую оценку. Хуже: если 1% выделяется по географии или по типу устройства, ты измеряешь качество на сегменте, а не на популяции. <strong>Правило:</strong> canary-трафик должен быть случайной, а не структурной выборкой, и это надо явно проверять сравнением распределений сегментов.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Подводный камень champion-challenger: challenger обучается на данных champion.</strong> Champion принимает решения → эти решения формируют данные → challenger учится на этих данных. Возникает та же петля обратной связи, что в рекомендациях (см. блок 6): challenger наследует смещения champion и не может выучить то, что champion никогда не показывал. Лечится exploration-бюджетом (небольшая доля случайных решений) и inverse propensity weighting при обучении.</div></div>
+
+<h3>Что должно быть готово до выката</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Артефакт</th><th>Зачем</th></tr></thead>
+<tbody>
+<tr><td><strong>Автоматический откат</strong></td><td>Пороги описаны заранее; откат — одна кнопка или автоматика, а не расследование в 3 ночи</td></tr>
+<tr><td><strong>Model registry с версиями</strong></td><td>Знать, какая версия обслуживает трафик прямо сейчас и на каких данных обучена</td></tr>
+<tr><td><strong>Feature logging</strong></td><td>Логировать признаки <em>ровно в том виде</em>, в каком их видела модель — иначе нельзя ни отладить, ни переобучить честно</td></tr>
+<tr><td><strong>Дашборд с 4 уровнями</strong></td><td>Инфра / данные / модель / бизнес в одном месте, чтобы видеть цепочку</td></tr>
+<tr><td><strong>Runbook инцидента</strong></td><td>«Скор просел на 20% — что делать по шагам». Пишется до инцидента, не во время</td></tr>
+<tr><td><strong>Fallback-модель</strong></td><td>Простая, надёжная (логрег или правила) на случай отказа основной или недоступности признаков</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Feature logging — самая недооценённая практика.</strong> Логируй не «user_id + предсказание», а <strong>полный вектор признаков, который реально пошёл в модель</strong>, вместе с версией модели и версией feature view. Это даёт три вещи разом: ① возможность точно воспроизвести любое предсказание при разборе жалобы или аудита; ② обучающую выборку без train/serving skew по построению (учимся ровно на том, что видел прод); ③ мгновенную диагностику дрейфа на реальных, а не на реконструированных данных. Стоит дёшево, окупается на первом же инциденте.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Когда и как переобучать</div>
+<div class="sdesc">Триггеры, риски и типичные ошибки автоматического retraining</div>
+
+<div class="grid3">
+<div class="card bl"><h5>По расписанию</h5><p>Раз в день/неделю/месяц. Просто, предсказуемо, легко бюджетировать. Минус: переобучаем, даже когда не нужно, и не реагируем на резкий сдвиг между запусками.</p></div>
+<div class="card pu"><h5>По триггеру дрейфа</h5><p>PSI &gt; порога или падение качества. Реагирует по делу. Минус: рискуем переобучиться на аномалию (сбой апстрима выглядит как дрейф).</p></div>
+<div class="card gr"><h5>Гибрид (стандарт)</h5><p>Регулярное расписание + внеочередной запуск по триггеру + <strong>обязательные ворота качества</strong> перед выкатом. Это то, что используют в большинстве зрелых систем.</p></div>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Ворота качества перед автоматическим выкатом</div>
+$$\text{deploy} \iff \Big(M_{\text{new}} > M_{\text{old}} + \Delta_{\min}\Big) \;\wedge\; \Big(\text{PSI}(\hat y_{\text{new}}, \hat y_{\text{old}}) < \theta\Big) \;\wedge\; \Big(\text{lat}_{p99} < \text{SLA}\Big)$$
+<p class="fnote">$\Delta_{\min}$ — минимальный значимый прирост (обычно 0.3–0.5% относительных). Второе условие — <strong>защита от слишком резкого изменения поведения</strong>: даже если метрика лучше, радикально иное распределение предсказаний требует ручной проверки.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах про второе условие</div>
+<p>Это неочевидное, но очень важное правило. Представь: новая модель показывает AUC 0.87 вместо 0.86 — вроде бы улучшение, выкатываем. Но её распределение скоров совершенно другое, и порог отсечения, настроенный под старую модель, теперь отсекает не 5% заявок, а 22%. Бизнес-эффект катастрофический при формально лучшей метрике.</p>
+<p>PSI между предсказаниями старой и новой модели ловит именно это: «модель стала не просто лучше, а <em>другой</em>» — и требует человеческого решения.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три способа убить прод автоматическим переобучением.</strong><br>① <strong>Обучение на сломанных данных.</strong> Апстрим сломался, признак стал NULL — пайплайн честно переобучился на мусоре и выкатил. Защита: data validation <em>до</em> обучения (Great Expectations / TFDV), падение пайплайна при нарушении схемы.<br>② <strong>Усиление петли обратной связи.</strong> Модель отклоняет заявки → в данных нет исходов по отклонённым → следующая модель ещё увереннее отклоняет. Классическая проблема reject inference в скоринге. Защита: exploration-бюджет, обучение на результатах случайных одобрений.<br>③ <strong>Переобучение на аномалию.</strong> Чёрная пятница, сбой, разовая маркетинговая акция — модель выучивает разовое событие как норму. Защита: исключение известных аномальных периодов, робастные окна.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное: переобучение не всегда лечит дрейф.</strong> Если произошёл covariate shift в область, где обучающих данных мало, переобучение на свежих данных поможет. Но если это concept drift и меток по новому режиму ещё нет — переобучаться <em>не на чем</em>. В такой ситуации правильнее временно упростить модель, поднять порог консервативности или увеличить долю ручных проверок, а не гнать retraining на данных старого режима.</div></div>
+
+<div class="chb">
+<div class="cht">Деградация модели без переобучения: типичные профили</div>
+<div class="chsub">Скорость деградации сильно зависит от домена — от этого и зависит частота retraining</div>
+<div style="position:relative;height:300px;"><canvas id="c_decay"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как выбрать частоту переобучения эмпирически.</strong> Не гадай — измерь. Обучи модель на данных до момента $T$ и посчитай её качество на срезах $T{+}1$, $T{+}2$, …, $T{+}k$ недель. Получишь <strong>кривую деградации</strong> именно твоего домена. Частоту retraining выбирай так, чтобы качество не успевало упасть ниже допустимого порога. В антифроде это часто дни, в кредитном скоринге — кварталы. Заодно этот же эксперимент даёт честный ответ на вопрос «а нужно ли вообще переобучать чаще, чем сейчас».</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. System Design: как это устроено у крупных компаний</div>
+<div class="sdesc">Michelangelo, Feature Store в Airbnb, антифрод-архитектура</div>
+
+<div class="sysbox">
+<h4>🏗 Uber Michelangelo — платформа, с которой началась индустрия Feature Store</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Data Lake</strong>HDFS / Hive<br>сырые события</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Spark jobs</strong>batch-агрегаты<br>по расписанию</div>
+  <div class="sysarrow">↘</div>
+  <div class="syshighlight"><strong>Palette Feature Store</strong>единый каталог,<br>общий на всю компанию</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Cassandra</strong>online store,<br>&lt;10 мс</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Kafka</strong>поток поездок,<br>событий приложения</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Samza / Flink</strong>streaming-агрегаты<br>скользящие окна</div>
+  <div class="sysarrow">↗</div>
+  <div class="sysblock"><strong>Model Serving</strong>online + batch<br>+ shadow</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Monitoring</strong>дрейф, качество,<br>обратная связь</div>
+</div>
+<div class="sysnote"><strong>Ключевые решения и почему они важны:</strong><br>
+① <strong>Palette — общий каталог признаков на всю компанию.</strong> Признак определяется один раз и переиспользуется всеми командами. Именно это дало главный организационный эффект: перестали пять раз считать «средний рейтинг водителя за 30 дней».<br>
+② <strong>Единый DSL для batch и streaming.</strong> Одно определение признака компилируется и в Spark-джоб, и в потоковый пайплайн — это устраняет skew между историческими и реалтайм-значениями по построению.<br>
+③ <strong>Обязательное логирование признаков на инференсе.</strong> Всё, что видела модель, сохраняется — и используется как обучающая выборка для следующей версии. Skew становится структурно невозможным.<br>
+④ <strong>Единый жизненный цикл модели</strong> — от обучения до мониторинга в одной системе, с автоматическим сравнением оффлайн- и онлайн-метрик.<br>
+<strong>Главный урок Michelangelo:</strong> самая ценная часть ML-платформы — не обучение моделей, а <em>управление признаками</em>. Обучение — это дни работы, признаки — это годы накопленного актива.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Антифрод в реальном времени — где всё сходится вместе</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Транзакция</strong>бюджет 100 мс<br>на всё решение</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Online FS</strong>batch-признаки<br>3–5 мс</div>
+  <div class="sysarrow">＋</div>
+  <div class="sysblock"><strong>Streaming FS</strong>окна 1 мин / 1 час<br>3–5 мс</div>
+  <div class="sysarrow">＋</div>
+  <div class="syshighlight"><strong>On-demand</strong>z-score суммы,<br>гео-расстояние</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Rules engine</strong>жёсткие правила,<br>чёрные списки</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>ML-модель</strong>GBDT, 15 мс</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Решение</strong>approve / review /<br>decline</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Feature log</strong>всё, что видела<br>модель</div>
+</div>
+<div class="sysnote"><strong>Что делает этот кейс показательным:</strong><br>
+① <strong>Три типа признаков в одном запросе</strong> — batch (история клиента), streaming (всплеск активности за минуту), on-demand (отклонение текущей суммы). Ни один тип по отдельности задачу не решает.<br>
+② <strong>Правила перед моделью.</strong> Жёсткие правила ловят известные схемы мгновенно и дают объяснимость; модель работает с остальным. Гибрид почти всегда лучше чистого ML в антифроде.<br>
+③ <strong>Три исхода вместо двух.</strong> «review» — очередь ручной проверки — это одновременно и снижение риска, и <em>источник качественных меток</em> для следующего обучения.<br>
+④ <strong>Экстремально отложенные метки:</strong> чарджбэк приходит через 30–90 дней. Поэтому мониторинг опирается на прокси: доля срабатываний, распределение скоров, согласие с решениями операторов.<br>
+⑤ <strong>Дрейф здесь враждебный.</strong> Мошенники активно адаптируются к модели — это не пассивный дрейф, а состязательный. Отсюда частое переобучение (дни, не месяцы) и обязательный exploration-бюджет.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Airbnb</div>
+<h4>Zipline: приоритет корректности над удобством</h4>
+<p>Airbnb построил собственный feature framework, и его главный акцент — именно <strong>point-in-time correctness</strong>. Публично озвученные наблюдения команды:</p>
+<ul>
+<li><strong>Большинство «загадочных» расхождений оффлайн и онлайн — это утечка через время</strong>, а не проблема модели. Инженеры месяцами искали баги в моделях там, где ошибка была в JOIN.</li>
+<li><strong>Backfill исторических значений признака — самая дорогая операция.</strong> Добавил новый признак — надо пересчитать его для всей истории обучающих событий, иначе им нельзя пользоваться. Именно это, а не инференс, определяет стоимость платформы.</li>
+<li><strong>Декларативное определение окон агрегации</strong> вместо ручного SQL. Написал «сумма за 7/30/90 дней» — фреймворк сам порождает корректные по времени запросы для всех окон.</li>
+</ul>
+<p><strong>Обобщённый вывод:</strong> инвестиции в корректность окупаются не приростом метрики, а тем, что перестают гореть недели инженерного времени на расследование расхождений.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Netflix / Meta — общий паттерн</div>
+<h4>Почему все крупные платформы пришли к логированию признаков</h4>
+<p>Независимо друг от друга крупные компании сошлись на одном решении: <strong>обучающая выборка должна собираться из логов инференса, а не восстанавливаться из хранилища</strong>.</p>
+<ul>
+<li><strong>Skew исчезает по построению</strong> — учимся ровно на том, что видел прод, включая все его дефекты и задержки.</li>
+<li><strong>Не нужен дорогой point-in-time join</strong> при сборе выборки — значения уже зафиксированы в момент события.</li>
+<li><strong>Полная аудируемость</strong> — любое решение воспроизводимо по логу, что критично для регулируемых доменов.</li>
+</ul>
+<p><strong>Цена:</strong> ① объём логов огромен, нужны семплирование и retention-политики; ② новый признак нельзя использовать «задним числом» — сначала надо начать его логировать и накопить историю; ③ поэтому логируют и те признаки, которые модель <em>пока не использует</em>, но может понадобиться позже — это осознанная плата за скорость будущих экспериментов.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">11. Вопросы и ответы</div>
+<div class="sdesc">22 вопроса — от определений до разбора инцидентов</div>
+
+<div class="qah">Feature Store и point-in-time</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Какую главную проблему решает Feature Store?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Train/serving skew</strong> — расхождение между признаком при обучении и тем же признаком при инференсе. Без Feature Store оффлайн-версия пишется на SQL аналитиком, онлайн-версия — на Python бэкендером; логика неизбежно расходится.</p><p>Коварство в том, что это <em>тихий</em> баг: ничего не падает, логи чистые, метрики инфраструктуры зелёные — просто качество в проде хуже оффлайн-оценки, и причину ищут неделями.</p><p>Feature Store делает определение признака единственным источником правды и сам материализует его в оба хранилища. Побочно решает: дублирование работы между командами, утечку через время, latency-требования инференса.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Что такое point-in-time correctness и почему без неё метрика врёт?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>При сборе обучающей выборки для события в момент $t_e$ нужно взять то значение признака, <strong>которое реально было известно системе на момент $t_e$</strong>, а не текущее.</p><p>Наивный <code>JOIN ON user_id</code> берёт последнее значение из витрины — то есть из будущего относительно события. Модель начинает использовать информацию, которой в проде не будет.</p><p><strong>Масштаб проблемы:</strong> в примере с кредитным дефолтом наивный join даёт AUC 0.97 (модель видит долг, выросший <em>после</em> дефолта), корректный — 0.82, прод — 0.81. Разница 0.15 AUC создана одной строчкой SQL, и никакой unit-тест её не поймает.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Чем event_timestamp отличается от created_timestamp и зачем нужны оба?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><code>event_timestamp</code> — когда факт произошёл. <code>created_timestamp</code> — когда запись стала физически доступна системе.</p><p>Пример разрыва: признак «средний чек за вчера» имеет event_timestamp «вчера 23:59», но батч, который его считает, отрабатывает в 06:00. Событие в 03:00 формально «позже» признака, и point-in-time join по event_timestamp его возьмёт — хотя в проде в 03:00 этого значения ещё не существовало.</p><p>Это <strong>скрытая утечка внутри формально корректного join</strong>. Правильно джойнить по <code>created_timestamp ≤ t_event</code>. Feast поддерживает оба поля нативно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Зачем feature view нужен TTL?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>TTL отвечает на вопрос «насколько старое значение ещё считается валидным признаком». Если клиент год не совершал транзакций, его «средний чек за 30 дней» годичной давности — не признак, а археология.</p><p>Лучше вернуть NULL и дать модели явно обработать пропуск, чем кормить её протухшим значением, притворяющимся свежим.</p><p><strong>Критично:</strong> TTL должен быть одинаковым в обучении и в проде. В online store значения истекают автоматически; если в оффлайн-джойне TTL забыли — снова получаешь skew, только теперь на редких, давно неактивных сущностях.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Чем отличается offline store от online store?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Offline</strong> хранит всю историю всех версий признаков (BigQuery, Snowflake, Parquet). Оптимизирован под сканирование миллионов строк, latency в секунды, дёшев за гигабайт. Используется для обучения и бэктестов.</p><p><strong>Online</strong> хранит только последнее значение на сущность (Redis, DynamoDB, Cassandra). Оптимизирован под точечное чтение по ключу за &lt;10 мс p99, дорог за гигабайт (память). Используется на инференсе.</p><p>Feature Store синхронизирует их через <strong>материализацию</strong> — регулярный перенос свежих значений из offline в online. Именно этот процесс и является местом, где чаще всего ломается свежесть данных.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Что такое on-demand features и почему они опаснее остальных?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Признаки, вычисляемые <em>в момент запроса</em> из данных самого запроса: «отклонение суммы текущей транзакции от среднего клиента», «расстояние между текущей геолокацией и домашней». Предвычислить их нельзя — часть входа приходит с запросом.</p><p><strong>Почему опасны:</strong> код таких признаков живёт в сервисе инференса, а не в пайплайне материализации. Это единственное место, где логика физически дублируется, — и именно тут чаще всего расходятся оффлайн и онлайн реализации.</p><p><strong>Решение:</strong> <code>@on_demand_feature_view</code> в Feast — одна Python-функция используется и в <code>get_historical_features</code>, и в <code>get_online_features</code>. Если Feature Store такого не поддерживает — покрывай эти признаки тестами, сравнивающими оба пути на одинаковых входах.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Feast или Tecton — как выбрать?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Feast</strong> — это слой доступа, а не вычислительный движок. Он гарантирует point-in-time корректность и синхронизацию offline/online, но пайплайны, считающие признаки, ты пишешь и оркестрируешь сам (Airflow + Spark). Streaming — через внешний Flink руками. Open-source, минимальный lock-in.</p><p><strong>Tecton</strong> — вычислительная платформа. Декларируешь трансформацию, он сам строит batch- и streaming-пайплайны из одного определения, сам делает backfill, даёт мониторинг из коробки. Дорого, высокий lock-in.</p><p><strong>Правило:</strong> есть сильная инженерная команда и нужен контроль — Feast. Нужен streaming и нет ресурса строить его самим — Tecton. Уже живёшь в Databricks/Vertex — бери их встроенный. <strong>Одна модель и batch-скоринг раз в сутки — не бери ничего</strong>, Feature Store здесь только добавит сложности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Почему feature freshness — обязательная метрика мониторинга?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Материализация из offline в online store идёт по расписанию. Если ночной джоб упал, online store <strong>молча продолжает отдавать вчерашние значения</strong>. Модель не падает, ошибок в логах нет, latency в норме — качество просто тихо деградирует.</p><p>Feature freshness — возраст самого свежего значения в online store по каждой feature view. Алерт при превышении ожидаемого интервала обновления.</p><p>Это одна из самых частых причин инцидентов «модель вдруг поплохела» и одна из самых дешёвых в мониторинге.</p></div></details>
+
+<div class="qah">Дрейф и его измерение</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Чем covariate shift отличается от concept drift?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Covariate shift:</strong> меняется $P(X)$, зависимость $P(y\mid X)$ прежняя. Пришла новая аудитория, но правило «высокий долг → высокий риск» не изменилось. Модель формально валидна, но начинает экстраполировать в область, где данных было мало.</p><p><strong>Concept drift:</strong> меняется само $P(y\mid X)$. Началась рецессия — те же признаки клиента теперь означают другой уровень риска. <strong>Модель невалидна</strong>, нужно переобучение.</p><p><strong>Практически ключевое различие:</strong> covariate shift виден <em>сразу</em> по распределению входов. Concept drift виден <strong>только когда приедут метки</strong> — а они могут приезжать месяцами. Поэтому concept drift опаснее: мониторинг признаков его вообще не покажет.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Что такое label shift и почему он ломает именно калибровку?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Label shift (prior shift) — меняется $P(y)$ при неизменном $P(X\mid y)$. Доля фрода выросла с 0.5% до 3%, но «как выглядит фрод» осталось прежним.</p><p>Модель обучалась при априорной вероятности 0.5% и «зашила» её в выходные вероятности. При новой доле в 3% она систематически <strong>занижает</strong> вероятности, хотя ранжирует объекты по-прежнему корректно.</p><p>Отсюда следствие: <strong>AUC не изменится</strong> (ранжирование то же), а ECE резко вырастет. Если решения принимаются по фиксированному порогу или по ожидаемым потерям — они сломаются.</p><p><strong>Лечится дёшево:</strong> перекалибровка (Platt scaling / isotonic) на свежих данных или корректировка априорной вероятности, без полного переобучения.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Напиши формулу PSI и объясни, что она означает.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>$\text{PSI} = \sum_i (a_i - e_i)\ln(a_i/e_i)$, где $e_i$ — доля в бине у эталона, $a_i$ — у текущей выборки.</p><p>Это симметризованная KL-дивергенция. Для каждой корзины берём абсолютное изменение доли и умножаем на логарифм относительного изменения. Не изменилось — вклад ноль.</p><p>Умножение именно на $\ln(a/e)$ даёт важное свойство: перетекание из корзины с 1% в корзину с 20% штрафуется сильнее, чем такой же абсолютный сдвиг между двумя крупными корзинами. Хвосты заметны.</p><p><strong>Пороги:</strong> &lt;0.1 стабильно, 0.1–0.25 умеренный сдвиг, &gt;0.25 существенный.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Какие подводные камни у PSI?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>① <strong>Зависимость от биннинга.</strong> 5 бинов и 20 бинов дадут разный PSI на одних данных. Бины нужно фиксировать по эталону один раз и не менять — иначе метрика несравнима во времени.</p><p>② <strong>Деление на ноль.</strong> Если категория исчезла ($a_i = 0$) или появилась новая ($e_i = 0$), $\ln$ уходит в бесконечность. Нужен $\epsilon$-сглаживание (обычно $10^{-4}$) — но тогда результат зависит от выбора $\epsilon$.</p><p>③ <strong>Нестабильность при малых выборках.</strong> На 500 наблюдениях PSI шумит и может превышать 0.25 без реального дрейфа.</p><p>④ <strong>Одномерность.</strong> PSI считается по каждому признаку отдельно и не увидит дрейф <em>совместного</em> распределения: каждый признак в норме, а их комбинация — новая.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Почему p-value KS-теста бесполезен в проде?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>KS — статистический тест, и его мощность растёт с размером выборки. При $n=10$ млн <strong>любое</strong> сколь угодно малое различие даёт $p &lt; 0.001$. Ты будешь получать алерт каждый день на сдвиг в 0.2%, который никого не волнует.</p><p><strong>Что делать:</strong> смотреть на величину статистики $D$ (effect size) и задавать порог по ней, либо сабсэмплировать до фиксированного $n$ перед тестом, чтобы значения были сравнимы во времени.</p><p>Это ровно та же проблема, что со статистической значимостью в A/B-тестах на большом трафике: значимость ≠ практическая важность.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Что такое domain classifier для детекции дрейфа и чем он лучше PSI?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Помечаем обучающие данные меткой 0, продовые — 1, обучаем классификатор их различать. AUC ≈ 0.5 → распределения неотличимы, дрейфа нет. AUC = 0.85 → данные легко различимы, дрейф серьёзный.</p><p><strong>Главное преимущество:</strong> он ловит дрейф <strong>совместного</strong> распределения. Каждый признак по отдельности может иметь PSI = 0.02, а их комбинация — быть принципиально новой. Одномерные метрики этого не видят в принципе.</p><p><strong>Бонус:</strong> feature importance этого классификатора прямо указывает, какие признаки уехали — готовая диагностика.</p><p><strong>Минусы:</strong> дороже, нужен отдельный пайплайн, и сам классификатор может переобучиться — нужна честная кросс-валидация.</p></div></details>
+
+<div class="qah">Мониторинг</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Какие четыре уровня мониторинга ML-системы?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>① <strong>Инфраструктура</strong> — latency p99, RPS, error rate, ресурсы. Сигнал за секунды, но говорит только «сервис жив».</p><p>② <strong>Данные</strong> — PSI/KS, null-rate, доля <code>&lt;UNK&gt;</code>, feature freshness, нарушения схемы. Минуты–часы.</p><p>③ <strong>Модель</strong> — распределение предсказаний, средний скор, доля срабатываний порога, качество по мере приезда меток, калибровка. Часы–недели.</p><p>④ <strong>Бизнес</strong> — конверсия, потери от фрода, доля ручных проверок. Дни–месяцы, но это единственный источник истины.</p><p><strong>Принцип:</strong> чем ниже уровень, тем быстрее сигнал и тем меньше он говорит о пользе. Нужны все четыре, и главное — связка между ними для расследования инцидентов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Как мониторить модель, если метки приезжают через месяцы?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Наивная оценка на ранних метках смещена: через месяц после выдачи кредита метки есть только у тех, кто <em>очень быстро</em> дефолтнул — систематически нерепрезентативная подвыборка.</p><p><strong>Прокси-метрики:</strong> дрейф распределения предсказаний (доступен мгновенно, без меток); согласие с champion-моделью; ранние сигналы (просрочка 30 дней вместо полного дефолта); согласие с решениями операторов ручной проверки.</p><p><strong>Корректная оценка:</strong> inverse propensity weighting — взвешивание наблюдений на $1/\hat P(\text{метка уже приехала}\mid x, t)$; либо явная модель времени задержки (аппарат анализа выживаемости, наблюдение без метки = цензурированное, а не негативное).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Почему калибровка важнее AUC в задачах с порогом?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>AUC не видит калибровку вообще.</strong> Умножь все предсказания на 0.5 — AUC не изменится ни на йоту, потому что она зависит только от порядка. Но все решения, принимаемые по абсолютной вероятности, сломаются.</p><p>Если вероятность используется в формуле — ожидаемая прибыль, ценообразование, резервирование капитала, выбор порога отсечения — тебе нужна калиброванная вероятность, и ECE становится важнее AUC.</p><p>ECE = $\sum_b \frac{n_b}{N}|\overline{\text{acc}}(b) - \overline{\text{conf}}(b)|$: разбиваем по уверенности и сравниваем предсказанную вероятность с фактической частотой.</p><p><strong>Практика:</strong> label shift ломает именно калибровку при неизменном AUC — это самый частый сценарий, когда «метрики в норме, а бизнес страдает».</p></div></details>
+
+<div class="qah">Деплой и переобучение</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Чем shadow deployment отличается от canary и что ловит каждый?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Shadow:</strong> новая модель получает весь реальный трафик, считает предсказания, но они <strong>не влияют на решения</strong> — только логируются. Ловит train/serving skew, превышение latency, ошибки на реальных данных, расхождение распределений. Не ловит влияние на поведение пользователей — обратной связи нет.</p><p><strong>Canary:</strong> малая доля трафика (1→5→25→100%), решения <strong>реально применяются</strong>. Ловит всё то же плюс реальный бизнес-эффект. Риск — плохая модель успевает навредить, но ограниченному числу пользователей.</p><p><strong>Порядок обязателен:</strong> сначала shadow (нулевой риск, ловит технические проблемы), потом canary (управляемый риск, ловит продуктовые).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Как именно shadow deployment ловит train/serving skew?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Механика: берём объекты, прошедшие через прод, и сравниваем <strong>признаки, которые модель увидела онлайн</strong>, с <strong>признаками, которые для тех же объектов и тех же моментов посчитал бы оффлайн-пайплайн</strong>.</p><p>Расхождение хотя бы в 1% строк — это баг. Причины обычно: разные единицы измерения, разная обработка пропусков, разное окно агрегации, задержка материализации, разный порядок применения трансформаций.</p><p>Это единственный способ поймать skew <em>до</em> того, как он повлияет на пользователей — в оффлайн-тестах он невидим по определению. Дополнительно shadow даёт честное измерение p99 latency под реальным профилем нагрузки.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Какая скрытая проблема у champion-challenger?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Challenger обучается на данных, порождённых champion.</strong> Champion принимает решения → эти решения формируют, какие исходы вообще наблюдаются → challenger учится на этой выборке.</p><p>Возникает петля обратной связи, аналогичная exposure bias в рекомендациях: challenger наследует смещения champion и структурно не может выучить то, о чём champion не дал данных. В скоринге это классическая проблема <em>reject inference</em>: по отклонённым заявкам мы никогда не узнаём, вернули бы они кредит.</p><p><strong>Лечится:</strong> exploration-бюджет (небольшая доля случайных или намеренно иных решений), inverse propensity weighting при обучении, специальные методы reject inference.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Как выбрать частоту переобучения?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Не угадывать, а измерить кривую деградации.</strong> Обучи модель на данных до момента $T$ и посчитай качество на срезах $T{+}1, T{+}2, \dots$ недель. Получишь профиль деградации именно твоего домена.</p><p>Частоту выбирай так, чтобы качество не успевало упасть ниже допустимого порога между переобучениями. В антифроде это дни (дрейф враждебный — мошенники адаптируются), в кредитном скоринге — кварталы.</p><p><strong>Стандартная схема — гибрид:</strong> регулярное расписание + внеочередной запуск по триггеру дрейфа + обязательные ворота качества перед выкатом.</p><p>Заодно этот эксперимент честно отвечает на вопрос «а нужно ли вообще переобучать чаще, чем сейчас» — часто оказывается, что нет.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Какими способами автоматическое переобучение может убить прод?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>① <strong>Обучение на сломанных данных.</strong> Апстрим сломался, признак стал NULL — пайплайн честно переобучился на мусоре и выкатил. Защита: data validation до обучения (Great Expectations / TFDV), падение пайплайна при нарушении схемы.</p><p>② <strong>Усиление петли обратной связи.</strong> Модель отклоняет заявки → нет исходов по отклонённым → следующая модель отклоняет ещё увереннее. Защита: exploration-бюджет, обучение на результатах случайных одобрений.</p><p>③ <strong>Переобучение на аномалию.</strong> Чёрная пятница, разовая акция, сбой — модель выучивает разовое событие как норму. Защита: исключение известных аномальных периодов.</p><p>④ <strong>Выкат «лучшей, но другой» модели.</strong> AUC выше, но распределение скоров совершенно иное — старый порог теперь отсекает 22% вместо 5%. Защита: ворота включают не только $M_{\text{new}} &gt; M_{\text{old}} + \Delta$, но и $\text{PSI}(\hat y_{\text{new}}, \hat y_{\text{old}}) &lt; \theta$.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block7_02_tabular_dl.html" class="btn prev">← Табличный DL</a>
+  <a href="block7_quiz.html" class="btn">Тест Блока 7 →</a>
+</div>
+
+</div>
+<script>
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- KS: две CDF и максимальный зазор ---
+(function(){
+  const xs=[]; for(let i=0;i<=60;i++) xs.push(i);
+  const cdf=(x,m,s)=>1/(1+Math.exp(-(x-m)/s));
+  const A = xs.map(x=>cdf(x,26,5.2));
+  const B = xs.map(x=>cdf(x,34,6.0));
+  let maxD=0,maxI=0;
+  A.forEach((v,i)=>{const d=Math.abs(v-B[i]); if(d>maxD){maxD=d;maxI=i;}});
+  const gap = xs.map((x,i)=>i===maxI?A[i]:null);
+  const gap2 = xs.map((x,i)=>i===maxI?B[i]:null);
+  new Chart(document.getElementById('c_ks'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'CDF эталона (обучение)',data:A,borderColor:'#059669',pointRadius:0,borderWidth:2.8,tension:.2},
+      {label:'CDF текущих данных',data:B,borderColor:'#dc2626',pointRadius:0,borderWidth:2.8,tension:.2},
+      {label:'D = '+maxD.toFixed(3),data:gap,borderColor:'#111827',pointRadius:6,pointStyle:'triangle',borderWidth:0},
+      {label:'',data:gap2,borderColor:'#111827',pointRadius:6,pointStyle:'triangle',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'значение признака'},ticks:{maxTicksLimit:11}},
+              y:{title:{display:true,text:'накопленная доля'},min:0,max:1}},
+      plugins:{legend:{position:'bottom',labels:{filter:i=>i.text!==''}}}}
+  });
+})();
+
+// --- PSI по признакам ---
+(function(){
+  const feats=['avg_amount_30d','tenure_days','city','device_type','txn_count_7d','age','channel','credit_limit'];
+  const vals=[0.42,0.28,0.19,0.14,0.09,0.05,0.03,0.02];
+  const cols=vals.map(v=>v>0.25?'#dc2626':v>0.10?'#d97706':'#059669');
+  new Chart(document.getElementById('c_psi'), {
+    type:'bar',
+    data:{labels:feats,datasets:[{label:'PSI',data:vals,backgroundColor:cols,borderRadius:5}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'PSI'},max:0.5}},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{afterLabel:c=>c.parsed.x>0.25?'🚨 существенный сдвиг — разобраться':c.parsed.x>0.10?'⚠️ умеренный — наблюдать':'✅ стабильно'}}}}
+  });
+})();
+
+// --- Reliability diagram ---
+(function(){
+  const bins=[0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95];
+  const over = bins.map(p=>Math.max(0,p*0.62-0.01));       // модель переоценивает
+  const good = bins.map(p=>p+(Math.random()-0.5)*0.025);
+  new Chart(document.getElementById('c_cal'), {
+    type:'line',
+    data:{labels:bins.map(b=>b.toFixed(2)),datasets:[
+      {label:'идеальная калибровка',data:bins,borderColor:'#94a3b8',borderDash:[6,4],pointRadius:0,borderWidth:2},
+      {label:'хорошо калиброванная модель (ECE ≈ 0.012)',data:good,borderColor:'#059669',pointRadius:4,borderWidth:2.5,tension:.2},
+      {label:'переоценивает риск (ECE ≈ 0.145)',data:over,borderColor:'#dc2626',pointRadius:4,borderWidth:2.5,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'предсказанная вероятность'}},
+              y:{title:{display:true,text:'фактическая частота события'},min:0,max:1}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Кривые деградации ---
+(function(){
+  const xs=[]; for(let i=0;i<=24;i++) xs.push(i);
+  const dec=(a,k)=>xs.map(t=>a*Math.exp(-t/k)+ (1-a)*a/ a *0 + (0.86-a) + a*0); // placeholder
+  const f=(start,k)=>xs.map(t=>start-(start-0.62)*(1-Math.exp(-t/k)));
+  new Chart(document.getElementById('c_decay'), {
+    type:'line',
+    data:{labels:xs.map(t=>t+' нед'),datasets:[
+      {label:'Антифрод — враждебный дрейф (retrain: дни)',data:f(0.88,3.5),borderColor:'#dc2626',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'Рекомендации — быстрый дрейф вкусов (недели)',data:f(0.86,9),borderColor:'#d97706',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'Прогноз спроса — сезонность (месяц)',data:f(0.85,17),borderColor:'#0284c7',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'Кредитный скоринг — медленный дрейф (квартал)',data:f(0.84,42),borderColor:'#059669',pointRadius:0,borderWidth:2.8,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'время с момента обучения'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'качество (AUC)'},min:0.63,max:0.90}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Интерактив PSI ---
+function updPsi(){
+  const s = +document.getElementById('sl_shift').value / 100;
+  document.getElementById('out_shift').textContent = (s*100).toFixed(0) + ' п.п.';
+  const e = [0.40, 0.45, 0.15];
+  const a = [Math.max(0.01, 0.40 - s), 0.45 + s*0.33, Math.max(0.01, 0.15 + s*0.67)];
+  const tot = a.reduce((x,y)=>x+y,0);
+  const an = a.map(v=>v/tot);
+  let psi = 0, parts = [];
+  for (let i=0;i<3;i++){
+    const c = (an[i]-e[i]) * Math.log(an[i]/e[i]);
+    psi += c; parts.push(c.toFixed(4));
+  }
+  const verdict = psi > 0.25 ? '🚨 Существенный сдвиг — разобраться в причине, вероятно переобучить.'
+               : psi > 0.10 ? '⚠️ Умеренный сдвиг — наблюдать, проверить качество.'
+               : '✅ Распределение стабильно.';
+  document.getElementById('out_psi').innerHTML =
+    'Бины: ' + an.map(v=>(v*100).toFixed(0)+'%').join(' / ') +
+    ' &nbsp;(эталон 40% / 45% / 15%)' +
+    '<br>Вклады бинов: ' + parts.join(' + ') +
+    '<br><strong>PSI = ' + psi.toFixed(4) + '</strong> — ' + verdict;
+}
+updPsi();
+</script>
+</body>
+</html>

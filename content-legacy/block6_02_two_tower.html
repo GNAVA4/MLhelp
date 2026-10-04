@@ -1,0 +1,2323 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6.2 · Two-tower: разбор обучения и поиска по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#2563eb;--rf-l:#eff6ff;--rf-b:#bfdbfe;--rf-d:#1e3a8a;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#4c1d95,#7c3aed 50%,#c4b5fd);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.92;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--vi);border-bottom-color:var(--vi);}
+.snav a.act{color:var(--vi);border-bottom-color:var(--vi);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--vi);color:var(--vi);box-shadow:0 3px 12px rgba(124,58,237,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--vi);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.rf{border-left-color:var(--rf);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--vi);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.rf .flabel{color:var(--rf);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--vi-l);border:1px solid var(--vi-b);border-left:4px solid var(--vi);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--vi);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#4c1d95;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--vi-l)!important;color:#4c1d95!important;}
+/* ---------- Пошаговый разбор ---------- */
+.trace{background:#fff;border:2px solid var(--vi-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--vi);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--vi-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ede9fe;padding:2px 6px;border-radius:4px;font-weight:700;color:#4c1d95;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица (вместо ASCII) --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--vi-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ede9fe;color:#4c1d95;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* ---------- Матрицы и векторы ---------- */
+.mx{display:inline-grid;gap:2px;margin:10px 8px 10px 0;vertical-align:top;}
+.mxcap{font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:5px;display:block;}
+.mxh{font-size:10px;font-weight:700;color:var(--text3);display:flex;align-items:center;justify-content:center;padding:2px;min-width:26px;}
+.mxc{border-radius:4px;padding:6px 3px;text-align:center;font-size:10.5px;font-weight:700;font-family:'SF Mono',monospace;min-width:40px;}
+.mxc.diag{outline:2px solid var(--grn);outline-offset:-2px;}
+.mxwrap{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;margin:12px 0;}
+.vec{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:12px;flex-wrap:wrap;}
+.veclbl{min-width:56px;font-weight:700;color:var(--text3);font-size:11px;font-family:'SF Mono',monospace;}
+.veccell{min-width:52px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'SF Mono',monospace;font-size:11px;font-weight:700;}
+/* ---------- Башни ---------- */
+.towers{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin:18px 0;}
+.tower{background:#fff;border:2px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+.tower.u{border-color:var(--rf-b);} .tower.i{border-color:var(--grn-b);}
+.tower-t{font-size:13px;font-weight:800;margin-bottom:10px;}
+.tower.u .tower-t{color:var(--rf);} .tower.i .tower-t{color:var(--grn);}
+.tlayer{border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11.5px;font-weight:600;line-height:1.45;}
+.tower.u .tlayer{background:var(--rf-l);color:#1e3a8a;} .tower.i .tlayer{background:var(--grn-l);color:#14532d;}
+.tlayer.out{font-weight:800;border:1.5px dashed;}
+.tower.u .tlayer.out{border-color:var(--rf);} .tower.i .tlayer.out{border-color:var(--grn);}
+.tdot{font-size:24px;color:var(--vi);font-weight:800;text-align:center;}
+/* ---------- Числовые примеры ---------- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--vi);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);}
+/* ---------- Графики ---------- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* ---------- System Design ---------- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#c4b5fd;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* ---------- Q&A ---------- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--vi-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--vi);font-style:normal;font-weight:600;}
+/* ---------- Подводные камни ---------- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* ---------- Прочее ---------- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--vi);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--vi);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--vi-l);border-radius:9px;font-size:13.5px;color:#4c1d95;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.vi{border-top:3px solid var(--vi);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes pulseCell{0%,100%{transform:scale(1);}50%{transform:scale(1.11);}}
+.pulseC{animation:pulseCell 2.2s ease-in-out infinite;}
+@media(max-width:760px){
+  .towers{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;}
+  .mxc{min-width:30px;font-size:9px;padding:4px 2px;}.tstep-c{padding-left:0;}.calc{font-size:10.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 6 · Рекомендательные системы · Тема 2 из 5 · расширенная</div>
+  <h1>Two-tower: разбор обучения и поиска по шагам</h1>
+  <p class="sub">Матрица in-batch негативов с полным расчётом softmax, арифметика logQ-коррекции,
+     перераспределение вероятностной массы по температуре, обход графа HNSW узел за узлом.
+     Каждое число выписано и проверяемо на бумаге.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем две башни</a>
+  <a href="#s2">2. Архитектура</a>
+  <a href="#s3">3. In-batch негативы</a>
+  <a href="#s4">4. Softmax и температура</a>
+  <a href="#s5">5. logQ-коррекция</a>
+  <a href="#s6">6. Шаг обучения целиком</a>
+  <a href="#s7">7. Признаки в башнях</a>
+  <a href="#s8">8. HNSW по шагам</a>
+  <a href="#s9">9. Стратегии негативов</a>
+  <a href="#s10">10. Свежесть индекса</a>
+  <a href="#s11">11. Валидация</a>
+  <a href="#s12">12. Когда не нужен</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секции 3–6 — ядро.</strong> Полный шаг обучения: матрица скоров, softmax, logQ, градиенты. Все числа пересчитываются на калькуляторе.</li>
+    <li>Секция 4 объясняет температуру через перераспределение массы — параметр, который чаще всего оставляют дефолтным и зря.</li>
+    <li><strong>Секция 8 — обход HNSW узел за узлом.</strong> Без понимания, как ищет индекс, невозможно объяснить, почему падает recall.</li>
+    <li>Секции 10–12 — эксплуатационные проблемы, которых нет у матричной факторизации: рассинхрон башен, устаревание индекса.</li>
+    <li>Секции 13–15 — подводные камни, кейсы и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем разделять модель на две башни <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Ограничение архитектуры, которое даёт возможность работать за миллисекунды</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Two-tower модель <span class="en">(two-tower / dual encoder)</span></dt>
+<dd>Архитектура из двух независимых нейросетей: одна кодирует пользователя (или запрос) в вектор, другая — объект. Итоговый скор — скалярное произведение этих векторов. Ключевое свойство: башни не обмениваются информацией, поэтому вектор объекта можно вычислить заранее.</dd>
+<dt>Башня <span class="en">(tower / encoder)</span></dt>
+<dd>Одна из двух сетей. Принимает признаки своей стороны, выдаёт вектор фиксированной размерности. Обе башни обязаны выдавать векторы <em>одинаковой</em> длины, иначе скалярное произведение не определено.</dd>
+<dt>Cross-модель <span class="en">(cross encoder)</span></dt>
+<dd>Противоположный подход: одна сеть получает признаки пользователя и объекта <em>вместе</em> и выдаёт скор. Точнее, но требует прогона на каждую пару — поэтому применима только к сотням кандидатов, а не к каталогу.</dd>
+<dt>Кандидатогенерация <span class="en">(candidate generation / retrieval)</span></dt>
+<dd>Первый этап рекомендательной системы: быстро сузить каталог с миллионов до сотен. Задача этапа — <em>полнота</em>, а не точный порядок.</dd>
+<dt>Ранжирование <span class="en">(ranking)</span></dt>
+<dd>Второй этап: точно упорядочить сотни кандидатов тяжёлой моделью. Здесь важен именно порядок.</dd>
+<dt>ANN-поиск <span class="en">(approximate nearest neighbors)</span></dt>
+<dd>Приближённый поиск ближайших соседей в векторном пространстве. Жертвует точностью ради скорости: находит не гарантированно лучших соседей, а очень близких к ним, но за $O(\log N)$ вместо $O(N)$.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя просто взять одну сеть</div>
+<p>Хочется подать сети пару (пользователь, объект) и получить скор. Такая сеть <em>точнее</em> — она может учить сложные взаимодействия признаков, например «этот пользователь любит комедии, но только короткие, и только вечером».</p>
+<p><strong>Но она требует прогона для каждой пары.</strong> Каталог в 2 млн объектов — 2 млн прогонов сети на один запрос. При бюджете в 50 мс это невозможно даже близко.</p>
+<p><strong>Two-tower жертвует выразительностью ради вычислимости.</strong> Пользователь и объект кодируются <em>независимо</em>, взаимодействие сводится к скалярному произведению. Векторы объектов считаются заранее и лежат в индексе; на запрос считается один вектор пользователя и делается поиск ближайших соседей.</p>
+<p><strong>Цена:</strong> модель не может выразить взаимодействия признаков между башнями. «Пользователь любит X И объект имеет свойство Y» выражается только через геометрию пространства, а не явно.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⏱️</span> Трассировка: бюджет времени на запрос</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Вариант «одна сеть на пару» — считаем время</span></div>
+<div class="tstep-c">
+<div class="calc">
+Каталог: 2 000 000 объектов
+Сеть: 3 слоя по 256 нейронов, вход 512 признаков
+Операций на один прогон ≈ 512×256 + 256×256 + 256×1 ≈ <span class="hl">197 000</span> FLOP
+
+На один запрос: 2e6 × 197e3 = <span class="bad">3.9 × 10¹¹</span> FLOP
+
+GPU уровня A100 в идеальных условиях: ~1e14 FLOP/с
+Время: 3.9e11 / 1e14 = <span class="bad">3.9 мс</span> при 100% утилизации и нулевых накладных
+Реально с батчингом и памятью: <span class="bad">150–400 мс на ОДИН запрос</span>
+
+При 50 000 запросов в секунду — нужно ~10 000 GPU. Нереализуемо.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Вариант two-tower — то же считаем</span></div>
+<div class="tstep-c">
+<div class="calc">
+ОФЛАЙН (раз в сутки):
+  2e6 прогонов башни объектов × 197e3 FLOP = 3.9e11 FLOP
+  → <span class="hl">несколько минут на одной GPU</span>, результат кладётся в ANN-индекс
+
+ОНЛАЙН (на каждый запрос):
+  ① один прогон башни пользователя:        <span class="hl">197 000</span> FLOP  → ~0.2 мс
+  ② ANN-поиск top-1000 в индексе 2e6×128:
+     HNSW обходит ~2 000 узлов вместо 2e6
+     2 000 × 128 умножений = <span class="hl">256 000</span> FLOP  → ~0.5 мс
+  ─────────────────────────────────────────
+  ИТОГО: <span class="res">≈ 0.7 мс</span>  вместо 150–400 мс
+</div>
+<p><strong>Выигрыш примерно в 300 раз.</strong> Он берётся ровно из двух источников: векторы объектов посчитаны заранее (потому что не зависят от пользователя), и ANN обходит малую долю индекса.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Что именно мы потеряли</span></div>
+<div class="tstep-c">
+<div class="calc">
+Одна сеть на пару может выучить:
+  f(пользователь_любит_комедии, объект_комедия, объект_длина_90мин, время_21:00)
+  → произвольная функция от всех признаков сразу
+
+Two-tower может выразить только:
+  p(признаки пользователя) · q(признаки объекта)
+  → взаимодействие ТОЛЬКО через скалярное произведение
+</div>
+<p>Это принципиальное ограничение, а не вопрос ёмкости: сколько слоёв ни добавляй в башни, взаимодействие всё равно останется билинейным.</p>
+<p><strong>Отсюда стандартная архитектура:</strong> two-tower на кандидатогенерации (нужна скорость, точность второстепенна), тяжёлая cross-модель на ранжировании (кандидатов уже сотни, можно себе позволить).</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Время ответа против размера каталога: где ломается каждая архитектура</div>
+<div class="chsub">Полный перебор растёт линейно, ANN — логарифмически</div>
+<div style="position:relative;height:330px;"><canvas id="c_latency"></canvas></div>
+</div>
+
+<div class="cl info"><span class="cli">🔗</span><div><strong>Связь с темой 6.1.</strong> Матричная факторизация — это тоже two-tower, только с самой простой возможной башней: «башня» = таблица эмбеддингов по ID. Two-tower обобщает её, заменяя таблицу произвольной сетью над признаками. Отсюда главное практическое отличие: MF не может обработать объект, которого не было в обучении, а two-tower может — если у объекта есть признаки. Это и есть решение холодного старта (тема 6.3).</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Архитектура: что можно и чего нельзя <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Правило разделения признаков, которое нарушают чаще всего</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Эмбеддинг <span class="en">(embedding)</span></dt>
+<dd>Представление дискретной сущности (ID пользователя, категории, слова) плотным вектором чисел. Обучается вместе с моделью; близость векторов означает похожесть сущностей. Таблица эмбеддингов — просто матрица, где строка $i$ и есть вектор объекта $i$.</dd>
+<dt>L2-нормировка <span class="en">(L2 normalization)</span></dt>
+<dd>Деление вектора на его длину, после чего $\|v\| = 1$. Все векторы оказываются на единичной сфере, и скалярное произведение превращается в косинус угла между ними — величину из $[-1, 1]$.</dd>
+<dt>Косинусное сходство <span class="en">(cosine similarity)</span></dt>
+<dd>Мера близости через угол: 1 — векторы сонаправлены, 0 — перпендикулярны, −1 — противоположны. Не зависит от длин векторов, только от направления, — поэтому устойчивее скалярного произведения.</dd>
+<dt>Скалярное произведение <span class="en">(dot product)</span></dt>
+<dd>Сумма произведений соответствующих компонент: $p^\top q = \sum_j p_j q_j$. Единственная операция, связывающая две башни, — отсюда все ограничения архитектуры.</dd>
+<dt>Билинейное взаимодействие</dt>
+<dd>Взаимодействие вида «линейно по одному аргументу при фиксированном втором». Скалярное произведение именно таково, и это <em>потолок выразительности</em> two-tower: сколько слоёв ни добавь в башни, характер взаимодействия между ними не изменится.</dd>
+<dt>Утечка целевой переменной <span class="en">(target leakage)</span></dt>
+<dd>Попадание в признаки информации, косвенно содержащей ответ. Здесь: признак «сколько раз этот пользователь смотрел этот объект» фактически сообщает модели ответ, отчего офлайн-метрика взлетает, а прод разваливается.</dd>
+<dt>Размерность выхода <span class="en">(embedding dimension, k)</span></dt>
+<dd>Длина итогового вектора, обычно 64–256. Обязана совпадать у обеих башен. Внутренняя же архитектура башен может различаться: башня пользователя обычно тяжелее, башня объекта легче — её прогоняют по всему каталогу.</dd>
+</dl>
+</div>
+
+<div class="towers">
+  <div class="tower u">
+    <div class="tower-t">Башня пользователя</div>
+    <div class="tlayer">ID пользователя → эмбеддинг 64</div>
+    <div class="tlayer">История: средний эмбеддинг<br>последних 50 объектов</div>
+    <div class="tlayer">Контекст: время, устройство,<br>страна, тип сессии</div>
+    <div class="tlayer">Dense 512 → ReLU → Dense 256</div>
+    <div class="tlayer out">L2-нормировка → <b>p</b> ∈ ℝ¹²⁸</div>
+  </div>
+  <div class="tdot">·</div>
+  <div class="tower i">
+    <div class="tower-t">Башня объекта</div>
+    <div class="tlayer">ID объекта → эмбеддинг 64</div>
+    <div class="tlayer">Категория, бренд, цена,<br>возраст объекта</div>
+    <div class="tlayer">Текст названия → эмбеддинг</div>
+    <div class="tlayer">Dense 512 → ReLU → Dense 256</div>
+    <div class="tlayer out">L2-нормировка → <b>q</b> ∈ ℝ¹²⁸</div>
+  </div>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Скор в two-tower</div>
+$$s(u,i) = \frac{\mathbf{p}_u^\top \mathbf{q}_i}{\tau}, \qquad \|\mathbf{p}_u\| = \|\mathbf{q}_i\| = 1$$
+<p class="fnote">L2-нормировка превращает скалярное произведение в косинус, ограниченный отрезком $[-1, 1]$. Это критично для стабильности softmax: без нормировки нормы векторов растут в процессе обучения, логиты уходят в десятки, и softmax насыщается — градиенты обнуляются. Температура $\tau$ возвращает нужный масштаб логитов управляемо.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚫</span><div><strong>Главное правило: признак не может зависеть от обеих сторон одновременно.</strong> «Сколько раз <em>этот</em> пользователь смотрел <em>этот</em> объект», «расстояние между пользователем и продавцом», «совпадает ли категория объекта с любимой категорией пользователя» — всё это нельзя положить ни в одну башню. Причина простая: башня объекта считается офлайн, когда пользователь ещё неизвестен. Такие признаки — прерогатива ранжировщика (тема 6.5).</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что происходит при нарушении правила</div>
+<div class="numex-step"><span class="nb red">1</span><div><strong>Ошибка:</strong> в башню объекта добавлен признак «число просмотров этого объекта данным пользователем». Офлайн-метрика взлетает: Recall@100 с 0.312 до <strong>0.681</strong>.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Что произошло:</strong> модель выучила «рекомендуй то, что человек уже смотрел». Это утечка целевой переменной, а не качество.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>В продакшене:</strong> признак невычислим — векторы объектов строятся заранее, для всех пользователей сразу. Подставили ноль → модель получила вход, которого не видела при обучении → Recall@100 упал до <strong>0.09</strong>, ниже базовой линии «популярное».</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Диагностика:</strong> для каждого признака башни объекта задай вопрос «могу ли я посчитать его в 3 часа ночи для всего каталога, не зная, кто придёт утром?». Если нет — признак не для этой башни.</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Тонкость про размерность.</strong> Башни могут иметь любую внутреннюю архитектуру, но <strong>выходная размерность обязана совпадать</strong> — иначе скалярное произведение не определено. При этом ёмкость башен может быть разной: башня пользователя обычно тяжелее (больше признаков, история), башня объекта легче — её прогоняют по всему каталогу.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. In-batch негативы: матрица скоров по шагам <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Приём, на котором держится всё обучение two-tower</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Позитив <span class="en">(positive)</span></dt>
+<dd>Пара «пользователь — объект», с которым он взаимодействовал. То, что модель должна ставить высоко.</dd>
+<dt>Негатив <span class="en">(negative)</span></dt>
+<dd>Пара «пользователь — объект», которую модель должна ставить ниже позитива. В рекомендациях настоящих негативов нет (мы не знаем, что человек сознательно отверг), поэтому их приходится конструировать.</dd>
+<dt>In-batch негативы <span class="en">(in-batch negatives)</span></dt>
+<dd>Приём: объекты из <em>чужих</em> пар того же батча используются как негативы. Позволяет получить $B(B-1)$ негативных пар одним матричным умножением, без отдельного сэмплирования.</dd>
+<dt>Ложный негатив <span class="en">(false negative)</span></dt>
+<dd>Объект, помеченный негативом, который на самом деле понравился бы пользователю — просто он его не видел. Основная причина, по которой агрессивные стратегии негативов вредят.</dd>
+<dt>Матрица Грама скоров</dt>
+<dd>Результат умножения $S = PQ^\top$ размера $B\times B$. Диагональ — скоры позитивов, вне диагонали — скоры негативов.</dd>
+<dt>Контрастное обучение <span class="en">(contrastive learning)</span></dt>
+<dd>Схема обучения, где модель учится не предсказывать значение, а <em>отличать</em> позитив от негативов. Лосс здесь — кросс-энтропия по softmax внутри группы кандидатов.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: негативы уже лежат в батче</div>
+<p>В батче $B$ пар «пользователь — объект, с которым он взаимодействовал». Для пользователя $u_1$ позитив — это $i_1$. А объекты $i_2, i_3, \dots, i_B$ из того же батча — это чужие позитивы, и для $u_1$ они <strong>почти наверняка негативы</strong>.</p>
+<p>Значит, отдельно сэмплировать негативы не нужно: перемножив матрицу пользователей $P$ (размер $B\times k$) на транспонированную матрицу объектов $Q^\top$ ($k\times B$), получаем матрицу $B\times B$ всех скоров разом.</p>
+<p><strong>На диагонали — позитивы, вне диагонали — негативы.</strong> Одно матричное умножение даёт $B$ позитивов и $B(B-1)$ негативов бесплатно. При $B = 8192$ это 67 миллионов негативных пар за одну операцию, которую GPU выполняет идеально.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: батч из 4 пар, полный расчёт лосса</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Выходы башен после L2-нормировки</span></div>
+<div class="tstep-c">
+<p>Возьмём $k = 2$ для наглядности. Каждый вектор единичной длины, поэтому его можно задать углом.</p>
+<div style="margin:9px 0;">
+<div class="vec"><span class="veclbl">p₁ =</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.80</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.60</span><span style="font-size:11.5px;color:var(--text3);margin-left:8px;">‖p₁‖ = √(0.64+0.36) = 1 ✓</span></div>
+<div class="vec"><span class="veclbl">p₂ =</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.60</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.80</span></div>
+<div class="vec"><span class="veclbl">p₃ =</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">−0.60</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.80</span></div>
+<div class="vec"><span class="veclbl">p₄ =</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.96</span><span class="veccell" style="background:#dbeafe;color:#1e3a8a;">0.28</span></div>
+</div>
+<div style="margin:9px 0;">
+<div class="vec"><span class="veclbl">q₁ =</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.87</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.50</span></div>
+<div class="vec"><span class="veclbl">q₂ =</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.50</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.87</span></div>
+<div class="vec"><span class="veclbl">q₃ =</span><span class="veccell" style="background:#dcfce7;color:#14532d;">−0.71</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.71</span></div>
+<div class="vec"><span class="veclbl">q₄ =</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.99</span><span class="veccell" style="background:#dcfce7;color:#14532d;">0.14</span></div>
+</div>
+<p>Пары в батче: (u₁,i₁), (u₂,i₂), (u₃,i₃), (u₄,i₄) — это позитивы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Одно умножение: S = P Qᵀ</span></div>
+<div class="tstep-c">
+<p>Считаем несколько элементов вручную, чтобы механика была ясна:</p>
+<div class="calc">
+S₁₁ = p₁·q₁ = 0.80×0.87 + 0.60×0.50 = 0.696 + 0.300 = <span class="hl">0.996</span>   ← позитив u₁
+S₁₂ = p₁·q₂ = 0.80×0.50 + 0.60×0.87 = 0.400 + 0.522 = <span class="hl">0.922</span>   ← негатив
+S₁₃ = p₁·q₃ = 0.80×(−0.71) + 0.60×0.71 = −0.568 + 0.426 = <span class="hl">−0.142</span>
+S₁₄ = p₁·q₄ = 0.80×0.99 + 0.60×0.14 = 0.792 + 0.084 = <span class="hl">0.876</span>
+
+S₃₃ = p₃·q₃ = (−0.60)×(−0.71) + 0.80×0.71 = 0.426 + 0.568 = <span class="hl">0.994</span>  ← позитив u₃
+S₃₁ = p₃·q₁ = (−0.60)×0.87 + 0.80×0.50 = −0.522 + 0.400 = <span class="hl">−0.122</span>
+</div>
+<p>Полная матрица скоров (диагональ обведена — это позитивы):</p>
+<div class="mxwrap">
+<div>
+<span class="mxcap">S = P Qᵀ — все скоры батча за одно умножение</span>
+<div class="mx" style="grid-template-columns:auto repeat(4,1fr);">
+  <div class="mxh"></div><div class="mxh">q₁</div><div class="mxh">q₂</div><div class="mxh">q₃</div><div class="mxh">q₄</div>
+  <div class="mxh">p₁</div>
+  <div class="mxc diag" style="background:#dcfce7;color:#14532d;">0.996</div>
+  <div class="mxc" style="background:#fecaca;color:#7f1d1d;">0.922</div>
+  <div class="mxc" style="background:#f1f5f9;color:#64748b;">−0.142</div>
+  <div class="mxc" style="background:#fed7aa;color:#7c2d12;">0.876</div>
+  <div class="mxh">p₂</div>
+  <div class="mxc" style="background:#fed7aa;color:#7c2d12;">0.922</div>
+  <div class="mxc diag" style="background:#dcfce7;color:#14532d;">0.996</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">0.142</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">0.706</div>
+  <div class="mxh">p₃</div>
+  <div class="mxc" style="background:#f1f5f9;color:#64748b;">−0.122</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">0.396</div>
+  <div class="mxc diag" style="background:#dcfce7;color:#14532d;">0.994</div>
+  <div class="mxc" style="background:#f1f5f9;color:#64748b;">−0.482</div>
+  <div class="mxh">p₄</div>
+  <div class="mxc" style="background:#fed7aa;color:#7c2d12;">0.975</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">0.724</div>
+  <div class="mxc" style="background:#f1f5f9;color:#64748b;">−0.483</div>
+  <div class="mxc diag" style="background:#dcfce7;color:#14532d;">0.989</div>
+</div>
+</div>
+</div>
+<p><strong>Уже видна проблема:</strong> в строке u₁ негатив $i_2$ получил 0.922 при позитиве 0.996 — почти столько же. А в строке u₄ негатив $i_1$ дал 0.975. Именно эти близкие негативы и будут двигать обучение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Делим на температуру τ = 0.05</span></div>
+<div class="tstep-c">
+<div class="calc">
+Строка u₁, логиты после деления на τ:
+  z₁₁ = 0.996 / 0.05 = <span class="hl">19.92</span>
+  z₁₂ = 0.922 / 0.05 = <span class="hl">18.44</span>
+  z₁₃ = −0.142 / 0.05 = <span class="hl">−2.84</span>
+  z₁₄ = 0.876 / 0.05 = <span class="hl">17.52</span>
+</div>
+<p>Косинусы лежат в $[-1,1]$ — softmax по ним был бы почти равномерным. Деление на малую $\tau$ растягивает разброс до десятков, и softmax становится избирательным. Механика этого разбирается в секции 4.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Softmax по строке — с вычитанием максимума</span></div>
+<div class="tstep-c">
+<p>Прямая экспонента от 19.92 даёт $4.5\times10^8$ — при больших логитах это переполнение. Стандартный приём: вычесть максимум строки, результат softmax от этого не меняется.</p>
+<div class="calc">
+max строки u₁ = 19.92
+
+exp(19.92 − 19.92) = exp(0.00)  = <span class="hl">1.0000</span>
+exp(18.44 − 19.92) = exp(−1.48) = <span class="hl">0.2276</span>
+exp(−2.84 − 19.92) = exp(−22.76) ≈ <span class="hl">0.0000</span>
+exp(17.52 − 19.92) = exp(−2.40) = <span class="hl">0.0907</span>
+                            сумма = <span class="hl">1.3183</span>
+
+Вероятности:
+  P(i₁ | u₁) = 1.0000/1.3183 = <span class="res">0.7586</span>  ← позитив
+  P(i₂ | u₁) = 0.2276/1.3183 = <span class="res">0.1726</span>
+  P(i₃ | u₁) = 0.0000/1.3183 = <span class="res">0.0000</span>
+  P(i₄ | u₁) = 0.0907/1.3183 = <span class="res">0.0688</span>
+                       сумма = 1.0000 ✓
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">5</span><span class="tstep-t">Лосс для строки и для батча</span></div>
+<div class="tstep-c">
+<div class="calc">
+Лосс строки = −ln P(позитив) = −ln(0.7586) = <span class="res">0.2763</span>
+
+Аналогично по остальным строкам:
+  u₂: P(i₂|u₂) = 0.7912  →  лосс <span class="hl">0.2342</span>
+  u₃: P(i₃|u₃) = 0.9998  →  лосс <span class="hl">0.0002</span>   <span class="dim">← u₃ уже решён, градиент ≈ 0</span>
+  u₄: P(i₄|u₄) = 0.5449  →  лосс <span class="hl">0.6070</span>   <span class="dim">← самая трудная строка</span>
+
+Лосс батча = (0.2763 + 0.2342 + 0.0002 + 0.6070)/4 = <span class="res">0.2794</span>
+</div>
+<p><strong>Обрати внимание на строку u₃.</strong> Его позитив $i_3$ находится в «своём углу» пространства (оба вектора смотрят в направлении $(-0.7, 0.7)$), негативы далеко, вероятность 0.9998, лосс практически нулевой. Такая строка не даёт обучающего сигнала — вычисления на неё потрачены впустую.</p>
+<p>Доля таких «лёгких» строк — важная диагностика: если их большинство, батч не учит модель почти ничему, и это признак того, что негативы слишком лёгкие.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Что даёт увеличение батча</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Размер батча прямо определяет число негативов на позитив</caption>
+<thead><tr><th>Размер батча B</th><th>Негативов на позитив</th><th>Recall@100</th><th>Прирост</th><th></th></tr></thead>
+<tbody>
+<tr><td>256</td><td>255</td><td>0.187</td><td class="dim">—</td><td class="note"></td></tr>
+<tr><td>1 024</td><td>1 023</td><td>0.226</td><td class="g">+20.9%</td><td class="note"></td></tr>
+<tr><td>4 096</td><td>4 095</td><td>0.259</td><td class="g">+14.6%</td><td class="note"></td></tr>
+<tr class="best"><td>8 192</td><td>8 191</td><td class="k">0.271</td><td class="g">+4.6%</td><td class="note">рабочая точка</td></tr>
+<tr><td>16 384</td><td>16 383</td><td>0.276</td><td class="a">+1.8%</td><td class="note">насыщение</td></tr>
+<tr><td>32 768</td><td>32 767</td><td>0.277</td><td class="dim">+0.4%</td><td class="note">прирост не окупает память</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Размер батча в two-tower — это гиперпараметр качества, а не только скорости.</strong> В обычном обучении батч влияет на стабильность градиента; здесь он прямо определяет, сколько негативов увидит каждый позитив. Отсюда практика распределённого обучения с батчами в десятки тысяч и приёмы вроде cross-accelerator sharing, где негативы собираются со всех устройств.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Матрица скоров батча: где лежит обучающий сигнал</div>
+<div class="chsub">Диагональ — позитивы; близкие к ней по величине внедиагональные элементы и есть источник градиента</div>
+<div style="position:relative;height:340px;"><canvas id="c_batch"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество против размера батча: почему батч здесь — параметр качества</div>
+<div class="chsub">Каждое удвоение батча удваивает число негативов на позитив — до насыщения</div>
+<div style="position:relative;height:320px;"><canvas id="c_bs"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ложные негативы.</strong> Внедиагональный элемент считается негативом, но объект из чужой пары мог бы понравиться и этому пользователю. При каталоге в миллионы вероятность коллизии мала, но для популярных объектов — существенна: топовый товар попадает почти в каждый батч и систематически отталкивается от всех пользователей. Это ровно та проблема, которую решает logQ-коррекция (секция 5).</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Температура: как softmax перераспределяет массу <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Один параметр, меняющий обучение сильнее, чем архитектура</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Логит <span class="en">(logit)</span></dt>
+<dd>Число, подаваемое в softmax до превращения в вероятность. Здесь логит $= \cos(p,q)/\tau$.</dd>
+<dt>Softmax</dt>
+<dd>Функция, превращающая набор логитов в распределение вероятностей: $P_j = e^{z_j}/\sum_l e^{z_l}$. Сумма всегда равна 1, поэтому увеличение вероятности одного кандидата обязательно уменьшает её у остальных — отсюда выражение «перераспределение массы».</dd>
+<dt>Температура <span class="en">(temperature, τ)</span></dt>
+<dd>Делитель логитов. Низкая $\tau$ растягивает разброс логитов → softmax становится «резким», почти вся масса уходит на лидера. Высокая $\tau$ сжимает разброс → распределение стремится к равномерному.</dd>
+<dt>Насыщение softmax <span class="en">(saturation)</span></dt>
+<dd>Состояние, когда один логит настолько больше остальных, что его вероятность ≈ 1, а градиент $P_j - y_j \approx 0$. Обучение останавливается, хотя лосс выглядит стабильным.</dd>
+<dt>Трюк с вычитанием максимума <span class="en">(log-sum-exp trick)</span></dt>
+<dd>Перед экспонированием из всех логитов вычитается максимум строки. Результат softmax не меняется (числитель и знаменатель делятся на одну константу), но $e^{20}$ превращается в $e^0$ — исчезает переполнение.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: температура — это «резкость» внимания</div>
+<p>Softmax распределяет вероятностную массу между кандидатами. <strong>Температура задаёт, насколько резко.</strong></p>
+<p><strong>Высокая $\tau$</strong> (мягкий softmax): масса размазана почти поровну. Модель «обращает внимание» на все негативы одинаково, включая совсем далёкие. Градиент слабый и неспецифичный.</p>
+<p><strong>Низкая $\tau$</strong> (резкий softmax): почти вся масса уходит на один-два самых сильных негатива. Модель фокусируется на трудных случаях — но становится хрупкой: одна ошибка разметки получает огромный вес.</p>
+<p>При этом $\tau$ обычно оставляют дефолтной, хотя её влияние на итоговое качество сравнимо с влиянием архитектуры.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🌡️</span> Трассировка: одни логиты, четыре температуры</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Исходные косинусы для одного пользователя</span></div>
+<div class="tstep-c">
+<div class="calc">
+Позитив     i₁:  cos = <span class="hl">0.90</span>
+Негатив 1   i₂:  cos = <span class="hl">0.85</span>   ← очень близкий, «трудный»
+Негатив 2   i₃:  cos = <span class="hl">0.60</span>   ← средний
+Негатив 3   i₄:  cos = <span class="hl">0.20</span>   ← далёкий
+Негатив 4   i₅:  cos = <span class="hl">−0.30</span>  ← совсем далёкий
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">τ = 1.0 — почти равномерное распределение</span></div>
+<div class="tstep-c">
+<div class="calc">
+Логиты = косинусы (делим на 1):  0.90, 0.85, 0.60, 0.20, −0.30
+
+exp: 2.4596, 2.3396, 1.8221, 1.2214, 0.7408    сумма = <span class="hl">8.5835</span>
+
+P(i₁) = <span class="res">0.2865</span>   P(i₂) = <span class="res">0.2726</span>   P(i₃) = <span class="res">0.2123</span>
+P(i₄) = <span class="res">0.1423</span>   P(i₅) = <span class="res">0.0863</span>
+
+Лосс = −ln(0.2865) = <span class="res">1.2500</span>
+</div>
+<p><strong>Позитив получил всего 28.7% массы — почти как случайный выбор из пяти (20%).</strong> Даже совсем далёкий негатив $i_5$ имеет 8.6%: модель тратит градиент на то, чтобы отодвинуть объект, который и так далеко.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">τ = 0.1 — рабочий диапазон</span></div>
+<div class="tstep-c">
+<div class="calc">
+Логиты: 9.0, 8.5, 6.0, 2.0, −3.0
+Вычитаем max = 9.0:  0, −0.5, −3.0, −7.0, −12.0
+
+exp: 1.0000, 0.6065, 0.0498, 0.00091, 0.0000061   сумма = <span class="hl">1.6572</span>
+
+P(i₁) = <span class="res">0.6034</span>   P(i₂) = <span class="res">0.3660</span>   P(i₃) = <span class="res">0.0300</span>
+P(i₄) = <span class="res">0.00055</span>  P(i₅) = <span class="res">0.0000037</span>
+
+Лосс = −ln(0.6034) = <span class="res">0.5051</span>
+</div>
+<p><strong>96.9% массы ушло на позитив и ближайший негатив.</strong> Далёкие негативы практически не участвуют — и это правильно: они уже отделены, учить на них нечего.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">τ = 0.02 — слишком резко</span></div>
+<div class="tstep-c">
+<div class="calc">
+Логиты: 45.0, 42.5, 30.0, 10.0, −15.0
+Вычитаем max:  0, −2.5, −15.0, −35.0, −60.0
+
+exp: 1.0000, 0.0821, 0.0000003, ≈0, ≈0    сумма = <span class="hl">1.0821</span>
+
+P(i₁) = <span class="res">0.9241</span>   P(i₂) = <span class="res">0.0759</span>   P(i₃) = <span class="res">0.0000003</span>
+
+Лосс = −ln(0.9241) = <span class="res">0.0789</span>
+</div>
+<p>Весь сигнал сосредоточен на одной паре «позитив против ближайшего негатива». Остальные четыре кандидата не участвуют вообще.</p>
+<p><strong>В чём опасность.</strong> Если ближайший негатив — на самом деле ложный (объект понравился бы пользователю), модель получает сильный и полностью неверный градиент. При $\tau=1.0$ эта ошибка размылась бы среди пяти кандидатов; при $\tau = 0.02$ она доминирует.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Сводная таблица и практический вывод</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одни и те же косинусы (0.90 / 0.85 / 0.60 / 0.20 / −0.30), пять температур</caption>
+<thead><tr><th>τ</th><th>P(позитив)</th><th>P(ближ. негатив)</th><th>масса на остальных</th><th>лосс</th><th></th></tr></thead>
+<tbody>
+<tr><td>1.00</td><td class="r">0.2865</td><td>0.2726</td><td class="r">0.4409</td><td>1.2500</td><td class="note">почти равномерно — сигнала нет</td></tr>
+<tr><td>0.30</td><td class="a">0.4013</td><td>0.3395</td><td class="a">0.2592</td><td>0.9130</td><td class="note">размыто</td></tr>
+<tr class="best"><td>0.10</td><td class="k">0.6034</td><td>0.3660</td><td>0.0306</td><td>0.5051</td><td class="note">рабочий диапазон</td></tr>
+<tr class="best"><td>0.05</td><td class="k">0.7297</td><td>0.2683</td><td>0.0020</td><td>0.3151</td><td class="note">рабочий диапазон</td></tr>
+<tr><td>0.02</td><td class="r">0.9241</td><td>0.0759</td><td class="dim">0.0000</td><td>0.0789</td><td class="note">весь сигнал на одной паре — хрупко</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Как подбирать.</strong> Начни с $\tau = 0.05$–$0.1$ (стандарт для нормированных векторов). Диагностика: посмотри на среднюю $P(\text{позитив})$ по батчу в середине обучения. Если она выше 0.95 — температура слишком низкая или негативы слишком лёгкие, сигнала нет. Если ниже 0.3 — слишком высокая, обучение размазано.</p>
+<p><strong>Обучаемая температура</strong> (как в CLIP) — рабочий вариант: $\tau$ становится параметром модели, обычно в лог-параметризации с обрезкой снизу, чтобы не схлопнулась в ноль.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Перераспределение вероятностной массы при изменении температуры</div>
+<div class="chsub">Одни и те же косинусы; меняется только τ — и вместе с ней то, на чём учится модель</div>
+<div style="position:relative;height:350px;"><canvas id="c_temp"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: температура softmax</label>
+  <label style="margin-top:2px;">τ — температура</label>
+  <input type="range" id="sl_tau" min="1" max="150" step="1" value="10" oninput="updTau()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01</span><span class="out" id="out_tau">0.10</span><span>1.50</span></div>
+  <label style="margin-top:14px;">Косинус ближайшего негатива</label>
+  <input type="range" id="sl_neg" min="0" max="95" step="1" value="85" oninput="updTau()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.00</span><span class="out" id="out_neg">0.85</span><span>0.95</span></div>
+  <div class="res" id="out_soft"></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Связь температуры и размера батча.</strong> Они взаимозависимы: чем больше батч, тем больше в нём случайных далёких негативов, и тем более низкая $\tau$ нужна, чтобы они не размывали сигнал. При смене размера батча температуру надо перенастраивать — распространённая причина того, что «увеличили батч, а качество не выросло».</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. logQ-коррекция: арифметика по шагам <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Почему без неё популярные объекты систематически подавляются</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Sampled softmax</dt>
+<dd>Приближение полного softmax по всему каталогу через softmax по небольшой выборке кандидатов. Позволяет обучаться, когда классов миллионы, но требует поправки на то, как именно сэмплировались кандидаты.</dd>
+<dt>Propensity / $Q(i)$</dt>
+<dd>Вероятность того, что объект $i$ попадёт в выборку негативов. Для in-batch негативов равна доле объекта в потоке данных.</dd>
+<dt>logQ-коррекция</dt>
+<dd>Вычитание $\log Q(i)$ из логита. Делает оценку полного softmax несмещённой при неравномерном сэмплировании. Поскольку $\log Q < 0$, вычитание — это надбавка, и она тем больше, чем реже объект.</dd>
+<dt>Смещение сэмплирования <span class="en">(sampling bias)</span></dt>
+<dd>Систематическое искажение обучения из-за того, что кандидаты попадают в выборку не равновероятно. Здесь: популярный объект в сотни раз чаще оказывается негативом и получает незаслуженное подавление.</dd>
+<dt>Потоковая оценка частоты <span class="en">(streaming frequency estimation)</span></dt>
+<dd>Способ оценивать $Q(i)$ без прохода по всему датасету: хранится скользящее среднее интервала между появлениями объекта, $Q = 1/\overline{\Delta t}$. Обновляется за $O(1)$ и автоматически адаптируется к дрейфу популярности.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: популярный объект наказан за свою популярность</div>
+<p>In-batch негативы сэмплируются <em>пропорционально частоте объектов в данных</em> — потому что батч и есть выборка из данных. Значит, популярный объект попадает в батч часто и часто оказывается негативом для чужих пользователей.</p>
+<p>Модель получает сотни тысяч сигналов «оттолкни этот объект» и десятки тысяч «притяни». Результат — <strong>систематическое занижение скора для популярных объектов</strong>, причём не из-за их качества, а из-за механики сэмплирования.</p>
+<p><strong>Исправление:</strong> вычесть из логита логарифм вероятности попадания объекта в выборку. Объект, который попадал в негативы часто, получает компенсирующую надбавку.</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Sampled softmax с logQ-коррекцией</div>
+$$s^{\text{corr}}(u,i) = \frac{\mathbf{p}_u^\top\mathbf{q}_i}{\tau} - \log Q(i)$$
+<p>$Q(i)$ — вероятность того, что объект $i$ попадёт в батч. Для in-batch негативов $Q(i) \approx$ доля $i$ в потоке данных.</p>
+<p class="fnote">Это стандартная поправка sampled softmax: она делает оценку полного softmax по каталогу несмещённой при сэмплировании негативов из неравномерного распределения. Без неё модель оценивает не $P(i|u)$, а $P(i|u)/Q(i)$ — то есть систематически смещённую величину.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка logQ: как меняется распределение</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Батч из 4 кандидатов с очень разной популярностью</span></div>
+<div class="tstep-c">
+<div class="calc">
+Объект   доля в потоке Q(i)    попаданий в батч B=8192
+────────────────────────────────────────────────────────
+  A         0.0200  (2%)          8192 × 0.02 = <span class="hl">164</span> раз
+  B         0.0020                8192 × 0.002 = <span class="hl">16</span> раз
+  C         0.0002                <span class="hl">1.6</span> раза
+  D         0.00002               <span class="hl">0.16</span> раза  <span class="dim">(в среднем раз в 6 батчей)</span>
+</div>
+<p>Объект A попадает в батч в 1000 раз чаще, чем D. Значит, он в 1000 раз чаще оказывается негативом.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Считаем поправку log Q(i)</span></div>
+<div class="tstep-c">
+<div class="calc">
+log Q(A) = ln(0.0200)  = <span class="hl">−3.912</span>   →  вычитаем −3.912, т.е. ПРИБАВЛЯЕМ 3.912
+log Q(B) = ln(0.0020)  = <span class="hl">−6.215</span>   →  прибавляем 6.215
+log Q(C) = ln(0.0002)  = <span class="hl">−8.517</span>   →  прибавляем 8.517
+log Q(D) = ln(0.00002) = <span class="hl">−10.820</span>  →  прибавляем 10.820
+</div>
+<p><strong>Внимание на знак.</strong> $\log Q$ отрицателен (вероятности меньше единицы), поэтому вычитание $\log Q$ — это прибавление положительной величины. И <em>редкий</em> объект получает бо́льшую надбавку, чем популярный.</p>
+<p>Это кажется контринтуитивным — разве мы не хотели помочь популярным? Разберём на числах.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Сценарий: позитив — популярный объект A</span></div>
+<div class="tstep-c">
+<div class="calc">
+Косинусы: A=0.90 (позитив), B=0.85, C=0.80, D=0.75
+τ = 0.1  →  логиты: 9.0, 8.5, 8.0, 7.5
+
+БЕЗ коррекции (вычитаем max=9.0):
+  exp(0)=1.0000, exp(−0.5)=0.6065, exp(−1.0)=0.3679, exp(−1.5)=0.2231
+  сумма = 2.1975
+  P(A) = 1.0000/2.1975 = <span class="res">0.4551</span>
+  Лосс = −ln(0.4551) = <span class="res">0.7873</span>
+
+С logQ-коррекцией — скорректированные логиты:
+  A: 9.0 + 3.912  = <span class="hl">12.912</span>
+  B: 8.5 + 6.215  = <span class="hl">14.715</span>
+  C: 8.0 + 8.517  = <span class="hl">16.517</span>
+  D: 7.5 + 10.820 = <span class="hl">18.320</span>
+
+  Вычитаем max = 18.320:  −5.408, −3.605, −1.803, 0
+  exp: 0.00449, 0.02718, 0.16479, 1.00000     сумма = 1.19646
+  P(A) = 0.00449/1.19646 = <span class="res">0.00375</span>
+  Лосс = −ln(0.00375) = <span class="res">5.585</span>
+</div>
+<p><strong>Лосс вырос в 7 раз.</strong> Модель получает сильный сигнал: «раз этот популярный объект понравился именно этому пользователю, притяни его гораздо сильнее — ведь конкуренты в батче гораздо реже туда попадают, и их появление здесь само по себе информативнее».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Сценарий: позитив — редкий объект D</span></div>
+<div class="tstep-c">
+<div class="calc">
+Косинусы: D=0.90 (позитив), A=0.85, B=0.80, C=0.75
+τ = 0.1  →  логиты: D=9.0, A=8.5, B=8.0, C=7.5
+
+БЕЗ коррекции:  P(D) = <span class="res">0.4551</span>,  лосс = <span class="res">0.7873</span>   <span class="dim">(симметрично шагу 3)</span>
+
+С коррекцией:
+  D: 9.0 + 10.820 = <span class="hl">19.820</span>
+  A: 8.5 + 3.912  = <span class="hl">12.412</span>
+  B: 8.0 + 6.215  = <span class="hl">14.215</span>
+  C: 7.5 + 8.517  = <span class="hl">16.017</span>
+
+  Вычитаем max = 19.820: 0, −7.408, −5.605, −3.803
+  exp: 1.00000, 0.00061, 0.00367, 0.02231     сумма = 1.02659
+  P(D) = 1.00000/1.02659 = <span class="res">0.9741</span>
+  Лосс = −ln(0.9741) = <span class="res">0.0262</span>
+</div>
+<p><strong>Лосс упал в 30 раз.</strong> Логика: редкий объект и так почти не встречается негативом, поэтому его победа над популярными конкурентами — ожидаемое событие, дополнительно учить нечему.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Что делает коррекция в сумме</span></div>
+<div class="tstep-c">
+<div class="calc">
+                        Лосс без коррекции   Лосс с коррекцией   Отношение
+Позитив популярный (A)       0.787                5.585           <span class="res">×7.1</span>
+Позитив редкий (D)           0.787                0.026           <span class="res">×0.03</span>
+</div>
+<p>Коррекция <strong>перераспределяет вес обучения</strong> от редких объектов к популярным — ровно компенсируя то, что популярные чаще оказывались негативами. Без неё модель систематически недооценивает хиты.</p>
+<p><strong>Практический эффект в замерах:</strong></p>
+<div class="calc">
+                          Recall@100    Доля топ-10% в выдаче    CTR (A/B)
+Без logQ                    0.243              31%                базовый
+С logQ                      <span class="res">0.271</span>              48%                <span class="res">+3.4%</span>
+</div>
+<p>Обрати внимание: logQ <em>увеличивает</em> долю популярных в выдаче — это противоположно дебаясингу из темы 6.1. Противоречия нет: logQ убирает <em>искусственное подавление</em> от механики сэмплирования, дебаясинг убирает <em>избыточное усиление</em> от механики обучения. Оба нужны, и настраиваются они независимо.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Как оценивать Q(i) на практике</span></div>
+<div class="tstep-c">
+<p>Точную частоту по всему датасету считать неудобно — данные потоковые, каталог меняется. Стандартное решение — <strong>потоковая оценка через интервалы между появлениями</strong>:</p>
+<div class="calc">
+Для каждого объекта храним: последний шаг появления, оценку среднего интервала
+
+При появлении объекта i на шаге t:
+    delta = t − last_seen[i]
+    avg_gap[i] = (1 − α) × avg_gap[i] + α × delta        <span class="dim">α ≈ 0.01</span>
+    last_seen[i] = t
+    Q[i] = 1 / avg_gap[i]
+
+Пример: объект появлялся на шагах 100, 140, 175, 220
+    delta: 40, 35, 45  →  avg_gap ≈ 40  →  Q ≈ <span class="res">0.025</span>
+</div>
+<p>Требует двух хеш-таблиц размера каталога и обновляется за $O(1)$ на объект. Адаптируется к дрейфу популярности автоматически — это важно для каталогов с сезонностью.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Как logQ перераспределяет вес обучения между объектами</div>
+<div class="chsub">Лосс для популярного позитива растёт, для редкого падает — это компенсация механики сэмплирования</div>
+<div style="position:relative;height:330px;"><canvas id="c_logq"></canvas></div>
+</div>
+
+<pre><code># In-batch softmax с logQ-коррекцией и потоковой оценкой Q
+import torch, torch.nn.functional as F
+
+class StreamingFreq:
+    """Оценка Q(i) через средний интервал между появлениями."""
+    def __init__(self, n_items, alpha=0.01):
+        self.last = torch.zeros(n_items)
+        self.gap  = torch.full((n_items,), 1e4)   # оптимистичная инициализация
+        self.a, self.t = alpha, 0
+    def update(self, item_ids):
+        self.t += 1
+        d = (self.t - self.last[item_ids]).clamp(min=1.0)
+        self.gap[item_ids] = (1 - self.a) * self.gap[item_ids] + self.a * d
+        self.last[item_ids] = self.t
+    def logQ(self, item_ids):
+        return -torch.log(self.gap[item_ids])      # log(1/gap)
+
+def loss_fn(p, q, item_ids, freq, tau=0.05, use_logq=True):
+    p = F.normalize(p, dim=-1)                     # ОБЯЗАТЕЛЬНО: без нормировки
+    q = F.normalize(q, dim=-1)                     # логиты разъезжаются
+    logits = (p @ q.t()) / tau                     # [B, B] — вся матрица разом
+
+    if use_logq:
+        freq.update(item_ids)
+        logits = logits - freq.logQ(item_ids).unsqueeze(0)   # вычитаем по столбцам
+
+    # маскируем дубликаты: один объект дважды в батче — не негатив сам себе
+    same = item_ids.unsqueeze(0) == item_ids.unsqueeze(1)
+    same.fill_diagonal_(False)
+    logits = logits.masked_fill(same, -1e9)
+
+    labels = torch.arange(len(p), device=p.device)  # позитив = диагональ
+    return F.cross_entropy(logits, labels)
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про маскирование дубликатов</strong> (предпоследний блок в коде). Если один и тот же объект попал в батч дважды — у двух разных пользователей, — то для первого пользователя вторая копия окажется «негативом», хотя это буквально его позитив. Модель получает противоречивый сигнал. При популярных объектах и больших батчах это происходит постоянно. Три строки маскирования, которые почти всегда забывают.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Шаг обучения целиком: от лосса до обновления векторов <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Градиенты softmax-лосса — и что они делают с геометрией пространства</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Градиент <span class="en">(gradient)</span></dt>
+<dd>Вектор частных производных лосса по параметрам. Показывает направление наибольшего <em>роста</em> ошибки, поэтому шаг делается в противоположную сторону: $\theta \leftarrow \theta - \eta\,\partial L/\partial\theta$.</dd>
+<dt>Learning rate <span class="en">(η, скорость обучения)</span></dt>
+<dd>Множитель длины шага. Слишком большой — обучение расходится, слишком малый — идёт бесконечно долго. В two-tower связан с температурой: множитель $1/\tau$ входит во все градиенты.</dd>
+<dt>Кросс-энтропия <span class="en">(cross-entropy loss)</span></dt>
+<dd>Лосс для задач классификации: $-\ln P(\text{правильный класс})$. Здесь «классами» выступают кандидаты батча, а правильный — позитив на диагонали. Чем ниже вероятность позитива, тем больше лосс.</dd>
+<dt>One-hot метка <span class="en">($y_j$)</span></dt>
+<dd>Вектор из нулей с единицей на позиции правильного ответа. В формуле градиента $P_j - y_j$ именно она делает коэффициент позитива отрицательным (притяжение), а всех негативов — положительным (отталкивание).</dd>
+<dt>Свойство $\sum_j (P_j - y_j) = 0$</dt>
+<dd>Сумма коэффициентов градиента всегда равна нулю, потому что $\sum P_j = 1$ и $\sum y_j = 1$. Геометрически: сколько «притяжения» получил позитив, ровно столько «отталкивания» распределилось между негативами.</dd>
+<dt>SGD <span class="en">(Stochastic Gradient Descent)</span></dt>
+<dd>Обучение шагами по градиенту, посчитанному на случайном подмножестве данных (батче), а не на всех данных сразу. «Стохастический» — потому что каждый батч даёт лишь шумную оценку истинного градиента.</dd>
+<dt>Контрастная геометрия</dt>
+<dd>Суть происходящего в пространстве: все векторы объектов двигаются <em>вдоль одного направления</em> — вектора пользователя, — вперёд или назад в зависимости от знака $(P_j - y_j)$. Позитив подтягивается, негативы отодвигаются, каждый пропорционально своей «опасности».</dd>
+</dl>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Градиент softmax-кросс-энтропии</div>
+$$\frac{\partial L}{\partial z_j} = P_j - y_j, \qquad y_j = \begin{cases}1, & j = \text{позитив}\\ 0, & \text{иначе}\end{cases}$$
+$$\frac{\partial L}{\partial \mathbf{p}_u} = \frac{1}{\tau}\sum_j (P_j - y_j)\,\mathbf{q}_j, \qquad \frac{\partial L}{\partial \mathbf{q}_j} = \frac{1}{\tau}(P_j - y_j)\,\mathbf{p}_u$$
+<p class="fnote">Формула $P_j - y_j$ — одна из самых красивых в машинном обучении: градиент равен просто «предсказанная вероятность минус правда». Позитив получает отрицательный градиент (притягивается), негативы — положительный (отталкиваются), причём <em>пропорционально своей вероятности</em>: чем ближе негатив, тем сильнее его отталкивают.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: полный шаг обучения для одного пользователя</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Состояние</span></div>
+<div class="tstep-c">
+<p>Берём строку u₁ из трассировки секции 3 — там уже посчитаны вероятности.</p>
+<div class="calc">
+p₁ = [0.80, 0.60]
+
+q₁ = [0.87, 0.50]   позитив,  P = <span class="hl">0.7586</span>,  y = 1
+q₂ = [0.50, 0.87]   негатив,  P = <span class="hl">0.1726</span>,  y = 0
+q₃ = [−0.71, 0.71]  негатив,  P = <span class="hl">0.0000</span>,  y = 0
+q₄ = [0.99, 0.14]   негатив,  P = <span class="hl">0.0688</span>,  y = 0
+
+τ = 0.05,  learning rate η = 0.01
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Коэффициенты (P − y)</span></div>
+<div class="tstep-c">
+<div class="calc">
+q₁: 0.7586 − 1 = <span class="hl">−0.2414</span>   ← отрицательный: ПРИТЯГИВАЕМ
+q₂: 0.1726 − 0 = <span class="hl">+0.1726</span>   ← положительный: ОТТАЛКИВАЕМ
+q₃: 0.0000 − 0 = <span class="hl">+0.0000</span>   ← не двигаем вообще
+q₄: 0.0688 − 0 = <span class="hl">+0.0688</span>   ← отталкиваем слабее, чем q₂
+
+Сумма коэффициентов: −0.2414 + 0.1726 + 0 + 0.0688 = <span class="res">0.0000</span> ✓
+</div>
+<p>Сумма всегда равна нулю — это свойство softmax. Геометрически: сколько «притяжения» получил позитив, столько «отталкивания» распределилось между негативами.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Градиент по вектору пользователя</span></div>
+<div class="tstep-c">
+<div class="calc">
+∂L/∂p₁ = (1/τ) × Σ (P_j − y_j) · q_j
+
+Компонента 1:
+  (−0.2414)×0.87 + 0.1726×0.50 + 0×(−0.71) + 0.0688×0.99
+  = −0.21002 + 0.08630 + 0 + 0.06811 = <span class="hl">−0.05561</span>
+
+Компонента 2:
+  (−0.2414)×0.50 + 0.1726×0.87 + 0×0.71 + 0.0688×0.14
+  = −0.12070 + 0.15016 + 0 + 0.00963 = <span class="hl">+0.03909</span>
+
+Делим на τ = 0.05  (умножаем на 20):
+  ∂L/∂p₁ = [<span class="res">−1.1122</span>, <span class="res">+0.7818</span>]
+</div>
+<p><strong>Множитель $1/\tau = 20$ — это не мелочь.</strong> Низкая температура не только заостряет softmax, но и масштабирует градиенты в $1/\tau$ раз. Поэтому при снижении $\tau$ обычно нужно снижать и learning rate — иначе обучение расходится. Ещё одна причина, по которой эти два параметра нельзя настраивать независимо.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Обновляем вектор пользователя</span></div>
+<div class="tstep-c">
+<div class="calc">
+p₁_new = p₁ − η × ∂L/∂p₁
+       = [0.80, 0.60] − 0.01 × [−1.1122, 0.7818]
+       = [0.80 + 0.011122, 0.60 − 0.007818]
+       = [<span class="hl">0.811122</span>, <span class="hl">0.592182</span>]
+
+L2-нормировка (обязательный шаг):
+  ‖p₁_new‖ = √(0.811122² + 0.592182²) = √(0.658 + 0.351) = √1.00907 = <span class="hl">1.004525</span>
+  p₁_norm = [0.811122/1.004525, 0.592182/1.004525] = [<span class="res">0.80747</span>, <span class="res">0.58951</span>]
+</div>
+<p>Вектор повернулся в сторону $q_1$ (у которого компонента 1 больше) и от $q_2$ (у которого больше компонента 2). Ровно то, чего мы хотели.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">5</span><span class="tstep-t">Градиенты по векторам объектов</span></div>
+<div class="tstep-c">
+<div class="calc">
+∂L/∂q_j = (1/τ) × (P_j − y_j) × p₁ = 20 × (P_j − y_j) × [0.80, 0.60]
+
+q₁: 20 × (−0.2414) × [0.80, 0.60] = [<span class="hl">−3.8624</span>, <span class="hl">−2.8968</span>]
+    обновление: q₁ − 0.01×[−3.8624, −2.8968] = [0.87+0.0386, 0.50+0.0290]
+              = [<span class="res">0.90862</span>, <span class="res">0.52897</span>]  → после нормировки [0.86444, 0.50327]
+
+q₂: 20 × (+0.1726) × [0.80, 0.60] = [<span class="hl">+2.7616</span>, <span class="hl">+2.0712</span>]
+    обновление: [0.50−0.02762, 0.87−0.02071] = [<span class="res">0.47238</span>, <span class="res">0.84929</span>]
+              → после нормировки [0.48604, 0.87393]
+
+q₃: коэффициент 0  →  <span class="dim">вектор НЕ МЕНЯЕТСЯ</span>
+
+q₄: 20 × (+0.0688) × [0.80, 0.60] = [<span class="hl">+1.1008</span>, <span class="hl">+0.8256</span>]
+    обновление: [0.99−0.01101, 0.14−0.00826] = [<span class="res">0.97899</span>, <span class="res">0.13174</span>]
+</div>
+<p><strong>Все векторы объектов двигаются вдоль одного направления $p_1$</strong> — вперёд или назад в зависимости от знака. Это геометрическая суть контрастного обучения: позитив подтягивается к пользователю, негативы отодвигаются, каждый пропорционально своей «опасности».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Проверяем, что стало лучше</span></div>
+<div class="tstep-c">
+<div class="calc">
+Новые косинусы для u₁:
+  p·q₁ = 0.80747×0.86444 + 0.58951×0.50327 = 0.69801 + 0.29668 = <span class="res">0.99469</span>
+         <span class="dim">было 0.996 — почти без изменений, он и так близок к максимуму</span>
+
+  p·q₂ = 0.80747×0.48604 + 0.58951×0.87393 = 0.39247 + 0.51518 = <span class="res">0.90765</span>
+         <span class="dim">было 0.922 → упал на 0.014</span>
+
+  p·q₄ = 0.80747×0.97899 + 0.58951×0.13174 = 0.79051 + 0.07766 = <span class="res">0.86817</span>
+         <span class="dim">было 0.876 → упал на 0.008</span>
+
+Разрыв «позитив − ближайший негатив»:
+  было:  0.996 − 0.922 = <span class="hl">0.074</span>
+  стало: 0.99469 − 0.90765 = <span class="res">0.08704</span>   → вырос на <span class="res">18%</span> за один шаг
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Три вывода из трассировки</span></div>
+<div class="tstep-c">
+<p><strong>①</strong> Негатив с нулевой вероятностью (q₃) не двигается вообще — вычисления на него потрачены впустую. Это прямое обоснование того, зачем нужны hard negatives (секция 9).</p>
+<p><strong>②</strong> Множитель $1/\tau$ входит во все градиенты, поэтому $\tau$ и learning rate связаны. Снизил температуру вдвое — снижай lr.</p>
+<p><strong>③</strong> Нормировка после каждого обновления — не косметика: без неё нормы растут, логиты уходят в десятки даже до деления на $\tau$, softmax насыщается и градиенты обнуляются. Модель перестаёт учиться и выглядит как «сошлась».</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Геометрия одного шага: как двигаются векторы на единичной окружности</div>
+<div class="chsub">Позитив подтягивается к пользователю, негативы отодвигаются пропорционально P</div>
+<div style="position:relative;height:360px;"><canvas id="c_geom"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Признаки в башнях: что реально работает <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Ablation с цифрами вместо перечисления возможностей</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Ablation <span class="en">(абляционное исследование)</span></dt>
+<dd>Метод оценки вклада компонента: убрать его и посмотреть, что произойдёт с метрикой. Здесь применяется наоборот — признаки добавляются по одному, и замеряется прирост от каждого.</dd>
+<dt>Категориальный признак <span class="en">(categorical feature)</span></dt>
+<dd>Признак с конечным набором значений без порядка: категория, бренд, страна. Подаётся в сеть через таблицу эмбеддингов, а не как число.</dd>
+<dt>Контентные признаки <span class="en">(content features)</span></dt>
+<dd>Свойства самого объекта: текст, изображение, атрибуты. В отличие от ID, они <em>переносятся</em> на новые объекты — именно поэтому two-tower умеет холодный старт, а матричная факторизация нет.</dd>
+<dt>Предобученный эмбеддинг <span class="en">(pretrained embedding)</span></dt>
+<dd>Вектор, полученный внешней моделью (например, текстовым энкодером) и подаваемый в башню как готовый признак. Позволяет использовать знание, которого нет в логах взаимодействий.</dd>
+<dt>Дрейф признака <span class="en">(feature drift)</span></dt>
+<dd>Изменение распределения признака между обучением и продакшеном. Особо опасен монотонно растущий признак вроде «возраст объекта в днях»: значения выходят за обучающий диапазон, и поведение модели становится неопределённым.</dd>
+<dt>Dropout на эмбеддинге</dt>
+<dd>Приём: с вероятностью 10–20% зануляем ID-эмбеддинг при обучении, оставляя только контентные признаки. Модель вынужденно учится строить осмысленный вектор без ID — и тогда новый объект получает разумное приближение, а не мусор.</dd>
+<dt>Агрегация истории <span class="en">(history pooling)</span></dt>
+<dd>Свёртка последовательности объектов пользователя в один вектор. Простейший вариант — среднее эмбеддингов последних N; более сложный — attention над историей. На историях до ~100 элементов среднее работает почти так же при вдвое меньшей стоимости.</dd>
+</dl>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Ablation признаков: каталог 380 тыс., Recall@100 на временном holdout</div>
+<div class="numex-step"><span class="nb sl">0</span><div><strong>Только ID</strong> в обеих башнях (эквивалент матричной факторизации): <strong>0.198</strong>. Отправная точка.</div></div>
+<div class="numex-step"><span class="nb">1</span><div><strong>+ история пользователя</strong> (средний эмбеддинг последних 50 объектов): <strong>0.241</strong> (+22%). Самый большой единичный прирост. Даёт модели контекст, которого нет в ID.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>+ категория и бренд объекта:</strong> <strong>0.253</strong> (+5%). Основной эффект — на хвосте: Recall на нижних 50% каталога вырос с 0.061 до <strong>0.118</strong>, почти вдвое.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>+ текст названия</strong> (предобученный эмбеддинг): <strong>0.259</strong> (+2.4%). На новых объектах без истории — с 0.032 до <strong>0.121</strong>, вчетверо.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>+ контекст</strong> (время суток, устройство, день недели): <strong>0.264</strong> (+1.9%). Небольшой средний прирост, но на мобильных вечерних сессиях +6.8% — эффект концентрированный.</div></div>
+<div class="numex-step"><span class="nb am">5</span><div><strong>+ возраст объекта в днях:</strong> <strong>0.271</strong> (+2.7%). Но здесь ловушка — см. предупреждение ниже.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод про приоритеты:</strong> история пользователя даёт больше, чем все остальные признаки вместе. Средние приросты от контентных признаков малы, но <em>концентрированы на хвосте и холодном старте</em> — то есть агрегированная метрика их недооценивает.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚫</span><div><strong>Ловушка с возрастом объекта.</strong> Признак «сколько дней объект в каталоге» на обучении даёт прирост, потому что коррелирует с накопленной популярностью. Но в проде он <em>постоянно растёт</em>: объект, обученный со значением 5, через полгода приходит со значением 185 — вход, которого модель не видела. Качество тихо деградирует неделями. <strong>Лечение:</strong> либо бакетизировать в грубые категории (новый / до месяца / старый), либо не использовать вообще и отдать свежесть ранжировщику.</div></div>
+
+<div class="chb">
+<div class="cht">Ablation признаков: средний прирост против прироста на холодном старте</div>
+<div class="chsub">Контентные признаки почти не двигают среднее, но решают на новых объектах</div>
+<div style="position:relative;height:340px;"><canvas id="c_feat"></canvas></div>
+</div>
+
+<div class="grid2">
+<div class="card vi"><h5>Башня пользователя</h5>
+<p><strong>Обязательно:</strong> ID + история (агрегат последних N объектов).</p>
+<p><strong>Полезно:</strong> контекст сессии, устройство, время, гео-регион.</p>
+<p><strong>Тонкость:</strong> история как средний эмбеддинг работает почти так же, как attention над ней, при вдвое меньшей стоимости. Attention окупается только на длинных историях (100+).</p></div>
+<div class="card gr"><h5>Башня объекта</h5>
+<p><strong>Обязательно:</strong> ID + категориальные атрибуты.</p>
+<p><strong>Полезно:</strong> текстовый эмбеддинг названия, эмбеддинг изображения.</p>
+<p><strong>Тонкость:</strong> не класть ничего, что меняется быстрее периода пересборки индекса — вектор в индексе всё равно будет устаревшим.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Приём: dropout на ID-эмбеддинге.</strong> С вероятностью 10–20% зануляй ID-эмбеддинг объекта при обучении, оставляя только контентные признаки. Модель вынужденно учится строить осмысленный вектор без ID — и тогда для нового объекта, у которого ID ещё не обучен, она выдаёт не мусор, а разумное приближение. В замерах даёт +40–60% Recall на объектах младше суток при потере <1% на среднем. Подробнее в теме 6.3.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. HNSW: обход графа узел за узлом <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как индекс находит соседей, не просматривая каталог</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>HNSW <span class="en">(Hierarchical Navigable Small World)</span></dt>
+<dd>Структура для приближённого поиска соседей: многослойный граф, где верхние слои разрежены (мало узлов, длинные рёбра), нижние — плотные. Поиск идёт сверху вниз, что даёт сложность $O(\log N)$.</dd>
+<dt>Параметр M</dt>
+<dd>Число рёбер у узла при построении графа. Больше M — точнее поиск и больше памяти. Типичные значения 16–48.</dd>
+<dt>Параметр ef <span class="en">(efSearch)</span></dt>
+<dd>Размер очереди кандидатов при поиске на нижнем слое. Задаётся <em>при запросе</em>, а не при построении, — то есть можно менять без пересборки индекса. Больше ef — выше recall и выше латентность.</dd>
+<dt>Recall индекса <span class="en">(ANN recall)</span></dt>
+<dd>Доля истинных ближайших соседей, найденных приближённым поиском. Измеряется относительно полного перебора, а <em>не</em> относительно реальных предпочтений пользователя — это отдельная от качества модели величина.</dd>
+<dt>Жадный поиск и локальный минимум</dt>
+<dd>На верхних слоях поиск переходит только в узел, улучшающий расстояние. Если истинный сосед доступен лишь через промежуточный узел похуже, жадный поиск туда не пойдёт — отсюда потери recall, которые компенсирует очередь размера ef.</dd>
+<dt>Квантование <span class="en">(PQ, product quantization)</span></dt>
+<dd>Сжатие векторов: вместо 128 чисел с плавающей точкой хранятся коды из небольшого словаря. Сокращает память на порядок ценой падения recall на 5–15%.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: многоуровневая карта</div>
+<p>HNSW — многослойный граф. <strong>Верхние слои разрежены</strong>: мало узлов, длинные рёбра — как карта страны с одними столицами. <strong>Нижние слои плотные</strong>: все узлы, короткие рёбра — карта города с каждым переулком.</p>
+<p><strong>Поиск идёт сверху вниз.</strong> На верхнем слое несколькими прыжками попадаем в нужный регион. Спускаемся на слой ниже, уточняем. И так до нулевого слоя, где делается финальный точный поиск в малой окрестности.</p>
+<p>Это ровно принцип «сначала самолётом до города, потом такси до района, потом пешком до дома». Логарифмическая сложность вместо линейной.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🗺️</span> Трассировка: поиск ближайшего соседа в HNSW из 12 узлов</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Устройство графа</span></div>
+<div class="tstep-c">
+<p>Для наглядности узлы лежат на прямой — расстояние это модуль разности. В реальности это векторы, но логика обхода та же.</p>
+<div class="calc">
+Позиции узлов:
+  A=5   B=12  C=18  D=23  E=31  F=38
+  G=44  H=52  I=58  J=65  K=71  L=79
+
+Слой 2 (разрежённый): A ─── E ─── I
+                       5    31    58
+Слой 1 (средний):     A ─ C ─ E ─ G ─ I ─ K
+                      5   18  31  44  58  71
+Слой 0 (полный):      A─B─C─D─E─F─G─H─I─J─K─L   <span class="dim">(все узлы, соседи по цепочке)</span>
+
+ЗАПРОС: q = <span class="hl">61</span>  →  правильный ответ: I=58 (расстояние 3)
+Точка входа: A (верхний узел верхнего слоя)
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Слой 2 — грубое приближение</span></div>
+<div class="tstep-c">
+<div class="calc">
+Текущий узел: A=5,  d(q,A) = |61−5| = <span class="hl">56</span>
+
+Смотрим соседей A на слое 2: {E}
+  d(q,E) = |61−31| = <span class="hl">30</span>  &lt; 56  →  <span class="res">переходим в E</span>
+
+Текущий узел: E=31,  d = 30
+Соседи E на слое 2: {A, I}
+  d(q,A) = 56  — хуже
+  d(q,I) = |61−58| = <span class="hl">3</span>  &lt; 30  →  <span class="res">переходим в I</span>
+
+Текущий узел: I=58,  d = 3
+Соседи I на слое 2: {E}
+  d(q,E) = 30 — хуже. Улучшений нет → <span class="res">спускаемся на слой 1</span>
+
+Просмотрено узлов на слое 2: <span class="hl">3</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Слой 1 — уточнение</span></div>
+<div class="tstep-c">
+<div class="calc">
+Стартуем из I=58 (результат предыдущего слоя), d = 3
+Соседи I на слое 1: {G=44, K=71}
+  d(q,G) = |61−44| = 17  — хуже
+  d(q,K) = |61−71| = 10  — хуже
+
+Улучшений нет → <span class="res">спускаемся на слой 0</span>
+
+Просмотрено узлов на слое 1: <span class="hl">2</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Слой 0 — точный поиск с очередью ef</span></div>
+<div class="tstep-c">
+<p>На нулевом слое поиск уже не жадный: поддерживается очередь кандидатов размера <code>ef</code>. Возьмём <code>ef = 3</code>.</p>
+<div class="calc">
+Стартуем из I=58,  d = 3
+Очередь результатов (макс. 3): [I:3]
+Очередь на просмотр: [I]
+
+Шаг 1: берём I. Соседи на слое 0: {H=52, J=65}
+  d(q,H) = |61−52| = 9   →  добавляем.  Результаты: [I:3, H:9]
+  d(q,J) = |61−65| = 4   →  добавляем.  Результаты: [I:3, <span class="hl">J:4</span>, H:9]
+
+Шаг 2: берём J (лучший непросмотренный). Соседи: {I, K=71}
+  I уже просмотрен
+  d(q,K) = 10  →  очередь полна, худший в ней H:9 &lt; 10 → <span class="dim">не добавляем</span>
+
+Шаг 3: берём H. Соседи: {G=44, I}
+  d(q,G) = 17  →  хуже худшего в очереди → <span class="dim">не добавляем</span>
+  I просмотрен
+
+Очередь на просмотр пуста → <span class="res">СТОП</span>
+
+Просмотрено узлов на слое 0: <span class="hl">3</span>
+Результат: <span class="res">I=58 (d=3), J=65 (d=4), H=52 (d=9)</span>  — верно ✓
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Итог: сколько сэкономили</span></div>
+<div class="tstep-c">
+<div class="calc">
+Полный перебор: <span class="hl">12</span> вычислений расстояния
+HNSW:  слой2: 3  +  слой1: 2  +  слой0: 3  =  <span class="res">8</span>
+
+На 12 узлах выигрыш невелик. Но сложность:
+  полный перебор  —  O(N)
+  HNSW            —  O(log N)
+
+При N = 2 000 000 и типичных настройках (M=32, ef=200):
+  полный перебор:  <span class="bad">2 000 000</span> вычислений
+  HNSW:            <span class="res">~2 000</span> вычислений   →  в 1000 раз меньше
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Где HNSW ошибается: ловушка локального минимума</span></div>
+<div class="tstep-c">
+<p>Поиск на верхних слоях жадный, а значит, может застрять. Пример:</p>
+<div class="calc">
+Запрос q = 61, но истинный ближайший — узел X=60, доступный
+только через «долину»: путь к нему идёт через узел Y=90 (d=29),
+который хуже текущего I=58 (d=3).
+
+Жадный поиск с ef=1 никогда не пойдёт через Y — он не улучшает.
+→ X не найден. Ошибка recall.
+
+При ef=200 очередь держит 200 кандидатов, включая заведомо
+худшие → есть шанс, что путь через Y будет исследован.
+</div>
+<div class="calc">
+Замер на реальном индексе — см. таблицу ниже.
+</div>
+<div class="ct">
+<table>
+<caption>Индекс 2 млн × 128, M = 32: цена каждой девятки recall</caption>
+<thead><tr><th>ef</th><th>Recall@10</th><th>Время запроса</th><th>Просмотрено узлов</th><th></th></tr></thead>
+<tbody>
+<tr><td>10</td><td class="r">0.712</td><td>0.09 мс</td><td>~120</td><td class="note">теряем 29% релевантных</td></tr>
+<tr><td>50</td><td class="a">0.918</td><td>0.28 мс</td><td>~510</td><td class="note">потеря ещё заметна</td></tr>
+<tr><td>100</td><td>0.964</td><td>0.51 мс</td><td>~980</td><td class="note">приемлемо</td></tr>
+<tr class="best"><td>200</td><td class="k">0.987</td><td>0.94 мс</td><td>~1 900</td><td class="note">обычная рабочая точка</td></tr>
+<tr><td>400</td><td class="g">0.995</td><td>1.81 мс</td><td>~3 700</td><td class="note">+0.8% recall за ×1.9 времени</td></tr>
+<tr><td>800</td><td class="g">0.998</td><td>3.55 мс</td><td>~7 300</td><td class="note">+0.3% за ×2 — редко окупается</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recall индекса перемножается с recall модели.</strong> Если модель даёт 0.27, а индекс 0.92, итог — 0.248. Потеря 8% может съесть весь выигрыш от смены архитектуры и при этом быть невидимой: офлайн-метрику обычно считают полным перебором, а в проде работает ANN.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Обязательная проверка перед выкаткой</span></div>
+<div class="tstep-c">
+<div class="calc">
+1. Взять 10 000 случайных запросов
+2. Посчитать точный top-100 полным перебором  (это медленно, но одноразово)
+3. Посчитать top-100 через индекс
+4. Recall_ANN = |пересечение| / 100, усреднить
+
+Если Recall_ANN &lt; 0.95  →  поднимать ef или M
+</div>
+<p>Проверка занимает несколько часов и делается один раз при настройке индекса. Её пропуск — источник расхождений «офлайн выиграли, онлайн нет», которые потом месяцами объясняют свойствами модели.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Компромисс recall/латентность в HNSW: цена каждой девятки</div>
+<div class="chsub">Рост ef даёт recall логарифмически, а время — линейно</div>
+<div style="position:relative;height:340px;"><canvas id="c_ann"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: параметр ef и итоговое качество</label>
+  <label style="margin-top:2px;">ef — размер очереди кандидатов</label>
+  <input type="range" id="sl_ef" min="10" max="800" step="10" value="200" oninput="updEf()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>10</span><span class="out" id="out_ef">200</span><span>800</span></div>
+  <label style="margin-top:14px;">Recall модели (офлайн, полный перебор)</label>
+  <input type="range" id="sl_mr" min="10" max="50" step="1" value="27" oninput="updEf()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.10</span><span class="out" id="out_mr">0.27</span><span>0.50</span></div>
+  <div class="res" id="out_ann"></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Индекс</th><th>Принцип</th><th>Память на 2 млн × 128</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>HNSW</b></td><td>Многослойный граф</td><td><strong>~3.5 ГБ</strong></td><td><strong>Дефолт: лучший recall/латентность</strong></td></tr>
+<tr><td>IVF-Flat</td><td>Кластеризация + перебор в ячейках</td><td>~1.0 ГБ</td><td>Память ограничена, recall важен</td></tr>
+<tr><td>IVF-PQ</td><td>Кластеры + квантование векторов</td><td>~0.13 ГБ</td><td>Очень большие каталоги; recall падает на 5–15%</td></tr>
+<tr><td>ScaNN</td><td>Анизотропное квантование</td><td>~0.4 ГБ</td><td>Оптимизирован под скалярное произведение</td></tr>
+<tr><td>Полный перебор</td><td>Все расстояния</td><td>~1.0 ГБ</td><td>Каталог до ~100 тыс.; recall ровно 1.0</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Фильтрация внутри ANN — отдельная проблема.</strong> «Найди похожее, но только доступное в этом городе и дешевле 5000» — наивный подход (найти top-1000, потом отфильтровать) ломается, когда фильтр отсекает почти всё: из 1000 кандидатов проходит 3. Решения: отдельные индексы на частые срезы, фильтрация внутри обхода графа (поддерживается в некоторых библиотеках), или переход на переборные индексы для узких сегментов. Планировать это надо на этапе проектирования, а не когда фильтры уже понадобились.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Стратегии негативов: смешивание источников <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что добавить к in-batch и в какой пропорции</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: у in-batch негативов есть слепое пятно</div>
+<p>In-batch негативы сэмплируются пропорционально популярности — это батч, а батч отражает данные. Значит, <strong>хвостовые объекты почти никогда не оказываются негативами.</strong></p>
+<p>Модель их не «видит» как конкурентов и не учится их отделять. В результате векторы хвоста слабо разделены между собой — они кучкуются в одной области пространства. Это отдельная проблема, которую logQ не решает: logQ корректирует вес, но не создаёт негативы там, где их нет.</p>
+<p><strong>Лечение — добавить негативы из других источников:</strong> равномерные из каталога (покрывают хвост), hard negatives (дают сильный градиент), негативы из индекса (максимально близки к продакшену).</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎯</span> Трассировка: как смешивание меняет распределение градиента</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Замеряем, откуда приходит градиент при чистом in-batch</span></div>
+<div class="tstep-c">
+<p>Батч $B = 8192$. Считаем, какая доля суммарного $|P_j|$ (то есть силы отталкивания) приходится на негативы из разных децилей популярности.</p>
+<div class="ct">
+<table>
+<caption>Батч B = 8192, чистые in-batch негативы</caption>
+<thead><tr><th>Дециль популярности</th><th>Доля в негативах</th><th>Доля градиента</th><th></th></tr></thead>
+<tbody>
+<tr><td>10 — топ хиты</td><td class="k">47.2%</td><td class="k">61.4%</td><td class="note">почти весь сигнал здесь</td></tr>
+<tr><td>9</td><td>21.8%</td><td>22.1%</td><td class="note"></td></tr>
+<tr><td>8</td><td>12.1%</td><td>9.3%</td><td class="note"></td></tr>
+<tr><td>7</td><td>7.4%</td><td>4.2%</td><td class="note"></td></tr>
+<tr><td>6</td><td>4.6%</td><td>1.8%</td><td class="note"></td></tr>
+<tr><td>5</td><td>3.1%</td><td>0.8%</td><td class="note"></td></tr>
+<tr><td>4</td><td>2.0%</td><td>0.3%</td><td class="note"></td></tr>
+<tr><td>3</td><td>1.1%</td><td>0.1%</td><td class="note"></td></tr>
+<tr><td>2</td><td>0.5%</td><td class="r">0.02%</td><td class="note">практически вне обучения</td></tr>
+<tr><td>1 — хвост</td><td>0.2%</td><td class="r">0.00%</td><td class="note">полностью вне обучения</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Нижние два дециля дают 0.02% градиента.</strong> Половина каталога практически не участвует в обучении как негативы — модель не учится их различать.</p>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Добавляем равномерные негативы: 25% пула</span></div>
+<div class="tstep-c">
+<div class="calc">
+На каждый позитив: 8191 in-batch + 2730 равномерных из каталога
+
+Равномерные негативы распределены по децилям РОВНО:
+  каждый дециль получает 273 негатива = 10%
+
+Итоговое распределение негативов:
+  дециль 10:  (8191×0.472 + 2730×0.10) / 10921 = <span class="hl">37.9%</span>   <span class="dim">было 47.2%</span>
+  дециль  1:  (8191×0.002 + 2730×0.10) / 10921 = <span class="res">2.65%</span>   <span class="dim">было 0.2%, рост в 13 раз</span>
+
+Замер качества:
+                          Recall@100    Recall@100 на хвосте
+  только in-batch            0.271             0.048
+  + 25% равномерных          <span class="res">0.278</span>             <span class="res">0.094</span>   ← почти вдвое
+</div>
+<p>Среднее выросло слабо (+2.6%), а на хвосте — почти вдвое. Опять тот случай, когда агрегированная метрика прячет главный эффект.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Добавляем hard negatives: как их получают</span></div>
+<div class="tstep-c">
+<div class="calc">
+Процедура (делается раз в эпоху или реже):
+  1. Взять текущую модель, посчитать векторы всего каталога
+  2. Построить временный ANN-индекс
+  3. Для каждого пользователя найти top-200 по текущей модели
+  4. Исключить его реальные позитивы
+  5. Из оставшихся сэмплировать негативы для следующей эпохи
+
+Стоимость: полный пересчёт индекса на эпоху.
+Для 2 млн объектов — десятки минут GPU.
+</div>
+<div class="ct">
+<table>
+<caption>Вклад hard negatives: сила градиента растёт монотонно, качество — нет</caption>
+<thead><tr><th>Доля hard в пуле</th><th>Recall@100</th><th>Средний |P<sub>j</sub>| негатива</th><th></th></tr></thead>
+<tbody>
+<tr><td>0%</td><td>0.278</td><td class="r">0.0004</td><td class="note">сигнал слабый — почти все негативы далёкие</td></tr>
+<tr><td>5%</td><td>0.291</td><td>0.0071</td><td class="note">заметный прирост</td></tr>
+<tr class="best"><td>10%</td><td class="g">0.297</td><td>0.0138</td><td class="note">оптимум</td></tr>
+<tr><td>20%</td><td class="a">0.289</td><td>0.0294</td><td class="note">начали вредить ложные негативы</td></tr>
+<tr><td>40%</td><td class="r">0.262</td><td>0.0611</td><td class="note">хуже базовой линии без hard</td></tr>
+<tr><td>100%</td><td class="r">0.198</td><td class="k">0.1420</td><td class="note">градиент максимален, качество минимально</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Почему 100% hard negatives — катастрофа</span></div>
+<div class="tstep-c">
+<p>Hard negative — объект, который модель ставит высоко, но которого нет в профиле. Часть из них — <strong>ложные негативы</strong>: они реально понравились бы, просто человек их не видел.</p>
+<div class="calc">
+Оценка доли ложных негативов среди top-200 по модели:
+  замеряли через exploration-слой (случайные показы)
+  из объектов top-200, показанных случайно, кликнули <span class="bad">18.4%</span>
+
+То есть примерно каждый пятый hard negative — на самом деле позитив.
+При 100% hard negatives модель систематически отталкивает
+релевантные объекты, и точность падает ниже базовой линии.
+
+При 10% в смеси эффект размывается: 10% × 18.4% = 1.8% шума,
+что перекрывается пользой от сильного градиента.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Итоговый рецепт смешивания</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Рабочая пропорция источников негативов</caption>
+<thead><tr><th>Источник</th><th>Доля</th><th>Стоимость</th><th></th></tr></thead>
+<tbody>
+<tr><td>in-batch (по популярности)</td><td class="k">65%</td><td>бесплатно</td><td class="note">покрывают голову каталога</td></tr>
+<tr><td>равномерные из каталога</td><td class="k">25%</td><td>дёшево</td><td class="note">покрывают хвост</td></tr>
+<tr><td>hard negatives (top-K модели)</td><td class="k">10%</td><td>пересборка индекса на эпоху</td><td class="note">дают сильный градиент</td></tr>
+</tbody>
+</table>
+</div>
+<div class="ct">
+<table>
+<caption>Итог смешивания против чистого in-batch</caption>
+<thead><tr><th>Метрика</th><th>Чистый in-batch</th><th>Смесь 65/25/10</th><th>Прирост</th></tr></thead>
+<tbody>
+<tr><td>Recall@100 (среднее)</td><td>0.271</td><td class="g">0.297</td><td class="g">+9.6%</td></tr>
+<tr><td>Recall@100 на хвосте</td><td class="r">0.048</td><td class="g">0.107</td><td class="g">+123%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Порядок внедрения важен.</strong> Сначала logQ (дешёво, сразу даёт эффект), потом равномерные (тоже дёшево), и только потом hard negatives — они требуют пересборки индекса каждую эпоху и легко всё портят при неправильной доле.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Доля hard negatives: где проходит оптимум</div>
+<div class="chsub">Сила градиента растёт монотонно, качество — нет: мешают ложные негативы</div>
+<div style="position:relative;height:340px;"><canvas id="c_hard"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Откуда приходит градиент по децилям популярности</div>
+<div class="chsub">Чистый in-batch не учит различать хвост вообще — половина каталога вне обучения</div>
+<div style="position:relative;height:330px;"><canvas id="c_grad"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Свежесть индекса и рассинхрон башен <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Эксплуатационная проблема, которой нет у матричной факторизации</div>
+
+<div class="def">
+<div class="def-t">📖 Термины секций 10–11</div>
+<dl>
+<dt>Рассинхрон башен <span class="en">(tower / index mismatch)</span></dt>
+<dd>Ситуация, когда вектор пользователя считает одна версия модели, а векторы объектов в индексе построены другой. Векторы оказываются из разных пространств, и скалярное произведение между ними не имеет смысла.</dd>
+<dt>Инвариантность к вращению</dt>
+<dd>Причина, по которой рассинхрон катастрофичен. Softmax-лосс не меняется, если повернуть <em>всё</em> пространство: важны только взаимные углы. Поэтому два обучения с нуля дают одинаково хорошие, но <em>совершенно разные</em> пространства — оси перемешаны, знаки произвольны.</dd>
+<dt>Обучение с нуля <span class="en">(from scratch / cold retrain)</span></dt>
+<dd>Переобучение с новой случайной инициализацией. Даёт полностью новое пространство: косинус между старым и новым вектором одного объекта около 0.03.</dd>
+<dt>Инкрементальное дообучение <span class="en">(warm start / incremental training)</span></dt>
+<dd>Продолжение обучения от прошлых весов на свежих данных. Пространство сохраняется, векторы дрейфуют плавно (косинус 0.94), поэтому лаг индекса стоит проценты, а не разы. Плюс в десятки раз дешевле.</dd>
+<dt>Canary-проверка <span class="en">(canary deployment)</span></dt>
+<dd>Проверка новой версии на малой контролируемой выборке до переключения основного трафика. Здесь — фиксированный набор «золотых» запросов и пороги по среднему косинусу top-1 и по пересечению выдачи со старой версией.</dd>
+<dt>Атомарное переключение</dt>
+<dd>Одновременная замена связанных артефактов, при которой невозможно состояние «половина новая, половина старая». Ключевая защита от рассинхрона.</dd>
+<dt>Свежесть индекса <span class="en">(index freshness / staleness)</span></dt>
+<dd>Возраст векторов в индексе относительно текущей модели и текущего каталога. Измеряется деградацией качества: прогоняем свежие запросы через индексы разного возраста и смотрим падение Recall.</dd>
+<dt>Деградация структуры графа</dt>
+<dd>Эффект накопления инкрементальных вставок в HNSW: рёбра, оптимальные в момент вставки, перестают быть таковыми по мере роста индекса. Через сотни тысяч вставок recall падает на 3–6%, поэтому полная пересборка нужна даже если векторы не менялись.</dd>
+<dt>Уровни валидации</dt>
+<dd>Разделение измерения на качество модели (полный перебор), качество индекса (ANN против перебора) и качество связки. Без разделения при падении метрики непонятно, что чинить, — а это разные команды и разные сроки.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: две башни живут в разном времени</div>
+<p>Башня объектов прогоняется <strong>ночью</strong> — векторы кладутся в индекс. Башня пользователя работает <strong>сейчас</strong> — вектор считается на запрос.</p>
+<p>Пока обе башни от одной версии модели, всё согласовано. Но стоит выкатить новую модель — вектор пользователя считается новой башней, а индекс собран старой. <strong>Векторы из разных пространств, скалярное произведение между ними бессмысленно.</strong></p>
+<p>Это не деградация на проценты. Это полный развал выдачи, который выглядит как «модель внезапно сломалась».</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚠️</span> Трассировка инцидента: что происходит при рассинхроне</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Нормальная работа</span></div>
+<div class="tstep-c">
+<div class="calc">
+03:00  Модель v12 → прогон каталога → индекс v12
+День   Запрос → башня пользователя v12 → поиск в индексе v12
+       ✓ Векторы из одного пространства, скоры осмысленны
+
+       Средний косинус top-1: <span class="hl">0.87</span>
+       CTR: <span class="hl">базовый</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Выкатка новой модели без пересборки индекса</span></div>
+<div class="tstep-c">
+<div class="calc">
+14:20  Выкатили модель v13 (обучена заново с нуля)
+       Индекс всё ещё v12 — пересборка запланирована на ночь
+
+14:21  Запрос → башня пользователя <span class="bad">v13</span> → поиск в индексе <span class="bad">v12</span>
+
+Что произошло: обучение с нуля даёт ДРУГОЕ пространство.
+Оси перемешаны, знаки компонент произвольны — softmax-лосс
+инвариантен к вращению пространства.
+
+       Средний косинус top-1: <span class="bad">0.11</span>   <span class="dim">было 0.87</span>
+       CTR: <span class="bad">−63%</span>
+       Выдача: визуально случайные объекты
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Почему это не ловится обычным мониторингом</span></div>
+<div class="tstep-c">
+<p>Стандартные проверки при выкатке проходят успешно:</p>
+<div class="calc">
+✓ Модель загружается
+✓ Инференс отрабатывает без ошибок
+✓ Латентность в норме (даже лучше — индекс отдаёт что попало быстро)
+✓ Размерность векторов совпадает (128 = 128)
+✓ Индекс возвращает ровно 1000 кандидатов
+✗ <span class="bad">Но кандидаты не имеют отношения к запросу</span>
+</div>
+<p>Всё технически исправно. Ломается только семантика, и увидеть это можно лишь по метрике качества — то есть постфактум, когда пользователи уже получили мусор.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Защита ①: версионирование как единая сущность</span></div>
+<div class="tstep-c">
+<div class="calc">
+Правило: индекс и башня пользователя — ОДИН артефакт с общей версией.
+
+Выкатка:
+  1. Обучили модель v13
+  2. Прогнали каталог башней v13 → индекс v13
+  3. Атомарно переключили ОБА: башня v13 + индекс v13
+  4. Индекс v12 держим для мгновенного отката
+
+Никогда не выкатывать башню без соответствующего индекса.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Защита ②: canary-проверка совместимости</span></div>
+<div class="tstep-c">
+<div class="calc">
+Перед переключением трафика:
+  1. Взять 1000 зафиксированных «золотых» запросов
+  2. Прогнать через новую пару (башня + индекс)
+  3. Проверить средний косинус top-1
+
+     Норма:     0.80–0.92
+     Тревога:   &lt; 0.60   → рассинхрон, откат
+
+  4. Проверить пересечение выдачи со старой версией
+     Норма:     40–70% совпадений в top-100
+     Тревога:   &lt; 15%    → пространство изменилось радикально
+</div>
+<p>Обе проверки автоматизируются и занимают секунды. Порог по косинусу ловит рассинхрон, порог по пересечению — ещё и незамеченную деградацию обучения.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Защита ③: инкрементальное дообучение вместо обучения с нуля</span></div>
+<div class="tstep-c">
+<div class="calc">
+Обучение с нуля каждую неделю:
+  пространство меняется полностью → индекс обязателен к пересборке
+  косинус между старым и новым вектором одного объекта: <span class="bad">0.03</span>
+
+Дообучение от прошлых весов (несколько эпох на свежих данных):
+  пространство сохраняется, векторы дрейфуют плавно
+  косинус между старым и новым вектором: <span class="res">0.94</span>
+  → рассинхрон на несколько часов даёт деградацию 2–4%, а не 63%
+</div>
+<p>Дополнительный бонус: дообучение в десятки раз дешевле и позволяет обновлять модель ежедневно, а не еженедельно.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Деградация от устаревания индекса: обучение с нуля против дообучения</div>
+<div class="chsub">При дообучении пространство сохраняется, и лаг индекса стоит проценты, а не разы</div>
+<div style="position:relative;height:330px;"><canvas id="c_stale"></canvas></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как часто пересобирать индекс: расчёт по данным</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Замеряем деградацию:</strong> прогоняем свежие запросы через индексы разного возраста и смотрим Recall@100 относительно свежего индекса.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Результат</strong> (при инкрементальном дообучении): 6 ч — <strong>99.4%</strong>, 24 ч — <strong>97.1%</strong>, 3 дня — <strong>91.8%</strong>, 7 дней — <strong>82.3%</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Стоимость пересборки:</strong> 2 млн объектов × 197 тыс. FLOP ≈ 8 минут на GPU + 12 минут на построение HNSW = <strong>20 минут</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Решение:</strong> полная пересборка раз в сутки (потеря 2.9% приемлема) + инкрементальное добавление новых объектов каждые 15 минут. HNSW поддерживает вставку без перестройки.</div></div>
+<div class="numex-step"><span class="nb am">5</span><div><strong>Нюанс:</strong> инкрементальные вставки в HNSW со временем ухудшают структуру графа — рёбра, оптимальные при вставке, перестают быть оптимальными. Через несколько сотен тысяч вставок recall индекса падает на 3–6%. Отсюда обязательная периодическая полная пересборка, даже если векторы не менялись.</div></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Валидация: три уровня, которые надо разделять <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Модель, индекс и связка измеряются отдельно</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📏</span> Трассировка: где именно теряется качество</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Уровень 1 — качество модели (полный перебор)</span></div>
+<div class="tstep-c">
+<div class="calc">
+Метрика: Recall@100 на временном holdout, кандидаты — весь каталог
+Считается ПОЛНЫМ ПЕРЕБОРОМ, без индекса
+
+  Recall@100 = <span class="hl">0.297</span>
+
+Что измеряет: качество представлений как таковых.
+Не зависит от инфраструктуры.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Уровень 2 — качество индекса</span></div>
+<div class="tstep-c">
+<div class="calc">
+Метрика: Recall индекса относительно полного перебора
+Берём 10 000 запросов, сравниваем top-100 индекса и точный top-100
+
+  Recall_ANN@100 = <span class="hl">0.964</span>   (ef = 100)
+
+Что измеряет: сколько теряет приближённый поиск.
+НЕ зависит от качества модели.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Уровень 3 — качество связки</span></div>
+<div class="tstep-c">
+<div class="calc">
+Итоговый Recall = Recall_модели × Recall_ANN
+                = 0.297 × 0.964 = <span class="res">0.286</span>
+
+Потеря от индекса: 0.297 − 0.286 = <span class="bad">0.011</span>  (3.7%)
+</div>
+<p><strong>Зачем разделять.</strong> Допустим, метрика упала с 0.286 до 0.251. Без разделения непонятно, что чинить. С разделением сразу видно:</p>
+<div class="calc">
+Вариант A:  модель 0.261, индекс 0.962  →  <span class="bad">проблема в модели</span>
+Вариант B:  модель 0.296, индекс 0.848  →  <span class="bad">проблема в индексе</span>
+            (например, накопились инкрементальные вставки)
+</div>
+<p>Это разные команды, разные сроки и разные исправления. Смешанная метрика заставляет искать вслепую.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Уровень 4 — качество в составе всей системы</span></div>
+<div class="tstep-c">
+<p>Two-tower почти никогда не работает один. Финальную выдачу определяет ранжировщик, который получает кандидатов от него.</p>
+<div class="calc">
+Правильная метрика кандидатогенерации:
+  доля реальных позитивов, попавших в top-K кандидатов
+  при K = 500–2000  (сколько уходит в ранжировщик)
+
+  Recall@1000 = <span class="hl">0.681</span>   ← это потолок для ранжировщика
+</div>
+<p><strong>Ключевой момент:</strong> кандидатогенерация задаёт <em>потолок</em>. Если релевантный объект не попал в top-1000, никакой ранжировщик его не покажет. Поэтому метрика здесь — Recall при большом K, а не NDCG.</p>
+<div class="calc">
+Типичная ошибка: оптимизировать NDCG@10 у кандидатогенератора.
+
+Модель A: NDCG@10 = 0.142, Recall@1000 = 0.681
+Модель B: NDCG@10 = <span class="hl">0.171</span>, Recall@1000 = <span class="bad">0.612</span>
+
+По NDCG@10 лучше B. Но в связке с ранжировщиком:
+  A → итоговый NDCG@10 системы = <span class="res">0.238</span>
+  B → итоговый NDCG@10 системы = <span class="bad">0.219</span>
+
+A выигрывает, потому что даёт ранжировщику больше материала.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Итоговый набор метрик</span></div>
+<div class="tstep-c">
+<div class="calc">
+① Recall@1000 полным перебором        → качество модели
+② Recall_ANN@1000 vs перебор          → качество индекса
+③ Итоговый NDCG@10 всей системы       → что видит пользователь
+④ Покрытие каталога в кандидатах      → контроль схлопывания
+⑤ Средний косинус top-1               → детектор рассинхрона
+</div>
+<p>Пять чисел, каждое отвечает на свой вопрос. При падении любой метрики понятно, где искать.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разложение итогового качества по уровням системы</div>
+<div class="chsub">Где именно теряются проценты между офлайн-моделью и продакшеном</div>
+<div style="position:relative;height:330px;"><canvas id="c_levels"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Когда two-tower не нужен <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Честный разбор — часто проще работает лучше</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сравнение на трёх разных каталогах, равный бюджет настройки</div>
+<div class="numex-step"><span class="nb sl">A</span><div><strong>Каталог 28 тыс. объектов, 1.2 млн пользователей.</strong> EASE: <strong>0.276</strong> (2 мин обучения). iALS: 0.241 (11 мин). Two-tower: <strong>0.263</strong> (210 мин). — <em>EASE выигрывает, two-tower не окупается.</em></div></div>
+<div class="numex-step"><span class="nb sl">B</span><div><strong>Каталог 380 тыс., 8 млн пользователей.</strong> EASE: не помещается в память ($O(|I|^3)$). iALS: 0.187. Two-tower: <strong>0.297</strong>. — <em>Two-tower выигрывает с большим отрывом.</em></div></div>
+<div class="numex-step"><span class="nb sl">C</span><div><strong>Каталог 4.2 млн, 40% объектов моложе недели.</strong> iALS: 0.094 (не умеет холодный старт). Two-tower с контентными признаками: <strong>0.211</strong>. — <em>Two-tower решает задачу, которую MF не решает в принципе.</em></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Правило:</strong> two-tower окупается при большом каталоге ИЛИ при значимой доле новых объектов. На среднем стабильном каталоге он проигрывает EASE по качеству и на два порядка — по стоимости.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Ситуация</th><th>Что брать</th><th>Почему</th></tr></thead>
+<tbody>
+<tr class="trh"><td>Каталог до ~50 тыс., стабильный</td><td><b>EASE</b></td><td>Лучше по качеству, обучение за минуты, один гиперпараметр</td></tr>
+<tr><td>Каталог 50–500 тыс., мало новых объектов</td><td>iALS или two-tower</td><td>Обе работают; iALS дешевле, two-tower лучше при богатых признаках</td></tr>
+<tr class="trh"><td>Каталог &gt; 500 тыс.</td><td><b>Two-tower</b></td><td>EASE не помещается, iALS не использует признаки</td></tr>
+<tr class="trh"><td>Много новых объектов</td><td><b>Two-tower</b></td><td>Единственный вариант с честным холодным стартом</td></tr>
+<tr><td>Нужны объяснения выдачи</td><td>item-item</td><td>«Потому что вы смотрели X» — проверяемо</td></tr>
+<tr><td>Данных мало (&lt; 1 млн взаимодействий)</td><td>item-item или EASE</td><td>Нейросеть переобучится, а настраивать её дороже</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический порядок действий.</strong> Начни с EASE или item-item — они дают точку отсчёта за часы, а не недели. Замерь. Переходи на two-tower только если ① каталог не влезает в EASE, ② есть значимая доля новых объектов, или ③ есть богатые признаки, которых MF не использует. Внедрение two-tower — это не только модель, но и ANN-индекс, версионирование, пересборка, мониторинг рассинхрона. Эта инфраструктура должна окупаться измеренным приростом, а не ожидаемым.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок, каждая встречалась в реальных проектах</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Признак, зависящий от обеих сторон, в башне объекта.</b> Офлайн взлетает до 0.681, в проде падает до 0.09 — ниже базовой линии. Проверка: «могу ли я посчитать это в 3 ночи для всего каталога?»</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>Нет L2-нормировки выходов.</b> Нормы растут, логиты уходят в десятки, softmax насыщается, градиенты обнуляются. Модель «сходится» на плохом решении и выглядит здоровой.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Температура оставлена дефолтной.</b> При τ=1 позитив получает 28% массы — почти случайный выбор. При τ=0.02 весь сигнал на одной паре. Разница в качестве сравнима с разницей архитектур.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>τ и learning rate настраивают независимо.</b> Множитель 1/τ входит во все градиенты. Снизил температуру вдвое — снижай lr, иначе расходимость.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>Нет logQ-коррекции.</b> Популярные объекты систематически подавлены механикой сэмплирования. В замерах Recall@100 0.243 против 0.271, CTR −3.4%.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>Не маскируются дубликаты в батче.</b> Один объект дважды в батче — и он становится «негативом» для собственного позитива. При популярных объектах и больших батчах происходит постоянно. Три строки кода.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>Маленький батч.</b> В two-tower батч — параметр качества: 256 даёт 0.187, 8192 даёт 0.271. Это не про скорость, а про число негативов на позитив.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Только in-batch негативы.</b> Нижние два дециля каталога дают 0.02% градиента — половина каталога вне обучения. Добавление 25% равномерных удваивает Recall на хвосте.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Слишком много hard negatives.</b> 18% из них — ложные негативы. При 100% hard качество падает ниже базового. Оптимум около 10%.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>Recall индекса не измерен.</b> Офлайн считают полным перебором, в проде работает ANN с recall 0.85. Разница съедает весь выигрыш и выглядит как «модель не воспроизвелась».</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Башня и индекс версионируются отдельно.</b> Выкатка модели без пересборки индекса — векторы из разных пространств, CTR −63%, все технические проверки при этом зелёные.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Обучение с нуля вместо дообучения.</b> Пространство меняется полностью (косинус старого и нового вектора 0.03), любой лаг индекса катастрофичен. При дообучении — 0.94 и деградация в проценты.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Растущий признак вроде «возраст объекта в днях».</b> В проде значения выходят за диапазон обучения, качество деградирует неделями незаметно. Бакетизировать или не использовать.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>NDCG@10 как метрика кандидатогенерации.</b> Задача этапа — полнота, а не порядок. Модель с худшим NDCG@10, но лучшим Recall@1000 даёт лучшую итоговую систему.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Фильтрация не заложена в архитектуру индекса.</b> «Похожее, но только в этом городе и дешевле 5000» ломает наивный подход: из top-1000 проходит 3 кандидата. Планировать до внедрения, а не после.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять кейсов с нюансами валидации</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">▶️</span><div><div class="sysname">YouTube — two-tower для кандидатогенерации</div><div class="syssub">Классическая работа, определившая индустриальный стандарт</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Отобрать сотни кандидатов из миллиардов видео с бюджетом в десятки миллисекунд.</p>
+<p><strong>Решение.</strong> Башня пользователя получает историю просмотров (усреднённые эмбеддинги), поисковые запросы, демографию и контекст. Башня видео — ID, метаданные, возраст загрузки. Обучение через sampled softmax с коррекцией на частоту сэмплирования — именно из этой линии работ пришла logQ-коррекция в её нынешнем виде.</p>
+<p><strong>Ключевая находка.</strong> Возраст видео как признак — при обучении он есть, при инференсе подставляется ноль («предскажи, как если бы видео было новым»). Без этого модель систематически предпочитает старые видео, у которых накопилось больше просмотров, и свежий контент не имеет шансов попасть в выдачу.</p>
+<p><strong>Нюанс валидации.</strong> Метрика кандидатогенерации — Recall при больших K, а не точность. Ошибка здесь стоит дорого: модель, выигрывающая по NDCG@10, может давать худшую итоговую систему, потому что отдаёт ранжировщику меньше материала. Плюс отдельно отслеживается доля свежего контента в кандидатах — иначе оптимизация просмотров тихо схлопывает выдачу к старым хитам.</p>
+<p><strong>Подводный камень.</strong> Обучение на просмотрах, а не кликах: клик на превью может не означать интереса к видео. Целевая переменная взвешивается по времени просмотра, иначе модель оптимизирует кликбейт.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📌</span><div><div class="sysname">Pinterest — векторный поиск на миллиардах пинов</div><div class="syssub">Когда ANN-индекс становится главным ограничением</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Поиск похожего по векторам в каталоге, который не помещается на одну машину.</p>
+<p><strong>Решение.</strong> Шардирование индекса по машинам, параллельный запрос ко всем шардам, слияние результатов. Каждый шард держит свою часть каталога и свой HNSW-граф.</p>
+<p><strong>Почему так.</strong> Индекс на миллиард векторов по 128 измерений — это сотни гигабайт только на векторы, плюс структура графа. Шардирование неизбежно, а вместе с ним приходят задержки хвоста: ответ ждёт самый медленный шард.</p>
+<p><strong>Нюанс валидации.</strong> Recall шардированного индекса <em>не равен</em> recall единого индекса на тех же данных. Каждый шард ищет top-K внутри себя, и если истинные соседи неравномерно распределены по шардам, часть теряется: шард, где их много, вернёт только свои K лучших. Проверять надо именно шардированную конфигурацию, а не прототип на одной машине — это регулярный источник расхождения «в тесте работало».</p>
+<p><strong>Подводный камень.</strong> Задержка определяется 99-м перцентилем самого медленного шарда, а не средним. При 20 шардах вероятность, что хотя бы один окажется в своём хвосте, велика. Отсюда приёмы вроде hedged requests — дублирование запроса к реплике с отменой более медленного.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎵</span><div><div class="sysname">Spotify — единое пространство для аудио и коллаборативных векторов</div><div class="syssub">Как дать вектор треку без прослушиваний</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Новый трек не имеет истории — коллаборативный вектор для него необучен. Но рекомендовать его надо с первого дня.</p>
+<p><strong>Решение.</strong> Отдельная модель обучается предсказывать <em>коллаборативный вектор трека по его аудиосигналу</em>. Для треков с историей есть оба вектора, и аудио-модель учится их сопоставлять. Для нового трека берётся предсказанный вектор — он попадает в то же пространство и в тот же индекс.</p>
+<p><strong>Почему так.</strong> Это позволяет не менять архитектуру рекомендаций: индекс, поиск и скоринг работают одинаково для всех треков, различается только источник вектора.</p>
+<p><strong>Нюанс валидации.</strong> Качество аудио-модели меряется не MSE к целевому вектору, а <em>рекомендательной метрикой</em>: берутся треки с известной историей, их коллаборативный вектор заменяется предсказанным, и сравнивается выдача. MSE обманчив — векторы могут быть близки в среднем, но давать другой порядок соседей, а важен именно порядок.</p>
+<p><strong>Подводный камень.</strong> Аудио-предсказанные векторы систематически «консервативнее» — они лежат ближе к центру пространства, потому что модель регрессии сглаживает. Новые треки получают средние скоры для всех и высокие ни для кого. Лечится калибровкой нормы предсказанного вектора под распределение настоящих.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🛍️</span><div><div class="sysname">Amazon — поиск товаров как two-tower</div><div class="syssub">Когда запрос это текст, а не пользователь</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Семантический поиск: запрос «что-нибудь тёплое на зиму для ребёнка» должен находить товары, в описании которых нет этих слов.</p>
+<p><strong>Решение.</strong> Башня запроса — текстовый энкодер над строкой поиска. Башня товара — над названием, описанием, атрибутами. Обучение на логах: пары «запрос → купленный товар» как позитивы. Векторный поиск дополняет, а не заменяет BM25 — результаты объединяются.</p>
+<p><strong>Почему так.</strong> Лексический поиск точен на прямых совпадениях и беспомощен на перефразировках; векторный — наоборот. Гибрид покрывает оба режима, и это устойчиво лучше любого из них по отдельности.</p>
+<p><strong>Нюанс валидации.</strong> Обучение на кликах воспроизводит смещение существующей выдачи: модель учится предсказывать, что показывал старый поиск. Проверка идёт на отдельном наборе с ручной разметкой релевантности, где запросы отобраны так, чтобы включать редкие и перефразированные — на них смещение логов максимально. Плюс отдельно измеряются запросы с нулевой выдачей: рост семантического покрытия виден именно там.</p>
+<p><strong>Подводный камень.</strong> Семантический поиск склонен возвращать «похожее, но не то»: на запрос «iPhone 15 чехол» может вернуть чехол для iPhone 14 — векторно близко, коммерчески неверно. Точные атрибуты (модель, размер, совместимость) должны обрабатываться фильтрами, а не оставляться на усмотрение векторов.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">💼</span><div><div class="sysname">LinkedIn — рекомендации вакансий на двустороннем рынке</div><div class="syssub">Когда «релевантно» зависит от обеих сторон</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Рекомендовать вакансии кандидатам. Особенность: успех — это не клик, а отклик, на который рекрутер ответил. Обе стороны имеют право отказать.</p>
+<p><strong>Решение.</strong> Two-tower на кандидатогенерации по эмбеддингам профиля и вакансии, поверх — ранжировщик, оптимизирующий вероятность <em>взаимного</em> интереса. Учитывается насыщение вакансии: если по ней уже сотни откликов, дальнейшее продвижение вредит и кандидатам, и рекрутеру.</p>
+<p><strong>Почему так.</strong> Максимизация откликов без учёта второй стороны создаёт поток заведомо неподходящих заявок: кандидаты тратят время, рекрутеры получают шум, обе метрики удовлетворённости падают при растущем CTR.</p>
+<p><strong>Нюанс валидации.</strong> Целевое событие редкое и <em>отложенное</em>: ответ рекрутера приходит через дни или недели. Валидация требует длинного окна атрибуции, а значит, свежие данные размечены неполно — модель, обученная на них, систематически недооценивает медленно конвертящиеся вакансии. Стандартное решение — обучаться на данных с полностью закрытым окном, принимая лаг в несколько недель, и отдельно проверять, не изменилось ли распределение за это время.</p>
+<p><strong>Подводный камень.</strong> Обратная связь от рекрутеров разрежена и смещена: отвечают чаще на кандидатов из «привычных» профилей. Обучение на этом сигнале без коррекции закрепляет существующие паттерны отбора — здесь пересекаются петля обратной связи из темы 6.1 и вопросы справедливости рекомендаций.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Почему нельзя обучить одну сеть на пару (пользователь, объект)?</div><div class="a">Можно, и она будет точнее — сможет выучить произвольные взаимодействия признаков. Но её надо прогнать для каждой пары: при каталоге в 2 млн это $3.9\times10^{11}$ FLOP на запрос, то есть 150–400 мс реального времени против бюджета в десятки миллисекунд. Two-tower кодирует стороны независимо, векторы объектов считаются офлайн, и на запрос остаётся один прогон башни плюс ANN-поиск — около 0.7 мс. Отсюда стандартная схема: two-tower на кандидатогенерации, cross-модель на ранжировании сотен кандидатов.</div></div>
+
+<div class="qa"><div class="q">2. Что именно теряется от разделения на башни?</div><div class="a">Взаимодействие между сторонами сводится к скалярному произведению. Модель не может выразить «пользователь любит комедии И объект короткий И сейчас вечер» явно — только через геометрию пространства. Это <em>принципиальное</em> ограничение: сколько слоёв ни добавляй в башни, взаимодействие останется билинейным. Ёмкость башен здесь не помогает.</div></div>
+
+<div class="qa"><div class="q">3. Как работают in-batch негативы и почему это выгодно?</div><div class="a">В батче $B$ пар «пользователь — его позитив». Умножение $P Q^\top$ даёт матрицу $B\times B$: на диагонали позитивы, вне — негативы (чужие позитивы, для данного пользователя почти наверняка нерелевантные). Одно матричное умножение даёт $B$ позитивов и $B(B-1)$ негативных пар. При $B=8192$ это 67 млн негативных пар за операцию, идеально ложащуюся на GPU. Отдельное сэмплирование негативов не нужно.</div></div>
+
+<div class="qa"><div class="q">4. Почему размер батча в two-tower — это параметр качества?</div><div class="a">Потому что он прямо задаёт число негативов на позитив. В замерах: $B=256$ → Recall@100 = 0.187, $B=8192$ → 0.271, $B=16384$ → 0.276 (насыщение). В обычном обучении батч влияет на стабильность градиента; здесь он определяет, с чем именно контрастируется позитив. Отсюда распределённое обучение с батчами в десятки тысяч и сбор негативов со всех ускорителей.</div></div>
+
+<div class="qa"><div class="q">5. Зачем L2-нормировка выходов башен?</div><div class="a">Она превращает скалярное произведение в косинус из $[-1,1]$. Без неё нормы векторов растут в процессе обучения, логиты уходят в десятки ещё до деления на $\tau$, softmax насыщается и градиенты обнуляются. Модель перестаёт учиться, но выглядит как «сошлась» — лосс стабилен. Нормировка фиксирует масштаб, а нужную резкость даёт температура, управляемо.</div></div>
+
+<div class="qa"><div class="q">6. Что делает температура и как её подбирать?</div><div class="a">Задаёт резкость softmax. При $\tau=1$ (трассировка секции 4) позитив получает 28.7% массы — почти как случайный выбор из пяти; даже далёкий негатив имеет 8.6%, и градиент тратится на отталкивание того, что и так далеко. При $\tau=0.1$ позитив получает 60%, ближайший негатив 37%, остальные 3% — сигнал сфокусирован. При $\tau=0.02$ всё на одной паре, и одна ошибка разметки доминирует. Старт с 0.05–0.1; диагностика — средняя $P(\text{позитив})$ по батчу: выше 0.95 значит сигнала нет, ниже 0.3 — обучение размазано.</div></div>
+
+<div class="qa"><div class="q">7. Почему температуру нельзя настраивать отдельно от learning rate?</div><div class="a">Множитель $1/\tau$ входит во все градиенты: $\partial L/\partial p_u = \frac{1}{\tau}\sum(P_j - y_j)q_j$. При $\tau = 0.05$ это умножение градиента на 20. Снизил температуру вдвое — эффективный шаг вырос вдвое, и при неизменном lr обучение может разойтись. Настраивать надо парой.</div></div>
+
+<div class="qa"><div class="q">8. Почему температура связана с размером батча?</div><div class="a">Больший батч содержит больше случайных далёких негативов. При высокой $\tau$ они получают заметную долю массы и размывают сигнал — чем больше батч, тем сильнее размытие. Поэтому при увеличении батча температуру обычно надо снижать. Это частая причина ситуации «увеличили батч, а качество не выросло»: параметры перестали быть согласованными.</div></div>
+
+<div class="qa"><div class="q">9. Что такое logQ-коррекция и зачем она?</div><div class="a">In-batch негативы сэмплируются пропорционально частоте объектов, потому что батч — выборка из данных. Популярный объект попадает в негативы в сотни раз чаще редкого и получает систематическое подавление, не связанное с его качеством. Коррекция вычитает $\log Q(i)$ из логита. Поскольку $\log Q$ отрицателен, это надбавка, и она <em>больше</em> у редких объектов — что относительно поднимает вес обучения на популярных позитивах.</div></div>
+
+<div class="qa"><div class="q">10. Разбери на числах, что делает logQ.</div><div class="a">Из трассировки секции 5. Когда позитив популярный ($Q=0.02$), а конкуренты редкие: без коррекции лосс 0.787, с коррекцией 5.585 — вырос в 7 раз, модель сильнее притягивает популярный позитив. Когда позитив редкий ($Q=2\times10^{-5}$): без коррекции те же 0.787, с коррекцией 0.026 — упал в 30 раз, потому что победа редкого объекта над популярными конкурентами ожидаема и учить нечему. В сумме вес обучения перераспределяется от редких к популярным, компенсируя механику сэмплирования.</div></div>
+
+<div class="qa"><div class="q">11. Не противоречит ли logQ дебаясингу популярности из темы 6.1?</div><div class="a">Нет, это разные эффекты в разные стороны. <strong>logQ убирает искусственное подавление</strong>, возникшее оттого, что популярные чаще были негативами. <strong>Дебаясинг убирает избыточное усиление</strong>, возникающее оттого, что у популярных больше обновлений и больше норма вектора. Первое — свойство сэмплирования, второе — свойство обучения. Оба применяются одновременно и настраиваются независимо; logQ увеличивает долю хитов в выдаче с 31% до 48%, дебаясинг потом снижает её до целевого уровня.</div></div>
+
+<div class="qa"><div class="q">12. Как оценивать $Q(i)$ на практике?</div><div class="a">Через потоковую оценку среднего интервала между появлениями объекта: при каждом появлении обновляется скользящее среднее `avg_gap`, и $Q = 1/\text{avg\_gap}$. Требует двух массивов размера каталога, обновление за $O(1)$. Главное преимущество перед подсчётом частот по датасету — автоматическая адаптация к дрейфу популярности, что критично при сезонности.</div></div>
+
+<div class="qa"><div class="q">13. Зачем маскировать дубликаты в батче?</div><div class="a">Если один объект попал в батч дважды (у разных пользователей), то для первого пользователя вторая копия окажется внедиагональным элементом, то есть «негативом» — хотя это буквально его позитив. Модель получает противоречивый сигнал: одновременно притягивай и отталкивай. При популярных объектах и больших батчах это происходит в каждом батче. Исправляется тремя строками с `masked_fill(-1e9)`.</div></div>
+
+<div class="qa"><div class="q">14. Объясни градиент softmax-лосса геометрически.</div><div class="a">Градиент по логиту равен $P_j - y_j$. Для позитива это отрицательное число — вектор притягивается к пользователю. Для негатива положительное, пропорциональное его вероятности — чем ближе негатив, тем сильнее отталкивание. Сумма коэффициентов всегда ноль: сколько притяжения получил позитив, столько отталкивания распределилось. Негатив с $P\approx 0$ (далёкий) не двигается вообще — вычисления на него потрачены впустую, и это прямое обоснование hard negatives.</div></div>
+
+<div class="qa"><div class="q">15. Какие признаки нельзя класть в башню объекта?</div><div class="a">Любые, зависящие от обеих сторон: «сколько раз этот пользователь смотрел этот объект», «расстояние между пользователем и продавцом», «совпадает ли категория с любимой». Причина: башня объекта прогоняется офлайн для всего каталога, когда пользователь неизвестен. Диагностический вопрос — «могу ли я посчитать этот признак в 3 часа ночи, не зная, кто придёт утром?». Такие признаки принадлежат ранжировщику.</div></div>
+
+<div class="qa"><div class="q">16. Что происходит, если это правило нарушить?</div><div class="a">Офлайн-метрика взлетает — в замере Recall@100 с 0.312 до 0.681, потому что модель выучила «рекомендуй то, что человек уже смотрел». В проде признак невычислим, подставляется ноль, модель получает вход вне обучающего распределения, и Recall падает до 0.09 — ниже базовой линии «популярное». Классическая утечка целевой переменной, замаскированная под инженерию признаков.</div></div>
+
+<div class="qa"><div class="q">17. Какой признак даёт больше всего?</div><div class="a">История пользователя — средний эмбеддинг последних N объектов: +22% Recall, больше, чем все остальные признаки вместе. Контентные признаки объекта дают малый средний прирост (2–5%), но <em>концентрированный на хвосте и холодном старте</em>: категория и бренд почти удваивают Recall на нижних 50% каталога, текст названия учетверяет его на объектах без истории. Агрегированная метрика этот эффект прячет.</div></div>
+
+<div class="qa"><div class="q">18. Чем опасен признак «возраст объекта в днях»?</div><div class="a">Он монотонно растёт в проде. Объект, обученный со значением 5, через полгода приходит со значением 185 — вход, которого модель не видела, и её поведение не определено. Качество деградирует неделями незаметно, потому что нет момента поломки. Лечение: бакетизировать в грубые категории (новый / до месяца / старый) или не использовать, отдав свежесть ранжировщику. Отдельный приём из практики YouTube — обучать с возрастом, а на инференсе подставлять ноль, чтобы модель предсказывала «как если бы объект был новым».</div></div>
+
+<div class="qa"><div class="q">19. Как HNSW находит соседей, не просматривая каталог?</div><div class="a">Это многослойный граф: верхние слои разрежены с длинными рёбрами, нижние плотные с короткими. Поиск идёт сверху вниз — несколько прыжков по верхнему слою приводят в нужный регион, спуск уточняет. В трассировке секции 8 на 12 узлах: слой 2 — 3 узла, слой 1 — 2, слой 0 — 3, итого 8 вместо 12. Сложность $O(\log N)$ против $O(N)$: при 2 млн объектов около 2000 вычислений вместо 2 млн.</div></div>
+
+<div class="qa"><div class="q">20. Что делает параметр ef и почему он критичен?</div><div class="a">`ef` — размер очереди кандидатов на нижнем слое. Жадный поиск может застрять в локальном минимуме: истинный сосед доступен только через узел, который сам по себе хуже текущего. Большая очередь держит заведомо худших кандидатов и даёт шанс исследовать такой путь. Замеры: ef=10 → recall 0.712 за 0.09 мс, ef=200 → 0.987 за 0.94 мс, ef=800 → 0.998 за 3.55 мс. Recall растёт логарифмически, время — линейно.</div></div>
+
+<div class="qa"><div class="q">21. Почему recall индекса надо измерять отдельно?</div><div class="a">Потому что итоговый recall — произведение: модель 0.297 × индекс 0.964 = 0.286. Офлайн-метрику обычно считают полным перебором, а в проде работает ANN — и разница в 8% может съесть весь выигрыш от смены архитектуры, оставаясь невидимой. Проверка: 10 000 запросов, точный top-100 перебором против top-100 индекса, пересечение. Ниже 0.95 — поднимать ef или M. Делается один раз при настройке, занимает часы.</div></div>
+
+<div class="qa"><div class="q">22. Что такое рассинхрон башен и почему он опасен?</div><div class="a">Башня объектов прогоняется ночью, её результат лежит в индексе; башня пользователя работает сейчас. Если выкатить новую модель без пересборки индекса — векторы из разных пространств, скалярное произведение бессмысленно. В инциденте из секции 10: средний косинус top-1 упал с 0.87 до 0.11, CTR −63%. Опаснее всего то, что <em>все технические проверки зелёные</em>: модель грузится, инференс работает, латентность в норме, размерности совпадают, индекс возвращает 1000 кандидатов. Ломается только семантика.</div></div>
+
+<div class="qa"><div class="q">23. Как защищаться от рассинхрона?</div><div class="a">Три уровня. ① <strong>Версионирование как единая сущность:</strong> башня пользователя и индекс — один артефакт с общей версией, переключаются атомарно. ② <strong>Canary-проверка:</strong> 1000 золотых запросов, средний косинус top-1 (норма 0.80–0.92, тревога ниже 0.60) и пересечение выдачи со старой версией (норма 40–70%, тревога ниже 15%). ③ <strong>Инкрементальное дообучение вместо обучения с нуля:</strong> пространство сохраняется, косинус старого и нового вектора 0.94 вместо 0.03, и лаг индекса стоит 2–4% вместо 63%.</div></div>
+
+<div class="qa"><div class="q">24. Как часто пересобирать индекс?</div><div class="a">Считается по данным. Деградация при инкрементальном дообучении: 6 ч → 99.4%, 24 ч → 97.1%, 3 дня → 91.8%, 7 дней → 82.3%. Стоимость пересборки для 2 млн объектов — около 20 минут. Отсюда практика: полная пересборка раз в сутки плюс инкрементальные вставки новых объектов каждые 15 минут. Важный нюанс: инкрементальные вставки со временем ухудшают структуру графа (recall падает на 3–6% через сотни тысяч вставок), поэтому полная пересборка нужна даже если векторы не менялись.</div></div>
+
+<div class="qa"><div class="q">25. Почему только in-batch негативов недостаточно?</div><div class="a">Они сэмплируются по популярности, поэтому хвост почти никогда не оказывается негативом. В замере: нижние два дециля каталога дают 0.02% суммарного градиента — половина каталога вне обучения, и модель не учится различать эти объекты между собой. Добавление 25% равномерных негативов из каталога поднимает Recall на хвосте с 0.048 до 0.094 при почти неизменном среднем.</div></div>
+
+<div class="qa"><div class="q">26. Сколько hard negatives добавлять и почему не больше?</div><div class="a">Около 10%. Замеры: 0% → 0.278, 10% → 0.297, 20% → 0.289, 40% → 0.262, 100% → 0.198 (хуже базового). Причина деградации — ложные негативы: измерение через exploration-слой показало, что 18.4% объектов из top-200 модели, показанных случайно, получают клик, то есть реально релевантны. При 100% hard модель систематически отталкивает релевантное; при 10% это 1.8% шума, перекрываемые пользой от сильного градиента.</div></div>
+
+<div class="qa"><div class="q">27. В каком порядке внедрять улучшения негативов?</div><div class="a">① logQ-коррекция — дёшево, ничего не ломает, сразу даёт эффект. ② Равномерные негативы 25% — тоже дёшево, закрывает хвост. ③ Hard negatives 10% — последними, потому что требуют пересборки индекса каждую эпоху (десятки минут GPU) и легко всё портят при неправильной доле. Итог связки: Recall@100 0.297 против 0.271 у чистого in-batch, на хвосте 0.107 против 0.048.</div></div>
+
+<div class="qa"><div class="q">28. Какие метрики нужны для two-tower в проде?</div><div class="a">Пять, каждая отвечает на свой вопрос. ① Recall@1000 полным перебором — качество модели. ② Recall_ANN относительно перебора — качество индекса. ③ Итоговый NDCG@10 всей системы — что видит пользователь. ④ Покрытие каталога в кандидатах — контроль схлопывания. ⑤ Средний косинус top-1 — детектор рассинхрона. Разделение критично: при падении смешанной метрики непонятно, чинить модель или индекс, а это разные команды и разные сроки.</div></div>
+
+<div class="qa"><div class="q">29. Почему NDCG@10 — неверная метрика для кандидатогенерации?</div><div class="a">Задача этапа — <em>полнота</em>, а не порядок: если релевантный объект не попал в top-1000, никакой ранжировщик его не покажет. Кандидатогенерация задаёт потолок системы. В замере: модель A имеет NDCG@10 = 0.142 и Recall@1000 = 0.681, модель B — 0.171 и 0.612. По NDCG@10 лучше B, но в связке с ранжировщиком A даёт итоговый NDCG 0.238 против 0.219, потому что отдаёт больше материала.</div></div>
+
+<div class="qa"><div class="q">30. Когда two-tower не нужен?</div><div class="a">На каталоге до ~50 тыс. со стабильным составом: EASE даёт 0.276 за 2 минуты обучения против 0.263 за 210 минут у two-tower — лучше и на два порядка дешевле. Two-tower окупается при большом каталоге (EASE не помещается, $O(|I|^3)$) <em>или</em> при значимой доле новых объектов (MF не решает холодный старт в принципе). Помимо модели он тянет за собой ANN-индекс, версионирование, пересборку и мониторинг рассинхрона — эта инфраструктура должна окупаться измеренным приростом, а не ожидаемым.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block6_01_collab_filtering.html">← Назад: 6.1 — Коллаборативная фильтрация</a>
+  <a href="block6_03_cold_start.html" class="next">Дальше: 6.3 — Холодный старт →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#2563eb', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_P='#7c3aed', C_T='#0d9488', C_GR='#94a3b8';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---------- S1: латентность против размера каталога ---------- */
+(function(){
+  var sizes=[1e3,1e4,1e5,1e6,1e7,1e8];
+  mk('c_latency', {type:'line', data:{labels:['1 тыс.','10 тыс.','100 тыс.','1 млн','10 млн','100 млн'], datasets:[
+    {label:'Cross-модель на каждую пару, мс', data:[0.2,2,20,200,2000,20000], borderColor:C_R, backgroundColor:'rgba(220,38,38,.08)', fill:true, tension:.2, pointRadius:4, borderWidth:2.5},
+    {label:'Two-tower + полный перебор, мс', data:[0.21,0.24,0.55,3.6,34,340], borderColor:C_A, tension:.2, pointRadius:4, borderWidth:2, borderDash:[5,4]},
+    {label:'Two-tower + HNSW, мс', data:[0.20,0.22,0.28,0.51,0.74,0.98], borderColor:C_G, backgroundColor:'rgba(22,163,74,.10)', fill:true, tension:.25, pointRadius:4, borderWidth:2.5},
+    {label:'Бюджет ответа (50 мс)', data:[50,50,50,50,50,50], borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Размер каталога'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Латентность, мс (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Cross-модель выходит за бюджет уже на 100 тыс. объектов.\nHNSW растёт логарифмически и не выходит вообще.';}}}}}});
+})();
+
+/* ---------- S3: тепловая карта матрицы скоров ---------- */
+(function(){
+  var S=[[0.996,0.922,-0.142,0.876],
+         [0.922,0.996,0.142,0.706],
+         [-0.122,0.396,0.994,-0.482],
+         [0.975,0.724,-0.483,0.989]];
+  var ds=[];
+  for(var j=0;j<4;j++){
+    ds.push({label:'q'+(j+1), data:S.map(function(row){return row[j];}),
+      backgroundColor: S.map(function(row,i){ return i===j ? 'rgba(22,163,74,.85)' : (row[j]>0.85 ? 'rgba(220,38,38,.75)' : (row[j]>0.3 ? 'rgba(217,119,6,.62)' : 'rgba(148,163,184,.45)')); }),
+      borderColor:'#fff', borderWidth:1});
+  }
+  mk('c_batch', {type:'bar', data:{labels:['p₁','p₂','p₃','p₄'], datasets:ds},
+   options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({title:{display:true,text:'Строка матрицы = пользователь батча'}},NOG),
+             y:Object.assign({title:{display:true,text:'Косинус p·q'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterLabel:function(c){
+        var i=c.dataIndex, j=c.datasetIndex;
+        if(i===j) return '✓ ПОЗИТИВ (диагональ)';
+        if(c.parsed.y>0.85) return '⚠ негатив почти вровень с позитивом —\nотсюда весь градиент этой строки';
+        if(c.parsed.y<0.3) return 'далёкий негатив — вклад в градиент ≈ 0';
+        return 'негатив';}}}}}});
+})();
+
+/* ---------- S3: качество vs размер батча ---------- */
+(function(){
+  mk('c_bs', {type:'line', data:{labels:['256','1 024','4 096','8 192','16 384','32 768'], datasets:[
+    {label:'Recall@100', data:[0.187,0.226,0.259,0.271,0.276,0.277], borderColor:C_P, backgroundColor:'rgba(124,58,237,.10)', fill:true, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Прирост к предыдущей точке, %', data:[null,20.9,14.6,4.6,1.8,0.4], borderColor:C_A, tension:.3, pointRadius:4, borderWidth:2, borderDash:[4,3], yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Размер батча = число негативов на позитив'}},NOG),
+             y:Object.assign({title:{display:true,text:'Recall@100'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Прирост, %'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:12}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex>=4 ? 'Насыщение: негативы перестали приносить новую информацию' : ''; }}}}}});
+})();
+
+/* ---------- S4: перераспределение массы по температуре ---------- */
+(function(){
+  var cosines=[0.90,0.85,0.60,0.20,-0.30];
+  var taus=[1.0,0.30,0.10,0.05,0.02];
+  var labels=['позитив 0.90','негатив 0.85','негатив 0.60','негатив 0.20','негатив −0.30'];
+  var cols=['rgba(22,163,74,.85)','rgba(220,38,38,.78)','rgba(217,119,6,.72)','rgba(37,99,235,.55)','rgba(148,163,184,.55)'];
+  var ds=labels.map(function(lb,i){
+    return {label:lb, data:taus.map(function(t){
+      var mx=Math.max.apply(null,cosines.map(function(c){return c/t;}));
+      var ex=cosines.map(function(c){return Math.exp(c/t-mx);});
+      var s=ex.reduce(function(a,b){return a+b;},0);
+      return +(100*ex[i]/s).toFixed(2);
+    }), backgroundColor:cols[i], borderColor:'#fff', borderWidth:1};
+  });
+  mk('c_temp', {type:'bar', data:{labels:taus.map(function(t){return 'τ = '+t.toFixed(2);}), datasets:ds},
+   options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({stacked:true},NOG),
+             y:Object.assign({stacked:true, max:100, title:{display:true,text:'Доля вероятностной массы, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y.toFixed(2)+'%';},
+        afterBody:function(c){ var i=c[0].dataIndex;
+          if(i===0) return 'Масса размазана — позитив почти не выделен,\nградиент тратится на далёкие негативы';
+          if(i>=4) return 'Весь сигнал на одной паре — одна ошибка\nразметки доминирует над всем батчем';
+          return 'Рабочий режим: сигнал сфокусирован\nна позитиве и ближайшем негативе';}}}}}});
+})();
+
+/* ---------- S5: logQ перераспределяет вес обучения ---------- */
+(function(){
+  mk('c_logq', {type:'bar', data:{labels:['Позитив популярный\n(Q = 0.02)','Позитив редкий\n(Q = 0.00002)'], datasets:[
+    {label:'Лосс без logQ-коррекции', data:[0.787,0.787], backgroundColor:'rgba(148,163,184,.70)', borderColor:C_GR, borderWidth:1.5},
+    {label:'Лосс с logQ-коррекцией', data:[5.585,0.026], backgroundColor:'rgba(124,58,237,.80)', borderColor:C_P, borderWidth:1.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Значение лосса'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:12}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex===0
+        ? 'Вес обучения на популярном позитиве вырос в 7.1 раза —\nкомпенсация того, что он часто был негативом'
+        : 'Вес упал в 30 раз: победа редкого объекта\nнад популярными ожидаема, учить нечему'; }}}}}});
+})();
+
+/* ---------- S6: геометрия шага на окружности ---------- */
+(function(){
+  function circle(n){ var p=[]; for(var i=0;i<=n;i++){ var a=2*Math.PI*i/n; p.push({x:+Math.cos(a).toFixed(4), y:+Math.sin(a).toFixed(4)}); } return p; }
+  mk('c_geom', {type:'scatter', data:{datasets:[
+    {label:'Единичная окружность', data:circle(120), type:'line', borderColor:'#e2e8f0', borderWidth:1.5, pointRadius:0, fill:false, tension:0},
+    {label:'p₁ — вектор пользователя', data:[{x:0.80,y:0.60},{x:0.80747,y:0.58951}], type:'line', showLine:true, borderColor:C_B, backgroundColor:C_B, pointRadius:[5,9], borderWidth:3},
+    {label:'q₁ — позитив (притягивается)', data:[{x:0.87,y:0.50},{x:0.86444,y:0.50327}], type:'line', showLine:true, borderColor:C_G, backgroundColor:C_G, pointRadius:[5,9], borderWidth:3},
+    {label:'q₂ — близкий негатив (отталкивается)', data:[{x:0.50,y:0.87},{x:0.48604,y:0.87393}], type:'line', showLine:true, borderColor:C_R, backgroundColor:C_R, pointRadius:[5,9], borderWidth:3},
+    {label:'q₄ — дальний негатив (слабо)', data:[{x:0.99,y:0.14},{x:0.98988,y:0.13322}], type:'line', showLine:true, borderColor:C_A, backgroundColor:C_A, pointRadius:[5,9], borderWidth:2.5},
+    {label:'q₃ — P≈0, НЕ ДВИГАЕТСЯ', data:[{x:-0.71,y:0.71}], backgroundColor:C_GR, borderColor:C_GR, pointRadius:8, pointStyle:'crossRot'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, aspectRatio:1,
+    scales:{ x:Object.assign({min:-1.15,max:1.25,title:{display:true,text:'Компонента 1'}},GRID),
+             y:Object.assign({min:-0.15,max:1.15,title:{display:true,text:'Компонента 2'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{title:function(c){return c[0].dataset.label;},
+        label:function(c){return (c.dataIndex===0?'до шага: ':'после шага: ')+'('+c.parsed.x.toFixed(4)+', '+c.parsed.y.toFixed(4)+')';},
+        afterBody:function(){return 'Крупная точка — положение после одного шага SGD.\nВсе объекты двигаются вдоль направления p₁,\nвперёд или назад в зависимости от знака (P−y).';}}}}}});
+})();
+
+/* ---------- S7: ablation признаков ---------- */
+(function(){
+  mk('c_feat', {type:'bar', data:{labels:['только ID','+ история\nюзера','+ категория,\nбренд','+ текст\nназвания','+ контекст','+ возраст\n(осторожно)'], datasets:[
+    {label:'Recall@100 в среднем', data:[0.198,0.241,0.253,0.259,0.264,0.271], backgroundColor:'rgba(124,58,237,.75)', order:2},
+    {label:'Recall@100 на хвосте каталога', data:[0.038,0.047,0.118,0.131,0.134,0.138], backgroundColor:'rgba(22,163,74,.72)', order:2},
+    {label:'Recall@100 на новых объектах', data:[0.005,0.008,0.041,0.121,0.124,0.129], type:'line', borderColor:C_A, borderWidth:2.5, pointRadius:5, tension:.25, order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Recall@100'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return 'Самый большой единичный прирост среднего';
+        if(i===2) return 'Среднее +5%, но хвост почти удвоился';
+        if(i===3) return 'Среднее +2.4%, новые объекты — вчетверо';
+        if(i===5) return '⚠ Признак растёт в проде — деградирует незаметно';
+        return ''; }}}}}});
+})();
+
+/* ---------- S8: recall/латентность HNSW ---------- */
+(function(){
+  mk('c_ann', {type:'line', data:{labels:['10','50','100','200','400','800'], datasets:[
+    {label:'Recall@10 индекса', data:[0.712,0.918,0.964,0.987,0.995,0.998], borderColor:C_G, backgroundColor:'rgba(22,163,74,.10)', fill:true, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Время запроса, мс', data:[0.09,0.28,0.51,0.94,1.81,3.55], borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5, yAxisID:'y2'},
+    {label:'Просмотрено узлов (÷1000)', data:[0.12,0.51,0.98,1.90,3.70,7.30], borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:3, borderWidth:2, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'ef — размер очереди кандидатов'}},NOG),
+             y:Object.assign({min:0.65,max:1.0,title:{display:true,text:'Recall индекса'}},GRID),
+             y2:{position:'right', title:{display:true,text:'мс / тыс. узлов'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        return i>=4 ? 'Recall растёт логарифмически, время — линейно.\nПоследние девятки стоят непропорционально дорого.' : ''; }}}}}});
+})();
+
+/* ---------- S9: доля hard negatives ---------- */
+(function(){
+  mk('c_hard', {type:'line', data:{labels:['0%','5%','10%','20%','40%','100%'], datasets:[
+    {label:'Recall@100', data:[0.278,0.291,0.297,0.289,0.262,0.198], borderColor:C_P, backgroundColor:'rgba(124,58,237,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Средний |P_j| негатива (сила градиента)', data:[0.0004,0.0071,0.0138,0.0294,0.0611,0.1420], borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5, yAxisID:'y2'},
+    {label:'Оценка доли ложных негативов', data:[0,0.9,1.8,3.7,7.4,18.4], borderColor:C_R, borderDash:[4,3], tension:.3, pointRadius:4, borderWidth:2, yAxisID:'y3'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Доля hard negatives в пуле'}},NOG),
+             y:Object.assign({title:{display:true,text:'Recall@100'}},GRID),
+             y2:{position:'right', title:{display:true,text:'|P_j|'}, grid:{display:false}},
+             y3:{display:false}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return '✓ Оптимум: градиент уже сильный,\nложных негативов ещё мало';
+        if(i>=4) return '⚠ Сила градиента растёт, но 18% hard negatives —\nна самом деле релевантные объекты';
+        return ''; }}}}}});
+})();
+
+/* ---------- S9: откуда приходит градиент ---------- */
+(function(){
+  mk('c_grad', {type:'bar', data:{labels:['1\nхвост','2','3','4','5','6','7','8','9','10\nхиты'], datasets:[
+    {label:'Доля дециля в негативах, %', data:[0.2,0.5,1.1,2.0,3.1,4.6,7.4,12.1,21.8,47.2], backgroundColor:'rgba(148,163,184,.60)'},
+    {label:'Доля дециля в градиенте, %', data:[0.00,0.02,0.1,0.3,0.8,1.8,4.2,9.3,22.1,61.4], backgroundColor:'rgba(124,58,237,.80)'},
+    {label:'После добавления 25% равномерных, %', data:[2.65,2.72,2.9,3.3,4.1,5.5,7.9,11.4,18.6,40.9], backgroundColor:'rgba(22,163,74,.68)'}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({title:{display:true,text:'Дециль популярности объекта'}},NOG),
+             y:Object.assign({title:{display:true,text:'Доля, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex<=1
+        ? 'Чистый in-batch: этот дециль даёт ~0% градиента.\nМодель не учится отличать эти объекты друг от друга.' : ''; }}}}}});
+})();
+
+/* ---------- S10: деградация от устаревания индекса ---------- */
+(function(){
+  mk('c_stale', {type:'line', data:{labels:['0 ч','6 ч','12 ч','24 ч','3 дня','7 дней'], datasets:[
+    {label:'Дообучение от прошлых весов', data:[100,99.4,98.5,97.1,91.8,82.3], borderColor:C_G, backgroundColor:'rgba(22,163,74,.10)', fill:true, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Обучение с нуля каждый раз', data:[100,37,37,37,37,37], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.1, pointRadius:5, borderWidth:2.5},
+    {label:'Порог приемлемости (95%)', data:[95,95,95,95,95,95], borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Возраст индекса'}},NOG),
+             y:Object.assign({min:30,max:105,title:{display:true,text:'Качество, % от свежего индекса'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(){return 'При обучении с нуля пространство меняется полностью:\nкосинус старого и нового вектора одного объекта — 0.03.\nПри дообучении — 0.94, дрейф плавный.';}}}}}});
+})();
+
+/* ---------- S11: разложение качества по уровням ---------- */
+(function(){
+  mk('c_levels', {type:'bar', data:{labels:['Модель\n(полный перебор)','− потери ANN\n(recall 0.964)','− фильтры\nи бизнес-правила','Итог\nв продакшене'], datasets:[
+    {label:'Recall@100', data:[0.297,0.286,0.271,0.271], backgroundColor:['rgba(124,58,237,.80)','rgba(37,99,235,.72)','rgba(217,119,6,.72)','rgba(22,163,74,.78)'], borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({min:0.24,title:{display:true,text:'Recall@100'}},GRID)},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return 'Потеря 3.7% — невидима, если офлайн\nсчитают полным перебором';
+        if(i===2) return 'Потеря ещё 5.2% на фильтрации';
+        return 'Разделять уровни обязательно: иначе при падении\nметрики непонятно, чинить модель или индекс';}}}}}});
+})();
+
+/* ---------- Интерактив: температура ---------- */
+function updTau(){
+  var tau = +document.getElementById('sl_tau').value/100;
+  var negC = +document.getElementById('sl_neg').value/100;
+  document.getElementById('out_tau').textContent = tau.toFixed(2);
+  document.getElementById('out_neg').textContent = negC.toFixed(2);
+  var cos=[0.90, negC, 0.60, 0.20, -0.30];
+  var names=['позитив','негатив 1','негатив 2','негатив 3','негатив 4'];
+  var mx=Math.max.apply(null, cos.map(function(c){return c/tau;}));
+  var ex=cos.map(function(c){return Math.exp(c/tau-mx);});
+  var s=ex.reduce(function(a,b){return a+b;},0);
+  var P=ex.map(function(e){return e/s;});
+  var loss=-Math.log(Math.max(P[0],1e-300));
+  var rest=P[2]+P[3]+P[4];
+  var html='<b>Лосс = '+loss.toFixed(4)+'</b> &nbsp;·&nbsp; градиент позитива (P−1) = <b>'+(P[0]-1).toFixed(4)+'</b><br>';
+  html+='<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  for(var i=0;i<5;i++){
+    var col = i===0 ? '#16a34a' : (i===1 ? '#dc2626' : '#94a3b8');
+    html+='<span style="color:'+col+';font-weight:700;">P('+names[i]+') = '+(100*P[i]).toFixed(2)+'%</span>'+(i<4?' &nbsp; ':'');
+  }
+  html+='</span><br><span style="font-size:12.5px;color:#64748b;">';
+  if(P[0]>0.95) html+='⚠️ Позитив почти всю массу забрал — градиент ≈ 0, обучение остановилось';
+  else if(P[0]<0.30) html+='⚠️ Масса размазана — модель тратит градиент на далёкие негативы';
+  else if(rest<0.01) html+='✓ Рабочий режим: сигнал сфокусирован на позитиве и ближайшем негативе (масса на остальных '+(100*rest).toFixed(2)+'%)';
+  else html+='✓ Приемлемо, но масса на далёких негативах ещё заметна: '+(100*rest).toFixed(1)+'%';
+  html+='<br>Множитель градиента 1/τ = <b>'+(1/tau).toFixed(1)+'</b> — во столько раз масштабируются все обновления</span>';
+  document.getElementById('out_soft').innerHTML=html;
+}
+
+/* ---------- Интерактив: ef и итоговое качество ---------- */
+function updEf(){
+  var ef = +document.getElementById('sl_ef').value;
+  var mr = +document.getElementById('sl_mr').value/100;
+  document.getElementById('out_ef').textContent = ef;
+  document.getElementById('out_mr').textContent = mr.toFixed(2);
+  var recall = 1 - 0.62*Math.pow(ef, -0.62);        // подогнано под таблицу секции 8
+  recall = Math.min(0.999, Math.max(0.5, recall));
+  var ms = 0.06 + 0.00437*ef;
+  var nodes = Math.round(9.1*ef);
+  var total = mr*recall;
+  var lost = mr - total;
+  var html='<b>Итоговый Recall = '+mr.toFixed(3)+' × '+recall.toFixed(3)+' = '+total.toFixed(4)+'</b><br>';
+  html+='<span style="font-family:SF Mono,monospace;font-size:12.5px;">recall индекса '+recall.toFixed(3)+
+        ' &nbsp;·&nbsp; латентность ~'+ms.toFixed(2)+' мс &nbsp;·&nbsp; просмотрено ~'+nodes.toLocaleString('ru')+' узлов</span><br>';
+  html+='<span style="font-size:12.5px;color:#64748b;">Потеряно из-за приближённого поиска: <b>'+lost.toFixed(4)+'</b> ('+(100*(1-recall)).toFixed(1)+'% релевантных)<br>';
+  if(recall<0.90) html+='⚠️ Индекс теряет больше, чем даёт большинство улучшений модели — поднимай ef';
+  else if(recall<0.95) html+='⚠️ На границе: потеря сопоставима с типичным приростом от смены архитектуры';
+  else if(ms>2.5) html+='⚠️ Recall отличный, но латентность высокая — проверь, укладываешься ли в бюджет';
+  else html+='✓ Рабочая точка: потеря от индекса мала относительно качества модели';
+  html+='</span>';
+  document.getElementById('out_ann').innerHTML=html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updTau(); updEf();
+</script>
+</body>
+</html>

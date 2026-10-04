@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7.2 · Табличный DL: TabNet, Entity Embeddings, SAINT</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --in:#4f46e5;--in-l:#eef2ff;--in-b:#c7d2fe;--in-d:#1e1b4b;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#1e1b4b,#4f46e5);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.85;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--in);border-bottom-color:var(--in);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--in);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--in);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--in-l);border:1px solid var(--in-b);border-left:4px solid var(--in);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--in);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#312e81;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--in-l)!important;color:#312e81!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--in);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#1e1b4b;border:1px solid #4f46e5;border-radius:8px;padding:9px 13px;font-size:12px;color:#c7d2fe;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--in-l),#e0e7ff);border:1px solid var(--in-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--in);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#312e81;margin:0 0 8px;}
+.casebox p,.casebox li{color:#1e1b4b;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.in{border-top:3px solid var(--in);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--in-l);color:#312e81;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--in);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--in);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#4338ca;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--in);border:2px solid var(--in);}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes dash{to{stroke-dashoffset:0;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes glowIn{0%{opacity:.25;}100%{opacity:1;}}
+@keyframes maskSweep{0%{opacity:.2;}50%{opacity:1;}100%{opacity:.2;}}
+.draw path,.draw line,.draw circle,.draw polyline,.draw rect{stroke-dasharray:1200;stroke-dashoffset:1200;animation:dash 2.4s ease-out forwards;}
+.draw .d2{animation-delay:.4s;} .draw .d3{animation-delay:.8s;} .draw .d4{animation-delay:1.2s;} .draw .d5{animation-delay:1.6s;}
+.draw text{animation:glowIn 1s ease .9s both;stroke:none;}
+/* Схема шагов TabNet */
+.steps{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:18px 0;}
+.stp{flex:1;min-width:150px;background:#fff;border:1.5px solid var(--in-b);border-radius:12px;padding:13px 15px;font-size:12.5px;color:var(--text2);line-height:1.55;animation:floatY 3.4s ease-in-out infinite;}
+.stp:nth-child(2){animation-delay:.5s;} .stp:nth-child(3){animation-delay:1s;} .stp:nth-child(4){animation-delay:1.5s;}
+.stp b{display:block;color:var(--in);font-size:13px;margin-bottom:4px;}
+/* Маска внимания — анимированная сетка признаков */
+.maskgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:14px 0;}
+.mcell{height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;animation:maskSweep 3s ease-in-out infinite;}
+.mlbl{font-size:11.5px;color:var(--text3);margin:10px 0 4px;font-weight:700;}
+/* Плашки сравнения */
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin:18px 0;}
+.vs-side{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid var(--border);}
+.vs-side.l{border-top:3px solid var(--grn);} .vs-side.r{border-top:3px solid var(--in);}
+.vs-side h5{font-size:14px;font-weight:700;margin-bottom:8px;}
+.vs-side p{font-size:13px;margin-bottom:5px;}
+.vs-mid{font-size:18px;font-weight:900;color:var(--text3);}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--in);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--in);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--in-l);border-radius:9px;font-size:13.5px;color:#312e81;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.vs{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}.maskgrid{grid-template-columns:repeat(4,1fr);}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 7 · AutoML + Tabular DL + MLOps · Тема 2 из 3</div>
+  <h1>Табличный DL: TabNet, Entity Embeddings, SAINT</h1>
+  <p class="sub">Почему деревья обычно выигрывают · и в каких случаях нейросети всё-таки нужны</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Почему деревья выигрывают</a>
+  <a href="#s2">2. Три причины провала MLP</a>
+  <a href="#s3">3. Entity Embeddings</a>
+  <a href="#s4">4. TabNet</a>
+  <a href="#s5">5. NODE и вокруг</a>
+  <a href="#s6">6. FT-Transformer</a>
+  <a href="#s7">7. SAINT</a>
+  <a href="#s8">8. Когда DL выигрывает</a>
+  <a href="#s9">9. Практика</a>
+  <a href="#s10">10. System Design</a>
+  <a href="#qa">11. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Главный факт темы: на табличных данных деревья выигрывают</div>
+<div class="sdesc">И это не мнение, а многократно воспроизведённый результат</div>
+
+<p>С 2016 года вышли десятки статей с заголовком «нейросеть, которая наконец побеждает градиентный бустинг на таблицах». Почти все они не воспроизводятся при честном сравнении. Два системных исследования поставили точку:</p>
+
+<div class="grid2">
+<div class="card gr"><h5>📄 Shwartz-Ziv & Armon (2021)<br><em>«Tabular Data: Deep Learning is Not All You Need»</em></h5><p>Взяли 11 датасетов из статей про табличный DL. Каждая нейросеть выигрывала <strong>только на своём датасете</strong>. XGBoost с честным тюнингом выигрывал в среднем. Ансамбль XGBoost + нейросети был лучше всего — но вклад давал именно бустинг.</p></div>
+<div class="card gr"><h5>📄 Grinsztajn et al. (2022)<br><em>«Why do tree-based models still outperform DL on typical tabular data?»</em></h5><p>45 датасетов, честный бюджет тюнинга для обеих сторон. Деревья выигрывают устойчиво. Главное — авторы <strong>объяснили механизм</strong> тремя конкретными свойствами табличных данных.</p></div>
+</div>
+
+<div class="chb">
+<div class="cht">Типичная картина: качество vs бюджет тюнинга</div>
+<div class="chsub">GBDT стартует высоко почти сразу; нейросети требуют большого бюджета и всё равно не догоняют на среднем датасете</div>
+<div style="position:relative;height:310px;"><canvas id="c_bench"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Как читать статьи про табличный DL — критически важный навык.</strong> Проверяй три вещи: ① <strong>Одинаковый ли бюджет тюнинга?</strong> Часто нейросеть тюнят 200 итераций Optuna, а XGBoost берут с дефолтами. ② <strong>Сколько датасетов?</strong> На 3–5 датасетах выиграть можно случайно. ③ <strong>Есть ли ансамбль-бейзлайн?</strong> Часто «победа» новой архитектуры меньше, чем прирост от простого усреднения 5 сидов бустинга.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Правильная ментальная модель: <strong>табличные данные — это не «изображения без структуры»</strong>. У картинок и текста есть встроенная геометрия: соседние пиксели связаны, соседние слова связаны. Свёртки и трансформеры — это архитектуры, зашитые под эту геометрию (inductive bias).</p>
+<p>У таблицы такой геометрии нет: колонки «возраст», «город», «сумма последней покупки» не образуют никакого пространства, где близость что-то значит. Перемешай колонки — ничего не изменится. Нейросеть с её гладкими преобразованиями теряет здесь всё своё преимущество, а деревья с их осевыми разрезами — наоборот, идеально подходят.</p>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Три причины, по которым MLP проигрывает деревьям</div>
+<div class="sdesc">Разбор из Grinsztajn et al. — это ядро всей темы</div>
+
+<h3>Причина №1: нейросети смещены к гладким функциям</h3>
+<p>MLP с гладкими активациями естественно приближает <strong>гладкие функции</strong>. Реальные табличные зависимости часто кусочно-постоянные с резкими скачками.</p>
+
+<div class="fbox">
+<div class="flabel">📐 Что аппроксимирует дерево</div>
+$$f_{\text{tree}}(x) = \sum_{m=1}^{M} c_m \cdot \mathbb{1}\big[x \in R_m\big]$$
+<p class="fnote">$R_m$ — прямоугольные (осе-параллельные) области, $c_m$ — константа в области. Это <strong>кусочно-постоянная</strong> функция со скачками ровно там, где проходят разрезы.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Правило «одобряем кредит, если доход ≥ 50 000» — это ступенька. Доход 49 999 → отказ, 50 001 → одобрение. Дерево воспроизводит это <strong>одним разрезом идеально</strong>.</p>
+<p>MLP, чтобы приблизить ступеньку, должен «выучить» её из данных как очень крутую сигмоиду. Это возможно, но требует много данных вблизи порога и сильно большего числа параметров. Более того, регуляризация (weight decay) активно <em>сопротивляется</em> крутизне — она штрафует большие веса, а крутая ступенька требует именно больших весов.</p>
+<p>Реальные таблицы полны такими ступеньками: пороги тарифов, возрастные группы, лимиты, категории риска. Это <strong>рукотворные, а не природные</strong> зависимости.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Ступенчатая зависимость: дерево vs MLP</div>
+<div class="chsub">Истинная функция — ступеньки. Дерево ловит их точно, MLP сглаживает и ошибается на границах</div>
+<div style="position:relative;height:300px;"><canvas id="c_step"></canvas></div>
+</div>
+
+<h3>Причина №2: неинформативные признаки убивают MLP</h3>
+<p>В типичной production-таблице половина колонок — мусор: технические ID, поля, заполненные одним значением, дубликаты, слабо связанные с таргетом фичи.</p>
+
+<div class="vs">
+  <div class="vs-side l"><h5>🌳 Деревья</h5><p>При выборе разреза считают выигрыш (gain) для каждого признака и <strong>просто не выбирают</strong> бесполезный. Признак с нулевым gain никогда не попадёт в дерево — он невидим для модели.</p><p>Встроенный отбор признаков «бесплатно».</p></div>
+  <div class="vs-mid">VS</div>
+  <div class="vs-side r"><h5>🧠 MLP</h5><p>Первый слой — плотное умножение матриц: <strong>каждый</strong> признак попадает в каждый нейрон с ненулевым весом. Мусорные фичи вносят шум в каждую активацию.</p><p>Сеть должна <em>научиться</em> занулять их веса — а это дополнительная работа, требующая данных.</p></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Эксперимент из статьи: добавляем мусорные признаки</div>
+<div class="numex-step"><span class="nb">1</span><div>Берём датасет с 20 информативными признаками. GBDT: AUC 0.860. MLP: AUC 0.848. Разрыв — 1.2 п.п.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Добавляем 20 случайных шумовых колонок. GBDT: <strong>0.857</strong> (просел на 0.3 п.п.). MLP: <strong>0.826</strong> (просел на 2.2 п.п.).</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Добавляем 100 шумовых колонок. GBDT: <strong>0.851</strong>. MLP: <strong>0.792</strong>. Разрыв вырос до 6 п.п.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Обратный эксперимент: удаляем неинформативные признаки → разрыв между MLP и GBDT <strong>сокращается</strong>. Это прямое доказательство механизма, а не корреляция.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Прямое практическое следствие.</strong> Если ты всё-таки применяешь нейросеть к таблице — <strong>feature selection перестаёт быть опциональной</strong>. Прогони отбор по важности GBDT, оставь топ-N признаков, и только потом обучай сеть. Для бустинга этот шаг обычно даёт околонулевой прирост, для нейросети — единицы процентов.</div></div>
+
+<h3>Причина №3: чувствительность к вращению признаков</h3>
+<p>Самое элегантное наблюдение статьи. MLP <strong>инвариантен к вращению</strong> пространства признаков: если умножить все входы на ортогональную матрицу $Q$, MLP выучит ту же функцию (просто веса первого слоя станут $W Q^{\top}$).</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Rotational invariance</div>
+$$\text{MLP}(Qx) \equiv \text{MLP}'(x) \quad \text{при} \quad W'_1 = W_1 Q$$
+<p>Для дерева это неверно: разрез $x_j &lt; t$ после вращения превращается в наклонную гиперплоскость $\langle q_j, x\rangle &lt; t$, которую осе-параллельное дерево должно приближать лестницей из многих разрезов.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Инвариантность к вращению звучит как <em>достоинство</em> — модель не зависит от системы координат. Но для таблиц это <strong>недостаток</strong>! В таблице оси координат не произвольны: колонка «возраст» — это осмысленная сущность, а не случайное направление в пространстве. Смесь «0.3×возраст + 0.7×доход» смысла не имеет.</p>
+<p>Дерево «знает», что оси особенные, и работает вдоль них. MLP этого не знает и тратит ёмкость на то, чтобы выучить, какие направления важны. У изображений ситуация обратная: там нет привилегированных «осей пикселей», и инвариантность помогает.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Эксперимент с вращением: кто просядет</div>
+<div class="chsub">Применяем случайное ортогональное преобразование к признакам и переобучаем модели</div>
+<div style="position:relative;height:290px;"><canvas id="c_rot"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Красивый вывод.</strong> Эксперимент с вращением — это не абстракция, а <em>диагностический тест на осмысленность признаков</em>. Если после вращения твоя GBDT-модель почти не просела — значит, исходные оси не несли особого смысла, и в этой задаче нейросеть может быть конкурентоспособна. Если просела сильно — оси осмысленны, бери деревья.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Entity Embeddings — единственная идея табличного DL, которая точно работает</div>
+<div class="sdesc">Guo & Berkhahn, 2016 — Rossmann Kaggle 3-е место</div>
+
+<p>Проблема: категориальный признак с тысячами уникальных значений. One-hot даёт разреженную матрицу гигантской ширины, где все категории равноудалены друг от друга — «магазин №417» и «магазин №418» так же не похожи, как «магазин №417» и «магазин №9021».</p>
+
+<div class="fbox grn">
+<div class="flabel">📐 Entity Embedding</div>
+$$\mathbf{e}_c = E[\,c\,] \in \mathbb{R}^{d_c}, \qquad E \in \mathbb{R}^{|C| \times d_c}$$
+<p>Эвристика размерности (fast.ai):</p>
+$$d_c = \min\left(600,\; \left\lceil 1.6 \cdot |C|^{0.56} \right\rceil\right)$$
+<p class="fnote">$|C|$ — число уникальных категорий. Матрица $E$ обучается вместе со всей сетью обратным распространением.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>One-hot говорит: «есть 1115 магазинов, и все они друг другу чужие». Embedding говорит: «размести 1115 магазинов в 10-мерном пространстве так, чтобы магазины с похожим поведением продаж оказались рядом».</p>
+<p>Обучение делает это само: если магазины №417 и №9021 демонстрируют одинаковые сезонные паттерны, градиент подтолкнёт их векторы друг к другу — потому что так уменьшается ошибка. По сути, это <strong>обучаемое сжатие категории с сохранением того, что важно для задачи</strong>.</p>
+<p>Эвристика $1.6|C|^{0.56}$: 10 категорий → 5 измерений, 100 → 21, 1000 → 76, 10000 → 279. Растёт медленнее линейного, потому что реальное разнообразие поведения растёт медленнее числа категорий.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: Rossmann, 1115 магазинов</div>
+<div class="numex-step"><span class="nb grn">1</span><div><strong>One-hot:</strong> 1115 колонок. При 942 тыс. строк матрица 942000×1115 — но заполнена на 0.09%. Линейная модель получает 1115 независимых параметров, каждый оценивается по ~845 наблюдениям.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div><strong>Embedding:</strong> $d = \lceil 1.6 \cdot 1115^{0.56}\rceil = \lceil 1.6\cdot 47.6\rceil = 77$. Округляем вниз до 50 (авторы взяли 10 для магазина). Матрица 1115×10 = <strong>11 150 параметров</strong> вместо 1115 независимых весов на каждый слой сети.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div>Магазин, встречавшийся 50 раз, всё равно получает осмысленный вектор — потому что его вектор живёт в общем пространстве и «подтягивается» к похожим магазинам через общие веса верхних слоёв.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Результат Kaggle: 3-е место, MAPE лучше, чем у чистого GBDT на тех же фичах. <strong>Более того:</strong> авторы вытащили обученные embeddings и подали их как признаки в обычный GBDT — качество бустинга тоже выросло.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Главный практический приём темы.</strong> Entity embeddings можно использовать <strong>не заменяя, а дополняя бустинг</strong>: обучаешь маленькую сеть с embedding-слоями → извлекаешь матрицы $E$ → добавляешь векторы как числовые признаки к GBDT. Получаешь и обучаемое представление категорий, и всю силу деревьев. Это стабильно работающий гибридный рецепт, и он куда надёжнее, чем попытка заменить бустинг на TabNet.</div></div>
+
+<pre><code>import torch.nn as nn
+
+class TabularNet(nn.Module):
+    def __init__(self, cat_dims, n_num, hidden=(256,128)):
+        super().__init__()
+        # cat_dims = [(1115, 10), (7, 4), (12, 6), ...]  (cardinality, emb_dim)
+        self.embs = nn.ModuleList([nn.Embedding(c, d) for c, d in cat_dims])
+        self.emb_drop = nn.Dropout(0.1)
+        self.bn_num = nn.BatchNorm1d(n_num)          # нормализация числовых — обязательна
+        in_dim = sum(d for _, d in cat_dims) + n_num
+        layers, prev = [], in_dim
+        for h in hidden:
+            layers += [nn.Linear(prev, h), nn.BatchNorm1d(h), nn.ReLU(), nn.Dropout(0.3)]
+            prev = h
+        layers += [nn.Linear(prev, 1)]
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x_cat, x_num):
+        e = torch.cat([emb(x_cat[:, i]) for i, emb in enumerate(self.embs)], dim=1)
+        e = self.emb_drop(e)
+        return self.mlp(torch.cat([e, self.bn_num(x_num)], dim=1)).squeeze(1)
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три подводных камня embeddings.</strong> ① <strong>Неизвестная категория в проде.</strong> Магазин, которого не было в train, вызовет IndexError. Всегда резервируй индекс 0 под <code>&lt;UNK&gt;</code> и маппь редкие категории туда ещё при обучении. ② <strong>Утечка через таргет-зависимую инициализацию.</strong> Инициализировать embeddings средним таргетом по категории — прямая утечка, если считать по всему train. ③ <strong>Переобучение на редких категориях.</strong> Категория с 3 наблюдениями получит вектор, идеально подогнанный под эти 3 строки. Лечится <code>emb_dropout</code>, группировкой редких категорий и weight decay именно на embedding-слое.</div></div>
+
+<div class="casebox">
+<div class="caseco">Общий отраслевой паттерн</div>
+<h4>Где entity embeddings реально живут в проде</h4>
+<p>Ирония в том, что самая успешная идея «табличного DL» победила не в табличных задачах, а в <strong>рекомендательных системах и рекламе</strong>, где она стала фундаментом:</p>
+<ul>
+<li><strong>Wide &amp; Deep, DeepFM, DLRM</strong> — deep-часть это ровно entity embeddings над ID пользователей и айтемов (см. блок 6).</li>
+<li><strong>Two-Tower retrieval</strong> — обе башни начинаются с embedding-слоёв по категориальным ID.</li>
+<li>Ключевое отличие от классической таблички: там <strong>кардинальность категорий в миллионах</strong>, и one-hot физически невозможен. Именно при таких кардинальностях embeddings обязательны, а не «приятный бонус».</li>
+</ul>
+<p><strong>Вывод:</strong> чем выше кардинальность категорий, тем больше смысла в DL-подходе. При 10 категориях используй one-hot и бустинг. При 10 миллионах — только embeddings.</p>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. TabNet: попытка встроить в нейросеть логику дерева</div>
+<div class="sdesc">Google Cloud AI, Arık & Pfister, 2019 — самая известная архитектура табличного DL</div>
+
+<p>Идея TabNet прямо следует из диагноза предыдущей секции: если MLP проигрывает, потому что <em>смотрит на все признаки сразу</em>, — давайте заставим сеть на каждом шаге выбирать <strong>подмножество признаков</strong>, как это делает дерево при разрезе.</p>
+
+<div class="steps">
+  <div class="stp"><b>Шаг 1</b>Attentive Transformer выбирает подмножество признаков → Feature Transformer их обрабатывает → часть выхода идёт в предсказание</div>
+  <div class="stp"><b>Шаг 2</b>Prior scale подавляет уже использованные признаки → выбирается <em>другое</em> подмножество</div>
+  <div class="stp"><b>Шаг 3</b>…и так N_steps раз (обычно 3–10)</div>
+  <div class="stp"><b>Агрегация</b>Выходы всех шагов складываются; маски дают интерпретируемость</div>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Маска выбора признаков (Attentive Transformer)</div>
+$$\mathbf{M}[i] = \mathrm{sparsemax}\big(\mathbf{P}[i-1] \cdot h_i(\mathbf{a}[i-1])\big)$$
+<p>Prior scale — «сколько бюджета внимания у признака ещё осталось»:</p>
+$$\mathbf{P}[i] = \prod_{j=1}^{i}\big(\gamma - \mathbf{M}[j]\big)$$
+<p class="fnote">$\gamma \geq 1$ — параметр релаксации. При $\gamma = 1$ признак, использованный на шаге $j$, полностью запрещён дальше. При $\gamma = 2$ его можно переиспользовать.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь следователя, который допрашивает свидетелей по очереди. На первом шаге он выбирает 3 самых информативных свидетелей. Дальше <strong>prior scale</strong> — это его блокнот: «этих я уже опросил, от них новой информации мало». На втором шаге он выбирает других. И так N раз, собирая картину по кусочкам.</p>
+<p>$\gamma$ — насколько строго он запрещает себе возвращаться. $\gamma=1$: «второй раз к одному свидетелю не хожу никогда». $\gamma=2$: «могу вернуться, если совсем ничего другого не осталось».</p>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Sparsemax — почему не softmax</div>
+$$\mathrm{sparsemax}(\mathbf{z}) = \arg\min_{\mathbf{p} \in \Delta^{K-1}} \|\mathbf{p} - \mathbf{z}\|_2^2$$
+<p class="fnote">Евклидова проекция вектора на симплекс вероятностей. В отличие от softmax, результат содержит <strong>настоящие нули</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Softmax никогда не даёт ровно ноль: даже самый бесполезный признак получит вес $10^{-6}$ — и всё равно попадёт в вычисления. Это <em>мягкий</em> отбор.</p>
+<p>Sparsemax честно зануляет: 40 признаков из 50 получают вес 0.000 и полностью выпадают из шага. Это <em>жёсткий</em> отбор — ровно то, что делает дерево, выбирая один признак для разреза. Именно sparsemax даёт TabNet его главное свойство: интерпретируемые маски, где видно, какие признаки реально использовались.</p>
+</div>
+
+<div class="mlbl">Шаг 1: маска внимания (тёмное = признак выбран, светлое = ноль)</div>
+<div class="maskgrid" id="mask1"></div>
+<div class="mlbl">Шаг 2: prior scale подавил использованные → выбраны другие признаки</div>
+<div class="maskgrid" id="mask2"></div>
+<div class="mlbl">Шаг 3: агрегированная важность признаков по всем шагам</div>
+<div class="maskgrid" id="mask3"></div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Sparsity regularization</div>
+$$L_{\text{sparse}} = \sum_{i=1}^{N_{\text{steps}}}\sum_{b=1}^{B}\sum_{j=1}^{D} \frac{-\mathbf{M}_{b,j}[i] \log\big(\mathbf{M}_{b,j}[i] + \epsilon\big)}{N_{\text{steps}} \cdot B}$$
+<p>Общий лосс: $\;L = L_{\text{task}} + \lambda_{\text{sparse}} L_{\text{sparse}}$</p>
+<p class="fnote">Это энтропия маски. Минимизация энтропии → маска становится ближе к «одна единица, остальное ноль».</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Энтропия равномерной маски (все признаки понемногу) — максимальна. Энтропия маски «выбран ровно один признак» — ноль. Штрафуя энтропию, мы <strong>платим сети за решительность</strong>: выбирай мало признаков и уверенно, а не размазывай внимание.</p>
+<p>$\lambda_{\text{sparse}}$ — важнейший гиперпараметр TabNet. Слишком большой → сеть выбирает 1–2 признака и недообучается. Слишком маленький → маски плотные, TabNet вырождается в обычный MLP и теряет весь смысл. Типичный диапазон $10^{-4}$–$10^{-2}$, и его надо тюнить в лог-шкале.</p>
+</div>
+
+<h3>Self-supervised pretraining в TabNet</h3>
+<p>Вторая идея статьи, которая интереснее самой архитектуры: <strong>маскированное восстановление признаков</strong> по аналогии с BERT.</p>
+
+<div class="fbox teal">
+<div class="flabel">📐 Reconstruction loss</div>
+$$L_{\text{recon}} = \sum_{b=1}^{B}\sum_{j=1}^{D} \left| \frac{\big(\hat{f}_{b,j} - f_{b,j}\big)\cdot \mathbf{S}_{b,j}}{\sqrt{\sum_{b'}\big(f_{b',j} - \bar{f}_j\big)^2 / B}} \right|^2$$
+<p class="fnote">$\mathbf{S}$ — бинарная маска «этот признак был скрыт». Знаменатель нормирует на стандартное отклонение признака — без него признаки с большим разбросом доминировали бы в лоссе.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Скрываем случайные 20% ячеек таблицы и учим сеть их восстанавливать по остальным. Чтобы восстановить «сумму покупки», сеть вынуждена выучить связи между колонками — что она коррелирует с категорией товара, регионом, днём недели.</p>
+<p><strong>Зачем это надо:</strong> размеченных данных мало (10 тыс. строк с таргетом), а неразмеченных — миллионы. Претрейн использует все, файнтюн — только размеченные. Это тот редкий сценарий, где табличный DL получает настоящее преимущество над GBDT, который так не умеет.</p>
+</div>
+
+<h3>Честная оценка TabNet</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Заявлено в статье</th><th>Что показала практика</th></tr></thead>
+<tbody>
+<tr><td>Бьёт GBDT на табличных бенчмарках</td><td>При равном бюджете тюнинга — <strong>не бьёт</strong>. Воспроизведение в Grinsztajn et al. и Shwartz-Ziv & Armon ставит TabNet ниже GBDT и ниже FT-Transformer</td></tr>
+<tr><td>Интерпретируемость через маски</td><td>Работает, но маски нестабильны между запусками; SHAP на GBDT практичнее и стабильнее</td></tr>
+<tr><td>Self-supervised pretraining даёт прирост</td><td><strong>Подтверждается</strong> — это самая ценная часть работы, особенно при малой доле размеченных данных</td></tr>
+<tr><td>Не требует feature engineering</td><td>Требует. И ещё нормализации, и отбора признаков, и аккуратного подбора $\lambda_{\text{sparse}}$</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Практический вердикт по TabNet.</strong> Как production-модель на обычной таблице — почти никогда не оправдан: сложнее в обучении, чувствительнее к гиперпараметрам, медленнее и слабее LightGBM. Как <em>идея</em> — важен: показал, что sparse feature selection внутри сети работает, и что маскированный претрейн переносится на таблицы. На собеседовании про TabNet спрашивают именно ради этих двух механизмов, а не потому, что ждут его в проде.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. NODE и другие «дифференцируемые деревья»</div>
+<div class="sdesc">Попытка получить лучшее из двух миров</div>
+
+<p>Логика: деревья хороши, но недифференцируемы — их нельзя обучать градиентным спуском и нельзя стакать в глубокие композиции. Что если сделать <strong>мягкое дерево</strong>?</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Oblivious Decision Tree (основа NODE и CatBoost)</div>
+$$h(x) = \sum_{\mathbf{b} \in \{0,1\}^{d}} R_{\mathbf{b}} \prod_{i=1}^{d} \Big[ b_i \cdot \sigma_i(x) + (1-b_i)\big(1-\sigma_i(x)\big) \Big]$$
+<p>где $\sigma_i(x) = \text{entmax}\!\left(\dfrac{\langle F_i, x\rangle - \tau_i}{T_i}\right)$ — мягкий вариант разреза.</p>
+<p class="fnote"><strong>Oblivious</strong> = на каждом уровне дерева используется <em>один и тот же</em> признак и порог для всех узлов. Дерево глубины $d$ описывается $d$ парами (признак, порог) и $2^d$ листьями.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Обычное дерево: на каждом узле свой вопрос. Oblivious-дерево: на каждом <em>уровне</em> один вопрос для всех. Уровень 1: «доход &gt; 50k?». Уровень 2: «возраст &gt; 30?» — этот вопрос задаётся всем, независимо от ответа на первый.</p>
+<p>Звучит как ограничение — и это так. Но плюсы огромны: ① путь до листа = просто битовая строка ответов, поэтому инференс это <strong>один lookup по индексу</strong>, очень быстро; ② сильная регуляризация — модель не может переобучиться на редкие ветки; ③ структура полностью описывается $d$ числами, что делает её удобной для векторизации на GPU. Именно поэтому CatBoost использует oblivious-деревья по умолчанию.</p>
+<p>NODE делает следующий шаг: заменяет жёсткое сравнение на <strong>мягкое</strong> (entmax вместо индикатора) — и теперь по всей конструкции можно взять градиент.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 α-entmax — семейство, объединяющее softmax и sparsemax</div>
+$$\alpha\text{-entmax}(\mathbf{z}) = \arg\max_{\mathbf{p} \in \Delta} \; \mathbf{p}^{\top}\mathbf{z} + H_{\alpha}(\mathbf{p}), \qquad H_\alpha(\mathbf p)=\frac{1}{\alpha(\alpha-1)}\sum_j\big(p_j - p_j^{\alpha}\big)$$
+<p class="fnote">$\alpha = 1$ → softmax (плотный выход). $\alpha = 2$ → sparsemax (с нулями). $\alpha = 1.5$ → промежуточный вариант, который NODE использует по умолчанию.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>α — это «ручка резкости выбора». Крутишь к 1 — модель размазывает внимание по всем вариантам, градиенты текут везде, обучение стабильное, но нет настоящего отбора. Крутишь к 2 — жёсткий выбор с нулями, ближе к настоящему дереву, но градиенты через занулённые ветки не текут, и обучение становится капризным.</p>
+<p>α = 1.5 — компромисс: часть выходов честно нулевые, но не настолько много, чтобы обучение развалилось.</p>
+</div>
+
+<h3>Почему NODE не взлетел</h3>
+<div class="grid2">
+<div class="card rd"><h5>Мягкие разрезы — это не разрезы</h5><p>Сила дерева именно в <strong>резкости</strong> границы. Мягкий разрез — снова гладкая функция, то есть возвращается проблема №1 из секции 2. Мы взяли форму дерева, но потеряли то свойство, ради которого дерево было хорошим.</p></div>
+<div class="card rd"><h5>Стоимость обучения</h5><p>Ансамбль мягких деревьев в разы дороже обучать, чем LightGBM, при сопоставимом или худшем качестве. Экономика не сходится.</p></div>
+<div class="card rd"><h5>Нет истории про признаки</h5><p>Проблемы неинформативных признаков и вращения NODE не решает — он их наследует от нейросетевой природы.</p></div>
+<div class="card gr"><h5>Что осталось полезного</h5><p>① Идея entmax разошлась по всему DL (в том числе в attention). ② Oblivious-деревья как концепция — живут в CatBoost и работают прекрасно. ③ Понимание, что «дифференцируемость дерева» сама по себе не приз.</p></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Общий урок из истории NODE.</strong> Когда переносишь удачный механизм из одной парадигмы в другую, спроси: <em>какое именно свойство делало его удачным, и переживёт ли это свойство перенос?</em> Дерево было хорошим благодаря резким осевым разрезам. Сделав их мягкими ради дифференцируемости, мы выбросили ровно то, за что его ценили — и получили нейросеть, притворяющуюся деревом.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. FT-Transformer: самая сильная нейросеть для таблиц</div>
+<div class="sdesc">Gorishniy et al., 2021 — «Revisiting Deep Learning Models for Tabular Data»</div>
+
+<p>Работа Яндекс-исследователей сделала важную вещь: провела <strong>честное сравнение с одинаковым бюджетом тюнинга</strong> и предложила простую архитектуру, которая оказалась сильнее всех предыдущих «умных».</p>
+
+<div class="fbox">
+<div class="flabel">📐 Feature Tokenizer — ключевая идея</div>
+<p>Каждый признак превращается в токен размерности $d$:</p>
+$$T_j^{\text{num}} = x_j \cdot W_j + b_j, \qquad W_j, b_j \in \mathbb{R}^{d}$$
+$$T_j^{\text{cat}} = E_j[\,x_j\,], \qquad E_j \in \mathbb{R}^{|C_j| \times d}$$
+<p>Затем добавляется обучаемый CLS-токен, и всё идёт в стандартный Transformer:</p>
+$$T = \big[\,\texttt{[CLS]},\, T_1,\, T_2,\, \dots,\, T_m \,\big] \in \mathbb{R}^{(m+1)\times d}$$
+$$\hat{y} = \text{Head}\big(\text{Transformer}(T)_{\texttt{[CLS]}}\big)$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Здесь спрятана тонкая, но принципиальная идея. Обычный MLP получает <strong>число</strong> «возраст = 35». FT-Transformer превращает его в <strong>вектор</strong> размерности 192: «возраст» получает свой обучаемый вектор направления $W_j$, умноженный на значение 35, плюс свой bias $b_j$.</p>
+<p>Зачем? Теперь у каждого признака есть собственная «личность» в общем пространстве — как у слова в языковой модели. Attention может спросить: «насколько признак «доход» релевантен признаку «возраст» для этого конкретного объекта?» Числовой признак и категориальный оказываются в одном пространстве и могут взаимодействовать напрямую.</p>
+<p>CLS-токен — это «наблюдатель», который через attention собирает информацию со всех признаков и отдаёт её в голову предсказания. Ровно как в BERT.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: как выглядит один объект</div>
+<div class="numex-step"><span class="nb">1</span><div>Объект: <code>возраст=35</code>, <code>доход=72000</code>, <code>город="Berlin"</code>, <code>сегмент="premium"</code>. Токен-размерность $d=192$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Числовые нормируются (quantile transform): возраст → 0.42, доход → 0.78. Токены: $T_1 = 0.42\cdot W_1 + b_1$, $T_2 = 0.78\cdot W_2 + b_2$ — оба вектора длины 192.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Категориальные: $T_3 = E_{\text{город}}[\text{Berlin}]$, $T_4 = E_{\text{сегмент}}[\text{premium}]$ — просто строки из таблиц embeddings, тоже 192.</div></div>
+<div class="numex-step"><span class="nb">4</span><div>Итог: матрица $5 \times 192$ (CLS + 4 признака). Идёт в 3 слоя Transformer с 8 головами.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Внимание может выучить: «для premium-сегмента доход важнее возраста, для basic — наоборот». Это <strong>условное взаимодействие признаков</strong>, которое MLP выражает только косвенно.</div></div>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Самый ценный вывод статьи — не архитектура, а бейзлайн.</strong> Авторы показали, что <strong>хорошо настроенный обычный MLP</strong> с правильной нормализацией входов, batch norm, dropout и корректным планировщиком learning rate <em>бьёт большинство «умных» архитектур</em>, включая TabNet и NODE. Мораль: прежде чем брать экзотику — доведи до ума простой MLP. Это тот же урок, что «random search как бейзлайн» в теме про AutoML.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Модель</th><th>Средний ранг (ниже — лучше)</th><th>Комментарий</th></tr></thead>
+<tbody>
+<tr class="trh"><td>GBDT (XGBoost/CatBoost)</td><td>≈ 2.1</td><td>Всё ещё лидер в среднем по датасетам</td></tr>
+<tr><td>FT-Transformer</td><td>≈ 2.4</td><td>Ближе всех из нейросетей; иногда выигрывает</td></tr>
+<tr><td>ResNet-tab (MLP + skip)</td><td>≈ 3.0</td><td>Сильный простой бейзлайн</td></tr>
+<tr><td>MLP (хорошо настроенный)</td><td>≈ 3.6</td><td>Уступает немного</td></tr>
+<tr><td>NODE</td><td>≈ 4.3</td><td>Дорогой, без выигрыша</td></tr>
+<tr><td>TabNet</td><td>≈ 5.2</td><td>Хуже простого MLP при честном тюнинге</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Квадратичная сложность — главное ограничение FT-Transformer.</strong> Attention стоит $O(m^2 d)$ по числу признаков $m$. При 20 признаках это ничто. При 2000 признаках (типичная широкая таблица после one-hot и агрегатов) — 4 млн пар внимания на объект, и модель становится непрактичной. Табличный трансформер живёт в диапазоне примерно до 100–200 признаков.</div></div>
+
+<div class="play">
+  <label>Поиграй: стоимость attention от числа признаков</label>
+  <input type="range" id="sl_m" min="10" max="1500" step="10" value="60" oninput="updAttn()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>10 признаков</span><span class="out" id="out_m">60</span><span>1500</span></div>
+  <div class="res" id="out_attn"></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. SAINT: внимание не только по признакам, но и по строкам</div>
+<div class="sdesc">Somepalli et al., 2021 — Self-Attention and Intersample Attention Transformer</div>
+
+<p>SAINT добавляет к FT-Transformer идею, у которой нет аналога в GBDT: <strong>объект может «смотреть» на другие объекты в батче</strong>.</p>
+
+<div class="fbox org">
+<div class="flabel">📐 Два типа внимания в SAINT</div>
+<p><strong>Self-attention</strong> — между признаками внутри одного объекта (как в FT-Transformer):</p>
+$$\text{Attn}_{\text{feat}}: \; \mathbb{R}^{m \times d} \to \mathbb{R}^{m \times d}$$
+<p><strong>Intersample attention</strong> — между объектами внутри батча:</p>
+$$\text{Attn}_{\text{row}}: \; \mathbb{R}^{B \times (m\cdot d)} \to \mathbb{R}^{B \times (m \cdot d)}$$
+<p class="fnote">Строка «расплющивается» в один длинный вектор, и attention считается по измерению батча $B$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Self-attention: «какие мои собственные признаки важны друг для друга». Intersample attention: «<strong>на кого из соседей по батчу я похож, и что можно у них позаимствовать</strong>».</p>
+<p>Это фактически k-NN, встроенный в архитектуру и обучаемый end-to-end. Если у объекта пропущено значение дохода, intersample attention может «подсмотреть» типичный доход у похожих объектов батча. Или: «этот клиент похож на тех троих в батче, которые ушли — вероятно, тоже уйдёт».</p>
+<p>Ни GBDT, ни обычная нейросеть так не умеют: они обрабатывают каждый объект <em>изолированно</em>. Это принципиально новая степень свободы.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>И тут же — главная проблема intersample attention.</strong> Предсказание для объекта начинает <strong>зависеть от того, кто ещё попал в батч</strong>. В обучении это ещё осмысленно (батч случайный, регуляризует). В проде — катастрофа: один и тот же клиент получит разный скор в зависимости от того, с кем его отправили в батч. Для банковского скоринга или медицины это неприемлемо — нарушается воспроизводимость и объяснимость решения.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Как это обходят.</strong> ① На инференсе фиксируют «референсный батч» — заранее отобранный репрезентативный набор объектов, одинаковый для всех запросов. ② Или отключают intersample-ветку на инференсе, оставляя только self-attention (тогда теряется часть выигрыша). ③ Или используют SAINT только для оффлайн-скоринга, где батч детерминирован. Ни один из вариантов не бесплатен.</div></div>
+
+<h3>Contrastive pretraining в SAINT</h3>
+<div class="fbox teal">
+<div class="flabel">📐 Аугментации для табличных данных</div>
+<p><strong>CutMix</strong> (на уровне входа) — часть признаков объекта заменяется на признаки случайного другого объекта:</p>
+$$x'_i = x_i \odot \mathbf{m} + x_{\pi(i)} \odot (1 - \mathbf{m}), \qquad \mathbf{m} \sim \text{Bernoulli}(p)^m$$
+<p><strong>Mixup</strong> (на уровне эмбеддингов) — линейная интерполяция представлений:</p>
+$$z'_i = \lambda\, z_i + (1-\lambda)\, z_{\pi(i)}, \qquad \lambda \sim \text{Beta}(\alpha,\alpha)$$
+<p>Затем InfoNCE-лосс сближает два представления одного объекта и раздвигает разные (см. блок 6, Two-Tower).</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Главная головная боль self-supervised обучения на таблицах — <strong>что считать «тем же объектом под другим углом»</strong>. У картинки это легко: поверни, обрежь, измени яркость — это всё та же кошка. У таблицы «поворот» бессмысленен.</p>
+<p>SAINT предлагает: возьми клиента, замени 30% его признаков на признаки случайного другого клиента (CutMix) — получится «слегка другой, но узнаваемо тот же» объект. Дальше InfoNCE учит модель узнавать его среди чужих. Это разумный, хоть и не идеальный, суррогат аугментации.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Общий итог по SAINT и всей линии трансформеров для таблиц.</strong> Ценность не в среднем приросте метрики (его почти нет), а в <em>двух механизмах</em>: intersample attention как обучаемый k-NN и рабочие рецепты табличных аугментаций для претрейна. Оба стоит знать — они всплывают в задачах с малой разметкой и в few-shot сценариях.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Когда табличный DL всё-таки выигрывает</div>
+<div class="sdesc">Пять сценариев, где нейросеть — правильный выбор</div>
+
+<div class="grid2">
+<div class="card gr"><h5>1️⃣ Очень высокая кардинальность категорий</h5><p>Миллионы user_id / item_id / URL. One-hot невозможен, target encoding течёт и нестабилен. Embeddings — единственный практичный вариант. Это домен рекламы и рекомендаций.</p></div>
+<div class="card gr"><h5>2️⃣ Мультимодальные данные</h5><p>Таблица + текст описания + изображение товара. Нейросеть объединяет модальности в общем пространстве и обучается end-to-end. GBDT потребует отдельного извлечения фичей из каждой модальности.</p></div>
+<div class="card gr"><h5>3️⃣ Много неразмеченных данных</h5><p>10 тыс. размеченных, 10 млн неразмеченных строк. Self-supervised претрейн (TabNet/SAINT) использует все данные. GBDT — только размеченные.</p></div>
+<div class="card gr"><h5>4️⃣ Transfer / multi-task</h5><p>Одна модель на 50 стран или 200 SKU. Общие слои + task-specific головы дают перенос знаний между задачами. С GBDT пришлось бы обучать 50 отдельных моделей.</p></div>
+<div class="card gr"><h5>5️⃣ Онлайн-обучение / стриминг</h5><p>Модель обновляется на каждом батче без полного переобучения. SGD это умеет естественно, GBDT — нет (переобучение с нуля).</p></div>
+<div class="card am"><h5>➕ Косвенный сценарий</h5><p>Нужно единое представление сущности (клиента, товара) для нескольких downstream-задач. Embedding из сети — переиспользуемый актив; листья GBDT — нет.</p></div>
+</div>
+
+<h3>Итоговое правило выбора</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Ситуация</th><th>Выбор</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>&lt; 10 тыс. строк, обычная таблица</td><td><strong>GBDT</strong></td><td>DL переобучится; данных не хватит даже на нормальную валидацию</td></tr>
+<tr><td>10 тыс. – 1 млн строк, ≤ 100 признаков</td><td><strong>GBDT</strong>, DL как участник ансамбля</td><td>Классическая зона доминирования бустинга</td></tr>
+<tr><td>&gt; 1 млн строк, высокая кардинальность</td><td><strong>DL с embeddings</strong> или гибрид</td><td>Данных хватает, категории требуют обучаемого представления</td></tr>
+<tr><td>Мультимодальность</td><td><strong>DL</strong></td><td>Единственный способ учить всё совместно</td></tr>
+<tr><td>Мало разметки + море сырых данных</td><td><strong>DL с претрейном</strong></td><td>Self-supervised использует неразмеченное</td></tr>
+<tr><td>Нужна максимальная объяснимость</td><td><strong>GBDT + SHAP</strong> или линейная модель</td><td>Зрелые, принимаемые регуляторами инструменты</td></tr>
+<tr><td>Жёсткий SLA по latency на CPU</td><td><strong>GBDT</strong></td><td>Инференс в единицы микросекунд без GPU</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Самый недооценённый вариант — ансамбль.</strong> Shwartz-Ziv &amp; Armon показали: лучший результат почти всегда даёт <em>смесь</em> GBDT и нейросети, потому что они ошибаются по-разному (низкая корреляция остатков). Простое взвешенное среднее $0.7\cdot\text{GBDT} + 0.3\cdot\text{NN}$ часто даёт больше, чем месяц тюнинга любой из моделей по отдельности. Диверсификация ошибок работает лучше, чем оптимизация одной модели.</div></div>
+
+<div class="chb">
+<div class="cht">Почему ансамбль работает: корреляция остатков</div>
+<div class="chsub">Чем ниже корреляция ошибок двух моделей, тем больше выигрыш от их смешивания</div>
+<div style="position:relative;height:290px;"><canvas id="c_ens"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Практика: как не завалить обучение табличной сети</div>
+<div class="sdesc">Чек-лист, который отделяет работающую модель от бесполезной</div>
+
+<h3>Нормализация входов — не опция, а необходимость</h3>
+<p>Это причина №1 провала табличных сетей у новичков. GBDT инвариантен к монотонным преобразованиям признаков — ему всё равно, доход в рублях или в логарифме рублей. Нейросети — совсем не всё равно.</p>
+
+<div class="fbox blue">
+<div class="flabel">📐 Quantile Transform — лучший дефолт для таблиц</div>
+$$x' = \Phi^{-1}\!\big(F_n(x)\big), \qquad F_n(x) = \frac{\text{rank}(x) - 0.5}{n}$$
+<p class="fnote">$F_n$ — эмпирическая функция распределения, $\Phi^{-1}$ — обратная функция нормального распределения. Результат: любой признак становится приблизительно $\mathcal{N}(0,1)$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>StandardScaler вычитает среднее и делит на std — но если у признака тяжёлый хвост (доход, сумма транзакции), после стандартизации у тебя всё равно останутся значения +40σ, которые «взорвут» первый слой и приведут к NaN в градиентах.</p>
+<p>Quantile transform работает иначе: он смотрит только на <strong>ранг</strong> значения. «Ты 87-й процентиль» → «твоё новое значение 1.13». Выбросы автоматически прижимаются: миллиардер и просто богатый человек оба окажутся в верхних процентилях, разница между ними сожмётся. Форма распределения гарантированно нормальная, независимо от того, каким был исходный признак.</p>
+<p>Именно поэтому <code>QuantileTransformer(output_distribution='normal')</code> — рекомендация из статьи FT-Transformer как дефолт.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Когда использовать</th><th>Риск</th></tr></thead>
+<tbody>
+<tr><td><code>QuantileTransformer(normal)</code></td><td><strong>Дефолт для таблиц</strong></td><td>Теряется информация о абсолютных величинах и о форме распределения</td></tr>
+<tr><td><code>StandardScaler</code></td><td>Признаки уже близки к нормальным</td><td>Выбросы проходят насквозь → нестабильность</td></tr>
+<tr><td><code>PowerTransformer</code> (Yeo-Johnson)</td><td>Скошенные, но без экстремальных выбросов</td><td>Нестабилен на признаках с большой долей нулей</td></tr>
+<tr><td>Piecewise Linear Encoding</td><td>FT-Transformer, продвинутый вариант</td><td>Больше параметров, нужен тюнинг числа бинов</td></tr>
+<tr><td>Без нормализации</td><td>Только для GBDT</td><td>Для сети — почти гарантированный провал</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Классическая ошибка: fit трансформера на всех данных.</strong> <code>QuantileTransformer().fit(X_all)</code> — это утечка: квантили посчитаны с учётом валидации и теста. Fit <strong>только на train</strong>, transform — на всех. Внутри кросс-валидации трансформер должен переобучаться на каждом фолде, поэтому оборачивай его в <code>Pipeline</code>, а не применяй заранее.</div></div>
+
+<h3>Полный чек-лист обучения табличной сети</h3>
+<div class="ladder" style="display:flex;flex-direction:column;gap:4px;margin:16px 0;">
+</div>
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>Шаг</th><th>Что конкретно</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Отбор признаков</td><td>Оставь топ-N по важности GBDT. Для сети это критично (причина №2 из секции 2)</td></tr>
+<tr><td>2</td><td>Нормализация числовых</td><td><code>QuantileTransformer(output_distribution='normal')</code>, fit только на train</td></tr>
+<tr><td>3</td><td>Обработка пропусков</td><td>Импутация + <strong>отдельный бинарный флаг «было пропущено»</strong>. Сам факт пропуска часто информативен</td></tr>
+<tr><td>4</td><td>Категории → embeddings</td><td>Индекс 0 зарезервирован под <code>&lt;UNK&gt;</code>. Редкие категории (&lt;20 вхождений) схлопнуть в одну</td></tr>
+<tr><td>5</td><td>Архитектура</td><td>Начни с MLP 2–3 слоя + BatchNorm + Dropout 0.2–0.4. Не начинай с трансформера</td></tr>
+<tr><td>6</td><td>Оптимизатор</td><td>AdamW, weight decay 1e-5…1e-2. Отдельная (меньшая) регуляризация на embedding-слои</td></tr>
+<tr><td>7</td><td>Планировщик LR</td><td>OneCycle или CosineAnnealing с warmup. Постоянный LR — частая причина недообучения</td></tr>
+<tr><td>8</td><td>Batch size</td><td>512–4096. Табличные данные любят большие батчи (меньше шума градиента)</td></tr>
+<tr><td>9</td><td>Ранняя остановка</td><td>По валидационной метрике, patience 15–30 эпох</td></tr>
+<tr><td>10</td><td>Усреднение</td><td>5 сидов → усреднить предсказания. Дисперсия табличных сетей между сидами велика</td></tr>
+<tr><td>11</td><td>Ансамбль с GBDT</td><td>Финальный шаг: смешать с бустингом, веса подобрать на отдельном holdout</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Неочевидное про дисперсию.</strong> Одна и та же табличная сеть, обученная с 5 разными сидами, может дать разброс AUC в 0.5–1 п.п. — это <em>больше</em>, чем разница между архитектурами в большинстве статей. Поэтому сравнивать модели по одному запуску бессмысленно. Всегда минимум 3–5 сидов и сравнение по среднему ± std. GBDT в этом смысле гораздо стабильнее.</div></div>
+
+<pre><code># Правильный pipeline: трансформер внутри, а не снаружи CV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+pipe = Pipeline([
+    ("qt", QuantileTransformer(output_distribution="normal",
+                               n_quantiles=min(1000, len(X_train)))),
+    ("net", SkorchNetClassifier(module=TabularNet, max_epochs=200,
+                                lr=1e-3, batch_size=1024,
+                                optimizer=torch.optim.AdamW,
+                                optimizer__weight_decay=1e-4)),
+])
+scores = cross_val_score(pipe, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=0),
+                         scoring="roc_auc")
+print(f"{scores.mean():.4f} ± {scores.std():.4f}")   # ОБЯЗАТЕЛЬНО со std
+</code></pre>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. System Design: где табличный DL живёт в проде</div>
+<div class="sdesc">Реальные архитектуры международных компаний</div>
+
+<div class="sysbox">
+<h4>🏗 Meta DLRM — embeddings как основная масса модели</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Dense features</strong>числовые:<br>возраст, время сессии</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Bottom MLP</strong>сжимает в вектор<br>размерности d</div>
+  <div class="sysarrow">↘</div>
+  <div class="syshighlight"><strong>Feature Interaction</strong>попарные dot products<br>всех embeddings + dense</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Top MLP</strong>→ CTR</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Sparse features</strong>user_id, page_id,<br>ad_id — миллиарды</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Embedding Tables</strong>сотни ГБ –<br>терабайты параметров</div>
+  <div class="sysarrow">↗</div>
+  <div class="sysblock"><strong>Model parallel</strong>таблицы шардированы<br>по GPU</div>
+</div>
+<div class="sysnote"><strong>Ключевая инженерная асимметрия:</strong> в DLRM <strong>99% параметров — это embedding-таблицы, и 99% вычислений — это MLP</strong>. Поэтому используется <em>гибридный параллелизм</em>: embedding-таблицы разрезаны по GPU (model parallel — они не влезают на одну карту), а MLP реплицирован (data parallel — он маленький, но считает много). Между ними — коллективная операция all-to-all для обмена найденными эмбеддингами. Именно это делает DLRM инфраструктурно сложным: узкое место не в FLOPs, а в <strong>памяти и сетевом обмене</strong>. Отсюда же приёмы: квантование эмбеддингов до int8, hashing-трюки для редких ID, кэш горячих эмбеддингов в HBM.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Гибридный production-паттерн: GBDT + Neural embeddings</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Оффлайн</strong>обучаем сеть с<br>embedding-слоями</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Экспорт</strong>вытаскиваем матрицы E<br>для каждой категории</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Feature Store</strong>embeddings как<br>обычные фичи</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>LightGBM</strong>обучается на<br>сырых + embedding фичах</div>
+</div>
+<div class="sysnote"><strong>Почему этот паттерн так популярен:</strong> ① В проде остаётся <em>один</em> лёгкий артефакт — бустинг с инференсом в микросекундах на CPU. ② Обучаемое представление категорий получено, но нейросеть не нужна в рантайме. ③ Embeddings пересчитываются редко (раз в неделю), бустинг — часто (ежедневно) — разные циклы обновления. ④ Интерпретируемость частично сохраняется: SHAP по бустингу работает, хотя embedding-измерения сами по себе неинтерпретируемы. <strong>Подводный камень:</strong> embeddings нужно версионировать вместе с моделью — если пересчитал их, а бустинг не переобучил, получишь тихую деградацию, которую крайне трудно диагностировать.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Airbnb</div>
+<h4>Переход от GBDT к нейросетям в поисковом ранжировании</h4>
+<p>Airbnb публично описал многолетнюю миграцию ранжирования поиска с GBDT на нейросети. Ключевые уроки, ценные именно своей честностью:</p>
+<ul>
+<li><strong>Первая попытка провалилась.</strong> Простой MLP на тех же признаках, что и GBDT, дал результат <em>хуже</em>. Вывод: нельзя просто заменить модель, оставив пайплайн признаков от бустинга.</li>
+<li><strong>Что сработало:</strong> постепенная эволюция — сначала MLP с теми же фичами (паритет), затем добавление listing embeddings, затем sequence-модели по истории поиска пользователя.</li>
+<li><strong>Главный выигрыш пришёл не от архитектуры, а от новых типов признаков</strong>, которые в GBDT было технически невозможно засунуть: последовательности просмотров, обучаемые представления объявлений.</li>
+<li><strong>Нормализация оказалась критичной.</strong> Команда потратила много времени именно на подбор преобразований признаков — то, что для GBDT было неважно.</li>
+</ul>
+<p><strong>Мораль для собеседования:</strong> переход на DL оправдан, когда он <em>открывает новые типы данных</em>, а не когда он «современнее».</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Отраслевой консенсус</div>
+<h4>Где табличный DL победил окончательно, а где проиграл</h4>
+<p><strong>Победил:</strong> реклама и рекомендации (Meta DLRM, Google Wide&amp;Deep, TikTok Monolith) — там кардинальность категорий в миллиардах, данных бесконечно много, а latency-бюджет позволяет GPU-инференс.</p>
+<p><strong>Проиграл:</strong> классический enterprise-скоринг — кредитный риск, отток, фрод, прогноз спроса. Там 10–500 тыс. строк, десятки признаков, жёсткие требования к объяснимости и CPU-инференс. LightGBM/CatBoost остаются стандартом, и это не инерция, а рациональный выбор.</p>
+<p><strong>Спорная зона:</strong> крупный e-commerce и финтех с миллионами пользователей — там гибридные схемы (embeddings + GBDT) обычно оптимальны.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">11. Вопросы и ответы</div>
+<div class="sdesc">20 вопросов — от «почему деревья» до подводных камней прода</div>
+
+<div class="qah">Фундамент: почему деревья выигрывают</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Назови три причины, по которым GBDT обгоняет нейросети на таблицах.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>① Смещение к гладким функциям.</strong> MLP естественно приближает гладкие зависимости, а табличные часто кусочно-постоянные с резкими порогами («доход ≥ 50k»). Дерево ловит порог одним разрезом; сеть должна выучить крутую сигмоиду, чему активно мешает weight decay.</p><p><strong>② Неинформативные признаки.</strong> Дерево при выборе разреза просто не берёт признак с нулевым gain — встроенный отбор. У MLP первый слой плотный: каждый мусорный признак входит в каждый нейрон и добавляет шум. Эксперимент: добавление 100 шумовых колонок роняет MLP на 5+ п.п. и GBDT — менее чем на 1.</p><p><strong>③ Инвариантность к вращению.</strong> MLP выучит ту же функцию после ортогонального преобразования входов, дерево — нет. Для изображений это плюс, для таблиц минус: оси в таблице осмысленны, «0.3×возраст + 0.7×доход» не является сущностью.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Почему инвариантность к вращению — недостаток именно для таблиц?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Инвариантность означает, что модель не знает, какие направления в пространстве признаков особенные. В изображениях привилегированных «осей пикселей» действительно нет — там важна локальность, и свёртка кодирует именно её.</p><p>В таблице каждая ось — это отдельная семантическая сущность: «возраст», «доход», «число заказов». Правильный inductive bias — «работай вдоль осей», и он у дерева встроен. MLP же обязан <em>потратить ёмкость и данные</em>, чтобы выучить, что оси важны.</p><p><strong>Диагностический приём:</strong> примени случайное ортогональное преобразование к признакам и переобучи обе модели. Если GBDT сильно просел — оси осмысленны, бери деревья. Если почти не просел — исходные признаки не несли осевой структуры, и нейросеть может быть конкурентоспособна.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Как правильно читать статью «наша сеть побеждает XGBoost»?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Три проверки: ① <strong>Равный бюджет тюнинга?</strong> Типичный трюк — 200 итераций Optuna для своей сети и дефолты для XGBoost. ② <strong>Сколько датасетов?</strong> На 3–5 датасетах выиграть можно случайностью выбора; нужны десятки. ③ <strong>Есть ли ансамбль-бейзлайн и разброс по сидам?</strong> Часто заявленный выигрыш меньше std между сидами.</p><p>Shwartz-Ziv &amp; Armon (2021) прогнали 11 датасетов из таких статей: каждая архитектура выигрывала <em>только на своём</em> датасете, XGBoost выигрывал в среднем. Grinsztajn et al. (2022) на 45 датасетах с честным бюджетом подтвердили это и объяснили механизм.</p></div></details>
+
+<div class="qah">Entity Embeddings</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Чем entity embedding лучше one-hot для категории с 1115 значениями?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>One-hot делает все категории <strong>равноудалёнными</strong>: магазин №417 не ближе к №418, чем к №9021. Никакой информации о сходстве не передаётся, а ширина матрицы равна кардинальности.</p><p>Embedding размещает категории в плотном $d$-мерном пространстве, обучаемом под задачу. Магазины с похожими паттернами продаж окажутся рядом, потому что градиент подтолкнёт их векторы друг к другу. Параметров: $1115 \times 10 = 11\,150$ вместо 1115 разреженных колонок на входе каждого слоя.</p><p>Дополнительный бонус — <strong>разделение статистической силы</strong>: редкая категория получает осмысленный вектор, потому что верхние слои сети общие для всех категорий.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Откуда берётся эвристика d = 1.6·|C|^0.56 и когда её не надо слушать?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Это эмпирическое правило fast.ai, подобранное по многим задачам. Логика: реальное разнообразие поведения категорий растёт медленнее их числа, поэтому размерность растёт сублинейно. 10 категорий → 5, 100 → 21, 1000 → 76, 10000 → 279 (с потолком 600).</p><p><strong>Когда не слушать:</strong> ① если категорий много, но они почти все редкие — размерность стоит снизить, иначе переобучение; ② если категория — это на самом деле упорядоченная величина (номер месяца), лучше добавить и циклические признаки $\sin/\cos$; ③ если embedding пойдёт признаком в GBDT — берут обычно меньше (8–32), чтобы не раздувать число колонок.</p><p>В любом случае размерность стоит включить в пространство поиска HPO — она обычно попадает в топ-3 по важности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Как использовать embeddings, оставив в проде бустинг?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Гибридный паттерн, широко применяемый в индустрии:</p><p>① Обучаешь небольшую сеть с embedding-слоями на ту же задачу. ② Извлекаешь матрицы $E$ для каждой категориальной колонки. ③ Джойнишь векторы как обычные числовые признаки (например, 8 колонок вместо одной категории). ④ Обучаешь LightGBM на сырых признаках + embedding-колонках.</p><p><strong>Плюсы:</strong> в проде один лёгкий артефакт, инференс на CPU, SHAP работает, GPU в рантайме не нужен. Embeddings пересчитываются редко, бустинг — часто.</p><p><strong>Подводный камень:</strong> обязательное совместное версионирование. Пересчитал embeddings, но не переобучил бустинг — получишь тихую деградацию без единой ошибки в логах. Версия embeddings должна быть частью сигнатуры модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Что произойдёт с embedding-слоем, если в проде придёт неизвестная категория?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><code>nn.Embedding</code> бросит <code>IndexError</code> — и это в лучшем случае. Хуже, если индекс попадёт в диапазон случайно и модель молча выдаст мусор.</p><p><strong>Правильная защита:</strong> ① индекс 0 всегда зарезервирован под <code>&lt;UNK&gt;</code>; ② на этапе обучения намеренно маппить редкие категории (частота &lt; 20) в <code>&lt;UNK&gt;</code>, чтобы вектор для неизвестного был <em>обучен</em>, а не случаен; ③ мониторить долю <code>&lt;UNK&gt;</code> в проде — её рост это прямой сигнал дрейфа данных; ④ на этапе data validation бить алерт, если доля новых категорий превышает порог.</p></div></details>
+
+<div class="qah">TabNet</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Как работает механизм выбора признаков в TabNet?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>На каждом из $N_{\text{steps}}$ шагов Attentive Transformer вычисляет маску $\mathbf{M}[i] = \mathrm{sparsemax}(\mathbf{P}[i-1]\cdot h_i(\mathbf{a}[i-1]))$ — веса признаков для этого шага.</p><p><strong>Prior scale</strong> $\mathbf{P}[i]=\prod_{j\le i}(\gamma - \mathbf{M}[j])$ — «остаток бюджета внимания». Признак, использованный на предыдущем шаге, получает уменьшенный приоритет, поэтому следующий шаг выберет другие признаки. $\gamma=1$ — полный запрет на переиспользование, $\gamma=2$ — мягкое ограничение.</p><p>Выходы всех шагов складываются в итоговое предсказание, а сумма масок по шагам даёт интерпретируемую важность признаков — как локальную (для объекта), так и глобальную.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Почему sparsemax, а не softmax?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Softmax никогда не выдаёт ровно ноль: даже бесполезный признак получает вес $\sim 10^{-6}$ и всё равно участвует в вычислениях. Это мягкий отбор, который не воспроизводит поведение дерева.</p><p>Sparsemax — евклидова проекция на симплекс, $\arg\min_{p\in\Delta}\|p-z\|^2$ — даёт <strong>настоящие нули</strong>. Из 50 признаков 40 могут получить вес ровно 0 и полностью выпасть из шага.</p><p>Это даёт TabNet два свойства: ① реальный жёсткий отбор признаков, аналогичный разрезу дерева; ② честную интерпретируемость масок — если вес 0, признак действительно не использовался, а не «использовался чуть-чуть».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Зачем в TabNet sparsity regularization и что будет при неверном λ?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>$L_{\text{sparse}}$ — энтропия масок. Минимизируя её, мы заставляем сеть выбирать мало признаков и уверенно, а не размазывать внимание.</p><p><strong>λ слишком большой:</strong> сеть выбирает 1–2 признака на шаг, теряет информацию, недообучается. Признак этого — плоские кривые обучения и метрика хуже логрегрессии.</p><p><strong>λ слишком маленький:</strong> маски становятся плотными, каждый шаг видит все признаки — TabNet вырождается в обычный MLP с лишними накладными расходами, теряя весь смысл архитектуры.</p><p>Типичный диапазон $10^{-4}$–$10^{-2}$, тюнить обязательно в <strong>лог-шкале</strong>. Это самый чувствительный гиперпараметр TabNet.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Что такое self-supervised pretraining в TabNet и когда он реально помогает?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Маскируем случайные ячейки таблицы и учим сеть их восстанавливать по остальным признакам — прямая аналогия masked language modeling в BERT. Reconstruction loss нормируется на std каждого признака, иначе колонки с большим разбросом доминируют.</p><p>Чтобы восстановить «сумму покупки», сеть вынуждена выучить связи с категорией товара, регионом, днём недели — то есть структуру данных.</p><p><strong>Когда помогает:</strong> размеченных данных мало (единицы–десятки тысяч), неразмеченных — миллионы. Претрейн использует всё, файнтюн — только размеченное. Это <em>единственный сценарий, где табличный DL получает принципиальное преимущество над GBDT</em>, который неразмеченные данные использовать не умеет.</p><p><strong>Когда не помогает:</strong> если размеченных данных и так достаточно — прирост в пределах шума.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Стоит ли брать TabNet в прод?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Почти никогда — на обычной таблице. При честном равном тюнинге TabNet проигрывает не только GBDT, но и хорошо настроенному MLP и FT-Transformer (средний ранг ≈5.2 против ≈3.6 у MLP). При этом он сложнее в обучении, чувствительнее к $\lambda_{\text{sparse}}$ и медленнее.</p><p><strong>Что от TabNet стоит забрать:</strong> ① идею sparse feature selection внутри сети; ② рабочий рецепт маскированного претрейна для таблиц. Оба механизма ценны сами по себе и переносятся в другие архитектуры.</p><p>На собеседовании про TabNet спрашивают ради понимания этих механизмов, а не потому что ждут его в продакшене.</p></div></details>
+
+<div class="qah">FT-Transformer, SAINT, NODE</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Что делает Feature Tokenizer в FT-Transformer?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Превращает каждый признак в <strong>вектор</strong> одинаковой размерности $d$: числовой как $T_j = x_j W_j + b_j$ (у каждого признака своё обучаемое направление $W_j$), категориальный — как строка из embedding-таблицы.</p><p>Результат: объект из $m$ признаков становится последовательностью из $m+1$ токенов (плюс CLS), и к ней применим стандартный Transformer. Числовые и категориальные признаки оказываются в едином пространстве и могут взаимодействовать через attention напрямую.</p><p>Практический смысл: attention может выучить <strong>условные взаимодействия</strong> — «для premium-сегмента доход важнее возраста, для basic наоборот». MLP выражает такое только косвенно, через нелинейности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Какой самый практичный вывод из статьи про FT-Transformer?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Не архитектура, а <strong>бейзлайн</strong>: хорошо настроенный обычный MLP (с quantile-нормализацией, BatchNorm, dropout, OneCycle LR) бьёт большинство «умных» архитектур, включая TabNet и NODE.</p><p>Мораль ровно та же, что «random search как бейзлайн» в теме AutoML: прежде чем брать экзотику, доведи до ума простое решение. Большая часть заявленных приростов в литературе объясняется не архитектурой, а более тщательным тюнингом предложенной модели относительно бейзлайна.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Что ограничивает применимость FT-Transformer?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Квадратичная сложность attention по числу признаков: $O(m^2 d)$. При 20 признаках это ничто, при 200 — уже заметно, при 2000 (обычная широкая таблица после one-hot и агрегатов) — непрактично: 4 млн пар внимания на объект.</p><p>Практический предел — примерно 100–200 признаков. Обходы: отбор признаков перед подачей, группировка признаков в «супертокены», linear attention. Но каждый обход частично убивает то, ради чего трансформер брался.</p><p>GBDT такого ограничения не имеет — он спокойно работает с тысячами колонок.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Что такое intersample attention в SAINT и почему это проблема для прода?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Attention <strong>между объектами внутри батча</strong>: объект может «подсмотреть» у похожих соседей. Фактически обучаемый k-NN внутри архитектуры — механизм, которого нет ни у GBDT, ни у обычной сети.</p><p><strong>Проблема:</strong> предсказание становится зависимым от состава батча. Один и тот же клиент получит разный скор в зависимости от того, с кем он попал в батч. Для скоринга, фрода, медицины это неприемлемо — ломается воспроизводимость и невозможно объяснить решение.</p><p><strong>Обходы:</strong> фиксированный референсный батч на инференсе; отключение intersample-ветки (теряется выигрыш); использование только для оффлайн-скоринга с детерминированным батчем. Ни один не бесплатен.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Как делать аугментации на табличных данных?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Главная сложность: у таблицы нет естественных преобразований «тот же объект под другим углом». Рабочие варианты из SAINT:</p><p><strong>CutMix</strong> на уровне входа: часть признаков объекта заменяется на признаки случайного другого объекта, $x' = x\odot m + x_{\pi}\odot(1-m)$. Получается «слегка другой, но узнаваемо тот же» объект.</p><p><strong>Mixup</strong> на уровне эмбеддингов: линейная интерполяция представлений $z' = \lambda z_i + (1-\lambda)z_{\pi(i)}$, $\lambda\sim\text{Beta}(\alpha,\alpha)$.</p><p><strong>Swap noise</strong>: заменить значение признака на значение того же признака у случайной другой строки — сохраняет маргинальное распределение колонки, разрушает совместное.</p><p>Далее InfoNCE сближает представления одного объекта и раздвигает разные. Осторожно: слишком агрессивная аугментация на таблице легко создаёт <em>невозможные</em> объекты (беременный мужчина 5 лет), что вредит обучению.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Почему NODE не заменил бустинг, хотя идея выглядела логичной?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>NODE делает разрезы <strong>мягкими</strong> ради дифференцируемости (entmax вместо индикатора). Но именно <em>резкость</em> разреза была тем свойством, за которое деревья ценились — она и позволяет ловить пороговые зависимости. Сделав разрезы мягкими, мы вернули проблему №1 (смещение к гладким функциям), только в более дорогой упаковке.</p><p>Плюс NODE наследует нейросетевые проблемы с неинформативными признаками и вращением, и обучается в разы дороже LightGBM.</p><p><strong>Общий урок:</strong> перенося механизм из одной парадигмы в другую, спрашивай — какое именно свойство делало его хорошим и переживёт ли оно перенос.</p><p><strong>Что осталось полезного:</strong> семейство α-entmax разошлось по всему DL, а oblivious-деревья прекрасно живут в CatBoost.</p></div></details>
+
+<div class="qah">Практика и выбор</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Почему нормализация для табличной сети критичнее, чем для GBDT?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>GBDT инвариантен к любым <strong>монотонным</strong> преобразованиям: разрез «доход &gt; 50000» и «log(доход) &gt; 10.8» разбивают выборку идентично. Масштаб для дерева не существует.</p><p>Для сети масштаб — всё. Признак с тяжёлым хвостом после StandardScaler всё равно даёт значения +40σ, которые насыщают активации и приводят к NaN в градиентах.</p><p><strong>Рекомендуемый дефолт:</strong> <code>QuantileTransformer(output_distribution='normal')</code>. Он использует только ранг значения, поэтому любой признак становится примерно $\mathcal{N}(0,1)$ независимо от исходной формы, а выбросы автоматически прижимаются.</p><p><strong>Обязательно:</strong> fit только на train и внутри Pipeline, иначе получишь утечку через квантили, посчитанные с учётом валидации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Как выбрать между GBDT и нейросетью на новой задаче?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Бери GBDT по умолчанию.</strong> Он выигрывает на большинстве табличных задач, стабильнее между сидами, быстрее обучается, даёт инференс на CPU за микросекунды и работает со SHAP.</p><p><strong>Рассматривай DL, если выполнено хотя бы одно:</strong> ① кардинальность категорий в сотнях тысяч и выше; ② мультимодальные данные (таблица + текст + изображение); ③ мало разметки при огромном объёме неразмеченных данных (претрейн); ④ нужен перенос между многими связанными задачами (multi-task); ⑤ требуется онлайн-дообучение на потоке.</p><p><strong>Почти всегда лучший ответ — ансамбль.</strong> GBDT и нейросеть ошибаются по-разному, корреляция остатков низкая, поэтому смесь $0.7\cdot\text{GBDT} + 0.3\cdot\text{NN}$ часто даёт больше, чем месяц тюнинга любой из них.</p><p><strong>И обязательное условие честности:</strong> сравнивай по 3–5 сидам со стандартным отклонением. Разброс табличной сети между сидами достигает 0.5–1 п.п. AUC — больше, чем разница между многими архитектурами.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block7_01_automl.html" class="btn prev">← AutoML</a>
+  <a href="block7_03_mlops.html" class="btn">Feature Store & MLOps →</a>
+</div>
+
+</div>
+<script>
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Benchmark: quality vs tuning budget ---
+(function(){
+  const xs=[]; for(let i=0;i<=40;i+=2) xs.push(i);
+  const f=(a,b,c)=>xs.map(t=>a-b*Math.exp(-t/c));
+  new Chart(document.getElementById('c_bench'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'GBDT (XGBoost/LightGBM/CatBoost)',data:f(0.876,0.030,7),borderColor:'#16a34a',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'FT-Transformer',data:f(0.868,0.075,15),borderColor:'#4f46e5',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'MLP + entity embeddings',data:f(0.858,0.082,14),borderColor:'#0284c7',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'TabNet',data:f(0.851,0.095,18),borderColor:'#d97706',pointRadius:0,borderWidth:2.5,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число итераций тюнинга гиперпараметров'}},
+              y:{title:{display:true,text:'средний нормализованный score'},min:0.77,max:0.89}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(3)}}}}
+  });
+})();
+
+// --- Step function: tree vs MLP ---
+(function(){
+  const xs=[]; for(let i=0;i<=120;i++) xs.push(i/2);
+  const truth = xs.map(x=> x<15?0.2 : x<30?0.55 : x<45?0.35 : 0.85);
+  const tree  = xs.map(x=> x<15?0.21: x<30?0.54 : x<45?0.36 : 0.84);
+  const sig=(x,c,k)=>1/(1+Math.exp(-(x-c)*k));
+  const mlp = xs.map(x=>0.2+0.35*sig(x,15,0.55)-0.20*sig(x,30,0.5)+0.50*sig(x,45,0.45));
+  new Chart(document.getElementById('c_step'), {
+    type:'line',
+    data:{labels:xs.map(x=>x.toFixed(0)),datasets:[
+      {label:'истинная функция (ступеньки)',data:truth,borderColor:'#111827',borderDash:[6,3],pointRadius:0,borderWidth:2,stepped:true},
+      {label:'решающее дерево',data:tree,borderColor:'#16a34a',pointRadius:0,borderWidth:2.5,stepped:true},
+      {label:'MLP (гладкая аппроксимация)',data:mlp,borderColor:'#4f46e5',pointRadius:0,borderWidth:2.5,tension:.35}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'признак (например, доход, тыс.)'},ticks:{maxTicksLimit:10}},
+              y:{title:{display:true,text:'предсказание'},min:0.1,max:0.95}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Rotation experiment ---
+new Chart(document.getElementById('c_rot'), {
+  type:'bar',
+  data:{labels:['GBDT','Random Forest','MLP','FT-Transformer','Resnet-tab'],
+    datasets:[
+      {label:'исходные признаки',data:[0.876,0.861,0.845,0.868,0.851],backgroundColor:'#16a34a',borderRadius:5},
+      {label:'после случайного вращения',data:[0.812,0.798,0.843,0.860,0.849],backgroundColor:'#4f46e5',borderRadius:5}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'score'},min:0.75,max:0.90}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{afterBody:i=>i[0].dataIndex<2?'Деревья теряют осевую структуру → сильная просадка':'Инвариантен к вращению → почти не меняется'}}}}
+});
+
+// --- TabNet masks ---
+(function(){
+  const feats = ['возраст','доход','город','стаж','долг','заказы','тариф','срок'];
+  const m1 = [0.00,0.41,0.00,0.00,0.34,0.00,0.25,0.00];
+  const m2 = [0.29,0.00,0.22,0.31,0.00,0.18,0.00,0.00];
+  const agg = m1.map((v,i)=>(v+m2[i])/2);
+  function render(id, mask){
+    const el = document.getElementById(id);
+    el.innerHTML = mask.map((v,i)=>{
+      const a = v===0 ? 0.10 : 0.30 + v*1.7;
+      const col = v===0 ? 'rgba(148,163,184,0.25)' : 'rgba(79,70,229,'+Math.min(a,1).toFixed(2)+')';
+      const txt = v===0 ? '#94a3b8' : '#fff';
+      return '<div class="mcell" style="background:'+col+';color:'+txt+';animation-delay:'+(i*0.12).toFixed(2)+'s" title="'+feats[i]+': '+v.toFixed(2)+'">'+feats[i]+'</div>';
+    }).join('');
+  }
+  render('mask1', m1); render('mask2', m2); render('mask3', agg);
+})();
+
+// --- Ensemble gain vs residual correlation ---
+(function(){
+  const rho=[]; for(let i=0;i<=20;i++) rho.push(i/20);
+  // относительное снижение дисперсии ошибки при равных весах: 1 - (1+rho)/2
+  const gain = rho.map(r=>(1-(1+r)/2)*100);
+  const gainOpt = rho.map(r=>(1-(1-r*r)/(2-2*r+1e-9)*0+ (1-(1+r)/2))*100);
+  new Chart(document.getElementById('c_ens'), {
+    type:'line',
+    data:{labels:rho.map(r=>r.toFixed(2)),datasets:[
+      {label:'снижение дисперсии ошибки при усреднении двух моделей, %',
+       data:gain,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.12)',fill:true,
+       pointRadius:0,borderWidth:3,tension:.2},
+      {label:'типичная зона GBDT + нейросеть (ρ ≈ 0.55–0.75)',
+       data:rho.map(r=>(r>=0.55&&r<=0.75)?(1-(1+r)/2)*100:null),
+       borderColor:'#16a34a',pointRadius:5,borderWidth:0,showLine:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'корреляция остатков ρ между моделями'},ticks:{maxTicksLimit:11}},
+              y:{title:{display:true,text:'снижение дисперсии ошибки, %'},min:0,max:52}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.parsed.y===null?'':'ρ='+c.label+' → −'+c.parsed.y.toFixed(1)+'% дисперсии'}}}}
+  });
+})();
+
+// --- Интерактив: стоимость attention ---
+function updAttn(){
+  const m = +document.getElementById('sl_m').value;
+  const d = 192, L = 3, H = 8;
+  document.getElementById('out_m').textContent = m;
+  const pairs = m*m;
+  const flops = L * (4*m*d*d + 2*m*m*d);
+  const base = 60, basePairs = base*base;
+  const rel = pairs / basePairs;
+  const verdict = m <= 100
+    ? '✅ Комфортная зона для FT-Transformer.'
+    : m <= 300
+      ? '⚠️ Уже дорого — стоит отобрать признаки перед подачей.'
+      : '🚨 Непрактично. Здесь GBDT выигрывает без вариантов.';
+  document.getElementById('out_attn').innerHTML =
+    'Пар внимания на объект: <strong>' + pairs.toLocaleString('ru-RU') + '</strong>' +
+    ' &nbsp;·&nbsp; FLOPs на объект ≈ <strong>' + (flops/1e6).toFixed(1) + ' M</strong>' +
+    '<br>Относительно 60 признаков: <strong>×' + rel.toFixed(1) + '</strong> по стоимости attention (растёт как m²)' +
+    '<br>' + verdict;
+}
+updAttn();
+</script>
+</body>
+</html>

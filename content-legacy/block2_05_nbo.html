@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2.5 · Next Best Offer: от скоринга к оптимальному назначению</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#ea580c;--rf-l:#fff7ed;--rf-b:#fed7aa;--rf-d:#7c2d12;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#7c2d12,#ea580c 50%,#fdba74);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.92;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(234,88,12,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.pk{border-left-color:var(--pk);} .fbox.vi{border-left-color:var(--vi);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);} .fbox.vi .flabel{color:var(--vi);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#7c2d12;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#7c2d12!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.vi{background:var(--vi);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#fdba74;font-style:normal;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rf{border-top:3px solid var(--rf);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.cy{border-top:3px solid var(--cy);} .card.rd{border-top:3px solid var(--red);}
+.card.vi{border-top:3px solid var(--vi);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--rf-l);color:#7c2d12;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--rf);margin:26px 0 12px;}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#7c2d12;line-height:1.72;}
+/* ---------- Матрица клиент × оффер ---------- */
+.mx{display:grid;gap:4px;margin:16px 0;font-size:11.5px;}
+.mxh{font-size:10.5px;font-weight:700;color:var(--text3);display:flex;align-items:center;justify-content:center;text-align:center;padding:4px 2px;line-height:1.3;}
+.mxc{border-radius:7px;padding:8px 4px;text-align:center;font-weight:700;line-height:1.35;}
+.mxpick{outline:2.5px solid #16a34a;outline-offset:-2px;}
+/* ---------- Пайплайн ---------- */
+.pl{display:flex;flex-direction:column;gap:8px;margin:18px 0;}
+.plrow{display:flex;gap:8px;flex-wrap:wrap;}
+.plbox{flex:1;min-width:135px;border-radius:11px;padding:12px 14px;font-size:12.5px;line-height:1.55;border:1.5px solid;}
+.plbox strong{display:block;font-size:13px;margin-bottom:3px;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.35);}50%{box-shadow:0 0 0 8px rgba(22,163,74,0);}}
+.glow{animation:glow 2.4s infinite;}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--rf-l);border-color:var(--rf-b);color:#7c2d12;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--vi-l);border-color:var(--vi-b);color:#4c1d95;}
+.farr{font-size:18px;color:var(--rf);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .mx{font-size:9px;}.mxc{padding:5px 2px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 2 · Retention &amp; CRM · Тема 5 из 6 · расширенная</div>
+  <h1>Next Best Offer: от скоринга к оптимальному назначению</h1>
+  <p class="sub">Задача NBO выглядит как «предсказать, что клиент купит», но на деле это
+     <em>задача распределения ограниченного ресурса</em>. Разбираем, почему argmax по вероятности —
+     неверный ответ, как учитывать каннибализацию и ограничения, и как построить систему,
+     которая не деградирует от собственных решений.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Что такое NBO</a>
+  <a href="#s2">2. Постановка задачи</a>
+  <a href="#s3">3. Каталог офферов</a>
+  <a href="#s4">4. Propensity-слой</a>
+  <a href="#s5">5. Почему argmax P — ошибка</a>
+  <a href="#s6">6. Ограничения</a>
+  <a href="#s7">7. Оптимизация назначения</a>
+  <a href="#s8">8. Бандиты и исследование</a>
+  <a href="#s9">9. Контекст и тайминг</a>
+  <a href="#s10">10. Каннибализация</a>
+  <a href="#s11">11. Метрики и валидация</a>
+  <a href="#s12">12. Архитектура</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секции 2 и 5 — концептуальное ядро.</strong> Если понять, почему NBO — задача назначения, а не скоринга, остальное следует из этого.</li>
+    <li>Секции 3–4 — фундамент: экономика офферов и propensity-модели.</li>
+    <li>Секции 6–7 — ограничения и оптимизация: то, что отличает работающую систему от демо.</li>
+    <li>Секции 8–10 — исследование, тайминг и каннибализация: три вещи, которые ломают систему через полгода после запуска.</li>
+    <li>Секции 11–15 — метрики, архитектура, кейсы и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что такое NBO и чем он отличается от рекомендаций <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Похожие задачи с принципиально разной механикой</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: NBO против рекомендательной системы</div>
+<p><strong>Рекомендательная система</strong> показывает товары в каталоге. Ресурс почти бесплатен: показать 20 карточек стоит столько же, сколько 5. Оптимизируется релевантность, ошибка дёшева.</p>
+<p><strong>NBO</strong> выбирает <em>одно действие</em> из ограниченного набора коммерческих предложений: скидка, кредитная карта, апгрейд тарифа, страховка, бонусная программа. Каждое имеет <strong>стоимость</strong>, каждое расходует ограниченный ресурс (внимание клиента, бюджет, квоту контактов), и ошибка обходится дорого.</p>
+<p><strong>Три следствия:</strong></p>
+<p>① Оптимизируется <em>прибыль</em>, а не релевантность — дешёвый оффер с умеренной конверсией бьёт дорогой с высокой.</p>
+<p>② Действие одно, поэтому это задача <em>выбора</em>, а не ранжирования списка.</p>
+<p>③ Есть жёсткие ограничения — регуляторные, бюджетные, контактные, — которых у рекомендаций обычно нет.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Рекомендации</th><th>Next Best Offer</th></tr></thead>
+<tbody>
+<tr><td><b>Размер каталога</b></td><td>Тысячи–миллионы</td><td><strong>Единицы–десятки</strong></td></tr>
+<tr><td><b>Стоимость показа</b></td><td>Близка к нулю</td><td>Существенна: скидка, звонок, квота контакта</td></tr>
+<tr><td><b>Что выдаётся</b></td><td>Ранжированный список</td><td><strong>Одно действие (или ничего)</strong></td></tr>
+<tr><td><b>Целевая функция</b></td><td>Клики, просмотры, релевантность</td><td><strong>Ожидаемая прибыль с учётом стоимости</strong></td></tr>
+<tr class="trh"><td><b>Ограничения</b></td><td>Почти нет</td><td><strong>Бюджет, eligibility, регуляторика, контактная политика</strong></td></tr>
+<tr><td><b>Обратная связь</b></td><td>Быстрая, плотная</td><td>Медленная, разрежённая</td></tr>
+<tr><td><b>Вариант «ничего»</b></td><td>Не рассматривается</td><td><strong>Полноценная и часто оптимальная альтернатива</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Вариант «не делать ничего» обязан быть в наборе действий.</strong> Система, которая всегда обязана что-то предложить, гарантированно шлёт офферы туда, где ожидаемая выгода отрицательна. Формально это означает добавить «пустое» действие с нулевой стоимостью и нулевым эффектом, и выбирать его, когда $\max_j [\text{выгода}_j] < 0$. Отсутствие этой опции — самая частая архитектурная ошибка в NBO-системах: она заложена в постановку «выбери лучший оффер» и потому редко замечается.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько стоит отсутствие опции «ничего»</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>База:</strong> 400 000 клиентов, 6 офферов. Средняя стоимость оффера 340 ₽ (промо + коммуникация).</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Система «всегда что-то предложи».</strong> У 168 000 клиентов лучший оффер имеет ожидаемую прибыль ниже нуля — конверсия слишком мала, чтобы окупить стоимость.<br>Убыток на них: $168\,000\times(-215) = \mathbf{-36.1}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>На остальных 232 000</strong> средняя прибыль +680 ₽ → $+157.8$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Итого: 121.7 млн ₽.</strong> Отчёт покажет «система приносит 122 млн» — и никто не узнает про потери.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>С опцией «ничего»:</strong> 168 000 не получают ничего, потерь нет. <strong>Прибыль 157.8 млн ₽.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>+36.1 млн ₽ (+30%) от одной строчки в постановке.</strong> Плюс невидимая выгода: 168 000 клиентов не получили нерелевантный оффер, что сохраняет их внимание для будущих коммуникаций и не расходует квоту контактов.</div></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Где NBO применяется чаще всего.</strong> Банки (какой продукт предложить: карта, вклад, кредит, инвестсчёт), телеком (тариф, устройство, доп. услуга), страхование (полис, расширение), подписочные сервисы (апгрейд, годовой план, семейный тариф), ритейл (категория для промо, персональная акция). Общее у всех: <strong>небольшой каталог дорогих действий и жёсткие ограничения</strong> — ровно то, что отличает NBO от рекомендаций.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Постановка: это задача назначения, а не скоринга <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Смена постановки меняет всё — от метрик до архитектуры</div>
+
+<div class="fbox">
+<div class="flabel">📐 Полная постановка NBO</div>
+$$\max_{a_{ij}\in\{0,1\}} \;\sum_{i=1}^{N}\sum_{j=1}^{J} a_{ij}\cdot v_{ij}$$
+$$\text{при } \quad \sum_{j} a_{ij} \le 1 \;\;\forall i, \qquad \sum_{i} a_{ij}\,c_j \le B_j \;\;\forall j, \qquad a_{ij} \le e_{ij}$$
+<p>$v_{ij}$ — ожидаемая ценность назначения оффера $j$ клиенту $i$; $c_j$ — стоимость; $B_j$ — бюджет оффера; $e_{ij}\in\{0,1\}$ — eligibility (имеет ли клиент право на оффер).</p>
+<p class="fnote">Первое ограничение — «не более одного оффера на клиента» (плюс опция «ничего», когда все $a_{ij}=0$). Второе — бюджеты по офферам. Третье — жёсткие правила допустимости.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему это не сводится к «выбери лучший для каждого»</div>
+<p>Если бы ограничений не было, задача решалась бы независимо для каждого клиента: $\arg\max_j v_{ij}$.</p>
+<p>Но бюджеты офферов <strong>связывают клиентов между собой</strong>. Если оффер «премиальная карта» ограничен 20 000 выдачами, а лучшим он является для 90 000 клиентов, то нужно решить, <em>кому именно</em> из них он достанется, а остальным дать второй по ценности вариант.</p>
+<p>Это уже не независимые решения, а <strong>задача о назначениях</strong>: глобальный оптимум может требовать давать некоторым клиентам не лучший для них оффер, чтобы освободить дефицитный ресурс для тех, кому он даёт больший прирост.</p>
+<p><strong>Ключевая величина — не $v_{ij}$, а разность</strong> между лучшим и вторым вариантом: она показывает, сколько мы теряем, «уступая» дефицитный оффер другому клиенту.</p>
+</div>
+
+<h3>Матрица ценности: как выглядит задача</h3>
+
+<div class="mx" style="grid-template-columns:auto repeat(5,1fr);">
+  <div class="mxh"></div>
+  <div class="mxh">Карта<br>c=1200₽<br>лимит 2</div>
+  <div class="mxh">Вклад<br>c=300₽</div>
+  <div class="mxh">Кредит<br>c=800₽</div>
+  <div class="mxh">Кэшбэк<br>c=150₽</div>
+  <div class="mxh">Ничего<br>c=0</div>
+
+  <div class="mxh">Клиент A</div>
+  <div class="mxc mxpick glow" style="background:#dcfce7;color:#14532d;">+2 840</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+410</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">−120</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+190</div>
+  <div class="mxc" style="background:#f8fafc;color:#94a3b8;">0</div>
+
+  <div class="mxh">Клиент B</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">+1 950</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+280</div>
+  <div class="mxc mxpick glow" style="background:#dcfce7;color:#14532d;">+2 100</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+160</div>
+  <div class="mxc" style="background:#f8fafc;color:#94a3b8;">0</div>
+
+  <div class="mxh">Клиент C</div>
+  <div class="mxc mxpick glow" style="background:#dcfce7;color:#14532d;">+2 610</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+180</div>
+  <div class="mxc" style="background:#fee2e2;color:#7f1d1d;">не eligible</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+220</div>
+  <div class="mxc" style="background:#f8fafc;color:#94a3b8;">0</div>
+
+  <div class="mxh">Клиент D</div>
+  <div class="mxc" style="background:#fef3c7;color:#78350f;">+2 480</div>
+  <div class="mxc mxpick glow" style="background:#dcfce7;color:#14532d;">+390</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+310</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+140</div>
+  <div class="mxc" style="background:#f8fafc;color:#94a3b8;">0</div>
+
+  <div class="mxh">Клиент E</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+320</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+95</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">−60</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">+40</div>
+  <div class="mxc mxpick glow" style="background:#dcfce7;color:#14532d;">0 ✓</div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-2px;">Зелёным — оптимальное назначение. Карта дефицитна (лимит 2): она достаётся A и C, у которых разрыв со вторым вариантом максимален. Клиент D, для которого карта тоже хороша (+2 480), получает вклад — <strong>не лучший для него, но лучший для системы</strong>. Клиенту E не предлагается ничего: все офферы дают меньше, чем стоят.</p>
+
+<div class="numex">
+<div class="numex-title">🔢 Жадный выбор против глобальной оптимизации</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Дефицитный оффер</strong> «премиальная карта»: лимит 2 выдачи. Ценности: A +2 840, C +2 610, D +2 480, B +1 950.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Жадно по каждому клиенту</strong> (каждый получает свой argmax): карту хотят A, C, D — но лимит 2. Обрабатывая клиентов в порядке поступления, карту получают A и B (B пришёл раньше C).<br>Итого: A карта (2 840) + B карта (1 950) + C кэшбэк (220) + D вклад (390) + E кэшбэк (40) = <strong>5 440</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Глобальная оптимизация.</strong> Карту получают A и C (у них максимальный разрыв со вторым вариантом: 2840−410=2430 и 2610−220=2390, тогда как у B разрыв 1950−2100 = отрицательный — ему лучше кредит).<br>A карта (2 840) + C карта (2 610) + B кредит (2 100) + D вклад (390) + E ничего (0) = <strong>7 940</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Разница 2 500 (+46%)</strong> на пяти клиентах. На реальной базе с несколькими дефицитными офферами разрыв обычно 15–35%.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Ключевая интуиция:</strong> дефицитный ресурс надо отдавать не тому, у кого <em>высшая абсолютная ценность</em>, а тому, у кого <em>наибольший разрыв с альтернативой</em>. Клиент B имеет высокую ценность карты, но его альтернатива (кредит) почти так же хороша — уступая карту, система почти ничего не теряет.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический приём: считай не только лучший оффер, но и «цену уступки».</strong> Для каждого клиента храни $v_{i,(1)} - v_{i,(2)}$ — разрыв между лучшим и вторым. Это готовая метрика приоритета при дефиците, и она же используется как двойственная переменная в LP-решении. Дополнительно она полезна операционно: клиенты с малым разрывом — гибкие, их можно переназначать при изменении бюджетов без потерь, и именно их система должна двигать первыми.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Каталог офферов и их экономика <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Без честной экономики каждого оффера вся оптимизация бессмысленна</div>
+
+<div class="fbox org">
+<div class="flabel">📐 Ценность назначения: полная формула</div>
+$$v_{ij} \;=\; \underbrace{\tau_{ij}}_{\text{инкр. вероятность}} \cdot \underbrace{M_j}_{\text{маржа продукта}} \;-\; \underbrace{c_j}_{\text{стоимость оффера}} \;-\; \underbrace{K_{ij}}_{\text{каннибализация}} \;+\; \underbrace{\Delta\text{CLV}_{ij}}_{\text{долгосрочный эффект}}$$
+<p class="fnote">Большинство систем считают только первые два члена — и получают неверные приоритеты. $K_{ij}$ (секция 10) вычитает выручку, которую клиент принёс бы и без оффера или которая перетекла из другого продукта. $\Delta\text{CLV}$ учитывает, что некоторые продукты (карта, подписка) повышают удержание, а некоторые (агрессивная скидка) снижают будущую маржу.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Компонент</th><th>Что включает</th><th>Типичная ошибка</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>$\tau_{ij}$ — инкрементальная вероятность</b></td><td>Насколько оффер повышает вероятность действия против «ничего»</td><td><strong>Использовать $P$ вместо $\tau$</strong> (секция 5)</td></tr>
+<tr><td>$M_j$ — маржа</td><td>Приведённая прибыль от продукта за горизонт, а не выручка первого месяца</td><td>Брать выручку вместо маржи; игнорировать риск (для кредитов)</td></tr>
+<tr class="trh"><td><b>$c_j$ — стоимость</b></td><td>Промо, коммуникация, труд оператора, <strong>стоимость обработки заявки</strong></td><td>Учитывать только промо, забывая операционные издержки</td></tr>
+<tr><td>$K_{ij}$ — каннибализация</td><td>Перетекание из другого продукта; выручка, которая была бы и так</td><td><strong>Игнорировать полностью</strong> — самая частая ошибка</td></tr>
+<tr><td>$\Delta\text{CLV}$</td><td>Влияние продукта на удержание и будущую маржу</td><td>Игнорировать или брать наугад</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как неполная экономика меняет приоритет офферов</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Два оффера для одного клиента.</strong><br><em>Оффер A — потребкредит:</em> $\tau = 4.2\%$, маржа за срок 14 000 ₽, стоимость 800 ₽.<br><em>Оффер B — дебетовая карта с кэшбэком:</em> $\tau = 11.8\%$, маржа 2 100 ₽, стоимость 150 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивный расчёт</strong> ($\tau M - c$):<br>A: $0.042\times14\,000 - 800 = 588 - 800 = \mathbf{-212}$.<br>B: $0.118\times2100 - 150 = 248 - 150 = \mathbf{+98}$. → выбираем B.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Добавляем риск для кредита.</strong> Ожидаемые потери от дефолта уже учтены в марже 14 000 (риск-скорректированная). Оставляем как есть.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Добавляем каннибализацию.</strong> Карта с кэшбэком перетягивает транзакции с уже имеющейся у клиента карты: $K_B = 640$ ₽.<br>B: $248 - 150 - 640 = \mathbf{-542}$.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Добавляем $\Delta$CLV.</strong> Оформивший кредит клиент чаще остаётся в банке: $\Delta\text{CLV}_A = +0.042\times9\,800 = 412$ ₽.<br>A: $588 - 800 + 412 = \mathbf{+200}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Приоритет полностью изменился:</strong> наивно побеждал B (+98 против −212), полно — побеждает A (+200 против −542). Причём наивный выбор был бы <em>убыточным</em>. Оба недостающих члена — каннибализация и $\Delta$CLV — требуют экспериментов, а не догадок, и именно поэтому чаще всего опускаются.</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Маржа продукта — не константа, а функция клиента.</strong> Маржа кредитной карты зависит от того, будет ли клиент носить остаток; маржа тарифа — от того, сколько он потребит; маржа страховки — от его риск-профиля. Использование единой средней маржи $M_j$ вместо $M_{ij}$ систематически смещает систему в сторону клиентов, чья фактическая маржа ниже средней. <strong>Практика:</strong> отдельная модель ожидаемой маржи $\hat M_{ij}$ на клиента — обычно она даёт больший прирост прибыли, чем улучшение propensity-модели, потому что разброс маржи по клиентам больше разброса вероятности.</div></div>
+
+<div class="chb">
+<div class="cht">Разброс маржи и вероятности по клиентам: что важнее моделировать</div>
+<div class="chsub">Ожидаемая ценность = P × M; вклад в дисперсию у маржи обычно выше</div>
+<div style="position:relative;height:300px;"><canvas id="c_margin"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Propensity-слой: базовые модели <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как оценивать вероятность отклика на каждый оффер</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Как устроен</th><th>Плюсы</th><th>Минусы</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Модель на оффер</b></td><td>$J$ независимых бинарных классификаторов</td><td><strong>Просто, легко добавлять/убирать офферы</strong></td><td>Не делит информацию между офферами; для редких офферов мало данных</td></tr>
+<tr><td>Одна модель с оффером как признаком</td><td>Оффер — категориальный признак, one-hot или эмбеддинг</td><td>Общая структура, работает для редких офферов</td><td>Слабые взаимодействия «клиент×оффер» при регуляризации</td></tr>
+<tr class="trh"><td><b>Two-tower</b></td><td>Эмбеддинг клиента × эмбеддинг оффера</td><td><strong>Масштабируется, переносится на новые офферы</strong></td><td>Нужны данные и инфраструктура</td></tr>
+<tr><td>Multi-task</td><td>Общий ствол + голова на каждый оффер</td><td>Разделяет представление, эффективен по данным</td><td>Сложнее обучать; конфликт задач</td></tr>
+<tr><td>Factorization Machines</td><td>Явные парные взаимодействия</td><td>Хорошо на разрежённых данных, быстро</td><td>Только парные взаимодействия</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: когда «модель на оффер» перестаёт работать</div>
+<p>При 5–8 офферах и большой базе отдельные модели — правильный выбор: просто, прозрачно, легко отлаживать по одному офферу.</p>
+<p>Проблема начинается при <strong>появлении новых или редких офферов</strong>. Оффер, запущенный месяц назад, имеет 3 000 наблюдений — отдельная модель на них выучит шум.</p>
+<p><strong>Two-tower и multi-task решают это через разделение представления:</strong> знание о том, «какие клиенты вообще склонны откликаться на финансовые продукты», переносится с обученных офферов на новый. Новому офферу нужно выучить лишь его специфику, а не всё с нуля.</p>
+<p><strong>Практическое правило:</strong> до 10 стабильных офферов — отдельные модели; при частом добавлении новых или при наличии редких — общая архитектура с эмбеддингами офферов.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная проблема данных в NBO: смещение отбора.</strong> Исторические данные содержат отклики только на те офферы, которые система <em>решила показать</em>. О паре (клиент, оффер), которая никогда не встречалась, нет никакой информации. Модель, обученная на таких данных, экстраполирует в области, где не видела ни одного примера — и делает это уверенно. <strong>Это не лечится моделью</strong>: требуется либо exploration (секция 8), либо коррекция через propensity-веса при известной вероятности показа.</div></div>
+
+<div class="fbox blue">
+<div class="flabel">📐 IPS-коррекция смещения отбора</div>
+$$\hat{V}(\pi) = \frac{1}{N}\sum_{i} \frac{\mathbb{1}[a_i = \pi(x_i)]}{p_{\text{log}}(a_i \mid x_i)}\, r_i$$
+<p>$p_{\text{log}}$ — вероятность, с которой <em>логирующая</em> политика показала действие $a_i$; $r_i$ — наблюдённая награда. Это оценка ценности новой политики $\pi$ по старым данным (off-policy evaluation).</p>
+<p class="fnote">Требование: $p_{\text{log}}(a \mid x) > 0$ для всех рассматриваемых действий — то есть логирующая политика должна была быть <em>стохастической</em>. Детерминированная политика («всегда argmax») делает IPS неприменимым: знаменатель равен нулю для всех неиспробованных действий. Отсюда: <strong>логировать вероятность показа обязательно, а сама политика должна содержать случайность.</strong></p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Минимальное требование к логированию, которое надо заложить сразу.</strong> Для каждого показа сохраняй: <code>customer_id</code>, <code>offer_id</code>, <code>timestamp</code>, <strong><code>propensity</code> (вероятность, с которой политика выбрала это действие)</strong>, <code>policy_version</code>, <code>eligible_offers</code> (какие вообще были доступны), <code>features_snapshot_id</code>. Без поля <code>propensity</code> вся история становится непригодной для off-policy оценки, и единственный способ сравнить новую политику со старой — живой A/B, который дорог и медленен. Это поле стоит одного числа на запись и спасает годы данных.</div></div>
+
+<pre><code># Propensity-модели и логирование, пригодное для off-policy
+import numpy as np, lightgbm as lgb
+
+# Вариант 1: модель на оффер (до ~10 стабильных офферов)
+models = {}
+for offer in OFFERS:
+    sub = log[log.offer_id == offer]
+    models[offer] = lgb.LGBMClassifier(
+        learning_rate=0.04, num_leaves=63, min_child_samples=200, n_estimators=1200
+    ).fit(sub[FEATS], sub.responded)
+
+def score_all(x_row):
+    return {o: m.predict_proba(x_row[FEATS])[:, 1][0] for o, m in models.items()}
+
+# Вариант 2: одна модель с оффером как признаком (для редких офферов)
+long = log.assign(offer_cat=log.offer_id.astype("category"))
+shared = lgb.LGBMClassifier(learning_rate=0.04, num_leaves=127,
+                            min_child_samples=150, n_estimators=2000)
+shared.fit(long[FEATS + ["offer_cat"]], long.responded, categorical_feature=["offer_cat"])
+
+# ЛОГИРОВАНИЕ: propensity обязательно
+def serve(customer, policy, eligible, epsilon=0.05):
+    scores = score_all(customer)
+    scores = {o: s for o, s in scores.items() if o in eligible}
+    best = max(scores, key=scores.get)
+    # eps-greedy: даёт стохастичность, без которой IPS невозможен
+    if np.random.rand() &lt; epsilon:
+        chosen = np.random.choice(list(scores))
+        prop = epsilon / len(scores)
+    else:
+        chosen = best
+        prop = 1 - epsilon + epsilon / len(scores)
+    write_log(customer.id, chosen, propensity=prop,        # &lt;-- КЛЮЧЕВОЕ ПОЛЕ
+              eligible=list(scores), policy_version=policy.version)
+    return chosen
+</code></pre>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Почему argmax по вероятности — неверный ответ <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Три уровня ошибки, каждый из которых меняет выбор</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три поправки к наивному выбору</div>
+<p><strong>Ошибка 1: $P$ вместо $P\times M - c$.</strong> Оффер с конверсией 18% и маржой 300 ₽ проигрывает офферу с конверсией 3% и маржой 12 000 ₽. Выбор по вероятности отбирает <em>дешёвые и лёгкие</em> офферы.</p>
+<p><strong>Ошибка 2: $P$ вместо $\tau$.</strong> Клиент, который оформил бы вклад и без предложения, даёт высокий $P$ и нулевой $\tau$. Система тратит на него ресурс и записывает себе его конверсию — это ровно та же проблема sure things из темы 2.4.</p>
+<p><strong>Ошибка 3: игнорирование ограничений.</strong> Независимый argmax по клиентам нарушает бюджеты офферов; последующее «обрезание по лимиту» даёт результат хуже глобальной оптимизации (расчёт секции 2 — разрыв 46%).</p>
+<p><strong>Правильная величина:</strong> $v_{ij} = \tau_{ij}M_{ij} - c_j - K_{ij} + \Delta\text{CLV}_{ij}$, и затем — оптимизация с ограничениями, а не поклиентский argmax.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Четыре политики на одной базе</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>База 300 000, четыре оффера.</strong> Кэшбэк ($P$ высокая, $M$=2 100, $c$=150), вклад ($M$=3 400, $c$=300), кредит ($M$=14 000, $c$=800), премиальная карта ($M$=9 200, $c$=1 200, лимит 25 000).</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>① argmax по $P$.</strong> Почти все получают кэшбэк — у него самая высокая конверсия.<br>Прибыль: $\mathbf{18.4}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>② argmax по $P\cdot M - c$.</strong> Распределение сдвигается к кредиту и карте.<br>Прибыль: $\mathbf{79.1}$ млн ₽ (в 4.3 раза больше).</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>③ argmax по $\tau\cdot M - c$</strong> (инкрементальная вероятность вместо абсолютной). Отсеиваются те, кто оформил бы и сам; освободившийся бюджет уходит на реальных persuadables.<br>Прибыль: $\mathbf{112.6}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>④ Глобальная оптимизация с ограничениями</strong> (лимит на карту, бюджеты, контактная политика).<br>Прибыль: $\mathbf{138.9}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>18.4 → 79.1 → 112.6 → 138.9 млн ₽.</strong> Крупнейший скачок (×4.3) даёт переход от вероятности к прибыли — самая дешёвая поправка, не требующая ни новых данных, ни экспериментов. Следующие два шага требуют контрольных групп и оптимизатора, но и они дают +76%.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Четыре политики назначения: прибыль на одной базе</div>
+<div class="chsub">Каждая поправка меняет выбор, а не только уточняет его</div>
+<div style="position:relative;height:300px;"><canvas id="c_policy"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Есть и четвёртая ошибка — «победитель по калибровке».</strong> При сравнении офферов между собой сравниваются <em>предсказания разных моделей</em>. Если модель кредита систематически завышает вероятности, а модель вклада занижает, то кредит будет выигрывать сравнение всегда, независимо от реальности. <strong>Калибровка каждой propensity-модели обязательна</strong> — не ради качества самой модели, а ради сопоставимости между офферами. Это требование специфично для NBO: в задаче с одним действием калибровка нужна только для порога, здесь — для самого выбора.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>$\tau$ для каждого оффера требует своего контроля.</strong> Инкрементальность измеряется относительно «ничего не предложить», поэтому нужна контрольная группа, не получающая <em>никакого</em> оффера. Одного общего контроля достаточно, если офферы назначаются рандомизированно, — но тогда его размер должен обеспечивать мощность для каждого оффера отдельно (требования из темы 2.4, секция 4). На практике: 5–10% глобальный контроль плюс exploration-бакет, дающий рандомизацию между офферами.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Ограничения: то, что превращает демо в систему <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Шесть классов ограничений, каждый со своей механикой</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Класс</th><th>Примеры</th><th>Как учитывается</th><th>Что будет без него</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Eligibility (жёсткие)</b></td><td>Возраст, регион, тип счёта, наличие продукта, кредитный скор, регуляторные запреты</td><td><strong>Фильтр $e_{ij}=0$ до оптимизации</strong></td><td>Оффер, который нельзя выдать; жалобы, регуляторные риски</td></tr>
+<tr class="trh"><td><b>Бюджеты офферов</b></td><td>Лимит промо-бюджета, квота выдач, ограничение партнёра</td><td><strong>$\sum_i a_{ij}c_j \le B_j$</strong></td><td>Перерасход, отмена кампании в середине</td></tr>
+<tr><td>Контактная политика</td><td>Не более N коммуникаций за период, интервал между офферами, тихие часы</td><td>Фильтр + ограничение на клиента</td><td>Насыщение, отписки, падение доставляемости</td></tr>
+<tr><td>Пропускная способность</td><td>Квота колл-центра по часам, лимит SMS-шлюза</td><td>Ограничение по каналу и времени</td><td>Очередь, просроченные офферы, простой</td></tr>
+<tr><td>Справедливость и обязательства</td><td>Минимальный охват региона, обязательства перед партнёром, недискриминация</td><td>Ограничения-минимумы</td><td>Репутационные и юридические риски</td></tr>
+<tr><td>Логика продукта</td><td>Нельзя предлагать то, что уже есть; нельзя два кредита подряд; сначала базовый продукт</td><td>Граф зависимостей + фильтр</td><td>Абсурдные предложения, потеря доверия</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Eligibility должна применяться до оптимизации, а не после.</strong> Если сначала выбрать оптимальное назначение, а потом отфильтровать недопустимые пары, освободившийся бюджет останется неиспользованным, а клиент — без оффера, хотя для него был допустимый второй вариант. Это тот же принцип, что и с фильтрами исключения в uplift (тема 2.4, секция 8): <strong>сужать пространство решений надо до оптимизации, а не резать результат после.</strong></div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему контактная политика — это ограничение, а не фильтр</div>
+<p>Фильтр «не более 4 контактов за 30 дней» кажется простым правилом. Но он <strong>связывает решения во времени</strong>: отправив оффер сегодня, система расходует квоту, которая могла бы понадобиться через неделю для более ценного предложения.</p>
+<p>Это делает задачу <em>динамической</em>: оптимально не всегда отправлять лучший доступный оффер сейчас — иногда выгоднее подождать.</p>
+<p><strong>Практическое решение без полноценного динамического программирования:</strong> ввести «резервную цену» контакта — минимальную ценность $v_{\min}$, ниже которой квота не расходуется. Она подбирается так, чтобы средняя нагрузка соответствовала лимиту. Фактически это теневая цена ограничения на контакты, и её можно получить прямо из двойственного решения LP.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Резервная цена контакта: сколько она даёт</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Условия.</strong> Лимит 2 оффера на клиента в квартал. Офферы приходят как события: у клиента за квартал возникает в среднем 5 «поводов» с ценностями, распределёнными от 50 до 3 000 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Жадная политика</strong> «отправляй первые два подходящих». Средняя ценность первых двух поводов ≈ средняя по распределению: $2\times 720 = \mathbf{1440}$ ₽ на клиента.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>С резервной ценой.</strong> Отправляем, только если $v > v_{\min}$. Подбираем $v_{\min}$ так, чтобы в среднем расходовалось 2 контакта из 5 поводов → $v_{\min} \approx 1150$ ₽ (60-й перцентиль).<br>Средняя ценность отправленных: $\mathbf{1870}$ ₽ на клиента.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Прирост +30%</strong> при том же числе контактов — только за счёт того, что квота не тратится на слабые поводы.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Тонкость:</strong> $v_{\min}$ должна снижаться к концу периода. Если у клиента остался неиспользованный контакт и до конца квартала неделя, порог надо опустить — неиспользованная квота пропадает. Это классическая задача из revenue management (как продажа авиабилетов), и решение то же: <strong>порог, зависящий от оставшегося времени и оставшейся квоты</strong>.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Резервная цена контакта в зависимости от остатка квоты и времени</div>
+<div class="chsub">К концу периода порог снижается — неиспользованная квота пропадает</div>
+<div style="position:relative;height:310px;"><canvas id="c_reserve"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Граф зависимостей продуктов — недооценённая часть eligibility.</strong> Многие офферы имеют естественный порядок: сначала базовый счёт, потом карта, потом кредитный продукт, потом инвестиции. Предложение инвестсчёта клиенту без базового продукта конвертируется плохо не потому, что он «плохой», а потому что <em>рано</em>. Формализуй это графом: у каждого оффера — набор предусловий. Это одновременно повышает конверсию и делает систему объяснимой для бизнеса, а также предотвращает абсурдные предложения, которые сильнее всего бьют по доверию.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Оптимизация назначения: как это решается <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">От жадного алгоритма до LP с двойственными переменными</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Когда применим</th><th>Сложность</th><th>Даёт теневые цены</th></tr></thead>
+<tbody>
+<tr><td>Поклиентский argmax</td><td>Нет общих ограничений</td><td>$O(NJ)$</td><td>Нет</td></tr>
+<tr><td>Жадный по эффективности</td><td>Один общий бюджет</td><td>$O(NJ\log NJ)$</td><td>Приближённо</td></tr>
+<tr class="trh"><td><b>LP-релаксация</b></td><td><strong>Несколько бюджетов и квот</strong></td><td>Быстро на агрегатах</td><td><strong>Да — главное преимущество</strong></td></tr>
+<tr><td>MILP</td><td>Целочисленные и логические ограничения</td><td>Может быть медленно</td><td>Через релаксацию</td></tr>
+<tr class="trh"><td><b>Лагранжева декомпозиция</b></td><td><strong>Огромный масштаб, потоковый режим</strong></td><td>$O(NJ)$ на итерацию</td><td><strong>Да, это сами множители</strong></td></tr>
+<tr><td>Min-cost flow</td><td>Структура двудольного графа</td><td>Полиномиальная</td><td>Да</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: лагранжев подход — самый практичный на масштабе</div>
+<p>Прямое решение LP на 10 млн клиентов × 8 офферов — 80 млн переменных. Тяжело, и главное — <em>не нужно</em>.</p>
+<p><strong>Идея:</strong> «занести» бюджетные ограничения в целевую функцию с множителями $\lambda_j$:</p>
+<p style="text-align:center;">$\max \sum_{ij} a_{ij}\left(v_{ij} - \lambda_j c_j\right)$</p>
+<p>При фиксированных $\lambda$ задача <strong>распадается на независимые задачи по клиентам</strong>: каждый выбирает $\arg\max_j (v_{ij} - \lambda_j c_j)$, и это делается потоково, без хранения всей матрицы.</p>
+<p>Остаётся подобрать $\lambda_j$ так, чтобы бюджеты соблюдались — это одномерный поиск по каждому $\lambda$ (бинарный поиск или субградиентный подъём) на небольшой выборке.</p>
+<p><strong>Практическая ценность:</strong> $\lambda_j$ — это <em>цена ресурса</em> оффера. Её можно посчитать раз в сутки на выборке в 200 000 клиентов, а затем применять в реальном времени к каждому запросу. Так batch-оптимизация превращается в real-time правило.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Лагранжева декомпозиция: полный рецепт</div>
+$$\text{Решаем: } \quad a_{ij}^{*}(\lambda) = \mathbb{1}\left[j = \arg\max_{j'} \left(v_{ij'} - \lambda_{j'}c_{j'}\right) \;\wedge\; v_{ij} - \lambda_j c_j > 0\right]$$
+$$\text{Подбираем } \lambda: \quad \lambda_j^{(t+1)} = \max\left(0,\; \lambda_j^{(t)} + \eta\left[\textstyle\sum_i a_{ij}^{*}c_j - B_j\right]\right)$$
+<p class="fnote">Второе условие ($v_{ij} - \lambda_j c_j > 0$) — это и есть опция «ничего»: если после вычета цены ресурса выгода отрицательна, оффер не назначается. Множитель $\lambda_j$ автоматически растёт при перерасходе бюджета и падает при недорасходе. При $\lambda_j = 0$ ограничение не связывает — бюджет избыточен.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Подбор множителей на трёх офферах</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Бюджеты:</strong> карта 30 млн ₽ ($c$=1 200 → 25 000 выдач), кредит 24 млн ₽ ($c$=800 → 30 000), кэшбэк 12 млн ₽ ($c$=150 → 80 000).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Старт $\lambda = (0,0,0)$.</strong> Каждый выбирает по $v_{ij}$. Расход: карта 91 000 выдач (в 3.6 раза сверх), кредит 44 000, кэшбэк 38 000.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Итерация 5:</strong> $\lambda_{\text{карта}} = 0.84$ — цена ресурса карты выросла, часть клиентов переключилась на кредит. Расход: карта 41 000, кредит 58 000, кэшбэк 51 000.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Итерация 12:</strong> $\lambda = (1.42,\;0.61,\;0)$. Расход: карта 25 200, кредит 30 400, кэшбэк 62 000. Почти сошлось.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Итерация 18:</strong> $\lambda = (1.47,\;0.63,\;0)$, расход в пределах 1% от бюджетов. <strong>$\lambda_{\text{кэшбэк}} = 0$</strong> означает, что его бюджет не исчерпан — ограничение не связывает.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Интерпретация $\lambda$ для бизнеса.</strong> $\lambda_{\text{карта}} = 1.47$ означает: каждый дополнительный рубль бюджета на карту принёс бы <strong>1.47 ₽ прибыли</strong>. $\lambda_{\text{кэшбэк}} = 0$ — бюджет кэшбэка избыточен, его можно урезать без потерь и переложить на карту. Это прямая рекомендация по перераспределению бюджетов, полученная как побочный продукт оптимизации.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Сходимость лагранжевых множителей и расхода бюджетов</div>
+<div class="chsub">λ растёт, пока расход превышает бюджет; λ = 0 означает избыточный бюджет</div>
+<div style="position:relative;height:320px;"><canvas id="c_lambda"></canvas></div>
+</div>
+
+<pre><code># Лагранжева декомпозиция: масштабируется на десятки миллионов
+import numpy as np
+
+def solve_nbo(V, C, B, eligible, iters=60, lr=0.35):
+    """
+    V: (N, J) ценность назначения; C: (J,) стоимость; B: (J,) бюджет
+    eligible: (N, J) булева маска допустимости
+    Возвращает: назначения и теневые цены lambda
+    """
+    N, J = V.shape
+    lam = np.zeros(J)
+    for t in range(iters):
+        adj = np.where(eligible, V - lam * C, -np.inf)     # скорректированная ценность
+        best = adj.argmax(axis=1)
+        take = adj[np.arange(N), best] &gt; 0                  # опция "ничего"
+        spend = np.bincount(best[take], minlength=J) * C
+        # субградиентный шаг с затухающим темпом
+        step = lr / (1 + t * 0.08)
+        lam = np.maximum(0, lam + step * (spend - B) / np.maximum(B, 1))
+        if np.all(np.abs(spend - B) &lt;= 0.01 * B): break
+    assign = np.where(take, best, -1)                       # -1 = ничего не предлагаем
+    return assign, lam
+
+assign, lam = solve_nbo(V, C, B, eligible)
+for j, name in enumerate(OFFERS):
+    print(f"{name}: lambda={lam[j]:.2f} "
+          f"({'бюджет связывает' if lam[j] &gt; 0 else 'бюджет избыточен'})")
+
+# Real-time применение: lambda считается ночью, применяется мгновенно
+def serve_realtime(v_row, eligible_row, lam, C):
+    adj = np.where(eligible_row, v_row - lam * C, -np.inf)
+    j = adj.argmax()
+    return j if adj[j] &gt; 0 else None       # None = ничего не предлагаем
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Множители устаревают быстрее, чем модели.</strong> $\lambda$ отражают <em>текущее</em> соотношение спроса и бюджета. Если за неделю изменился состав трафика или сработала внешняя акция, старые $\lambda$ приводят к систематическому пере- или недорасходу. <strong>Практика:</strong> пересчитывать $\lambda$ ежедневно на свежей выборке и дополнительно вести <em>онлайн-коррекцию</em> — небольшой пропорциональный контроллер, подстраивающий $\lambda$ по фактическому расходу в течение дня. Без коррекции бюджет дорогого оффера может исчерпаться к обеду.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Бандиты и исследование в NBO <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как система узнаёт то, чего не знает</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Петля обратной связи в NBO жёстче, чем в uplift.</strong> Система показывает оффер A, собирает данные об отклике на A, обучается предсказывать отклик на A лучше — и продолжает показывать A. Об оффере B, который она однажды сочла слабым, данные <em>перестают поступать вовсе</em>. Даже если B стал лучше (изменился продукт, аудитория, сезон), система этого не узнает никогда. Метрики при этом выглядят отлично: на собственных данных модель точна.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Стратегия</th><th>Как работает</th><th>Плюс в NBO</th><th>Минус</th></tr></thead>
+<tbody>
+<tr><td>ε-greedy</td><td>С вероятностью $\varepsilon$ случайный оффер</td><td><strong>Просто, даёт корректные propensity для IPS</strong></td><td>Исследует одинаково везде, включая заведомо плохие офферы</td></tr>
+<tr class="trh"><td><b>Thompson Sampling</b></td><td>Сэмплирование из апостериорного распределения</td><td><strong>Исследует пропорционально неопределённости</strong></td><td>Нужна байесовская модель или бутстрап</td></tr>
+<tr><td>UCB / LinUCB</td><td>Оптимизм в лице неопределённости</td><td>Детерминирован, есть гарантии</td><td>Детерминизм ломает IPS; хуже при задержке отклика</td></tr>
+<tr class="trh"><td><b>Контекстные бандиты</b></td><td>Политика от признаков клиента</td><td><strong>Естественная постановка NBO</strong></td><td>Отложенная награда усложняет обучение</td></tr>
+<tr><td>Off-policy обучение</td><td>Обучение новой политики на логах старой</td><td>Не требует онлайн-экспериментов</td><td>Требует логированных propensity и перекрытия</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему Thompson Sampling подходит NBO лучше всего</div>
+<p><strong>ε-greedy</strong> тратит $\varepsilon$ доли трафика на <em>равномерно случайный</em> выбор — включая офферы, про которые уже точно известно, что они плохи. Это чистые потери.</p>
+<p><strong>Thompson Sampling</strong> сэмплирует из апостериорного распределения ценности каждого оффера. Оффер с большой неопределённостью иногда выигрывает сэмплирование и получает шанс; оффер с узким и низким распределением — почти никогда.</p>
+<p>Исследование автоматически концентрируется там, где <em>система не уверена</em>, и затухает там, где вопрос решён.</p>
+<p><strong>Бонус для NBO:</strong> TS стохастичен, поэтому даёт корректные propensity для off-policy оценки. UCB детерминирован и этого не даёт — что делает его неудобным именно в CRM, где офлайн-оценка новых политик критична.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Цена отсутствия исследования</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Ситуация.</strong> Оффер «семейный тариф» запущен год назад, показал слабую конверсию 1.2% и был вытеснен системой. Показы упали до нуля.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Что изменилось за год:</strong> продукт доработан, цена снижена, аудитория сдвинулась в сторону семейных пользователей. Фактическая конверсия сейчас была бы <strong>6.4%</strong> при марже 5 800 ₽.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Система этого не знает.</strong> Модель обучена на прошлогодних данных, где конверсия 1.2%, и предсказывает $v = 0.012\times5800 - 190 = -120$ ₽. Оффер никогда не выбирается, новых данных нет.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Реальная упущенная ценность:</strong> $0.064\times5800 - 190 = +181$ ₽ на подходящем клиенте. Подходящих в базе ≈ 140 000.<br>Упущено: $140\,000\times181 = \mathbf{25.3}$ млн ₽ в год.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Стоимость исследования, которое бы это обнаружило.</strong> Thompson Sampling направил бы на этот оффер ≈2% показов при высокой неопределённости. Потери на «неоптимальных» показах: $0.02\times400\,000\times\text{средний разрыв }260 = \mathbf{2.1}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Отдача 12:1.</strong> Причём эта ситуация типична: любое изменение продукта, цены или аудитории делает старые оценки неверными, а без исследования система об этом не узнаёт. <strong>Исследование — не «налог на эксперименты», а страховка от устаревания.</strong></div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Thompson Sampling против ε-greedy: доля показов слабому офферу</div>
+<div class="chsub">TS быстро сокращает исследование там, где вопрос решён, и возобновляет при изменении</div>
+<div style="position:relative;height:310px;"><canvas id="c_ts"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Специфика NBO, ломающая классические бандиты: отложенная и разрежённая награда.</strong> Отклик на кредитное предложение приходит через дни или недели, а конверсия — единицы процентов. Классический бандит предполагает немедленную награду. <strong>Решения:</strong> ① обновлять апостериорные распределения батчами (раз в сутки), а не после каждого показа; ② использовать <em>промежуточные</em> сигналы (открытие, клик, начало заявки) как ранние прокси с последующей коррекцией; ③ учитывать «в пути» показы, по которым награда ещё не пришла, — иначе система решит, что оффер плох, просто потому что отклик не успел прийти.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Гибридная схема, работающая на практике.</strong> Основной трафик (90–94%) обслуживается детерминированной политикой на основе моделей и $\lambda$ — она стабильна, объяснима и проходит согласование. Отдельный <strong>бакет исследования (3–5%)</strong> обслуживается Thompson Sampling, и именно он поставляет данные для переобучения. Плюс <strong>глобальный holdout (3%)</strong> без офферов вовсе — для оценки инкрементальности. Такое разделение позволяет держать основную политику простой и предсказуемой, не жертвуя способностью системы учиться.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Контекст и тайминг: не только «что», но и «когда» <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Момент часто важнее самого оффера</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему тайминг — отдельное измерение</div>
+<p>Один и тот же оффер имеет радикально разную ценность в зависимости от момента. Предложение кредита на путешествие: за неделю до отпуска — высокая конверсия; через неделю после — почти нулевая.</p>
+<p><strong>Формально задача расширяется:</strong> выбирается не $j$, а пара $(j, t)$ — оффер и момент. Пространство решений вырастает, но и потенциал тоже.</p>
+<p><strong>Два режима работы:</strong></p>
+<p><strong>① Триггерный (реактивный).</strong> Система ждёт события — крупная покупка, поиск в приложении, приближение даты продления — и реагирует. Конверсия высокая, потому что момент правильный по построению.</p>
+<p><strong>② Плановый (проактивный).</strong> Система сама решает, когда обратиться. Нужна модель «оптимального момента», обычно основанная на паттернах активности клиента.</p>
+<p><strong>Практика:</strong> триггерный режим даёт 3–8-кратную конверсию против планового при том же оффере. Начинать надо с него, а плановый использовать как заполнение, когда триггеров нет.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Тип триггера</th><th>Примеры</th><th>Окно реакции</th><th>Типичный прирост конверсии</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Поведенческий</b></td><td>Поиск товара, просмотр тарифов, добавление в корзину, заход в раздел кредитов</td><td><strong>Минуты–часы</strong></td><td><strong>×4–8</strong></td></tr>
+<tr class="trh"><td><b>Транзакционный</b></td><td>Крупная покупка, поступление зарплаты, регулярный платёж, превышение лимита</td><td>Часы–дни</td><td><strong>×3–6</strong></td></tr>
+<tr><td>Жизненный цикл</td><td>Годовщина, окончание триала, приближение renewal, истечение карты</td><td>Дни–недели</td><td>×2–4</td></tr>
+<tr><td>Внешний</td><td>Сезон, праздник, изменение ставки, запуск продукта</td><td>Недели</td><td>×1.3–2</td></tr>
+<tr><td>Сервисный</td><td>Успешное решение проблемы, положительный NPS</td><td>Дни</td><td>×2–3 (окно доверия)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Триггерный режим против планового</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Оффер:</strong> потребкредит. Маржа 14 000 ₽, стоимость коммуникации 120 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Плановая рассылка</strong> по 200 000 отобранных моделью: конверсия 0.9%.<br>$200\,000\times(0.009\times14\,000 - 120) = 200\,000\times6 = \mathbf{1.2}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Триггер «зашёл в раздел кредитов»</strong> срабатывает у 26 000 клиентов в месяц. Конверсия при реакции в течение часа: 6.8%.<br>$26\,000\times(0.068\times14\,000 - 120) = 26\,000\times832 = \mathbf{21.6}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>В 18 раз больше прибыли при охвате в 7.7 раза меньше.</strong></div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>Но: важно окно реакции.</strong> Тот же триггер с реакцией через 24 часа: конверсия 2.1%. Через 3 дня: 1.1% — почти как плановая рассылка.<br>Прибыль при задержке 24 ч: $26\,000\times174 = 4.5$ млн ₽ — <strong>в 4.8 раза меньше</strong>, чем при часовой реакции.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод для архитектуры:</strong> ценность триггерного NBO почти целиком определяется <em>задержкой реакции</em>. Система, считающая офферы батчем раз в сутки, теряет 80% потенциала триггеров. Это главный аргумент за real-time контур (секция 12) — не «модно», а прямые деньги.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Затухание конверсии с задержкой реакции на триггер</div>
+<div class="chsub">Батч раз в сутки теряет большую часть ценности поведенческих триггеров</div>
+<div style="position:relative;height:300px;"><canvas id="c_decay"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: ценность триггерного NBO против планового</label>
+  <label style="margin-top:2px;">Задержка реакции на триггер, часов</label>
+  <input type="range" id="sl_lag" min="0" max="96" step="1" value="1" oninput="updTrig()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>мгновенно</span><span class="out" id="out_lag">1 ч</span><span>96 ч</span></div>
+  <label style="margin-top:14px;">Маржа продукта, ₽</label>
+  <input type="range" id="sl_marg" min="500" max="40000" step="500" value="14000" oninput="updTrig()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>500</span><span class="out" id="out_marg">14 000</span><span>40 000</span></div>
+  <label style="margin-top:14px;">Срабатываний триггера в месяц</label>
+  <input type="range" id="sl_trig" min="1000" max="200000" step="1000" value="26000" oninput="updTrig()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 000</span><span class="out" id="out_trig">26 000</span><span>200 000</span></div>
+  <div class="res" id="out_trigres"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Триггерные системы легко скатываются в навязчивость.</strong> Клиент зашёл в раздел кредитов — получил push, email и звонок в течение часа от трёх разных систем. Это конвертирует хуже одного касания и вызывает раздражение. <strong>Обязательные механизмы:</strong> ① дедупликация триггеров (одно событие → одна коммуникация); ② приоритет между триггерами, когда сработало несколько; ③ «период тишины» после реакции на триггер; ④ глобальный счётчик контактов, единый для триггерных и плановых кампаний. Без последнего триггерная система молча обходит контактную политику.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Каннибализация и инкрементальность <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Самая часто игнорируемая часть экономики NBO</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три вида каннибализации</div>
+<p><strong>① Временная.</strong> Клиент оформил бы продукт через месяц сам, но оффер ускорил решение. Выручка не новая — она просто пришла раньше, зато со скидкой. Инкремент близок к нулю, а стоимость реальна.</p>
+<p><strong>② Продуктовая.</strong> Новый продукт замещает старый: карта с кэшбэком перетягивает транзакции с уже имеющейся карты. Суммарная маржа клиента не растёт или падает.</p>
+<p><strong>③ Канальная.</strong> Клиент оформил бы онлайн бесплатно, но получил звонок оператора — та же сделка обошлась в стоимость звонка.</p>
+<p><strong>Общее:</strong> во всех трёх случаях наблюдаемая конверсия высокая, отчёт хороший, а прибыли нет. Ни одна propensity-модель этого не видит — нужен эксперимент.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Инкрементальная ценность с учётом каннибализации</div>
+$$v_{ij}^{\text{инкр}} = \underbrace{\left[P(\text{купит} \mid \text{оффер}) - P(\text{купит} \mid \text{нет оффера})\right]}_{\tau_{ij}} \cdot M_{ij} \;-\; c_j \;-\; \underbrace{\sum_{k \ne j}\Delta P_{ik}\,M_{ik}}_{\text{перетекание из других продуктов}}$$
+<p class="fnote">Третий член отрицателен, когда оффер $j$ снижает вероятность покупки других продуктов $k$. Измерить его можно только сравнением <em>полной корзины</em> клиента между тестом и контролем, а не отклика на конкретный оффер.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Кампания с отличным откликом и нулевой прибылью</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Оффер:</strong> карта с повышенным кэшбэком 5% в категории «супермаркеты». Тест 100 000, контроль 100 000.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Отклик.</strong> Тест: оформили 11 200 (11.2%). Контроль: оформили 2 400 (2.4%).<br>$\tau = +8.8$ п.п. → <strong>8 800 инкрементальных оформлений.</strong> Отличный результат по отчёту.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Наивная прибыль:</strong> $8800\times2100 - 100\,000\times150 = 18.5 - 15.0 = \mathbf{3.5}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Смотрим полную корзину.</strong> Средняя маржа с клиента за 6 месяцев по всем продуктам: тест 4 180 ₽, контроль <strong>4 090 ₽</strong>. Разница всего +90 ₽.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>Что произошло:</strong> транзакции перетекли со старой карты (маржа 1.9%) на новую (маржа 0.6% после кэшбэка). Клиенты те же, обороты те же, маржа ниже.<br>Реальная прибыль: $100\,000\times90 - 15.0 = 9.0 - 15.0 = \mathbf{-6.0}$ млн ₽.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Кампания с $\tau = +8.8$ п.п. принесла −6 млн ₽.</strong> Ошибка была не в модели и не в таргетировании, а в <em>метрике</em>: измерялся отклик на продукт вместо изменения общей маржи клиента. <strong>Правило: целевая метрика NBO — инкрементальная маржа клиента по всей корзине, а не конверсия в оффер.</strong></div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Отклик на оффер против инкрементальной маржи по корзине</div>
+<div class="chsub">Продукты с высоким откликом часто каннибализируют существующие</div>
+<div style="position:relative;height:310px;"><canvas id="c_cann"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как измерять каннибализацию на практике.</strong> ① <strong>Единица измерения — клиент, а не продукт.</strong> Сравнивай суммарную маржу клиента за 6–12 месяцев между тестом и контролем. ② <strong>Смотри на продукты-соседи явно:</strong> для каждого оффера построй таблицу «изменение оборота по каждому другому продукту» — она сразу показывает, откуда перетекло. ③ <strong>Горизонт длиннее, чем кажется:</strong> временная каннибализация видна только на 6+ месяцах — на 30 днях кампания выглядит прибыльной, потому что «украденные из будущего» продажи ещё не наступили в контроле.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Каннибализация — причина, по которой NBO-системы часто «не подтверждаются» в холдауте.</strong> Типичная история: система показывает рост конверсии по всем офферам, продуктовые команды довольны, но общая маржа на клиента не растёт. Каждая команда оптимизирует свой продукт, забирая обороты у соседей, и сумма нулевая. <strong>Организационное решение:</strong> целевая метрика NBO-системы должна принадлежать <em>уровню клиента</em>, а не уровню продукта, и владелец у неё должен быть один. Иначе локальные оптимизации гарантированно съедят друг друга.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Метрики и валидация NBO <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как оценить политику, не выкатывая её</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Уровень</th><th>Метрика</th><th>Что показывает</th><th>Ограничение</th></tr></thead>
+<tbody>
+<tr><td>Модель</td><td>AUC / PR-AUC / калибровка по офферу</td><td>Качество propensity</td><td><strong>Не говорит о качестве политики</strong></td></tr>
+<tr class="trh"><td><b>Политика (офлайн)</b></td><td>IPS / SNIPS / Doubly Robust</td><td><strong>Оценка новой политики по старым логам</strong></td><td>Требует логированных propensity и перекрытия</td></tr>
+<tr><td>Политика (офлайн)</td><td>Replay / rejection sampling</td><td>Несмещённая оценка на рандомизированном бакете</td><td>Использует малую долю данных</td></tr>
+<tr class="trh"><td><b>Онлайн</b></td><td>Инкрементальная маржа на клиента vs holdout</td><td><strong>Финальная истина</strong></td><td>Медленно, дорого</td></tr>
+<tr><td>Онлайн</td><td>Расход бюджетов, распределение офферов</td><td>Здоровье системы</td><td>Не про качество</td></tr>
+<tr><td>Онлайн</td><td>Доля «ничего», разнообразие офферов</td><td>Не схлопнулась ли политика</td><td>Прокси</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Высокий AUC каждой propensity-модели не означает хорошую политику.</strong> Политика определяется <em>сравнением</em> офферов между собой, а AUC меряет ранжирование клиентов внутри одного оффера. Модель может идеально ранжировать клиентов по каждому офферу и при этом выбирать неверный оффер для каждого — если её вероятности плохо откалиброваны относительно друг друга. <strong>Оценивать надо политику, а не модели</strong>, и для этого существует отдельный инструментарий off-policy evaluation.</div></div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Три оценщика off-policy</div>
+<p><strong>IPS</strong> (несмещён, но высокая дисперсия):</p>
+$$\hat V_{\text{IPS}} = \frac{1}{N}\sum_i \frac{\mathbb{1}[a_i = \pi(x_i)]}{p_i}\,r_i$$
+<p><strong>SNIPS</strong> (самонормированный, ниже дисперсия, слегка смещён):</p>
+$$\hat V_{\text{SNIPS}} = \frac{\sum_i \frac{\mathbb{1}[a_i = \pi(x_i)]}{p_i} r_i}{\sum_i \frac{\mathbb{1}[a_i = \pi(x_i)]}{p_i}}$$
+<p><strong>Doubly Robust</strong> (использует модель награды $\hat r$, наименьшая дисперсия):</p>
+$$\hat V_{\text{DR}} = \frac{1}{N}\sum_i\left[\hat r(x_i, \pi(x_i)) + \frac{\mathbb{1}[a_i = \pi(x_i)]}{p_i}\left(r_i - \hat r(x_i, a_i)\right)\right]$$
+<p class="fnote">DR корректен, если верна <em>хотя бы одна</em> из двух моделей — propensity или награды. На практике это рабочий дефолт для NBO. Обязательно обрезать веса $1/p_i$ сверху (clipping на 10–50), иначе редкие показы с малым $p$ дают выбросы, доминирующие в оценке.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Off-policy оценка новой политики перед выкаткой</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Логи:</strong> 1.2 млн показов текущей политики с ε-greedy ($\varepsilon = 0.06$), propensity залогированы. Средняя награда старой политики: <strong>412 ₽</strong> на показ.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Новая политика</strong> совпадает со старой на 71% клиентов; на остальных выбирает другой оффер.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Наивная оценка</strong> (взять среднюю награду там, где политики совпали): 468 ₽. <strong>Смещена</strong> — совпадение неслучайно, оно чаще там, где старая политика уверена.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>IPS без обрезки:</strong> 583 ₽ ± 210 (огромная дисперсия). Три наблюдения с $p = 0.008$ дают 34% всей суммы — оценке доверять нельзя.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>SNIPS с обрезкой весов на 20:</strong> 447 ₽ ± 31.<br><strong>Doubly Robust:</strong> <strong>451 ₽ ± 19</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Вывод перед выкаткой:</strong> ожидаемый прирост $451 - 412 = +39$ ₽ на показ (+9.5%), интервал не включает ноль. Политику стоит тестировать онлайн.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Что дала офлайн-оценка:</strong> отсеяла три из пяти кандидатных политик <em>без единого показа реальному клиенту</em>. Онлайн-тест запущен только для двух. Это экономит недели и снимает риск выкатки заведомо худшей политики.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Три оценщика off-policy: точность и дисперсия</div>
+<div class="chsub">DR даёт наименьшую дисперсию; IPS без обрезки практически неинформативен</div>
+<div style="position:relative;height:300px;"><canvas id="c_ope"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Off-policy оценка невозможна без перекрытия.</strong> Если новая политика выбирает оффер, который старая <em>никогда</em> не показывала данному типу клиентов ($p_i = 0$), никакая математика не поможет — данных просто нет. Проверяй <strong>долю покрытия</strong>: сколько процентов решений новой политики встречались в логах с ненулевой вероятностью. Ниже 60% — оценка ненадёжна, нужен онлайн-тест. Это ещё одна причина держать exploration-бакет: он обеспечивает ненулевое $p$ для всех допустимых пар и делает офлайн-оценку возможной.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Мониторинг здоровья политики: три показателя, доступные немедленно.</strong> ① <strong>Энтропия распределения офферов</strong> — если она падает, политика схлопывается на одном-двух офферах, что почти всегда признак деградации или переобучения. ② <strong>Доля решений «ничего»</strong> — резкий рост означает, что модели стали пессимистичны (дрейф) или $\lambda$ выросли из-за исчерпания бюджетов. ③ <strong>Расход бюджетов по времени суток</strong> — если дорогой оффер исчерпывается к обеду, $\lambda$ не успевает корректироваться, и вторая половина дня обслуживается неоптимально.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Архитектура: batch, real-time и гибрид <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как собрать систему, укладывающуюся в десятки миллисекунд</div>
+
+<div class="pl">
+  <div class="plrow">
+    <div class="plbox" style="background:#fff7ed;border-color:#fed7aa;color:#7c2d12;"><strong>Ночной batch</strong>Пересчёт признаков, скоринг $P_{ij}$ и $M_{ij}$ по всей базе, подбор $\lambda_j$, обновление eligibility</div>
+    <div class="plbox" style="background:#fff7ed;border-color:#fed7aa;color:#7c2d12;"><strong>Кэш решений</strong>Топ-3 оффера на клиента с ценностями — в key-value хранилище</div>
+    <div class="plbox" style="background:#ecfeff;border-color:#a5f3fc;color:#083344;"><strong>Real-time слой</strong>Событие → проверка фильтров → выбор из кэша с учётом контекста → отдача за 20–50 мс</div>
+  </div>
+  <div class="plrow">
+    <div class="plbox" style="background:#f0fdf4;border-color:#86efac;color:#14532d;"><strong>Онлайн-коррекция λ</strong>Контроллер подстраивает цены ресурсов по фактическому расходу в течение дня</div>
+    <div class="plbox" style="background:#f5f3ff;border-color:#ddd6fe;color:#4c1d95;"><strong>Логирование</strong>Действие, propensity, доступные офферы, версия политики, снимок признаков</div>
+    <div class="plbox" style="background:#fef2f2;border-color:#fca5a5;color:#7f1d1d;"><strong>Обратная связь</strong>Отклики, конверсии, маржа — с задержкой; батчевое обновление моделей</div>
+  </div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему гибрид, а не чистый real-time</div>
+<p>Скоринг 8 офферов моделью в реальном времени — это 8 инференсов плюс сборка признаков. Уложиться в 30 мс на пике трудно и дорого.</p>
+<p><strong>Гибрид разделяет тяжёлое и лёгкое:</strong> ночью считается всё, что зависит от медленно меняющихся признаков (история, профиль, propensity). В реальном времени применяются только быстрые вещи: контекст события, актуальные фильтры, текущие $\lambda$.</p>
+<p><strong>Что обязательно должно быть real-time:</strong> ① фильтры eligibility (клиент мог только что оформить продукт); ② контактная политика (счётчик мог измениться); ③ контекст триггера; ④ актуальные $\lambda$ (бюджет мог исчерпаться).</p>
+<p><strong>Что можно ночью:</strong> propensity, ожидаемая маржа, uplift, долгосрочные признаки. Они меняются медленно, и суточная свежесть достаточна.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Бюджет времени на real-time решение</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>SLA:</strong> 50 мс на p99. Событие приходит из приложения, ответ нужен до отрисовки экрана.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Чистый real-time:</strong> сборка признаков из Feature Store 18 мс + 8 инференсов GBDT по 4 мс = 32 мс + сеть 9 мс + оптимизация 6 мс = <strong>65 мс</strong>. Не укладывается.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Гибрид:</strong> чтение кэша решений (топ-3 оффера с ценностями) 4 мс + проверка фильтров 6 мс + чтение $\lambda$ из памяти 0.2 мс + применение контекста триггера 3 мс + логирование асинхронно = <strong>13 мс</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Запас 37 мс</strong> позволяет добавить контекстную корректировку: небольшая лёгкая модель (логрег на 12 признаках контекста) поверх закэшированных ценностей — ещё 2 мс.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Ключевое решение — кэшировать топ-3, а не топ-1.</strong> Если лучший оффер отфильтрован в моменте (клиент только что его оформил, исчерпан бюджет), система берёт следующий из кэша вместо того, чтобы не показать ничего. Стоимость — тройной объём кэша, выгода — отсутствие «дыр» в выдаче, которые иначе составляют 8–15% запросов.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Компонент</th><th>Режим</th><th>Частота</th><th>Ключевое требование</th></tr></thead>
+<tbody>
+<tr><td>Витрина признаков</td><td>Batch + streaming</td><td>Сутки / минуты</td><td><strong>Point-in-time корректность</strong></td></tr>
+<tr><td>Propensity, маржа, uplift</td><td>Batch</td><td>Сутки</td><td>Калибровка между офферами</td></tr>
+<tr class="trh"><td><b>Подбор λ</b></td><td>Batch + онлайн-коррекция</td><td>Сутки + непрерывно</td><td><strong>Иначе бюджет исчерпывается неравномерно</strong></td></tr>
+<tr><td>Кэш решений</td><td>Batch</td><td>Сутки</td><td>Топ-3, не топ-1</td></tr>
+<tr class="trh"><td><b>Фильтры</b></td><td>Real-time</td><td>Каждый запрос</td><td><strong>Актуальность критична</strong></td></tr>
+<tr><td>Логирование propensity</td><td>Real-time</td><td>Каждый показ</td><td>Без него нет off-policy оценки</td></tr>
+<tr><td>Exploration-бакет</td><td>Real-time</td><td>3–5% трафика</td><td>Обеспечивает перекрытие</td></tr>
+<tr><td>Holdout</td><td>Постоянный</td><td>3%</td><td>Единственный источник истины</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Самая частая архитектурная поломка — рассинхрон признаков.</strong> Ночной скоринг использовал одну версию витрины, real-time фильтры — другую, а логирование сохранило третью. При переобучении на таких логах модель учится на признаках, которых в момент решения не было. <strong>Решение:</strong> версионирование витрины и сохранение <code>features_snapshot_id</code> вместе с каждым решением. При обучении признаки берутся <em>по этому id</em>, а не пересчитываются заново — тогда обучение видит ровно то, что видела политика.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Двенадцать ошибок, специфичных для NBO</div>
+
+<div class="cl danger"><span class="cli">1️⃣</span><div><strong>Нет опции «ничего не предлагать».</strong> Система обязана что-то выдать и потому шлёт офферы с отрицательной ожидаемой выгодой. В расчёте секции 1 это стоило 36 млн ₽ (30% прибыли).</div></div>
+
+<div class="cl danger"><span class="cli">2️⃣</span><div><strong>argmax по вероятности вместо ожидаемой прибыли.</strong> Система выбирает дешёвые и лёгкие офферы. Переход к $P\cdot M - c$ дал в расчёте секции 5 рост в 4.3 раза — самая дешёвая поправка в теме.</div></div>
+
+<div class="cl danger"><span class="cli">3️⃣</span><div><strong>$P$ вместо $\tau$.</strong> Ресурс тратится на тех, кто оформил бы и сам; их конверсия записывается системе в заслугу. Та же проблема sure things, что в теме 2.4.</div></div>
+
+<div class="cl danger"><span class="cli">4️⃣</span><div><strong>Модели офферов не откалиброваны друг относительно друга.</strong> Сравниваются предсказания разных моделей; систематическое завышение одной из них делает её оффер вечным победителем.</div></div>
+
+<div class="cl danger"><span class="cli">5️⃣</span><div><strong>Eligibility применяется после оптимизации.</strong> Бюджет остаётся неиспользованным, клиент — без оффера, хотя допустимый второй вариант существовал.</div></div>
+
+<div class="cl danger"><span class="cli">6️⃣</span><div><strong>Каннибализация не измеряется.</strong> Отклик +8.8 п.п. при прибыли −6 млн ₽, потому что транзакции перетекли со старого продукта. Метрика должна быть на уровне <em>клиента</em>, а не продукта.</div></div>
+
+<div class="cl danger"><span class="cli">7️⃣</span><div><strong>Не логируется propensity.</strong> Вся история становится непригодной для off-policy оценки; единственный способ сравнить политики — дорогой онлайн-тест. Одно число на запись.</div></div>
+
+<div class="cl danger"><span class="cli">8️⃣</span><div><strong>Детерминированная политика без exploration.</strong> Данные приходят только оттуда, где система уже действует. Оффер, ставший хорошим, не будет обнаружен никогда — в расчёте секции 8 это 25 млн ₽ упущенного в год.</div></div>
+
+<div class="cl danger"><span class="cli">9️⃣</span><div><strong>Батчевая реакция на поведенческие триггеры.</strong> Конверсия падает в 4–8 раз при задержке от часа до суток. Триггерная ценность почти целиком в скорости реакции.</div></div>
+
+<div class="cl danger"><span class="cli">🔟</span><div><strong>Триггерная система обходит контактную политику.</strong> Клиент получает три коммуникации за час от разных подсистем. Нужен единый счётчик контактов и дедупликация триггеров.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣1️⃣</span><div><strong>$\lambda$ не корректируются в течение дня.</strong> Бюджет дорогого оффера исчерпывается к обеду, вторая половина дня обслуживается неоптимально.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣2️⃣</span><div><strong>Рассинхрон версий признаков</strong> между скорингом, фильтрами и логированием. Переобучение идёт на данных, которых политика в момент решения не видела.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Метавывод.</strong> Ни один из двенадцати пунктов не касается качества propensity-моделей. NBO — область, где <em>постановка и инфраструктура</em> дают на порядок больше, чем точность предсказаний. Система с посредственными моделями, но правильной целевой функцией, опцией «ничего», логированием propensity и exploration обгонит систему с отличными моделями и argmax по вероятности — причём в разы, а не на проценты. <strong>Порядок внедрения по убыванию отдачи:</strong> прибыль вместо вероятности → опция «ничего» → логирование propensity → ограничения и λ → инкрементальность → каннибализация → триггеры → улучшение моделей.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять кейсов с разбором архитектуры и валидации</div>
+
+<div class="sysbox">
+<h4>📌 Pinterest — NBO как выбор формата, а не товара</h4>
+<p><strong>Задача.</strong> Решить не «что показать», а <em>какой тип действия предложить</em>: сохранить пин, подписаться на доску, перейти на сайт, попробовать поиск по картинке.</p>
+<p><strong>Почему это NBO, а не рекомендации.</strong> Каждое действие имеет разную ценность для платформы и разную «стоимость» в терминах внимания. Предложить всё сразу нельзя — интерфейс ограничен, а перегруз призывами снижает вовлечённость.</p>
+<p><strong>Ключевая деталь.</strong> Целевая функция — не клик, а <em>долгосрочная вовлечённость</em>: сохранение пина ценнее клика, потому что улучшает будущие рекомендации и повышает удержание. Оптимизация краткосрочного CTR систематически уводит систему к «кликабельным» действиям с низкой долгосрочной ценностью.</p>
+<p><strong>Архитектура.</strong> Гибрид: тяжёлый скоринг батчем, лёгкая контекстная корректировка в реальном времени по текущей сессии (что человек смотрит прямо сейчас).</p>
+<p><strong>Нюанс валидации.</strong> Долгосрочная метрика доступна через недели, поэтому основной инструмент — off-policy оценка на логах с exploration-бакетом, а онлайн-тесты запускаются только для прошедших офлайн-отбор кандидатов. Плюс обязательный контроль <em>суррогатных</em> метрик: краткосрочный CTR не должен расти за счёт падения сохранений.</p>
+</div>
+
+<div class="sysbox">
+<h4>🏦 Банки — классический NBO с жёсткой регуляторикой</h4>
+<p><strong>Задача.</strong> Предложить один продукт из каталога: карта, вклад, кредит, инвестсчёт, страховка, ипотека.</p>
+<p><strong>Главная особенность — eligibility доминирует.</strong> Кредитные продукты требуют скоринга и проверок; инвестиционные — тестирования знаний клиента; часть продуктов недоступна по возрасту, резидентству или наличию других обязательств. Часто <em>после фильтрации остаётся 1–2 допустимых оффера</em>, и вся «оптимизация» сводится к выбору между ними и опцией «ничего».</p>
+<p><strong>Экономика нестандартна.</strong> Маржа кредитного продукта — риск-скорректированная: ожидаемая прибыль минус ожидаемые потери. Клиент с высокой вероятностью отклика на кредит нередко имеет и высокую вероятность дефолта, поэтому «лучший по propensity» и «лучший по прибыли» — почти противоположные множества.</p>
+<p><strong>Каннибализация значима.</strong> Вклад перетягивает средства с текущего счёта; новая карта — обороты со старой. Оценка обязана быть на уровне общей маржи клиента.</p>
+<p><strong>Нюанс валидации.</strong> Регуляторные требования к объяснимости означают, что политика должна уметь ответить «почему этому клиенту предложен этот продукт». Это ограничивает использование чёрных ящиков в самом решении: типичная схема — модели дают ценности, а <em>выбор</em> делается прозрачным правилом на их основе.</p>
+</div>
+
+<div class="sysbox">
+<h4>📱 Телеком — NBO с сильным влиянием тайминга</h4>
+<p><strong>Задача.</strong> Апгрейд тарифа, новое устройство, дополнительная услуга, семейный план.</p>
+<p><strong>Тайминг решает.</strong> Предложение нового устройства работает в момент, когда текущее старое (по данным о модели устройства в сети) или когда клиент превысил лимит трафика третий месяц подряд. Вне этих окон конверсия падает на порядок.</p>
+<p><strong>Триггерная архитектура.</strong> Основной поток — событийный: превышение лимита, окончание контракта, роуминг, обращение в поддержку по качеству связи. Плановые кампании заполняют промежутки.</p>
+<p><strong>Каннибализация специфична.</strong> Апгрейд тарифа увеличивает ARPU, но безлимитный тариф <em>убивает</em> доходы от продажи дополнительных пакетов. Локальная оптимизация по одному продукту гарантированно вредит другому — классический случай, требующий метрики на уровне клиента.</p>
+<p><strong>Нюанс валидации.</strong> Контракты долгосрочные, эффект проявляется через месяцы, а сезонность (учебный год, отпуска) сильна. Валидация обязательно по времени с контролем сезона; сравнение «до/после» без контрольной группы даёт систематически неверные выводы.</p>
+</div>
+
+<div class="sysbox">
+<h4>🎵 Spotify — NBO для конверсии в платную подписку</h4>
+<p><strong>Задача.</strong> Выбрать момент и форму предложения перейти с бесплатного на платный план: месячный, годовой, семейный, студенческий.</p>
+<p><strong>Сигналы для тайминга.</strong> Раздражение от рекламы (пропуск рекламных блоков), попытка использовать платную функцию, прослушивание на нескольких устройствах, добавление в плейлист большого числа треков.</p>
+<p><strong>Экономика планов различается качественно.</strong> Годовой план даёт больший LTV и лучше удержание, но требует большего единовременного решения; семейный имеет высокую суммарную ценность, но применим только к части аудитории. Это классический multi-offer выбор, где $M_j$ различаются в разы.</p>
+<p><strong>Опция «ничего» особенно важна.</strong> Слишком частые предложения подписки раздражают и снижают вовлечённость бесплатных пользователей — которые, в свою очередь, тоже приносят рекламный доход. Отрицательный эффект избыточных предложений реален и измерим.</p>
+<p><strong>Нюанс валидации.</strong> Целевая метрика — не конверсия в подписку, а <em>суммарная ценность пользователя</em>, включающая рекламный доход бесплатных. Кампания, повышающая конверсию, но выгоняющая часть бесплатных пользователей, может быть убыточной; увидеть это можно только при метрике, объединяющей оба источника дохода.</p>
+</div>
+
+<div class="sysbox">
+<h4>🛒 Amazon — NBO на границе с рекомендациями</h4>
+<p><strong>Задача.</strong> Помимо товарных рекомендаций — выбор коммерческого предложения: подписка на доставку, кредитная карта, подписка на регулярную поставку расходников, программа лояльности.</p>
+<p><strong>Отличие от товарных рекомендаций.</strong> Эти предложения дороги (промо, риски), их немного, они конкурируют за одно и то же место в интерфейсе и за внимание. Постановка — именно NBO.</p>
+<p><strong>Сильнейший приём — привязка к контексту покупки.</strong> Предложение подписки на доставку в момент оформления заказа с платной доставкой конвертируется в разы лучше, чем то же предложение в рассылке. Контекст делает ценность предложения очевидной для клиента без всякого убеждения.</p>
+<p><strong>Долгосрочный эффект доминирует.</strong> Подписка на доставку меняет поведение: частота заказов растёт, отток падает. $\Delta\text{CLV}$ здесь больше немедленной маржи, и система, оптимизирующая только немедленную прибыль, систематически недооценивает такие офферы.</p>
+<p><strong>Нюанс валидации.</strong> Эффект подписки на частоту заказов проявляется за месяцы, поэтому оценка требует длинного holdout. Плюс проблема: подписка сама влияет на признаки (частота заказов растёт), поэтому наивное сравнение подписчиков и неподписчиков даёт огромное смещение отбора — корректная оценка возможна только через рандомизированное предложение.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Что общего у пяти кейсов.</strong> ① <strong>Целевая функция всегда шире немедленной конверсии</strong> — долгосрочная вовлечённость у Pinterest, риск-скорректированная маржа в банках, суммарная ценность с учётом рекламы у Spotify, $\Delta$CLV у Amazon. ② <strong>Контекст и момент дают больше, чем улучшение моделей</strong> — привязка к событию превращает посредственный оффер в конвертирующий. ③ <strong>Каннибализация присутствует везде</strong>, где несколько продуктов, и всегда требует метрики на уровне клиента. ④ <strong>Ограничения формируют задачу</strong>: в банках eligibility сокращает выбор до 1–2 вариантов, и вся ценность системы — в правильном решении «предлагать или нет».</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">От постановки до архитектуры</div>
+
+<div class="qah">Часть 1. Постановка</div>
+
+<details class="qi"><summary><span class="qch">▶</span>1. Чем NBO отличается от рекомендательной системы?</summary><div class="qa"><p><strong>① Каталог мал</strong> (единицы–десятки против тысяч). <strong>② Показ дорог</strong> — скидка, звонок, квота контакта, а не бесплатный показ карточки. <strong>③ Выдаётся одно действие</strong>, а не ранжированный список. <strong>④ Целевая функция — прибыль</strong> с учётом стоимости, а не релевантность. <strong>⑤ Жёсткие ограничения</strong>: бюджеты, eligibility, регуляторика.</p><p>И главное: <strong>вариант «ничего не предлагать» — полноценная и часто оптимальная альтернатива</strong>, чего в рекомендациях не бывает.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>2. Почему опция «ничего» обязательна?</summary><div class="qa"><p>Система, обязанная что-то предложить, гарантированно шлёт офферы туда, где ожидаемая выгода отрицательна.</p><p>В расчёте секции 1: у 168 000 из 400 000 клиентов лучший оффер давал −215 ₽. Убыток 36.1 млн ₽, скрытый внутри общей прибыли 121.7 млн — отчёт показывал бы «система работает».</p><p>Формально: добавить пустое действие с нулевой стоимостью и выбирать его при $\max_j v_{ij} < 0$. Плюс невидимая выгода — сохранённое внимание клиента и квота контактов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>3. Почему NBO — задача назначения, а не скоринга?</summary><div class="qa"><p>Потому что бюджеты офферов <strong>связывают клиентов между собой</strong>. Если премиальная карта ограничена 25 000 выдачами, а лучшая она для 90 000 клиентов, решения перестают быть независимыми.</p><p>Глобальный оптимум может требовать давать некоторым клиентам не лучший для них оффер, чтобы освободить дефицитный ресурс.</p><p>В расчёте секции 2 жадный выбор дал 5 440, глобальная оптимизация — 7 940 (+46%) на пяти клиентах.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>4. Кому отдавать дефицитный оффер?</summary><div class="qa"><p><strong>Не тому, у кого высшая абсолютная ценность, а тому, у кого наибольший разрыв с альтернативой</strong> $v_{i,(1)} - v_{i,(2)}$.</p><p>Клиент с высокой ценностью карты, но почти такой же ценностью кредита — «гибкий»: уступая карту, система почти ничего не теряет. Клиент, у которого карта +2 610, а второй вариант +220, теряет 2 390 при уступке.</p><p>Практически: храни этот разрыв как метрику приоритета — он же является двойственной переменной в LP-решении.</p></div></details>
+
+<div class="qah">Часть 2. Экономика и модели</div>
+
+<details class="qi"><summary><span class="qch">▶</span>5. Из чего складывается ценность назначения?</summary><div class="qa"><p>$v_{ij} = \tau_{ij}M_{ij} - c_j - K_{ij} + \Delta\text{CLV}_{ij}$.</p><p>$\tau$ — <em>инкрементальная</em> вероятность (не абсолютная); $M$ — маржа за горизонт (не выручка); $c$ — полная стоимость включая операционные издержки; $K$ — каннибализация; $\Delta$CLV — влияние на удержание и будущую маржу.</p><p>Большинство систем считают только первые два члена. В примере секции 3 добавление $K$ и $\Delta$CLV полностью изменило приоритет: наивно побеждал оффер, который на самом деле был убыточным.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>6. Почему маржу надо моделировать, а не брать среднюю?</summary><div class="qa"><p>Маржа кредитной карты зависит от того, будет ли клиент носить остаток; тарифа — от потребления; страховки — от риск-профиля.</p><p>Единая средняя $M_j$ вместо $M_{ij}$ систематически смещает систему к клиентам с фактической маржой ниже средней.</p><p><strong>Практически:</strong> отдельная модель $\hat M_{ij}$ обычно даёт больший прирост прибыли, чем улучшение propensity-модели — потому что разброс маржи по клиентам больше разброса вероятности.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>7. Когда «модель на оффер» перестаёт работать?</summary><div class="qa"><p>При появлении новых или редких офферов. Оффер с 3 000 наблюдений даст модель, выучившую шум.</p><p><strong>Two-tower и multi-task</strong> разделяют представление: знание «какие клиенты склонны откликаться на финансовые продукты» переносится с обученных офферов на новый.</p><p><strong>Правило:</strong> до ~10 стабильных офферов — отдельные модели (проще, прозрачнее); при частом добавлении новых или наличии редких — общая архитектура с эмбеддингами офферов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>8. Что такое смещение отбора в данных NBO?</summary><div class="qa"><p>Исторические данные содержат отклики только на офферы, которые система <em>решила показать</em>. О паре (клиент, оффер), которая никогда не встречалась, информации нет вовсе — но модель уверенно экстраполирует в эту область.</p><p><strong>Это не лечится моделью.</strong> Нужен либо exploration, либо коррекция через propensity-веса при известной вероятности показа.</p><p>Отсюда требование: логирующая политика должна быть <em>стохастической</em>, иначе IPS неприменим (знаменатель ноль для неиспробованных действий).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>9. Что минимально нужно логировать?</summary><div class="qa"><p><code>customer_id</code>, <code>offer_id</code>, <code>timestamp</code>, <strong><code>propensity</code></strong> (вероятность, с которой политика выбрала действие), <code>policy_version</code>, <code>eligible_offers</code>, <code>features_snapshot_id</code>.</p><p>Без поля <code>propensity</code> вся история непригодна для off-policy оценки, и сравнить политики можно только дорогим онлайн-тестом.</p><p>Это одно число на запись, которое спасает годы данных — и его почти всегда забывают заложить на старте.</p></div></details>
+
+<div class="qah">Часть 3. Выбор и ограничения</div>
+
+<details class="qi"><summary><span class="qch">▶</span>10. Три ошибки наивного argmax?</summary><div class="qa"><p><strong>① $P$ вместо $P\cdot M - c$</strong> — система выбирает дешёвые лёгкие офферы. Оффер с конверсией 18% и маржой 300 ₽ проигрывает офферу с 3% и 12 000 ₽.</p><p><strong>② $P$ вместо $\tau$</strong> — ресурс тратится на тех, кто оформил бы и сам.</p><p><strong>③ Игнорирование ограничений</strong> — поклиентский argmax нарушает бюджеты, а обрезание после хуже глобальной оптимизации.</p><p>В расчёте секции 5: 18.4 → 79.1 → 112.6 → 138.9 млн ₽ по мере устранения ошибок.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>11. Почему калибровка в NBO критичнее, чем в обычной классификации?</summary><div class="qa"><p>Потому что сравниваются <em>предсказания разных моделей</em>. Если модель кредита систематически завышает вероятности, а модель вклада занижает, кредит выигрывает сравнение всегда — независимо от реальности.</p><p>В задаче с одним действием калибровка нужна только для порога; в NBO она определяет <strong>сам выбор</strong>.</p><p>Поэтому калибровка каждой propensity-модели — не улучшение качества, а условие корректности системы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>12. Почему eligibility применяется до оптимизации?</summary><div class="qa"><p>Если сначала оптимизировать, а потом отфильтровать недопустимые пары, освободившийся бюджет останется неиспользованным, а клиент — без оффера, хотя допустимый второй вариант существовал.</p><p>Тот же принцип, что с фильтрами исключения в uplift: <strong>сужать пространство решений надо до оптимизации, а не резать результат после.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>13. Почему контактная политика — ограничение, а не фильтр?</summary><div class="qa"><p>Потому что она <strong>связывает решения во времени</strong>: отправив оффер сегодня, система расходует квоту, которая могла бы понадобиться через неделю для более ценного предложения. Задача становится динамической.</p><p><strong>Практическое решение:</strong> резервная цена контакта $v_{\min}$ — минимальная ценность, ниже которой квота не расходуется. В расчёте секции 6 это дало +30% при том же числе контактов.</p><p><strong>Важная деталь:</strong> $v_{\min}$ должна снижаться к концу периода — неиспользованная квота пропадает. Это задача из revenue management.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>14. Что такое граф зависимостей продуктов?</summary><div class="qa"><p>Формализация естественного порядка: сначала базовый счёт, потом карта, потом кредитный продукт, потом инвестиции. У каждого оффера — набор предусловий.</p><p>Предложение инвестсчёта клиенту без базового продукта конвертируется плохо не потому, что клиент «плохой», а потому что <em>рано</em>.</p><p>Даёт три вещи: рост конверсии, объяснимость для бизнеса и предотвращение абсурдных предложений, которые сильнее всего бьют по доверию.</p></div></details>
+
+<div class="qah">Часть 4. Оптимизация и исследование</div>
+
+<details class="qi"><summary><span class="qch">▶</span>15. Объясни лагранжеву декомпозицию для NBO.</summary><div class="qa"><p>Бюджетные ограничения заносятся в целевую функцию с множителями: $\max\sum a_{ij}(v_{ij} - \lambda_j c_j)$.</p><p>При фиксированных $\lambda$ задача <strong>распадается на независимые по клиентам</strong>: каждый выбирает $\arg\max_j (v_{ij} - \lambda_j c_j)$. Это делается потоково, без хранения матрицы 10 млн × 8.</p><p>Множители подбираются субградиентным подъёмом: $\lambda_j$ растёт при перерасходе, падает при недорасходе.</p><p><strong>Практическая ценность:</strong> $\lambda$ считаются ночью на выборке, а применяются в реальном времени — batch-оптимизация превращается в real-time правило.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>16. Как интерпретировать λ для бизнеса?</summary><div class="qa"><p>$\lambda_j$ — <strong>цена ресурса оффера</strong>: сколько прибыли принёс бы дополнительный рубль его бюджета.</p><p>В примере секции 7: $\lambda_{\text{карта}} = 1.47$ означает «каждый дополнительный рубль на карту даёт 1.47 ₽ прибыли». $\lambda_{\text{кэшбэк}} = 0$ означает, что бюджет кэшбэка избыточен и его можно урезать без потерь.</p><p>Это готовая рекомендация по перераспределению бюджетов, полученная как побочный продукт оптимизации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>17. Почему λ надо корректировать в течение дня?</summary><div class="qa"><p>$\lambda$ отражают текущее соотношение спроса и бюджета. Если изменился состав трафика или сработала внешняя акция, старые $\lambda$ дают систематический пере- или недорасход.</p><p>Практический симптом: бюджет дорогого оффера исчерпывается к обеду, и вся вторая половина дня обслуживается неоптимально.</p><p><strong>Решение:</strong> ежедневный пересчёт плюс онлайн-контроллер, подстраивающий $\lambda$ по фактическому расходу.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>18. Почему петля обратной связи в NBO жёстче, чем в uplift?</summary><div class="qa"><p>Потому что система выбирает <em>одно</em> действие из нескольких. Об оффере, который она однажды сочла слабым, данные перестают поступать <strong>полностью</strong>, а не частично.</p><p>Даже если оффер стал лучше (изменился продукт, цена, аудитория), система этого не узнает никогда — а метрики на собственных данных будут отличными.</p><p>В расчёте секции 8 это стоило 25.3 млн ₽ в год при стоимости исследования 2.1 млн — отдача 12:1.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>19. Почему Thompson Sampling подходит NBO лучше ε-greedy и UCB?</summary><div class="qa"><p><strong>Против ε-greedy:</strong> TS исследует пропорционально неопределённости, а не равномерно. Не тратит трафик на офферы, про которые уже известно, что они плохи.</p><p><strong>Против UCB:</strong> TS стохастичен и потому даёт корректные propensity для off-policy оценки. UCB детерминирован, что делает офлайн-оценку новых политик невозможной.</p><p>В CRM офлайн-оценка критична (онлайн-тесты медленны и дороги), поэтому стохастичность — важное практическое свойство.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>20. Что ломает классические бандиты в NBO?</summary><div class="qa"><p><strong>Отложенная и разрежённая награда.</strong> Отклик на кредит приходит через недели, конверсия — единицы процентов, а классический бандит предполагает немедленную награду.</p><p><strong>Решения:</strong> ① обновлять апостериорные распределения батчами (раз в сутки); ② использовать промежуточные сигналы (открытие, клик, начало заявки) как ранние прокси; ③ <strong>учитывать «в пути» показы</strong>, по которым награда ещё не пришла — иначе система решит, что оффер плох, просто потому что отклик не успел прийти.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>21. Какая гибридная схема работает на практике?</summary><div class="qa"><p><strong>90–94%</strong> — детерминированная политика на моделях и $\lambda$: стабильна, объяснима, проходит согласование.<br><strong>3–5%</strong> — exploration-бакет на Thompson Sampling: поставляет данные для переобучения и обеспечивает перекрытие для off-policy.<br><strong>3%</strong> — глобальный holdout без офферов: единственный источник истины об инкрементальности.</p><p>Такое разделение держит основную политику простой, не жертвуя способностью системы учиться.</p></div></details>
+
+<div class="qah">Часть 5. Тайминг, каннибализация, оценка</div>
+
+<details class="qi"><summary><span class="qch">▶</span>22. Насколько тайминг важнее оффера?</summary><div class="qa"><p>В расчёте секции 9: плановая рассылка по 200 000 отобранных дала 1.2 млн ₽; триггер «зашёл в раздел кредитов» по 26 000 при реакции в течение часа — <strong>21.6 млн ₽</strong>. В 18 раз больше при охвате в 7.7 раза меньше.</p><p>Поведенческие триггеры дают ×4–8 конверсии, транзакционные ×3–6, жизненного цикла ×2–4.</p><p><strong>Начинать надо с триггерного режима</strong>, а плановый использовать как заполнение промежутков.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>23. Почему батчевая реакция на триггеры теряет большую часть ценности?</summary><div class="qa"><p>Конверсия затухает с задержкой: реакция в течение часа — 6.8%, через 24 часа — 2.1%, через 3 дня — 1.1% (почти как плановая рассылка).</p><p>Прибыль при часовой реакции 21.6 млн ₽, при суточной — 4.5 млн ₽. <strong>Потеря 80%.</strong></p><p>Это главный аргумент за real-time контур: не «модно», а прямые деньги на поведенческих триггерах.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>24. Какие механизмы нужны, чтобы триггерная система не стала навязчивой?</summary><div class="qa"><p><strong>① Дедупликация триггеров</strong> — одно событие даёт одну коммуникацию.<br><strong>② Приоритет между триггерами</strong>, когда сработало несколько.<br><strong>③ Период тишины</strong> после реакции на триггер.<br><strong>④ Единый счётчик контактов</strong> для триггерных и плановых кампаний.</p><p>Без последнего триггерная система молча обходит контактную политику — типичная поломка при добавлении real-time контура к существующей CRM.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>25. Какие бывают виды каннибализации?</summary><div class="qa"><p><strong>① Временная</strong> — клиент оформил бы через месяц сам, оффер лишь ускорил решение; выручка не новая, зато со скидкой.<br><strong>② Продуктовая</strong> — новый продукт замещает старый (карта с кэшбэком перетягивает обороты со старой карты).<br><strong>③ Канальная</strong> — клиент оформил бы онлайн бесплатно, но получил дорогой звонок.</p><p>Во всех трёх случаях конверсия высокая, отчёт хороший, прибыли нет. Propensity-модель этого не видит — нужен эксперимент.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>26. Как кампания с τ = +8.8 п.п. может принести убыток?</summary><div class="qa"><p>Разбор секции 10: карта с кэшбэком, инкремент +8.8 п.п., наивная прибыль +3.5 млн ₽. Но общая маржа клиента за 6 месяцев: тест 4 180 ₽, контроль 4 090 ₽ — разница всего +90 ₽.</p><p>Транзакции перетекли со старой карты (маржа 1.9%) на новую (0.6% после кэшбэка). Клиенты те же, обороты те же, маржа ниже. <strong>Реальная прибыль −6 млн ₽.</strong></p><p>Ошибка была в метрике: измерялся отклик на продукт вместо изменения общей маржи клиента.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>27. Как правильно измерять каннибализацию?</summary><div class="qa"><p><strong>① Единица измерения — клиент, а не продукт.</strong> Сравнивай суммарную маржу за 6–12 месяцев между тестом и контролем.<br><strong>② Таблица продуктов-соседей</strong> — изменение оборота по каждому другому продукту показывает, откуда перетекло.<br><strong>③ Длинный горизонт</strong> — временная каннибализация видна только на 6+ месяцах; на 30 днях кампания выглядит прибыльной, потому что «украденные из будущего» продажи ещё не наступили в контроле.</p><p><strong>Организационно:</strong> целевая метрика должна принадлежать уровню клиента и иметь одного владельца, иначе продуктовые команды съедят обороты друг друга.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>28. Почему высокий AUC моделей не означает хорошую политику?</summary><div class="qa"><p>AUC меряет ранжирование <em>клиентов внутри одного оффера</em>. Политика определяется <em>сравнением офферов между собой</em>.</p><p>Модель может идеально ранжировать клиентов по каждому офферу и выбирать неверный оффер для каждого — если её вероятности плохо откалиброваны относительно других моделей.</p><p><strong>Оценивать надо политику</strong>, а для этого существует off-policy evaluation: IPS, SNIPS, Doubly Robust.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>29. Какой оценщик off-policy выбрать?</summary><div class="qa"><p><strong>Doubly Robust</strong> — рабочий дефолт: корректен, если верна хотя бы одна из двух моделей (propensity или награды), и даёт наименьшую дисперсию.</p><p>В примере секции 11: наивная оценка 468 ₽ (смещена), IPS без обрезки 583 ± 210 (бесполезна из-за дисперсии), SNIPS с обрезкой 447 ± 31, <strong>DR 451 ± 19</strong>.</p><p><strong>Обязательно обрезать веса</strong> $1/p_i$ на 10–50, иначе редкие показы с малым $p$ дают выбросы, доминирующие в оценке.</p><p><strong>Проверяй перекрытие:</strong> доля решений новой политики, встречавшихся в логах с ненулевой вероятностью. Ниже 60% — оценка ненадёжна.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>30. Почему архитектура гибридная и что обязано быть real-time?</summary><div class="qa"><p>Чистый real-time (8 инференсов + сборка признаков) не укладывается в SLA: 65 мс против лимита 50. Гибрид даёт 13 мс.</p><p><strong>Обязательно real-time:</strong> фильтры eligibility (клиент мог только что оформить продукт), контактная политика, контекст триггера, актуальные $\lambda$.</p><p><strong>Можно ночью:</strong> propensity, ожидаемая маржа, uplift, долгосрочные признаки — они меняются медленно.</p><p><strong>Ключевая деталь:</strong> кэшировать топ-3 оффера, а не топ-1. Если лучший отфильтрован в моменте, система берёт следующий вместо того, чтобы не показать ничего — иначе «дыры» составляют 8–15% запросов.</p></div></details>
+</div>
+
+<div class="pnav">
+  <a href="block2_04_uplift_retention.html" class="prev">← 2.4 Uplift в удержании</a>
+  <a href="block2_06_basket_analysis.html" class="next">2.6 Анализ корзины →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+const GRID = { grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} };
+function mk(id, cfg){ const el = document.getElementById(id); if (el && el.getContext) { try { new Chart(el.getContext('2d'), cfg); } catch(e){} } }
+
+// S3 — разброс маржи vs вероятности
+mk('c_margin', { type:'bar', data:{
+  labels:['Дециль 1','2','3','4','5','6','7','8','9','10'],
+  datasets:[
+    {label:'Вероятность отклика, % (×10 для наглядности)', data:[3,6,9,13,17,22,28,36,47,68],
+     backgroundColor:'#fdba74', borderRadius:5, yAxisID:'y'},
+    {label:'Ожидаемая маржа, тыс. ₽', data:[0.4,0.8,1.2,1.9,2.8,4.1,6.2,9.8,16.4,38.2],
+     backgroundColor:'#ea580c', borderRadius:5, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID,
+             y:{...GRID, position:'left', title:{display:true,text:'P × 10, %',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Маржа, тыс. ₽',font:{size:10}}}}}});
+
+// S5 — четыре политики
+mk('c_policy', { type:'bar', data:{
+  labels:['① argmax P','② argmax P·M−c','③ argmax τ·M−c','④ Оптимизация\nс ограничениями'],
+  datasets:[{label:'Прибыль, млн ₽', data:[18.4,79.1,112.6,138.9],
+    backgroundColor:['#fca5a5','#fdba74','#fb923c','#ea580c'], borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:GRID, y:{...GRID, title:{display:true,text:'Прибыль, млн ₽',font:{size:11}}}}}});
+
+// S6 — резервная цена
+mk('c_reserve', { type:'line', data:{
+  labels:['90','75','60','45','30','20','14','9','5','2','0'],
+  datasets:[
+    {label:'Остаток квоты: 2 контакта', data:[1420,1400,1370,1320,1240,1140,1010,840,620,340,0],
+     borderColor:'#ea580c', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:3},
+    {label:'Остаток квоты: 1 контакт', data:[1880,1860,1820,1760,1660,1520,1340,1110,810,440,0],
+     borderColor:'#7c3aed', backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:3},
+    {label:'Наивный фиксированный порог', data:Array(11).fill(1150),
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:1.6, borderDash:[5,4], pointRadius:0}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Дней до конца периода',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Резервная цена контакта, ₽',font:{size:11}}}}}});
+
+// S7 — сходимость lambda
+mk('c_lambda', { type:'line', data:{
+  labels:['0','2','4','6','8','10','12','14','16','18'],
+  datasets:[
+    {label:'λ карта', data:[0,0.42,0.78,1.06,1.24,1.36,1.42,1.45,1.46,1.47],
+     borderColor:'#ea580c', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:3, yAxisID:'y'},
+    {label:'λ кредит', data:[0,0.18,0.34,0.46,0.54,0.58,0.61,0.62,0.63,0.63],
+     borderColor:'#7c3aed', backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:3, yAxisID:'y'},
+    {label:'λ кэшбэк', data:[0,0,0,0,0,0,0,0,0,0],
+     borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.2, tension:.3, pointRadius:3, yAxisID:'y'},
+    {label:'Расход бюджета карты, % от лимита', data:[364,248,178,141,119,108,101,100,100,100],
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2, borderDash:[5,4], pointRadius:0, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:9.5}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Итерация',font:{size:11}}},
+             y:{...GRID, position:'left', title:{display:true,text:'λ',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Расход, %',font:{size:10}}}}}});
+
+// S8 — TS vs eps-greedy
+mk('c_ts', { type:'line', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10','11','12'],
+  datasets:[
+    {label:'ε-greedy (ε=0.06): постоянная доля', data:[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5],
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2.2, borderDash:[5,4], pointRadius:0},
+    {label:'Thompson Sampling: затухает и возобновляется', data:[14.2,9.1,5.4,3.1,1.8,1.1,0.7,0.5,4.8,7.2,5.1,2.9],
+     borderColor:'#ea580c', backgroundColor:'rgba(234,88,12,.10)', fill:true, borderWidth:2.8, tension:.3, pointRadius:3}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}},
+    tooltip:{callbacks:{afterBody:(c)=> c[0].dataIndex===8 ? 'Продукт доработан — TS замечает изменение' : ''}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Месяц (на 9-м продукт доработан)',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Доля показов слабому офферу, %',font:{size:11}}}}}});
+
+// S9 — затухание конверсии
+mk('c_decay', { type:'line', data:{
+  labels:['0','1','3','6','12','24','48','72','96'],
+  datasets:[
+    {label:'Конверсия по триггеру, %', data:[7.4,6.8,5.4,4.1,2.9,2.1,1.5,1.1,1.0],
+     borderColor:'#ea580c', backgroundColor:'rgba(234,88,12,.10)', fill:true, borderWidth:2.8, tension:.3, pointRadius:4},
+    {label:'Плановая рассылка, 0.9%', data:Array(9).fill(0.9),
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:1.8, borderDash:[5,4], pointRadius:0},
+    {label:'Батч раз в сутки (24 ч)', data:[null,null,null,null,null,2.1,null,null,null],
+     borderColor:'#dc2626', backgroundColor:'#dc2626', pointRadius:9, pointStyle:'rectRot', showLine:false}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Задержка реакции, часов',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Конверсия, %',font:{size:11}}}}}});
+
+// S10 — каннибализация
+mk('c_cann', { type:'bar', data:{
+  labels:['Карта с кэшбэком','Вклад','Кредит','Страховка','Подписка на доставку'],
+  datasets:[
+    {label:'Инкремент отклика на оффер, п.п.', data:[8.8,3.2,1.9,2.6,5.4],
+     backgroundColor:'#fdba74', borderRadius:5, yAxisID:'y'},
+    {label:'Инкремент маржи клиента за 6 мес, ₽', data:[90,410,2180,640,1920],
+     backgroundColor:'#ea580c', borderRadius:5, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID,
+             y:{...GRID, position:'left', title:{display:true,text:'Отклик, п.п.',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Маржа, ₽',font:{size:10}}}}}});
+
+// S11 — оценщики off-policy
+mk('c_ope', { type:'bar', data:{
+  labels:['Наивная\n(совпадения)','IPS\nбез обрезки','IPS\nс обрезкой','SNIPS','Doubly\nRobust','ФАКТ\n(онлайн)'],
+  datasets:[{label:'Оценка награды, ₽', data:[468,583,462,447,451,449],
+    backgroundColor:['#fca5a5','#dc2626','#fdba74','#fb923c','#ea580c','#0f172a'], borderRadius:6,
+    errorBars:null}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false},
+    tooltip:{callbacks:{afterLabel:(c)=>['± 12','± 210','± 44','± 31','± 19','—'][c.dataIndex]}}},
+    scales:{ x:GRID, y:{...GRID, min:400, max:620, title:{display:true,text:'Оценка средней награды, ₽',font:{size:11}}}}}});
+
+// ============ ИНТЕРАКТИВ: триггеры ============
+function updTrig(){
+  const lag  = +document.getElementById('sl_lag').value;
+  const marg = +document.getElementById('sl_marg').value;
+  const trig = +document.getElementById('sl_trig').value;
+  document.getElementById('out_lag').textContent  = lag + ' ч';
+  document.getElementById('out_marg').textContent = marg.toLocaleString('ru-RU');
+  document.getElementById('out_trig').textContent = trig.toLocaleString('ru-RU');
+
+  const COST = 120, PLAN_CONV = 0.009, PLAN_N = 200000;
+  // затухание: с 7.4% к асимптоте ~0.95%
+  const conv = 0.0095 + (0.074 - 0.0095) * Math.exp(-lag / 16);
+
+  const trigProfit = trig * (conv * marg - COST);
+  const planProfit = PLAN_N * (PLAN_CONV * marg - COST);
+  const instantProfit = trig * (0.074 * marg - COST);
+  const lost = instantProfit - trigProfit;
+
+  let note;
+  if (lag <= 2)       note = 'Реакция почти мгновенная — триггер работает на полную. Это требует real-time контура.';
+  else if (lag <= 8)  note = 'Приемлемо. Потери умеренные, достаточно частого микробатча (раз в час).';
+  else if (lag <= 30) note = 'Суточный батч: теряется большая часть ценности триггера. Основной аргумент за переход на потоковую обработку.';
+  else                note = 'Задержка настолько велика, что триггер практически выродился в обычную рассылку.';
+
+  document.getElementById('out_trigres').innerHTML =
+    'Конверсия при задержке ' + lag + ' ч: <b>' + (conv*100).toFixed(2) + '%</b> ' +
+      '(мгновенно было бы 7.40%)<br>' +
+    'Прибыль триггерного режима: <span style="font-size:19px;font-weight:800;color:' +
+      (trigProfit>0?'#c2410c':'#b91c1c') + '">' + (trigProfit/1e6).toFixed(1) + ' млн ₽</span> · ' +
+    'плановой рассылки: <b>' + (planProfit/1e6).toFixed(1) + ' млн ₽</b><br>' +
+    'Потери от задержки: <b style="color:#b91c1c">' + (lost/1e6).toFixed(1) + ' млн ₽</b> ' +
+      '(' + (instantProfit>0 ? (lost/instantProfit*100).toFixed(0) : 0) + '% потенциала)<br>' +
+    '<span style="font-size:12.5px;">' + note + '</span>';
+}
+updTrig();
+
+// активная секция в навигации
+(function(){
+  const links = Array.from(document.querySelectorAll('.snav a'));
+  const secs  = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function onScroll(){
+    let cur = 0;
+    secs.forEach((s,i)=>{ if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a,i)=> a.classList.toggle('act', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.1 · Backpropagation и вычислительный граф</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0891b2);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.68;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.85;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes dash{to{stroke-dashoffset:0;}}
+@keyframes pulseNode{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+@keyframes flowBack{0%{opacity:0;transform:translateX(0);}20%{opacity:1;}80%{opacity:1;}100%{opacity:0;transform:translateX(var(--dx,-120px));}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+.draw path,.draw line,.draw circle,.draw polyline,.draw rect{stroke-dasharray:1400;stroke-dashoffset:1400;animation:dash 2.4s ease-out forwards;}
+.draw .d2{animation-delay:.4s;} .draw .d3{animation-delay:.8s;} .draw .d4{animation-delay:1.2s;}
+.draw text{animation:fadeUp .8s ease .9s both;stroke:none;}
+/* Граф forward/backward */
+.cgraph{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.cn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:96px;line-height:1.5;border:1.5px solid;}
+.cn strong{display:block;font-size:13px;margin-bottom:2px;}
+.cn.inp{background:var(--sl-l);border-color:var(--sl-b);color:#334155;}
+.cn.op{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:pulseNode 3s ease-in-out infinite;}
+.cn.op:nth-of-type(4){animation-delay:.4s;} .cn.op:nth-of-type(6){animation-delay:.8s;}
+.cn.loss{background:var(--red-l);border-color:var(--red-b);color:#991b1b;}
+.carr{font-size:17px;color:var(--cy);}
+.carr.back{color:var(--red);animation:blink 1.8s infinite;}
+/* Слои с градиентом */
+.glayers{display:flex;gap:5px;align-items:flex-end;height:130px;margin:16px 0;}
+.gl{flex:1;border-radius:6px 6px 0 0;position:relative;transition:height .4s;
+    background:linear-gradient(180deg,var(--cy),#67e8f9);}
+.gl span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--text3);}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 1 из 6</div>
+  <h1>Backpropagation и вычислительный граф</h1>
+  <p class="sub">Что происходит между <code style="background:rgba(255,255,255,.18);color:#fff">loss.backward()</code> и <code style="background:rgba(255,255,255,.18);color:#fff">optimizer.step()</code> — и почему градиенты иногда становятся NaN</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Вычислительный граф</a>
+  <a href="#s2">2. Chain rule</a>
+  <a href="#s3">3. Матричная форма</a>
+  <a href="#s4">4. Autograd</a>
+  <a href="#s5">5. Vanishing / exploding</a>
+  <a href="#s6">6. Память и checkpointing</a>
+  <a href="#s7">7. Численная стабильность</a>
+  <a href="#s8">8. Подводные камни</a>
+  <a href="#s9">9. System Design</a>
+  <a href="#qa">10. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Вычислительный граф: единственная абстракция, которая нужна</div>
+<div class="sdesc">Всё обучение нейросетей — это обход одного графа в две стороны</div>
+
+<p>Любая нейросеть — это <strong>композиция простых функций</strong>. Не «мозг», не «чёрный ящик», а последовательность операций: умножь на матрицу, прибавь вектор, примени нелинейность, повтори. Вычислительный граф — способ записать эту композицию так, чтобы производные считались автоматически.</p>
+
+<div class="cgraph">
+  <div class="cn inp"><strong>x</strong>вход</div>
+  <div class="carr">→</div>
+  <div class="cn op"><strong>z₁ = W₁x+b₁</strong>linear</div>
+  <div class="carr">→</div>
+  <div class="cn op"><strong>a₁ = σ(z₁)</strong>ReLU</div>
+  <div class="carr">→</div>
+  <div class="cn op"><strong>z₂ = W₂a₁+b₂</strong>linear</div>
+  <div class="carr">→</div>
+  <div class="cn loss"><strong>L</strong>loss</div>
+</div>
+<div class="cgraph" style="margin-top:-6px;">
+  <div style="font-size:12.5px;color:var(--red);font-weight:700;">← обратный проход: ∂L/∂W₂ &nbsp;←&nbsp; ∂L/∂a₁ &nbsp;←&nbsp; ∂L/∂z₁ &nbsp;←&nbsp; ∂L/∂W₁</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь конвейер на заводе. <strong>Forward pass</strong> — деталь едет слева направо через станки, на выходе контролёр измеряет брак (loss). <strong>Backward pass</strong> — контролёр идёт обратно по конвейеру и на каждом станке спрашивает: «<em>если бы ты крутил ручку чуть сильнее, брака стало бы больше или меньше, и насколько?</em>»</p>
+<p>Ответ на этот вопрос и есть градиент. Ключевой момент: чтобы ответить, каждому станку нужно помнить, <strong>что через него проезжало</strong> — поэтому forward pass сохраняет промежуточные значения (активации), и именно они съедают память при обучении.</p>
+</div>
+
+<h3>Два режима автоматического дифференцирования</h3>
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Forward mode</th><th>Reverse mode (backprop)</th></tr></thead>
+<tbody>
+<tr><td>Направление</td><td>от входов к выходу</td><td>от выхода к входам</td></tr>
+<tr><td>За один проход считает</td><td>производную <em>всего</em> по <em>одному входу</em></td><td>производную <em>одного выхода</em> по <em>всем входам</em></td></tr>
+<tr><td>Стоимость для $f:\mathbb{R}^n\to\mathbb{R}^m$</td><td>$O(n)$ проходов</td><td>$O(m)$ проходов</td></tr>
+<tr><td>Память</td><td>малая</td><td>хранит все активации</td></tr>
+<tr class="trh"><td>Когда выгоден</td><td>$n \ll m$ (мало входов)</td><td>$n \gg m$ (мало выходов) — <strong>это наш случай</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему именно reverse mode</div>
+<p>У нейросети <strong>миллиарды параметров на входе и одно число (loss) на выходе</strong>. То есть $n$ огромно, $m=1$.</p>
+<p>Forward mode пришлось бы запускать миллиард раз — по разу на каждый параметр. Reverse mode делает <strong>один</strong> обратный проход и получает градиент сразу по всем параметрам. Стоимость обратного прохода — примерно 2× стоимости прямого.</p>
+<p>Это и есть главная причина, почему глубокое обучение вообще стало возможным. Backprop — не «умный алгоритм обучения», это просто <strong>правильный порядок применения chain rule</strong> для функции с одним выходом.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Историческая справка, полезная для понимания.</strong> Backpropagation не изобрели в машинном обучении. Это переоткрытая много раз идея (Linnainmaa, 1970; Werbos, 1974; Rumelhart et al., 1986) из области автоматического дифференцирования. Понимание этого снимает мистику: <em>в backprop нет ничего специфически «нейросетевого»</em>. Он работает для любого дифференцируемого вычислительного графа — включая физические симуляции, рендеринг и оптимизацию портфелей.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Chain rule: единственная формула, которую нужно понять</div>
+<div class="sdesc">Всё остальное — техника применения</div>
+
+<div class="fbox">
+<div class="flabel">📐 Правило цепочки для скалярного случая</div>
+$$\frac{\partial L}{\partial x} = \frac{\partial L}{\partial y}\cdot\frac{\partial y}{\partial x}$$
+<p>Для композиции многих функций $L = f_n(f_{n-1}(\dots f_1(x)))$:</p>
+$$\frac{\partial L}{\partial x} = \frac{\partial f_n}{\partial f_{n-1}}\cdot\frac{\partial f_{n-1}}{\partial f_{n-2}}\cdots\frac{\partial f_1}{\partial x}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Chain rule — это про <strong>передаточные отношения</strong>. Если шестерёнка A крутит B в 3 раза быстрее, а B крутит C в 2 раза быстрее, то A крутит C в 6 раз быстрее. Производные перемножаются ровно так же.</p>
+<p>Отсюда сразу следует важнейший факт: если в цепочке из 50 слоёв каждое «передаточное отношение» равно 0.9, то итоговое равно $0.9^{50} \approx 0.005$ — сигнал почти исчез. Если каждое равно 1.1, то $1.1^{50} \approx 117$ — сигнал взорвался. <strong>Вся проблема глубоких сетей уже видна здесь, в одной формуле.</strong></p>
+</div>
+
+<h3>Как это выглядит для узла с несколькими путями</h3>
+<div class="fbox blue">
+<div class="flabel">📐 Многомерное правило цепочки</div>
+$$\frac{\partial L}{\partial x} = \sum_{i} \frac{\partial L}{\partial y_i}\cdot\frac{\partial y_i}{\partial x}$$
+<p class="fnote">Если переменная $x$ влияет на loss через несколько путей — градиенты по всем путям <strong>складываются</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Это объясняет, почему в PyTorch градиенты <strong>накапливаются</strong> (<code>+=</code>), а не перезаписываются. Один и тот же вес может участвовать в вычислении несколько раз — в residual-связях, в разделяемых весах RNN, в multi-head attention. Каждый путь вносит свой вклад, и все вклады суммируются.</p>
+<p>И отсюда же берётся необходимость <code>optimizer.zero_grad()</code>: фреймворк не знает, закончил ли ты добавлять пути, поэтому обнулять буфер — твоя ответственность.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: backprop руками на сети из двух слоёв</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача.</strong> Вход $x=2$, веса $w_1=3$, $w_2=-1$. Сеть: $z_1 = w_1 x$, $a_1 = \text{ReLU}(z_1)$, $z_2 = w_2 a_1$, $L = \tfrac12(z_2 - y)^2$ при целевом $y=1$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Forward.</strong> $z_1 = 3\cdot2 = 6$. $a_1 = \text{ReLU}(6) = 6$. $z_2 = -1\cdot6 = -6$. $L = \tfrac12(-6-1)^2 = \tfrac12\cdot49 = 24.5$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Backward, шаг 1.</strong> $\dfrac{\partial L}{\partial z_2} = z_2 - y = -6 - 1 = \mathbf{-7}$.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Шаг 2 — градиент по $w_2$.</strong> $\dfrac{\partial L}{\partial w_2} = \dfrac{\partial L}{\partial z_2}\cdot\dfrac{\partial z_2}{\partial w_2} = -7 \cdot a_1 = -7\cdot 6 = \mathbf{-42}$.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>Шаг 3 — идём глубже.</strong> $\dfrac{\partial L}{\partial a_1} = -7 \cdot w_2 = -7\cdot(-1) = 7$. Через ReLU: $\dfrac{\partial L}{\partial z_1} = 7 \cdot \mathbb{1}[z_1 > 0] = 7\cdot 1 = 7$.</div></div>
+<div class="numex-step"><span class="nb red">6</span><div><strong>Шаг 4 — градиент по $w_1$.</strong> $\dfrac{\partial L}{\partial w_1} = 7 \cdot x = 7\cdot 2 = \mathbf{14}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Обрати внимание на две вещи.</strong> ① Для градиента по $w_2$ понадобилось $a_1$ — <em>активация из forward pass</em>. Вот почему их приходится хранить. ② Градиент по ReLU — это просто индикатор: если бы $z_1$ был отрицательным, градиент занулился бы и <strong>всё, что глубже, не получило бы сигнала вообще</strong>. Это механика «мёртвых ReLU».</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Неочевидное следствие из примера.</strong> Градиент по $w_1$ оказался равен 14 — он <em>пропорционален входу</em> $x$. Если признаки не нормализованы и один из них имеет масштаб 10000, градиент по соответствующему весу будет в 10000 раз больше остальных. Один шаг оптимизатора — и этот вес улетает в бесконечность. <strong>Отсюда прямая связь: нормализация входов нужна не «для красоты», а потому что градиент линейно зависит от масштаба входа.</strong></div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Матричная форма: почему градиент по весам — это внешнее произведение</div>
+<div class="sdesc">Место, где чаще всего путаются размерности</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Обратный проход через линейный слой</div>
+<p>Пусть слой: $\;z = Wa + b$, где $W \in \mathbb{R}^{m\times n}$, $a \in \mathbb{R}^{n}$, $z \in \mathbb{R}^{m}$. Обозначим $\delta = \dfrac{\partial L}{\partial z} \in \mathbb{R}^m$. Тогда:</p>
+$$\boxed{\;\frac{\partial L}{\partial W} = \delta\, a^\top \;\in \mathbb{R}^{m\times n}\;}\qquad
+\boxed{\;\frac{\partial L}{\partial a} = W^\top \delta \;\in \mathbb{R}^{n}\;}\qquad
+\boxed{\;\frac{\partial L}{\partial b} = \delta\;}$$
+<p class="fnote">Для батча размера $B$: $\;\dfrac{\partial L}{\partial W} = \Delta^\top A$, где $\Delta \in \mathbb{R}^{B\times m}$, $A \in \mathbb{R}^{B\times n}$ — суммирование по батчу происходит автоматически внутри матричного произведения.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему именно эти три формулы</div>
+<p><strong>Градиент по весу $W_{ij}$.</strong> Вес $W_{ij}$ соединяет вход $a_j$ с выходом $z_i$. Он влияет на loss только через $z_i$, причём $\partial z_i / \partial W_{ij} = a_j$. Значит $\partial L/\partial W_{ij} = \delta_i \cdot a_j$. Записать это для всех $i,j$ сразу — и есть внешнее произведение $\delta a^\top$: <em>каждый выход умножается на каждый вход</em>.</p>
+<p><strong>Градиент по входу $a_j$.</strong> Вход $a_j$ влияет на <em>все</em> выходы $z_i$ через веса $W_{ij}$. По правилу суммирования путей: $\partial L/\partial a_j = \sum_i \delta_i W_{ij}$. Это ровно $j$-я компонента $W^\top\delta$. <strong>Транспонирование появляется не из формальностей, а потому что мы «идём по связям в обратную сторону»</strong>: forward умножал строки на вход, backward умножает столбцы на градиент.</p>
+<p><strong>Градиент по bias.</strong> $b$ влияет на $z$ напрямую с коэффициентом 1, поэтому градиент проходит насквозь без изменений.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как проверять себя по размерностям.</strong> Градиент по чему-либо <strong>всегда имеет ту же форму, что и сама величина</strong>. $W$ размера $(m,n)$ → $\partial L/\partial W$ тоже $(m,n)$. Это правило ловит 90% ошибок в самописных слоях: если у тебя получилось $(n,m)$ — где-то потерялось транспонирование. Второй приём: посмотри, какие размерности «схлопываются» в матричном произведении, и убедись, что схлопывается именно та ось, по которой идёт суммирование.</div></div>
+
+<h3>Таблица обратных проходов для базовых операций</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Операция (forward)</th><th>Backward</th><th>Что нужно сохранить</th></tr></thead>
+<tbody>
+<tr><td>$z = Wa + b$</td><td>$\partial W = \delta a^\top$, &nbsp;$\partial a = W^\top\delta$</td><td>$a$ и $W$</td></tr>
+<tr><td>$y = a \odot b$ (поэлементно)</td><td>$\partial a = \delta \odot b$, &nbsp;$\partial b = \delta \odot a$</td><td>$a$ и $b$</td></tr>
+<tr><td>$y = \text{ReLU}(x)$</td><td>$\partial x = \delta \odot \mathbb{1}[x>0]$</td><td>маску (1 бит на элемент)</td></tr>
+<tr><td>$y = \sigma(x)$</td><td>$\partial x = \delta \odot y(1-y)$</td><td><strong>выход</strong> $y$, не вход</td></tr>
+<tr><td>$y = \tanh(x)$</td><td>$\partial x = \delta \odot (1-y^2)$</td><td>выход $y$</td></tr>
+<tr><td>$y = \text{softmax}(x)$</td><td>$\partial x = y \odot (\delta - (\delta^\top y))$</td><td>выход $y$</td></tr>
+<tr><td>$y = \sum_i x_i$</td><td>$\partial x_i = \delta$ (broadcast)</td><td>только форму</td></tr>
+<tr><td>$y = x_1 + x_2$</td><td>$\partial x_1 = \partial x_2 = \delta$</td><td>ничего</td></tr>
+<tr><td>Копирование $x \to (x, x)$</td><td>$\partial x = \delta_1 + \delta_2$</td><td>ничего</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: сложение и копирование — зеркальные операции</div>
+<p>Обрати внимание на две последние строки. <strong>Сложение в forward = копирование градиента в backward.</strong> <strong>Копирование в forward = сложение градиентов в backward.</strong> Это фундаментальная двойственность.</p>
+<p>Именно поэтому <strong>residual-связь $y = x + f(x)$ так хорошо проводит градиент</strong>: в обратном проходе $\delta$ идёт по обеим ветвям без изменений, и ветка «напрямую» гарантирует, что до нижних слоёв дойдёт хотя бы неискажённая копия сигнала. Это и есть механика, спасающая глубокие сети — мы вернёмся к ней в теме про нормализацию.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Тонкость с сигмоидой и softmax.</strong> Для их обратного прохода нужен <strong>выход</strong>, а не вход. Это не мелочь: если ты реализуешь слой вручную и сохранишь вход вместо выхода, придётся пересчитывать сигмоиду в backward — лишние вычисления. Все фреймворки сохраняют именно выход. Ещё важнее: у softmax якобиан <em>не диагональный</em> (каждый выход зависит от всех входов), поэтому наивная поэлементная формула для него неверна.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Autograd в PyTorch: как это устроено на самом деле</div>
+<div class="sdesc">Динамический граф, листья, и когда граф уничтожается</div>
+
+<p>PyTorch строит граф <strong>во время выполнения</strong> (define-by-run): каждая операция над тензором с <code>requires_grad=True</code> создаёт узел, который помнит, как вычислить обратный проход.</p>
+
+<pre><code>import torch
+
+x = torch.tensor([2.0], requires_grad=True)   # ЛИСТ графа
+w = torch.tensor([3.0], requires_grad=True)   # ЛИСТ графа
+
+z = w * x          # z.grad_fn = &lt;MulBackward0&gt;   — не лист
+y = z ** 2         # y.grad_fn = &lt;PowBackward0&gt;   — не лист
+L = y.sum()
+
+L.backward()       # обход графа от L к листьям
+
+print(x.grad)      # tensor([36.]) — dL/dx = 2*z*w = 2*6*3
+print(w.grad)      # tensor([24.]) — dL/dw = 2*z*x = 2*6*2
+print(z.grad)      # None + warning: градиенты НЕ сохраняются для не-листьев
+</code></pre>
+
+<div class="tw">
+<table>
+<thead><tr><th>Понятие</th><th>Что это</th><th>Практический смысл</th></tr></thead>
+<tbody>
+<tr><td><code>requires_grad</code></td><td>Флаг «отслеживать операции над этим тензором»</td><td>По умолчанию <code>True</code> у параметров модели, <code>False</code> у данных</td></tr>
+<tr><td><b>Лист (leaf)</b></td><td>Тензор, созданный пользователем, а не операцией</td><td>Только у листьев после <code>backward()</code> заполняется <code>.grad</code></td></tr>
+<tr><td><code>grad_fn</code></td><td>Ссылка на функцию обратного прохода</td><td>Если <code>None</code> — тензор не участвует в графе</td></tr>
+<tr><td><code>detach()</code></td><td>Отрезает тензор от графа, разделяя память</td><td>Останавливает поток градиента, значения те же</td></tr>
+<tr><td><code>no_grad()</code></td><td>Контекст, где граф вообще не строится</td><td>Инференс и валидация — экономия памяти и времени</td></tr>
+<tr><td><code>retain_graph</code></td><td>Не уничтожать граф после backward</td><td>Нужен при нескольких backward по одному графу (GAN, multi-task)</td></tr>
+<tr><td><code>.item()</code></td><td>Извлечь Python-число из тензора</td><td>Разрывает связь с графом — обязателен при логировании</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему граф уничтожается после backward</div>
+<p>После обратного прохода PyTorch по умолчанию <strong>освобождает сохранённые активации</strong> — они больше не нужны, а занимают гигабайты. Поэтому второй вызов <code>backward()</code> по тому же графу падает с ошибкой «Trying to backward through the graph a second time».</p>
+<p>Когда это реально нужно: обучение GAN (один forward генератора, два разных лосса), multi-task с раздельными backward, вычисление градиентов высших порядков. Тогда ставят <code>retain_graph=True</code> — но <strong>ценой памяти</strong>, и если поставить его «на всякий случай» в цикле обучения, получишь утечку.</p>
+</div>
+
+<h3>Три способа остановить градиент — и разница между ними</h3>
+<div class="grid3">
+<div class="card bl"><h5><code>x.detach()</code></h5><p>Возвращает тензор с теми же данными, но без <code>grad_fn</code>. Память <strong>общая</strong> с оригиналом — изменишь один, изменится другой.</p><p><em>Применение:</em> target-сеть в RL, stop-gradient в BYOL/SimSiam.</p></div>
+<div class="card pu"><h5><code>with torch.no_grad():</code></h5><p>Граф не строится вообще внутри блока. Экономит и память, и время.</p><p><em>Применение:</em> валидация, инференс, ручное обновление весов.</p></div>
+<div class="card am"><h5><code>param.requires_grad=False</code></h5><p>Заморозка параметра: градиент через него <em>проходит</em>, но не накапливается в нём.</p><p><em>Применение:</em> заморозка backbone при дообучении.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Классическая путаница.</strong> «Заморозил backbone через <code>requires_grad=False</code>, а память не уменьшилась». Так и должно быть: активации всё равно сохраняются, потому что градиент должен <em>пройти сквозь</em> замороженные слои к незамороженным выше. Память экономит только <code>no_grad()</code>, а он применим лишь если <strong>ниже</strong> замороженной части нет обучаемых параметров. Если заморожены первые слои — оберни их в <code>no_grad()</code>, и вот тогда память действительно упадёт.</div></div>
+
+<h3>Inplace-операции: почему они ломают autograd</h3>
+<pre><code>x = torch.tensor([1.0, 2.0], requires_grad=True)
+y = x.sigmoid()
+y += 1                    # ❌ inplace: перезаписали y, который нужен для backward
+y.sum().backward()        # RuntimeError: one of the variables needed for
+                          # gradient computation has been modified
+
+# Правильно:
+y = x.sigmoid()
+y = y + 1                 # ✅ создаём новый тензор
+</code></pre>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Для обратного прохода сигмоиды нужен её <strong>выход</strong> (см. таблицу в секции 3). Если ты этот выход перезаписал, backward не сможет посчитать производную — данные потеряны.</p>
+<p>PyTorch отслеживает это через счётчик версий тензора и честно падает с ошибкой, а не считает молча неверный градиент. <strong>Это хорошая новость</strong> — самая опасная категория багов та, что не падает. Но у ошибки есть неприятное свойство: она возникает в <code>backward()</code>, а причина — в строке из forward, иногда за сотни строк выше.</p>
+<p>Исключение: <code>nn.ReLU(inplace=True)</code> безопасен, потому что для его обратного прохода нужен только знак, а он сохраняется.</p>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Vanishing и exploding gradients</div>
+<div class="sdesc">Главная проблема глубины, объяснённая через произведение якобианов</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Градиент через $L$ слоёв</div>
+$$\frac{\partial \mathcal{L}}{\partial h^{(0)}} = \frac{\partial \mathcal{L}}{\partial h^{(L)}} \prod_{l=1}^{L} J^{(l)}, \qquad J^{(l)} = \frac{\partial h^{(l)}}{\partial h^{(l-1)}}$$
+<p>Оценка нормы через спектральные нормы якобианов:</p>
+$$\left\|\frac{\partial \mathcal{L}}{\partial h^{(0)}}\right\| \le \left\|\frac{\partial \mathcal{L}}{\partial h^{(L)}}\right\| \prod_{l=1}^{L}\sigma_{\max}(J^{(l)})$$
+<p class="fnote">Если в среднем $\sigma_{\max} = c$, то норма градиента ведёт себя как $c^L$ — <strong>экспоненциально по глубине</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Это тот же эффект, что «испорченный телефон» с усилителем громкости. Каждый слой — переприём сигнала с коэффициентом $c$.</p>
+<p>$c = 0.9$ и 50 слоёв → $0.9^{50} = 0.005$. Градиент до первых слоёв доходит в 200 раз слабее. Они практически <strong>не обучаются</strong>, хотя формально градиент есть — просто он тонет в шуме и в округлении.</p>
+<p>$c = 1.1$ и 50 слоёв → $1.1^{50} = 117$. Градиенты гигантские, шаг оптимизатора выкидывает веса в область, где активации переполняются, и следующий forward даёт <code>NaN</code>.</p>
+<p>Заметь узость «коридора»: $c$ должно быть близко к 1 с точностью до процентов. <strong>Ничто не гарантирует этого автоматически</strong> — отсюда вся индустрия приёмов: инициализация, нормализация, residual-связи, gradient clipping.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Норма градиента по слоям при разном коэффициенте передачи</div>
+<div class="chsub">Логарифмическая шкала. Видно, что даже небольшое отклонение c от 1 катастрофично на глубине</div>
+<div style="position:relative;height:320px;"><canvas id="c_vanish"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: коэффициент передачи слоя и глубина сети</label>
+  <input type="range" id="sl_c" min="70" max="130" step="1" value="90" oninput="updVan()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>c = 0.70</span><span class="out" id="out_c">0.90</span><span>c = 1.30</span></div>
+  <label style="margin-top:14px;">Число слоёв</label>
+  <input type="range" id="sl_L" min="2" max="120" step="1" value="50" oninput="updVan()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>2</span><span class="out" id="out_L">50</span><span>120</span></div>
+  <div class="res" id="out_van"></div>
+</div>
+
+<h3>Почему сигмоида и tanh — исторические виновники</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Активация</th><th>max производной</th><th>Что происходит на глубине</th></tr></thead>
+<tbody>
+<tr><td>Sigmoid</td><td><strong>0.25</strong></td><td>$0.25^{L}$ — катастрофа уже на 10 слоях</td></tr>
+<tr><td>Tanh</td><td>1.0 (в нуле)</td><td>Лучше, но насыщается на хвостах → снова затухание</td></tr>
+<tr><td>ReLU</td><td>1.0 (для $x>0$)</td><td>Градиент проходит без ослабления; но «мёртвые» нейроны при $x&lt;0$</td></tr>
+<tr><td>LeakyReLU / GELU</td><td>≈1.0</td><td>Нет мёртвых нейронов; GELU — стандарт в трансформерах</td></tr>
+<tr><td>SiLU / Swish</td><td>≈1.1</td><td>Гладкая, хорошо работает в глубоких сетях</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: арифметика сигмоиды</div>
+<p>Производная сигмоиды $\sigma'(x) = \sigma(x)(1-\sigma(x))$ достигает максимума в нуле и равна там $0.5\cdot0.5 = 0.25$. Это <strong>лучший случай</strong>. Обычно активации не сидят ровно в нуле, и реальная производная ещё меньше — скажем, 0.1.</p>
+<p>10 слоёв: $0.1^{10} = 10^{-10}$. В float32 это ещё представимо, но градиент уже неотличим от нуля на фоне остальных вычислений. Именно поэтому до 2010-х глубокие сети «не обучались» — и почему переход на ReLU стал одним из ключевых сдвигов.</p>
+</div>
+
+<h3>Три механизма спасения</h3>
+<div class="grid3">
+<div class="card gr"><h5>Residual-связи</h5><p>$h^{(l)} = h^{(l-1)} + f(h^{(l-1)})$ → якобиан $J = I + \partial f$. Даже при $\partial f \approx 0$ градиент проходит через $I$ <strong>без ослабления</strong>.</p></div>
+<div class="card gr"><h5>Нормализация</h5><p>BatchNorm/LayerNorm приводят активации к фиксированному масштабу на каждом слое, не давая произведению разъезжаться. Разбираем в теме 8.3.</p></div>
+<div class="card gr"><h5>Gradient clipping</h5><p>Против взрыва: обрезаем норму градиента сверху. Не помогает против затухания, но спасает от <code>NaN</code>.</p></div>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Gradient clipping по глобальной норме</div>
+$$g \leftarrow g \cdot \min\left(1, \frac{\tau}{\|g\|_2}\right), \qquad \|g\|_2 = \sqrt{\sum_{p}\|g_p\|_2^2}$$
+<p class="fnote">$\tau$ — порог (типично 1.0 для трансформеров). Норма считается по <strong>всем</strong> параметрам сразу, а не по каждому отдельно.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему клиппинг именно по глобальной норме</div>
+<p>Клиппинг по значению (<code>clip_grad_value_</code>) обрезает каждую компоненту независимо — и <strong>меняет направление</strong> градиента, что искажает оптимизацию.</p>
+<p>Клиппинг по глобальной норме масштабирует весь вектор целиком: <em>направление сохраняется, укорачивается только длина шага</em>. Модель по-прежнему движется туда, куда указывает градиент, просто осторожнее.</p>
+<p>Практический признак того, что клиппинг нужен: если ты логируешь <code>grad_norm</code> и видишь редкие всплески в 100× выше медианы — это те самые батчи, которые ломают обучение. Клиппинг их обезвреживает.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Логируй норму градиента — всегда.</strong> <code>total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)</code> возвращает норму <em>до</em> обрезки. Её график — самый информативный диагностический сигнал при обучении: плавное убывание = здоровое обучение; резкие пики = проблемные батчи; норма, уходящая в ноль = затухание; норма, растущая монотонно = скорый <code>NaN</code>.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Память при обучении и gradient checkpointing</div>
+<div class="sdesc">Почему обучение требует в разы больше памяти, чем инференс</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Из чего складывается память при обучении</div>
+$$M_{\text{total}} = \underbrace{N \cdot b_w}_{\text{веса}} + \underbrace{N \cdot b_g}_{\text{градиенты}} + \underbrace{N \cdot b_o}_{\text{состояния оптимизатора}} + \underbrace{B \cdot L \cdot d \cdot b_a \cdot k}_{\text{активации}}$$
+<p class="fnote">$N$ — число параметров, $B$ — батч, $L$ — число слоёв, $d$ — размерность, $k$ — число сохраняемых тензоров на слой. Для Adam в fp16 с fp32-мастером: веса 2 байта + градиенты 2 + мастер-веса 4 + два момента по 4 = <strong>16 байт на параметр</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Модель на 7 млрд параметров. Инференс в fp16: $7\text{B} \times 2 = 14$ ГБ — влезает в одну карту. Обучение с Adam: $7\text{B} \times 16 = \mathbf{112}$ ГБ <em>только на состояния</em>, ещё до активаций. Не влезает никуда без шардирования.</p>
+<p>Вот почему обучение и инференс — это две принципиально разные инженерные задачи, и почему существует ZeRO (тема 8.5). <strong>Состояния оптимизатора занимают вдвое больше, чем сама модель</strong> — факт, который удивляет почти всех при первом столкновении.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Разбивка памяти при обучении модели на 7B параметров</div>
+<div class="chsub">Adam + mixed precision. Активации показаны для батча 8 и длины 2048</div>
+<div style="position:relative;height:290px;"><canvas id="c_mem"></canvas></div>
+</div>
+
+<h3>Gradient checkpointing: размен вычислений на память</h3>
+<p>Идея: <strong>не хранить все активации, а пересчитывать их в обратном проходе</strong>. Сохраняем только на границах сегментов, внутри сегмента — пересчитываем forward заново.</p>
+
+<div class="fbox blue">
+<div class="flabel">📐 Оптимальное разбиение на сегменты</div>
+<p>При разбиении $L$ слоёв на $\sqrt{L}$ сегментов по $\sqrt{L}$ слоёв:</p>
+$$M_{\text{активаций}}: \; O(L) \to O(\sqrt{L}), \qquad T: \; \times 1 \to \times \approx 1.33$$
+<p class="fnote">Классический результат Chen et al. (2016): память по активациям падает с линейной до корневой ценой примерно 33% дополнительного времени.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Аналогия: ты решаешь длинную задачу и записываешь <em>каждый</em> промежуточный результат — тетрадь распухает. Альтернатива: записывать только каждый десятый шаг, а остальное при необходимости <strong>пересчитать</strong> от ближайшей записанной точки.</p>
+<p>Тетрадь становится в 10 раз тоньше, а пересчёт стоит примерно один лишний проход по каждому сегменту — отсюда «+33% времени» (один forward сохранён, ещё один forward пересчитан, плюс backward).</p>
+<p><strong>Когда это выгодно:</strong> когда без checkpointing модель просто не влезает, или когда влезает батч 4, а с checkpointing — 32. Больший батч часто окупает потерю в скорости шага, потому что GPU лучше утилизируется.</p>
+</div>
+
+<pre><code>from torch.utils.checkpoint import checkpoint_sequential
+import torch.nn as nn
+
+model = nn.Sequential(*[Block(d) for _ in range(48)])
+
+def forward(x):
+    # разбиваем 48 слоёв на 6 сегментов по 8
+    return checkpoint_sequential(model, segments=6, input=x, use_reentrant=False)
+
+# Или для отдельного блока:
+from torch.utils.checkpoint import checkpoint
+h = checkpoint(self.block, h, use_reentrant=False)
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три подводных камня checkpointing.</strong> ① <strong>Недетерминированные слои.</strong> Dropout и BatchNorm при пересчёте дадут <em>другие</em> значения, если не зафиксировать состояние RNG — PyTorch делает это при <code>preserve_rng_state=True</code> (по умолчанию), но ценой синхронизации. ② <strong>Пересчёт под <code>no_grad</code> не работает</strong> — checkpoint должен строить граф во время пересчёта. ③ <strong>Не оборачивай слишком мелкие блоки</strong>: накладные расходы на сохранение состояния съедят выигрыш. Разумная гранулярность — трансформерный блок целиком.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Приём</th><th>Экономия памяти</th><th>Цена</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr><td>Gradient accumulation</td><td>линейно по числу микрошагов</td><td>время ×N шагов</td><td>Нужен большой эффективный батч</td></tr>
+<tr><td>Gradient checkpointing</td><td>$O(L)\to O(\sqrt L)$</td><td>+30–40% времени</td><td>Модель не влезает по активациям</td></tr>
+<tr><td>Mixed precision</td><td>~2× по активациям</td><td>почти бесплатно, нужен loss scaling</td><td>Практически всегда</td></tr>
+<tr><td>ZeRO / FSDP</td><td>шардирует состояния между GPU</td><td>рост сетевого обмена</td><td>Многокарточное обучение</td></tr>
+<tr><td>8-bit оптимизатор</td><td>~3× по состояниям Adam</td><td>малая потеря точности</td><td>Ограничена память, одна карта</td></tr>
+<tr><td>Уменьшить батч</td><td>линейно</td><td>хуже утилизация GPU, шумнее градиент</td><td>Крайняя мера</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Численная стабильность: откуда берутся NaN</div>
+<div class="sdesc">Три классических источника и как их закрыть</div>
+
+<h3>Источник №1: экспонента переполняется</h3>
+<div class="fbox">
+<div class="flabel">📐 Log-sum-exp трюк</div>
+$$\log\sum_i e^{x_i} = m + \log\sum_i e^{x_i - m}, \qquad m = \max_i x_i$$
+<p>Softmax в стабильной форме:</p>
+$$\text{softmax}(x)_i = \frac{e^{x_i - m}}{\sum_j e^{x_j - m}}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>В float32 максимальное представимое число ≈ $3.4\times10^{38}$, а $e^{89}$ уже больше. Логит 100 — совершенно обычное значение для необученной сети — даёт $e^{100} = \infty$, и дальше $\infty/\infty = $ <code>NaN</code>.</p>
+<p>Трюк: вычитаем максимум. Тогда самая большая экспонента становится $e^0 = 1$, остальные меньше. <strong>Результат математически идентичен</strong> (числитель и знаменатель домножены на $e^{-m}$), но переполнения не происходит никогда. Обратная сторона — маленькие экспоненты могут стать нулём, но это безобидный underflow, а не <code>NaN</code>.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: почему нельзя softmax → log</div>
+<div class="numex-step"><span class="nb red">1</span><div>Логиты: $[100,\;99,\;1]$. Наивно: $e^{100} = \infty$ в float32 → softmax даёт <code>[nan, nan, nan]</code>.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div>Со стабилизацией $m=100$: $[e^{0}, e^{-1}, e^{-99}] = [1,\;0.368,\;\approx 0]$. Сумма $1.368$. Softmax $= [0.731,\;0.269,\;0]$. Корректно.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>Теперь <code>log(softmax)</code> для третьего класса: $\log(0) = -\infty$. Loss $= \infty$, градиент <code>NaN</code>. <strong>Опять сломались</strong> — уже на другом шаге.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><code>log_softmax</code> считает напрямую: $\log p_i = (x_i - m) - \log\sum_j e^{x_j-m} = -99 - 0.313 = -99.3$. Конечное число, градиент корректен.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> всегда <code>F.cross_entropy(logits, y)</code> или <code>F.log_softmax</code>, никогда не <code>torch.log(F.softmax(...))</code>. Именно поэтому <code>nn.CrossEntropyLoss</code> принимает <strong>логиты</strong>, а не вероятности — она делает обе стабилизации внутри.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка новичка в PyTorch.</strong> Поставить <code>nn.Softmax()</code> последним слоем модели <em>и</em> использовать <code>nn.CrossEntropyLoss()</code>. Софтмакс применяется дважды: сначала явно, потом внутри лосса. Модель обучается, но плохо, и никакой ошибки не возникает — распределение просто становится сглаженным до бессмысленности. То же для <code>nn.Sigmoid()</code> + <code>BCEWithLogitsLoss</code>.</div></div>
+
+<h3>Источник №2: деление на почти-ноль</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Где возникает</th><th>Опасность</th><th>Как чинить</th></tr></thead>
+<tbody>
+<tr><td>Нормализация: $x/\|x\|$</td><td>нулевой вектор → <code>NaN</code></td><td><code>x / (norm + 1e-8)</code> или <code>F.normalize(eps=1e-8)</code></td></tr>
+<tr><td>BatchNorm: $/\sqrt{\sigma^2}$</td><td>константный признак → $\sigma=0$</td><td>$\epsilon$ внутри корня, а не снаружи</td></tr>
+<tr><td>$\sqrt{x}$ при $x\to 0$</td><td>производная $\to\infty$</td><td><code>torch.sqrt(x + eps)</code>, а лучше <code>x.clamp(min=eps).sqrt()</code></td></tr>
+<tr><td>$\log(p)$</td><td>$p=0 \Rightarrow -\infty$</td><td>работать с логитами, не с вероятностями</td></tr>
+<tr><td>Adam: $/(\sqrt{v}+\epsilon)$</td><td>нулевой градиент на старте</td><td>$\epsilon$ уже встроен, но его значение важно при fp16</td></tr>
+<tr><td>Деление на длину последовательности</td><td>пустая последовательность</td><td>маска + <code>clamp(min=1)</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Тонкость: $\epsilon$ внутри или снаружи корня.</strong> $\dfrac{x}{\sqrt{\sigma^2}+\epsilon}$ и $\dfrac{x}{\sqrt{\sigma^2+\epsilon}}$ — <em>разные</em> формулы. Вторая устойчивее: она не даёт производной корня уйти в бесконечность при $\sigma\to0$. BatchNorm в PyTorch использует второй вариант. Если пишешь нормализацию руками — повторяй именно его, иначе получишь редкие <code>NaN</code>, которые крайне трудно воспроизвести.</div></div>
+
+<h3>Источник №3: mixed precision</h3>
+<div class="fbox teal">
+<div class="flabel">📐 Диапазоны форматов</div>
+<div class="tw" style="margin:6px 0 0;">
+<table>
+<thead><tr><th>Формат</th><th>Биты (знак/экспонента/мантисса)</th><th>Мин. норм.</th><th>Макс.</th></tr></thead>
+<tbody>
+<tr><td>fp32</td><td>1 / 8 / 23</td><td>$1.2\times10^{-38}$</td><td>$3.4\times10^{38}$</td></tr>
+<tr><td>fp16</td><td>1 / 5 / 10</td><td>$6.1\times10^{-5}$</td><td>$6.5\times10^{4}$</td></tr>
+<tr><td>bf16</td><td>1 / <strong>8</strong> / 7</td><td>$1.2\times10^{-38}$</td><td>$3.4\times10^{38}$</td></tr>
+</tbody>
+</table>
+</div>
+<p class="fnote">bf16 имеет <strong>тот же диапазон, что fp32</strong>, но втрое меньше значащих цифр. fp16 точнее в мантиссе, но диапазон в $10^{34}$ раз уже.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему fp16 требует loss scaling, а bf16 — нет</div>
+<p>Типичный градиент имеет порядок $10^{-6}$–$10^{-8}$. В fp16 минимальное нормальное число $6\times10^{-5}$ — то есть <strong>большая часть градиентов просто обнуляется</strong>. Не «теряет точность», а становится ровно нулём. Обучение останавливается молча.</p>
+<p><strong>Loss scaling</strong>: умножаем loss на большое число $S$ (например, $2^{16}$) перед backward. По линейности все градиенты умножаются на $S$ и попадают в представимый диапазон. Перед шагом оптимизатора делим обратно на $S$. Динамический вариант подбирает $S$ автоматически: увеличивает, пока не появятся <code>inf</code>, потом откатывает.</p>
+<p>bf16 жертвует мантиссой ради экспоненты — диапазон как у fp32, поэтому underflow не происходит и loss scaling не нужен. Это главная причина, почему обучение больших моделей перешло на bf16.</p>
+</div>
+
+<pre><code>scaler = torch.cuda.amp.GradScaler()
+
+for x, y in loader:
+    optimizer.zero_grad(set_to_none=True)
+    with torch.autocast(device_type="cuda", dtype=torch.float16):
+        loss = criterion(model(x), y)
+
+    scaler.scale(loss).backward()      # градиенты умножены на S
+
+    scaler.unscale_(optimizer)         # ← ОБЯЗАТЕЛЬНО перед клиппингом!
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+    scaler.step(optimizer)             # пропустит шаг, если были inf/nan
+    scaler.update()                    # подстроит S
+</code></pre>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Порядок unscale и clipping — реальный источник багов.</strong> Если сделать <code>clip_grad_norm_</code> до <code>scaler.unscale_()</code>, ты обрежешь <em>отмасштабированные</em> градиенты по порогу 1.0. При $S=2^{16}$ это эквивалентно клиппингу настоящих градиентов по порогу $1.5\times10^{-5}$ — то есть ты фактически обнулил обучение. Ошибка не падает, метрики просто не растут, и причину ищут в архитектуре.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как отлаживать NaN.</strong> ① <code>torch.autograd.set_detect_anomaly(True)</code> — покажет операцию из forward, породившую <code>NaN</code> в backward (медленно, только для отладки). ② Логируй <code>grad_norm</code> каждый шаг: перед <code>NaN</code> почти всегда виден резкий рост. ③ Проверь входные данные — <code>NaN</code> в данных даёт <code>NaN</code> везде мгновенно. ④ Понизь lr в 10 раз: если <code>NaN</code> исчез, проблема в размере шага, а не в коде. ⑤ Переключись на fp32: если исчез — дело в mixed precision.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Подводные камни цикла обучения</div>
+<div class="sdesc">Ошибки, которые не падают, а тихо портят результат</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Забытый <code>zero_grad()</code></h5><p>Градиенты накапливаются между шагами. Эффективно ты обучаешься на растущем «эхе» прошлых батчей. Модель может даже сходиться, но плохо и невоспроизводимо.</p><p><em>Признак:</em> <code>grad_norm</code> монотонно растёт от шага к шагу.</p></div>
+<div class="card rd"><h5>Утечка памяти через лосс</h5><p><code>total += loss</code> вместо <code>total += loss.item()</code> держит ссылку на весь граф каждого батча. Через эпоху — OOM.</p><p><em>Признак:</em> память растёт линейно по шагам внутри эпохи.</p></div>
+<div class="card rd"><h5><code>model.eval()</code> не вызван</h5><p>Dropout активен, BatchNorm использует статистику батча. Валидационная метрика прыгает и систематически занижена.</p><p><em>Признак:</em> val-метрика зависит от размера валидационного батча.</p></div>
+<div class="card rd"><h5>Валидация без <code>no_grad()</code></h5><p>Строится граф, память расходуется впустую, скорость падает в разы. Ошибки нет — просто медленно и жадно.</p></div>
+<div class="card rd"><h5><code>zero_grad()</code> vs <code>set_to_none</code></h5><p><code>set_to_none=True</code> освобождает буферы вместо заполнения нулями: быстрее и экономнее. Но меняет поведение оптимизаторов, чувствительных к «нулевому градиенту» против «отсутствующего».</p></div>
+<div class="card rd"><h5>Shuffle на валидации</h5><p>Не ошибка сама по себе, но делает метрику невоспроизводимой между запусками, если есть любая зависимость от порядка (BatchNorm, накопление).</p></div>
+</div>
+
+<pre><code># Канонический цикл обучения — эталон для сверки
+model.train()
+for epoch in range(epochs):
+    for x, y in train_loader:
+        x, y = x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
+
+        optimizer.zero_grad(set_to_none=True)          # ① обнулить
+
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            loss = criterion(model(x), y)              # ② forward
+
+        loss.backward()                                # ③ backward
+        gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # ④ клип
+        optimizer.step()                               # ⑤ шаг
+        scheduler.step()                               # ⑥ обновить lr
+
+        running += loss.item()                         # ⑦ .item()!
+
+    model.eval()                                       # ⑧ переключить режим
+    with torch.no_grad():                              # ⑨ без графа
+        for x, y in val_loader:
+            ...
+    model.train()                                      # ⑩ вернуть режим
+</code></pre>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное про порядок scheduler и optimizer.</strong> <code>scheduler.step()</code> должен идти <em>после</em> <code>optimizer.step()</code>. В старых версиях PyTorch обратный порядок пропускал первое значение learning rate — модель начинала обучение не с того lr, что ты задал. Сейчас выдаётся предупреждение, но при использовании <code>GradScaler</code> есть отдельная тонкость: если шаг был пропущен из-за <code>inf</code>, планировщик всё равно продвинется, и расписание рассинхронизируется с реальным числом шагов.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про воспроизводимость на GPU.</strong> Даже с зафиксированным seed два запуска могут дать разные веса: атомарные операции суммируют в недетерминированном порядке, а сложение в плавающей точке не ассоциативно. Полный детерминизм включается через <code>torch.use_deterministic_algorithms(True)</code> + <code>CUBLAS_WORKSPACE_CONFIG</code>, но <strong>ценой скорости</strong>, а некоторые операции просто не имеют детерминированной реализации. Практический вывод: сравнивай модели по нескольким сидам со стандартным отклонением, а не по одному запуску.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. System Design: где backprop встречается с инфраструктурой</div>
+<div class="sdesc">Как устройство обратного прохода определяет архитектуру обучения</div>
+
+<div class="sysbox">
+<h4>🏗 Distributed Data Parallel: где именно в backward происходит синхронизация</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Forward</strong>каждая GPU считает<br>свой микробатч</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Backward, слой L</strong>градиенты готовы</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>All-reduce bucket</strong>синхронизация НЕ ждёт<br>конца backward</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Backward, слой L−1</strong>идёт параллельно<br>с обменом</div>
+</div>
+<div class="sysnote"><strong>Ключевая инженерная идея — overlap.</strong> Наивная реализация: досчитать все градиенты, потом синхронизировать. Тогда сеть простаивает во время вычислений, а GPU — во время обмена. DDP группирует параметры в <em>bucket'ы</em> (по умолчанию 25 МБ) и запускает all-reduce для bucket'а, как только все его градиенты готовы — <strong>то есть обмен по верхним слоям идёт одновременно с вычислением градиентов нижних</strong>. Это прямое следствие того, что backward идёт от выхода ко входу: градиенты становятся готовы <em>по частям, в предсказуемом порядке</em>.<br><br>
+<strong>Практические следствия:</strong> ① порядок регистрации параметров влияет на эффективность — DDP предполагает, что backward идёт примерно в обратном порядке forward; ② <code>find_unused_parameters=True</code> резко замедляет обучение, потому что заставляет ждать полного обхода графа; ③ при gradient accumulation нужен <code>no_sync()</code> на промежуточных шагах, иначе ты синхронизируешь градиенты N раз вместо одного.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Почему инференс и обучение требуют разной инфраструктуры</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Обучение</strong>граф строится,<br>активации хранятся</div>
+  <div class="sysarrow">≠</div>
+  <div class="sysblock"><strong>Инференс</strong>no_grad,<br>активации выбрасываются</div>
+</div>
+<div class="sysnote">
+<strong>Память:</strong> обучение ≈ 16 байт/параметр + активации; инференс ≈ 2 байта/параметр + один слой активаций. Разница на порядок.<br>
+<strong>Профиль нагрузки:</strong> обучение — длинные однородные джобы, спот-инстансы, чекпоинты. Инференс — короткие запросы с жёстким p99, автоскейлинг, отказоустойчивость.<br>
+<strong>Точность:</strong> обучение требует широкого динамического диапазона (bf16 + fp32-мастер). Инференс терпит int8/int4, потому что нет накопления ошибки по шагам.<br>
+<strong>Параллелизм:</strong> обучение — data parallel по батчу. Инференс — tensor parallel по модели, потому что батч в онлайне мал и делить его между картами бессмысленно.<br>
+<strong>Вывод для System Design секции:</strong> на вопрос «как обслуживать эту модель» ответ никогда не совпадает с «как её обучать» — и проговорить это различие вслух является сильным сигналом.
+</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Общий инженерный принцип</div>
+<h4>Почему обратный проход определяет форму всей ML-инфраструктуры</h4>
+<p>Три свойства backprop имеют прямые архитектурные последствия:</p>
+<ul>
+<li><strong>Нужны активации из forward</strong> → память при обучении растёт с батчем и длиной последовательности → отсюда gradient checkpointing, микробатчи, ограничения на контекст при обучении.</li>
+<li><strong>Градиенты готовы по частям, от выхода ко входу</strong> → возможен overlap обмена и вычислений → отсюда bucketing в DDP и вся эффективность распределённого обучения.</li>
+<li><strong>Градиенты имеют малый порядок величины</strong> → нужен широкий динамический диапазон → отсюда bf16, loss scaling, fp32-мастер-веса.</li>
+</ul>
+<p>Если понимать эти три связи, большинство решений в системах обучения перестают быть «магией фреймворка» и становятся выводимыми.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">10. Вопросы и ответы</div>
+<div class="sdesc">20 вопросов — от механики backprop до отладки NaN в проде</div>
+
+<div class="qah">Механика обратного прохода</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Почему в нейросетях используют reverse-mode автодифференцирование, а не forward-mode?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Forward mode за один проход даёт производную всего графа по <em>одному</em> входу. Reverse mode за один проход даёт производную <em>одного</em> выхода по всем входам.</p><p>У нейросети миллиарды параметров и один скаляр на выходе (loss). Forward mode потребовал бы миллиард проходов, reverse — один. Стоимость обратного прохода ≈ 2× прямого.</p><p>Плата — <strong>память</strong>: reverse mode обязан хранить активации из forward, потому что они нужны для вычисления локальных производных. Forward mode такой памяти не требует. Отсюда весь набор приёмов экономии памяти при обучении.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Выведи градиент по весам линейного слоя и объясни, откуда транспонирование.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Слой $z = Wa + b$, $\delta = \partial L/\partial z$.</p><p><strong>По весам:</strong> $W_{ij}$ соединяет вход $a_j$ с выходом $z_i$, влияет на loss только через $z_i$, причём $\partial z_i/\partial W_{ij} = a_j$. Значит $\partial L/\partial W_{ij} = \delta_i a_j$, что в матричной форме есть внешнее произведение $\delta a^\top$.</p><p><strong>По входу:</strong> $a_j$ влияет на <em>все</em> $z_i$, поэтому по правилу суммирования путей $\partial L/\partial a_j = \sum_i \delta_i W_{ij}$ — это $j$-я компонента $W^\top\delta$.</p><p>Транспонирование появляется потому, что <strong>мы идём по связям в обратную сторону</strong>: forward умножал строки на вход, backward умножает столбцы на градиент.</p><p><strong>Проверка:</strong> градиент всегда имеет форму самой величины. $W$ размера $(m,n)$ → $\partial L/\partial W$ тоже $(m,n)$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Почему сложение и копирование — зеркальные операции в backward?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Если в forward $y = x_1 + x_2$, то $\partial y/\partial x_1 = \partial y/\partial x_2 = 1$, поэтому градиент копируется в обе ветви без изменений.</p><p>Если в forward $x$ копируется в две ветви, то $x$ влияет на loss двумя путями, и по правилу суммирования путей градиенты складываются: $\partial L/\partial x = \delta_1 + \delta_2$.</p><p><strong>Практическое следствие:</strong> residual-связь $y = x + f(x)$ имеет якобиан $I + \partial f$. Даже если $\partial f \approx 0$, единичная матрица проводит градиент без ослабления — это и есть механизм, позволивший обучать сети из сотен слоёв.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Для обратного прохода сигмоиды нужен вход или выход?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Выход.</strong> $\sigma'(x) = \sigma(x)(1-\sigma(x)) = y(1-y)$. Если сохранить $y$, производная считается без повторного вычисления экспоненты.</p><p>То же для tanh: $\tanh'(x) = 1 - y^2$. Все фреймворки сохраняют именно выход.</p><p>Для ReLU достаточно <em>маски</em> знака — 1 бит на элемент вместо полного тензора, поэтому <code>nn.ReLU(inplace=True)</code> безопасен, а inplace для сигмоиды сломал бы backward.</p><p>У softmax особый случай: якобиан <strong>не диагональный</strong> (каждый выход зависит от всех входов), поэтому наивная поэлементная формула для него неверна.</p></div></details>
+
+<div class="qah">Autograd и цикл обучения</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Что будет, если забыть optimizer.zero_grad()?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Градиенты <strong>накапливаются</strong> (<code>+=</code>), потому что PyTorch не знает, закончил ли ты добавлять пути к параметру. Эффективно ты обучаешься на экспоненциально затухающем «эхе» всех прошлых батчей.</p><p>Ошибки не будет. Модель может даже сходиться, но хуже и невоспроизводимо.</p><p><strong>Признак:</strong> <code>grad_norm</code> монотонно растёт от шага к шагу вместо колебаний вокруг стабильного уровня.</p><p>Кстати, это же поведение используют намеренно: gradient accumulation — это осознанный пропуск <code>zero_grad()</code> на промежуточных микрошагах.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. В чём разница между detach(), no_grad() и requires_grad=False?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><code>detach()</code> — возвращает тензор с теми же данными, но без <code>grad_fn</code>. Память общая с оригиналом. Применение: stop-gradient в SimSiam/BYOL, target-сеть в RL.</p><p><code>no_grad()</code> — контекст, в котором граф вообще не строится. Экономит и память, и время. Применение: валидация, инференс.</p><p><code>requires_grad=False</code> — заморозка параметра: градиент через него <em>проходит</em> к нижележащим слоям, но в самом параметре не накапливается.</p><p><strong>Частая путаница:</strong> «заморозил backbone, а память не упала». Так и должно быть — активации нужны, чтобы провести градиент насквозь. Память падает только если обернуть замороженную часть в <code>no_grad()</code>, что возможно лишь когда под ней нет обучаемых параметров.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Почему inplace-операции ломают autograd и почему ReLU(inplace=True) — исключение?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Для обратного прохода многих операций нужны сохранённые значения. Если ты перезаписал тензор, эти значения потеряны, и backward не может посчитать производную.</p><p>PyTorch отслеживает это счётчиком версий и честно падает с ошибкой — что хорошо, потому что самые опасные баги те, что не падают. Неудобство в том, что ошибка возникает в <code>backward()</code>, а причина — в строке forward выше по коду.</p><p><strong>ReLU — исключение</strong>, потому что для его производной нужен только <em>знак</em> входа, который сохраняется после применения ReLU (положительные остались положительными, отрицательные стали нулями).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Почему total_loss += loss приводит к OOM?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><code>loss</code> — тензор с <code>grad_fn</code>, то есть ссылка на <strong>весь вычислительный граф этого батча</strong> вместе со всеми сохранёнными активациями. Складывая тензоры, ты строишь новый граф, удерживающий графы всех предыдущих батчей.</p><p>Через эпоху память кончается. <strong>Признак:</strong> потребление растёт линейно внутри эпохи и сбрасывается на её границе.</p><p>Правильно: <code>total += loss.item()</code> (или <code>loss.detach()</code>, если нужен тензор). <code>.item()</code> извлекает Python-число и разрывает связь с графом.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Когда нужен retain_graph=True и чем он опасен?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>После <code>backward()</code> PyTorch освобождает сохранённые активации — они больше не нужны и занимают гигабайты. Второй <code>backward()</code> по тому же графу падает.</p><p><strong>Легитимные случаи:</strong> обучение GAN (один forward генератора, два разных лосса), multi-task с раздельными обратными проходами, вычисление производных высших порядков.</p><p><strong>Опасность:</strong> поставленный «на всякий случай» в цикле обучения, он превращается в утечку памяти. Чаще всего когда его хочется поставить, реальное решение — переписать код так, чтобы backward был один (например, сложить лоссы перед вызовом).</p></div></details>
+
+<div class="qah">Vanishing / exploding gradients</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Объясни математически, откуда берутся vanishing и exploding gradients.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Градиент через $L$ слоёв — произведение якобианов: $\frac{\partial \mathcal{L}}{\partial h^{(0)}} = \frac{\partial \mathcal{L}}{\partial h^{(L)}}\prod_{l=1}^{L}J^{(l)}$.</p><p>Норма ограничена произведением спектральных норм: если в среднем $\sigma_{\max}(J) = c$, то норма ведёт себя как $c^L$ — <strong>экспоненциально по глубине</strong>.</p><p>$c=0.9$, $L=50$ → $0.005$: нижние слои не обучаются. $c=1.1$, $L=50$ → $117$: шаг оптимизатора выкидывает веса в область переполнения, следующий forward даёт <code>NaN</code>.</p><p>Ключевое наблюдение: коридор допустимых $c$ узкий — около 1 с точностью до процентов, и <strong>ничто не обеспечивает это автоматически</strong>. Отсюда инициализация, нормализация, residual-связи и клиппинг.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Почему сигмоида хуже ReLU с точки зрения градиентов? Посчитай.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$\sigma'(x) = \sigma(x)(1-\sigma(x))$ достигает максимума в нуле: $0.5\cdot0.5 = \mathbf{0.25}$. Это <em>лучший</em> случай; при насыщении производная стремится к нулю.</p><p>10 слоёв в лучшем случае: $0.25^{10} \approx 10^{-6}$. Реалистично при $\sigma'\approx0.1$: $10^{-10}$ — градиент неотличим от нуля.</p><p>ReLU: производная ровно 1 при $x>0$, поэтому произведение не затухает. Плата — «мёртвые» нейроны: при $x<0$ градиент точно ноль, и если нейрон ушёл в отрицательную область для всех входов, он больше никогда не обновится.</p><p>LeakyReLU и GELU решают это, сохраняя малый ненулевой градиент слева.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Почему клиппинг по норме предпочтительнее клиппинга по значению?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Клиппинг по значению обрезает каждую компоненту независимо и <strong>меняет направление</strong> вектора градиента — модель начинает двигаться не туда, куда указывает градиент.</p><p>Клиппинг по глобальной норме масштабирует весь вектор целиком: $g \leftarrow g\cdot\min(1, \tau/\|g\|_2)$. Направление сохраняется, укорачивается только длина шага.</p><p><strong>Важно:</strong> норма считается по всем параметрам сразу, а не по каждому тензору отдельно — иначе относительные величины градиентов между слоями исказятся.</p><p>Типичное $\tau=1.0$ для трансформеров. <code>clip_grad_norm_</code> возвращает норму <em>до</em> обрезки — обязательно логируй её.</p></div></details>
+
+<div class="qah">Память и checkpointing</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Посчитай память для обучения модели на 7B параметров с Adam в mixed precision.<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>На параметр: веса fp16 (2 байта) + градиенты fp16 (2) + fp32-мастер-веса (4) + первый момент Adam fp32 (4) + второй момент fp32 (4) = <strong>16 байт</strong>.</p><p>$7\times10^9 \times 16 = 112$ ГБ — только состояния, <em>до</em> активаций. Не влезает ни в одну карту.</p><p>Для сравнения инференс в fp16: $7\times10^9\times2 = 14$ ГБ — помещается свободно.</p><p><strong>Вывод:</strong> состояния оптимизатора занимают вдвое больше самой модели. Это главная причина существования ZeRO/FSDP и 8-битных оптимизаторов.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Как работает gradient checkpointing и какова его цена?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Вместо хранения всех активаций сохраняем только на границах сегментов; внутри сегмента активации <strong>пересчитываются</strong> в обратном проходе повторным forward.</p><p>При разбиении $L$ слоёв на $\sqrt L$ сегментов память по активациям падает с $O(L)$ до $O(\sqrt L)$ ценой примерно <strong>+33% времени</strong> (Chen et al., 2016): один forward сохранён, один пересчитан, плюс backward.</p><p><strong>Когда выгодно:</strong> модель иначе не влезает, либо влезает батч 4, а с checkpointing — 32. Больший батч часто окупает потерю в скорости шага за счёт лучшей утилизации GPU.</p><p><strong>Подводные камни:</strong> dropout и BatchNorm при пересчёте дадут другие значения без фиксации RNG; не оборачивай слишком мелкие блоки — накладные расходы съедят выигрыш.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Чем gradient accumulation отличается от увеличения батча?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Математически при усреднении лосса результат <strong>идентичен</strong>: градиент по батчу $N$ равен среднему градиентов по $k$ микробатчам размера $N/k$.</p><p>Разница практическая: accumulation экономит память ценой времени (N шагов вместо одного), но <strong>не даёт ускорения от параллелизма</strong>.</p><p><strong>Где идентичность нарушается:</strong> ① BatchNorm считает статистику по микробатчу, а не по эффективному батчу — это реальное отличие; ② при DDP нужно обернуть промежуточные шаги в <code>no_sync()</code>, иначе синхронизация произойдёт N раз; ③ если лосс суммируется, а не усредняется, нужно делить на число накоплений вручную.</p></div></details>
+
+<div class="qah">Численная стабильность</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Почему nn.CrossEntropyLoss принимает логиты, а не вероятности?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Две отдельные проблемы стабильности, обе решаются только при работе с логитами.</p><p>① <strong>Переполнение экспоненты.</strong> В fp32 $e^{89}$ уже превышает максимум. Логит 100 даёт $\infty$, дальше $\infty/\infty = $ <code>NaN</code>. Решение — log-sum-exp: $\log\sum e^{x_i} = m + \log\sum e^{x_i-m}$ при $m=\max x_i$.</p><p>② <strong>Логарифм нуля.</strong> Даже после стабилизации softmax маленькая вероятность становится ровно 0, и $\log 0 = -\infty$. <code>log_softmax</code> считает $\log p_i = (x_i - m) - \log\sum e^{x_j-m}$ напрямую, минуя ноль.</p><p><strong>Самая частая ошибка:</strong> поставить <code>nn.Softmax()</code> последним слоём модели <em>и</em> использовать <code>CrossEntropyLoss</code> — софтмакс применится дважды. Ошибки не будет, качество просто хуже.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Почему fp16 требует loss scaling, а bf16 — нет?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>fp16: 5 бит экспоненты, минимальное нормальное число $6\times10^{-5}$. Типичные градиенты имеют порядок $10^{-6}$–$10^{-8}$ — то есть <strong>обнуляются</strong>, а не теряют точность. Обучение останавливается молча.</p><p>Loss scaling: умножаем loss на $S\approx2^{16}$ перед backward, все градиенты по линейности умножаются на $S$ и попадают в диапазон; перед шагом делим обратно. Динамический скейлер подбирает $S$ автоматически.</p><p>bf16: 8 бит экспоненты — <strong>тот же диапазон, что у fp32</strong>, при втрое меньшей мантиссе. Underflow не происходит, loss scaling не нужен. Это главная причина перехода обучения больших моделей на bf16.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Почему clip_grad_norm_ нужно вызывать после scaler.unscale_()?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><code>GradScaler</code> умножает градиенты на $S$ перед backward. Если сделать клиппинг до <code>unscale_()</code>, ты обрежешь <em>отмасштабированные</em> градиенты по порогу 1.0.</p><p>При $S=2^{16}$ это эквивалентно клиппингу настоящих градиентов по порогу $1.5\times10^{-5}$ — то есть <strong>фактическому обнулению обучения</strong>.</p><p>Ошибки нет, метрики просто не растут, и причину обычно ищут в архитектуре или learning rate.</p><p>Правильный порядок: <code>scaler.scale(loss).backward()</code> → <code>scaler.unscale_(optimizer)</code> → <code>clip_grad_norm_</code> → <code>scaler.step()</code> → <code>scaler.update()</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Как отлаживать NaN в обучении?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>По порядку, от дешёвого к дорогому:</p><p>① <strong>Проверь входные данные</strong> — <code>NaN</code> в данных даёт <code>NaN</code> везде мгновенно; часто это пропуски, не обработанные при препроцессинге.</p><p>② <strong>Логируй <code>grad_norm</code></strong> — перед <code>NaN</code> почти всегда виден резкий рост на несколько шагов раньше.</p><p>③ <strong>Понизь lr в 10 раз</strong> — если исчез, проблема в размере шага, а не в коде.</p><p>④ <strong>Переключись на fp32</strong> — если исчез, дело в mixed precision (порядок unscale, слишком агрессивный $S$).</p><p>⑤ <strong><code>torch.autograd.set_detect_anomaly(True)</code></strong> — покажет операцию из forward, породившую <code>NaN</code> в backward. Очень медленно, только для отладки.</p><p>⑥ Проверь деления: нормализация нулевого вектора, $\log$ вероятности, $\sqrt{}$ около нуля.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Как устройство backward определяет архитектуру распределённого обучения?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Три свойства обратного прохода имеют прямые инфраструктурные последствия.</p><p><strong>① Градиенты готовы по частям, от выхода ко входу.</strong> Это позволяет <em>перекрывать</em> обмен и вычисления: DDP группирует параметры в bucket'ы по 25 МБ и запускает all-reduce для bucket'а, как только его градиенты готовы — обмен по верхним слоям идёт одновременно с вычислением нижних. Отсюда же: <code>find_unused_parameters=True</code> резко замедляет обучение, потому что заставляет ждать полного обхода графа.</p><p><strong>② Нужны активации из forward.</strong> Память растёт с батчем и длиной — отсюда микробатчи, checkpointing, ограничения контекста при обучении.</p><p><strong>③ Градиенты малы по величине.</strong> Нужен широкий динамический диапазон — отсюда bf16, loss scaling, fp32-мастер-веса.</p><p>И общий вывод для System Design: <strong>инфраструктура обучения и инфраструктура инференса никогда не совпадают</strong> — разная память, разный профиль нагрузки, разная точность, разный тип параллелизма.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block7_quiz.html" class="btn prev">← Блок 7: Тест</a>
+  <a href="block8_02_optimizers.html" class="btn">Оптимизаторы →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Vanishing/exploding по слоям ---
+(function(){
+  const xs=[]; for(let i=0;i<=60;i+=2) xs.push(i);
+  const f=c=>xs.map(l=>Math.pow(c,l));
+  new Chart(document.getElementById('c_vanish'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'c = 0.80 — быстрое затухание',data:f(0.80),borderColor:'#dc2626',pointRadius:0,borderWidth:2.5,tension:.2},
+      {label:'c = 0.95 — медленное затухание',data:f(0.95),borderColor:'#d97706',pointRadius:0,borderWidth:2.5,tension:.2},
+      {label:'c = 1.00 — идеал (residual)',data:f(1.00),borderColor:'#16a34a',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'c = 1.05 — взрыв',data:f(1.05),borderColor:'#0891b2',pointRadius:0,borderWidth:2.5,tension:.2},
+      {label:'c = 1.15 — быстрый взрыв',data:f(1.15),borderColor:'#7c3aed',pointRadius:0,borderWidth:2.5,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'номер слоя (от выхода вглубь)'}},
+              y:{type:'logarithmic',title:{display:true,text:'относительная норма градиента'},min:1e-8,max:1e8}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(' —')[0]+': '+c.parsed.y.toExponential(2)}}}}
+  });
+})();
+
+// --- Память при обучении 7B ---
+new Chart(document.getElementById('c_mem'), {
+  type:'bar',
+  data:{labels:['Веса fp16','Градиенты fp16','Мастер-веса fp32','Adam m (fp32)','Adam v (fp32)','Активации'],
+    datasets:[{label:'ГБ',data:[14,14,28,28,28,22],
+      backgroundColor:['#0891b2','#22d3ee','#7c3aed','#a78bfa','#c4b5fd','#d97706'],borderRadius:6}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'ГБ памяти'},max:34}},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{afterLabel:c=>c.dataIndex<5?'Состояния: всего 112 ГБ':'Зависит от батча и длины'}}}}
+});
+
+// --- Интерактив: vanishing ---
+function updVan(){
+  const c = +document.getElementById('sl_c').value / 100;
+  const L = +document.getElementById('sl_L').value;
+  document.getElementById('out_c').textContent = c.toFixed(2);
+  document.getElementById('out_L').textContent = L;
+  const g = Math.pow(c, L);
+  let verdict, color;
+  if (g < 1e-6){ verdict = '🚨 Градиент исчез — нижние слои не обучаются вообще.'; }
+  else if (g < 1e-2){ verdict = '⚠️ Сильное затухание — нижние слои учатся в сотни раз медленнее.'; }
+  else if (g < 1e2){ verdict = '✅ Здоровый диапазон — сигнал доходит до всех слоёв.'; }
+  else if (g < 1e6){ verdict = '⚠️ Градиент растёт — нужен клиппинг, иначе шаг выкинет веса.'; }
+  else { verdict = '🚨 Взрыв градиента — следующий forward почти наверняка даст NaN.'; }
+  const need = Math.pow(1/c, 1);
+  document.getElementById('out_van').innerHTML =
+    'Множитель градиента на первом слое: <strong>c<sup>L</sup> = ' + c.toFixed(2) + '<sup>' + L + '</sup> = ' +
+    (g < 1e-4 || g > 1e4 ? g.toExponential(2) : g.toFixed(4)) + '</strong>' +
+    '<br>' + verdict +
+    '<br><em style="color:#0e7490">Чтобы удержаться в диапазоне ±100× на ' + L + ' слоях, c должно лежать примерно в [' +
+    Math.pow(0.01, 1/L).toFixed(3) + ', ' + Math.pow(100, 1/L).toFixed(3) + '] — вот насколько узкий коридор.</em>';
+}
+updVan();
+</script>
+</body>
+</html>

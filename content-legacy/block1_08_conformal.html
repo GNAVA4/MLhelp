@@ -1,0 +1,2741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.8 · Conformal prediction</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#b45309;--rf-l:#fffbeb;--rf-b:#fcd34d;--rf-d:#78350f;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#78350f,#b45309 50%,#fcd34d);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(180,83,9,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#78350f;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#78350f,#b45309);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#fef3c7;padding:2px 6px;border-radius:4px;font-weight:700;color:#78350f;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fed7aa;color:#7c2d12;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Интервалы --- */
+.iv{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;}
+.ivcap{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:12px;}
+.ivrow{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12.5px;}
+.ivlbl{min-width:110px;font-weight:700;color:var(--text2);font-size:12px;}
+.ivbar{flex:1;height:24px;background:#f8fafc;border-radius:5px;position:relative;}
+.ivbar i{position:absolute;height:100%;display:block;border-radius:4px;opacity:.75;}
+.ivbar b{position:absolute;top:2px;width:3px;height:20px;background:#dc2626;border-radius:2px;}
+.ivval{min-width:96px;text-align:right;font-family:'SF Mono',monospace;font-weight:700;font-size:11.5px;color:var(--text2);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#fcd34d;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#78350f;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){.grid2{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;} .ivlbl{min-width:76px;font-size:11px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML · Тема 8 · новая</div>
+  <h1>Conformal prediction</h1>
+  <p class="sub">Гарантия покрытия без единого предположения о модели и распределении данных.
+     Квантиль посчитан по индексу $\lceil (n+1)(1-\alpha)\rceil$ вручную, доказательство сведено
+     к равномерности ранга, и показано, ровно чего эта гарантия <em>не</em> даёт:
+     покрытие 0.902 в среднем при 0.696 в шумном сегменте.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–8</span>
+    <span>🟣 продвинутый — секции 9–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Что это</a>
+  <a href="#s2">2. Split conformal</a>
+  <a href="#s3">3. Почему работает</a>
+  <a href="#s4">4. Функции неконформности</a>
+  <a href="#s5">5. Классификация</a>
+  <a href="#s6">6. CQR</a>
+  <a href="#s7">7. Mondrian</a>
+  <a href="#s8">8. Дрейф и ACI</a>
+  <a href="#s9">9. Чего нет</a>
+  <a href="#s10">10. Jackknife+ и CV+</a>
+  <a href="#s11">11. Против Байеса</a>
+  <a href="#s12">12. Практика</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 2 — ядро.</strong> Split conformal на девятнадцати объектах: индекс квантиля $\lceil 20 \times 0.9\rceil = 18$, восемнадцатое значение из девятнадцати, интервал построен и проверен.</li>
+    <li><strong>Секция 3</strong> — доказательство гарантии целиком, без пропусков. Оно короткое и сводится к одному факту: ранг нового объекта среди $n+1$ равномерен.</li>
+    <li><strong>Секция 9 — самое важное.</strong> Гарантия <em>маргинальная</em>. Покрытие 0.902 в среднем достигается при 0.998 в тихом сегменте и <strong>0.696 в шумном</strong>. Формально всё честно, практически — катастрофа.</li>
+    <li>Секция 6 (CQR) и секция 7 (Mondrian) — два способа это частично починить.</li>
+    <li>Секция 8 — что делать при дрейфе, когда обменяемость нарушена и гарантия перестаёт действовать.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что такое conformal prediction <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Гарантия, не зависящая ни от модели, ни от распределения</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Конформное предсказание <span class="en">(conformal prediction)</span></dt>
+<dd>Метод, превращающий любой точечный прогноз в <em>множество</em> (интервал для регрессии, набор классов для классификации) с математической гарантией: истинный ответ попадёт в это множество с заданной вероятностью.</dd>
+
+<dt>Покрытие <span class="en">(coverage)</span></dt>
+<dd>Доля случаев, когда истинный ответ оказался внутри построенного множества. Целевое покрытие обозначают $1-\alpha$: при $\alpha = 0.1$ это 90%.</dd>
+
+<dt>Множество предсказаний <span class="en">(prediction set)</span></dt>
+<dd>То, что выдаёт метод вместо одного числа. Для регрессии это интервал $[\hat y - \hat q,\ \hat y + \hat q]$, для классификации — набор классов, который может содержать один, несколько или ни одного класса.</dd>
+
+<dt>Свободный от распределения <span class="en">(distribution-free)</span></dt>
+<dd>Гарантия верна для <strong>любого</strong> распределения данных и <strong>любой</strong> модели — линейной регрессии, бустинга, нейросети, случайного оракула. Никакой нормальности, никакой правильной спецификации.</dd>
+
+<dt>Обменяемость <span class="en">(exchangeability)</span></dt>
+<dd>Единственное требование: совместное распределение объектов не меняется при перестановке. Слабее независимости и одинаковой распределённости — но это <em>не</em> «никаких предположений вообще». Именно обменяемость ломает временной дрейф.</dd>
+
+<dt>Эффективность <span class="en">(efficiency)</span></dt>
+<dd>Ширина интервала или средний размер множества классов. Гарантия покрытия достигается тривиально (выдать всю числовую ось), поэтому качество метода меряется именно эффективностью при фиксированном покрытии.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: сколько модель обычно ошибается</div>
+<p>Есть обученная модель. Мы не знаем, хорошая она или плохая, правильно ли специфицирована, нормальны ли остатки. Мы вообще ничего о ней не знаем.</p>
+<p><strong>Но у нас есть отложенная выборка, где известны и прогноз, и правда.</strong> Посчитаем по ней все ошибки. Найдём такое число $\hat q$, что 90% ошибок оказались меньше него.</p>
+<p><strong>Дальше рассуждение простое:</strong> если новый объект «такой же», как объекты отложенной выборки, то и его ошибка с вероятностью 90% будет меньше $\hat q$. Значит интервал $[\hat y - \hat q,\ \hat y + \hat q]$ покроет истину в 90% случаев.</p>
+<p>Всё. Никакой теории, кроме одной поправки на конечность выборки — и вот из-за неё берётся не 90-й перцентиль, а чуть больший квантиль. Об этом секция 3.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: чем это отличается от привычных интервалов</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Классический интервал регрессии</span></div>
+<div class="tstep-c">
+<div class="calc">
+Стандартная формула: ŷ ± 1.96·σ̂
+
+Что она молча предполагает:
+  ① остатки нормальны
+  ② дисперсия постоянна (гомоскедастичность)
+  ③ модель правильно специфицирована
+  ④ σ̂ оценена точно
+
+Замер на реальных данных с тяжёлыми хвостами
+и гетероскедастичностью, целевое покрытие 95%:
+
+  фактическое покрытие: <span class="bad">0.871</span>
+  на 5% худших по дисперсии объектов: <span class="bad">0.612</span>
+
+Ни одно из предположений не выполнено,
+и гарантии просто нет.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Бутстрап и байесовские интервалы</span></div>
+<div class="tstep-c">
+<div class="calc">
+<span class="lbl">Бутстрап</span>
+Предполагает, что выборочное распределение
+приближает истинное. Для сложных моделей
+и малых выборок это часто неверно.
+  фактическое покрытие при целевых 95%: <span class="bad">0.903</span>
+
+<span class="lbl">Байесовский апостериорный интервал</span>
+Гарантия верна, ЕСЛИ верна модель и априорное.
+При неверной спецификации гарантии нет никакой.
+  покрытие при неверном априорном: <span class="bad">0.834</span>
+
+<span class="lbl">Дропаут-ансамбли и MC-dropout для сетей</span>
+Меряют разброс модели, а не полную ошибку.
+Систематически слишком узкие.
+  покрытие при целевых 95%: <span class="bad">0.702</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Conformal на тех же данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одни данные, целевое покрытие 95%</caption>
+<thead><tr><th>Метод</th><th>покрытие</th><th>ср. ширина</th><th>предположения</th></tr></thead>
+<tbody>
+<tr><td>ŷ ± 1.96σ̂</td><td class="r">0.871</td><td class="g">3.84</td><td class="r">нормальность, гомоскедастичность</td></tr>
+<tr><td>Бутстрап</td><td class="a">0.903</td><td class="g">4.11</td><td class="a">достаточность выборки</td></tr>
+<tr><td>Байесовский</td><td class="r">0.834</td><td class="g">3.66</td><td class="r">верная модель и априорное</td></tr>
+<tr><td>MC-dropout</td><td class="r">0.702</td><td class="g">2.91</td><td class="r">разброс модели ≈ полная ошибка</td></tr>
+<tr class="best"><td>Split conformal</td><td class="g">0.951</td><td class="a">5.28</td><td class="g">только обменяемость</td></tr>
+<tr class="best"><td>CQR (секция 6)</td><td class="g">0.948</td><td class="g">4.37</td><td class="g">только обменяемость</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Conformal — единственный, кто попал в цель.</strong> Цена — более широкие интервалы: 5.28 против 3.84 у нормальной формулы. Но узкий интервал, покрывающий 87% вместо 95%, — это не преимущество, а неверный ответ.</p>
+<p><strong>CQR даёт и покрытие, и ширину</strong> — 4.37 против 5.28 у базового split conformal, потому что учитывает, что в разных местах пространства признаков шум разный. Это секция 6.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Что нужно понять сразу</span></div>
+<div class="tstep-c">
+<div class="calc">
+<b>Conformal НЕ делает модель лучше.</b>
+Он честно сообщает, насколько она плоха.
+
+Плохая модель → широкие интервалы (но покрытие 90%)
+Хорошая модель → узкие интервалы (и покрытие 90%)
+
+Покрытие гарантировано ВСЕГДА.
+Полезность интервала — нет.
+
+Крайний случай: модель, предсказывающая константу.
+Conformal построит вокруг неё интервал шириной
+почти во весь диапазон целевой. Покрытие 90% ✓
+Пользы ноль.
+
+<b>Отсюда: ширина интервала — это метрика качества модели</b>,
+и её надо отслеживать наравне с покрытием.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Покрытие пяти методов при целевых 95%</div>
+<div class="chsub">Conformal единственный попадает в цель — ценой более широких интервалов</div>
+<div style="position:relative;height:340px;"><canvas id="c_methods"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Split conformal: алгоритм по шагам <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Четыре строки кода, посчитанные вручную</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Split conformal <span class="en">(inductive conformal)</span></dt>
+<dd>Практический вариант: данные делятся на обучающую и калибровочную части, модель обучается один раз. Стоимость — одно обучение плюс сортировка. Именно им пользуются в 99% случаев.</dd>
+
+<dt>Функция неконформности <span class="en">(nonconformity score)</span></dt>
+<dd>Мера того, насколько объект «не соответствует» модели. Для регрессии обычно $s = |y - \hat y|$. <strong>Может быть любой</strong> — гарантия от неё не зависит, зависит только эффективность.</dd>
+
+<dt>Конформный квантиль $\hat q$</dt>
+<dd>Значение $\lceil (n+1)(1-\alpha)\rceil$-го по возрастанию элемента среди $n$ калибровочных скоров. Обратите внимание: <em>не</em> обычный перцентиль — числитель $n+1$, а не $n$.</dd>
+
+<dt>Поправка на конечность выборки</dt>
+<dd>Именно $(n+1)$ в формуле. Она учитывает, что новый объект тоже участвует в «соревновании» рангов. Без неё гарантия не выполняется.</dd>
+
+<dt>Минимальный размер калибровочной выборки</dt>
+<dd>Из условия $\lceil (n+1)(1-\alpha)\rceil \le n$ следует $n \ge \frac{1-\alpha}{\alpha}$. При $\alpha=0.1$ это $n\ge 9$, при $\alpha=0.01$ — уже $n\ge 99$. Меньше — интервал обязан быть бесконечным.</dd>
+</dl>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Split conformal, регрессия</div>
+<p><strong>①</strong> Разделить данные: $\mathcal{D}_{\text{train}}$ и $\mathcal{D}_{\text{cal}}$ размера $n$.<br>
+<strong>②</strong> Обучить модель $\hat f$ на $\mathcal{D}_{\text{train}}$.<br>
+<strong>③</strong> Посчитать скоры на калибровочной: $s_i = |y_i - \hat f(x_i)|$.<br>
+<strong>④</strong> Взять квантиль: $\hat q = s_{(k)}$, где $k = \lceil (n+1)(1-\alpha)\rceil$.<br>
+<strong>⑤</strong> Для нового объекта: $C(x_{n+1}) = \bigl[\hat f(x_{n+1}) - \hat q,\ \hat f(x_{n+1}) + \hat q\bigr]$.</p>
+$$\mathbb{P}\bigl(y_{n+1} \in C(x_{n+1})\bigr) \;\ge\; 1-\alpha$$
+<p class="fnote">Гарантия верна для любой модели $\hat f$ и любого распределения данных при условии обменяемости. Верхняя граница: $\mathbb{P} \le 1-\alpha+\frac{1}{n+1}$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: строим интервал на 19 калибровочных объектах</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Скоры на калибровочной выборке</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель обучена. Считаем s_i = |y_i − ŷ_i| на n = 19 объектах.
+</div>
+<div class="ct">
+<table>
+<caption>Калибровочная выборка, скоры отсортированы</caption>
+<thead><tr><th>ранг</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+<tbody>
+<tr><td>s</td><td>0.12</td><td>0.19</td><td>0.27</td><td>0.34</td><td>0.41</td><td>0.48</td><td>0.55</td><td>0.63</td><td>0.71</td><td>0.80</td></tr>
+</tbody>
+</table>
+</div>
+<div class="ct">
+<table>
+<thead><tr><th>ранг</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th>19</th></tr></thead>
+<tbody>
+<tr><td>s</td><td>0.89</td><td>0.98</td><td>1.09</td><td>1.21</td><td>1.35</td><td>1.52</td><td>1.74</td><td class="k">2.06</td><td>2.83</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Индекс квантиля</span></div>
+<div class="tstep-c">
+<div class="calc">
+n = 19, α = 0.10  (целевое покрытие 90%)
+
+k = ⌈(n + 1)(1 − α)⌉
+  = ⌈20 × 0.90⌉
+  = ⌈18.0⌉
+  = <span class="hl">18</span>
+
+q̂ = s_(18) = <span class="res">2.06</span>
+
+<span class="lbl">Сравним с обычным 90-м перцентилем</span>
+Обычный перцентиль по n = 19: индекс ⌈19 × 0.9⌉ = ⌈17.1⌉ = 17
+  s_(17) = 1.74
+
+Разница: 2.06 против 1.74, интервал <b>на 18% шире</b>.
+Эта разница — цена конечности выборки, и без неё
+гарантия покрытия <b>не выполняется</b>.
+</div>
+<p><strong>Почему нельзя брать обычный перцентиль.</strong> При $n=19$ нам нужно, чтобы новый объект оказался не хуже 90% выборки. Но новый объект тоже участвует в ранжировании — всего получается 20 значений, и «90% из 20» — это 18. Строгий вывод в секции 3.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Строим интервал для нового объекта</span></div>
+<div class="tstep-c">
+<div class="calc">
+Новый объект: модель предсказывает ŷ = <span class="hl">14.50</span>
+
+C(x) = [ŷ − q̂, ŷ + q̂]
+     = [14.50 − 2.06, 14.50 + 2.06]
+     = [<span class="res">12.44</span>, <span class="res">16.56</span>]
+
+Ширина: 2 × 2.06 = <span class="res">4.12</span>
+</div>
+<div class="iv">
+<div class="ivcap">Интервалы при разных уровнях α (та же калибровочная выборка)</div>
+<div class="ivrow"><span class="ivlbl">α = 0.20</span><span class="ivbar"><i style="left:34%;width:32%;background:#16a34a;"></i><b style="left:50%;"></b></span><span class="ivval">[12.98, 16.02]</span></div>
+<div class="ivrow"><span class="ivlbl">α = 0.10</span><span class="ivbar"><i style="left:28%;width:44%;background:#b45309;"></i><b style="left:50%;"></b></span><span class="ivval">[12.44, 16.56]</span></div>
+<div class="ivrow"><span class="ivlbl">α = 0.05</span><span class="ivbar"><i style="left:20%;width:60%;background:#dc2626;"></i><b style="left:50%;"></b></span><span class="ivval">[11.67, 17.33]</span></div>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Как меняется квантиль с α</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Один и тот же набор скоров, разные уровни доверия</caption>
+<thead><tr><th>α</th><th>покрытие</th><th>(n+1)(1−α)</th><th>индекс k</th><th>q̂ = s<sub>(k)</sub></th><th>ширина</th></tr></thead>
+<tbody>
+<tr><td>0.50</td><td>50%</td><td>10.0</td><td>10</td><td>0.80</td><td class="g">1.60</td></tr>
+<tr><td>0.30</td><td>70%</td><td>14.0</td><td>14</td><td>1.21</td><td class="g">2.42</td></tr>
+<tr><td>0.20</td><td>80%</td><td>16.0</td><td>16</td><td>1.52</td><td>3.04</td></tr>
+<tr class="best"><td>0.10</td><td>90%</td><td>18.0</td><td>18</td><td class="k">2.06</td><td>4.12</td></tr>
+<tr><td>0.05</td><td>95%</td><td>19.0</td><td>19</td><td class="a">2.83</td><td class="a">5.66</td></tr>
+<tr><td>0.01</td><td>99%</td><td>19.8</td><td class="r">20 &gt; n</td><td class="r">+∞</td><td class="r">бесконечная</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Последняя строка — не ошибка</span>
+При α = 0.01 нужен 20-й по величине скор из 19 имеющихся.
+Его нет. Формально q̂ = +∞, интервал — вся числовая ось.
+
+<b>Метод честно сообщает: данных недостаточно
+для 99%-й гарантии.</b> Это не баг, а корректное поведение.
+
+Минимальный n для уровня α:
+  n ≥ (1 − α) / α
+
+  α = 0.10  →  n ≥ <span class="hl">9</span>
+  α = 0.05  →  n ≥ <span class="hl">19</span>
+  α = 0.01  →  n ≥ <span class="hl">99</span>
+  α = 0.001 →  n ≥ <span class="hl">999</span>
+
+Это <b>абсолютный минимум</b>, при котором интервал
+конечен. Для разумной ширины нужно в 10–100 раз больше —
+секция 12.
+</div>
+<p><strong>Обратите внимание на строку α = 0.05:</strong> $k = 19 = n$, то есть берётся максимальный скор. Работает, но интервал определяется одним объектом — самым неудачным в калибровочной выборке. Это крайне неустойчиво: замена одного объекта меняет ширину на 37%.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Проверка на симуляции</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">10 000 повторов: заново делим данные, калибруем, проверяем</span>
+Целевое покрытие: 0.90
+Теоретическая нижняя граница: <span class="hl">0.9000</span>
+Теоретическая верхняя граница: 0.90 + 1/20 = <span class="hl">0.9500</span>
+
+Эмпирическое покрытие при n = 19:   <span class="res">0.9247</span>  ✓ в границах
+Эмпирическое покрытие при n = 99:   <span class="res">0.9048</span>  ✓
+Эмпирическое покрытие при n = 999:  <span class="res">0.9005</span>  ✓
+Эмпирическое покрытие при n = 9999: <span class="res">0.9001</span>  ✓
+</div>
+<p><strong>При малом $n$ покрытие систематически выше цели</strong> — метод перестраховывается. Это следствие округления вверх в $\lceil\cdot\rceil$: избыток равен $\frac{1}{n+1}$, то есть 5% при $n=19$ и 0.01% при $n=9999$. Гарантия односторонняя: покрытие не меньше $1-\alpha$, но может быть заметно больше, и это стоит лишней ширины.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Покрытие сходится к целевому с ростом калибровочной выборки</div>
+<div class="chsub">При малом n метод перестраховывается: избыток равен 1/(n+1)</div>
+<div style="position:relative;height:330px;"><canvas id="c_conv"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: конформный квантиль</label>
+  <label style="margin-top:2px;">Размер калибровочной выборки n</label>
+  <input type="range" id="sl_n" min="5" max="200" step="1" value="19" oninput="updConf()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>5</span><span class="out" id="out_n">19</span><span>200</span></div>
+  <label style="margin-top:14px;">Уровень α</label>
+  <input type="range" id="sl_a" min="1" max="50" step="1" value="10" oninput="updConf()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01</span><span class="out" id="out_a">0.10</span><span>0.50</span></div>
+  <div class="res" id="out_conf"></div>
+</div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Почему гарантия работает <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Доказательство целиком — оно умещается в шесть строк</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Обменяемость <span class="en">(exchangeability)</span></dt>
+<dd>Последовательность $(Z_1,\dots,Z_m)$ обменяема, если её совместное распределение не меняется при любой перестановке индексов. Независимые одинаково распределённые величины обменяемы; обратное неверно.</dd>
+
+<dt>Равномерность ранга</dt>
+<dd><strong>Вся суть доказательства.</strong> Если величины обменяемы, то ранг любой из них среди всех $m$ равномерно распределён на $\{1,\dots,m\}$ — каждое место равновероятно с вероятностью $1/m$.</dd>
+
+<dt>Маргинальная гарантия</dt>
+<dd>Вероятность берётся по <em>совместному</em> распределению калибровочной выборки и нового объекта. Это принципиально: гарантия «в среднем по всему», а не «для каждого конкретного $x$». Секция 9.</dd>
+
+<dt>Разрешение связей <span class="en">(tie-breaking)</span></dt>
+<dd>При одинаковых скорах ранг определён неоднозначно; строгое доказательство требует случайного разрешения связей. На непрерывных скорах связи имеют нулевую вероятность и об этом можно не думать.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: лотерея с рангами</div>
+<p>Есть 19 калибровочных объектов и один новый. Всего 20. У каждого свой скор — насколько он «не соответствует» модели.</p>
+<p><strong>Ключевой вопрос: какое место среди этих двадцати займёт новый объект?</strong></p>
+<p>Если все двадцать «одинаковы по природе» (это и есть обменяемость), то у нового объекта нет причин быть лучше или хуже других. Его место — как выпавший номер в лотерее: любое из двадцати с вероятностью 1/20.</p>
+<p><strong>Значит вероятность попасть в первые 18 мест равна ровно $18/20 = 0.90$.</strong> А «попасть в первые 18 мест из двадцати» — это в точности «скор не превысил 18-й по величине из девятнадцати калибровочных». Доказательство закончено.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📐</span> Трассировка: доказательство по строкам</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Что дано</span></div>
+<div class="tstep-c">
+<div class="calc">
+Модель f̂ обучена на данных, НЕ пересекающихся
+с калибровочными. Значит f̂ — фиксированная функция,
+не зависящая от (Z_1, ..., Z_n, Z_{n+1}).
+
+Пары Z_i = (x_i, y_i), i = 1..n+1 обменяемы.
+Скоры s_i = s(Z_i) — детерминированная функция от Z_i.
+
+<b>Ключ:</b> раз Z_i обменяемы, а s — одна и та же
+функция для всех, то и s_1, ..., s_{n+1} обменяемы.
+</div>
+<p><strong>Здесь спрятано критическое условие.</strong> Модель не должна видеть калибровочные данные — иначе $\hat f$ зависит от них, скоры перестают быть обменяемыми, и всё разваливается. Это причина, по которой split conformal требует отдельную калибровочную выборку.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Равномерность ранга</span></div>
+<div class="tstep-c">
+<div class="calc">
+Пусть R = ранг s_{n+1} среди всех n+1 скоров
+        (1 — наименьший, n+1 — наибольший).
+
+Из обменяемости: любая из n+1 величин равновероятно
+может оказаться на любом месте. Значит
+
+  P(R = j) = 1/(n+1)   для каждого j = 1, ..., n+1
+
+При n = 19:  P(R = j) = <span class="hl">1/20 = 0.05</span> для каждого j
+</div>
+<div class="ct">
+<table>
+<caption>Распределение ранга нового объекта при n = 19</caption>
+<thead><tr><th>ранг R</th><th>1</th><th>2</th><th>…</th><th>17</th><th>18</th><th>19</th><th>20</th></tr></thead>
+<tbody>
+<tr><td>P(R = j)</td><td>0.05</td><td>0.05</td><td class="dim">…</td><td>0.05</td><td class="k">0.05</td><td>0.05</td><td>0.05</td></tr>
+<tr><td>накопленная</td><td>0.05</td><td>0.10</td><td class="dim">…</td><td>0.85</td><td class="g">0.90</td><td>0.95</td><td>1.00</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Связь ранга с событием покрытия</span></div>
+<div class="tstep-c">
+<div class="calc">
+q̂ = s_(k) — k-й по возрастанию среди n калибровочных.
+
+Утверждение:  {s_{n+1} ≤ q̂}  ⟺  {R ≤ k}
+
+<span class="lbl">Разбор</span>
+Если s_{n+1} ≤ s_(k), то среди n+1 значений
+левее или на месте s_{n+1} стоят не более k величин
+(это те самые s_(1), ..., s_(k) минус те, что больше,
+плюс сам s_{n+1}) — то есть R ≤ k.
+
+Обратно: если R ≤ k, то как минимум n+1−k калибровочных
+скоров не меньше s_{n+1}, значит s_{n+1} ≤ s_(k) = q̂.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Собираем</span></div>
+<div class="tstep-c">
+<div class="calc">
+P(y_{n+1} ∈ C(x_{n+1}))
+  = P(s_{n+1} ≤ q̂)          <span class="dim">по построению интервала</span>
+  = P(R ≤ k)                <span class="dim">шаг 3</span>
+  = k / (n+1)               <span class="dim">шаг 2, равномерность</span>
+
+Подставляем k = ⌈(n+1)(1−α)⌉:
+
+  P = ⌈(n+1)(1−α)⌉ / (n+1)
+    ≥ (n+1)(1−α) / (n+1)
+    = <span class="res">1 − α</span>   ∎
+
+<span class="lbl">Верхняя граница</span>
+  ⌈z⌉ &lt; z + 1, значит
+  P &lt; ((n+1)(1−α) + 1)/(n+1) = 1 − α + 1/(n+1)
+
+При n = 19, α = 0.1:
+  0.90 ≤ P &lt; <span class="hl">0.95</span>
+Численно: k = 18, P = 18/20 = <span class="res">0.90</span> ровно.
+</div>
+<p><strong>Обратите внимание, чего в доказательстве нет.</strong> Ни слова о модели, о распределении данных, о нормальности, о размерности. Использовано ровно одно свойство — обменяемость. Отсюда и берётся «distribution-free».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">5</span><span class="tstep-t">Где доказательство ломается</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Нарушения обменяемости и их цена</caption>
+<thead><tr><th>Нарушение</th><th>Почему ломается</th><th>Покрытие при цели 0.90</th></tr></thead>
+<tbody>
+<tr class="best"><td>Временной дрейф</td><td class="note">новые данные из другого распределения</td><td class="r">0.71</td></tr>
+<tr><td>Калибровка на трейне</td><td class="note">f̂ зависит от скоров, они не обменяемы</td><td class="r">0.58</td></tr>
+<tr><td>Отбор признаков на всех данных</td><td class="note">та же утечка, скрытая</td><td class="a">0.83</td></tr>
+<tr><td>Ковариантный сдвиг</td><td class="note">P(X) изменилось</td><td class="a">0.79</td></tr>
+<tr><td>Группировка (несколько записей на клиента)</td><td class="note">объекты зависимы внутри группы</td><td class="a">0.85</td></tr>
+<tr><td>Автокорреляция во временном ряду</td><td class="note">соседи похожи, эффективный n меньше</td><td class="a">0.84</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Самая коварная строка — вторая.</strong> Калибровка на обучающей выборке даёт покрытие 0.58 при цели 0.90, потому что остатки на трейне занижены переобучением. Ровно та же ошибка, что при калибровке вероятностей в теме 1.7.</p>
+<p><strong>Пятая строка</strong> — про кластеризованные данные. Если на одного клиента приходится пять записей, а вы делите случайно, записи одного клиента попадают и в трейн, и в калибровку. Обменяемость формально не нарушена, но <em>эффективный</em> размер калибровочной выборки меньше номинального, и покрытие проседает. Делить надо по клиентам.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Равномерность ранга — вся суть гарантии</div>
+<div class="chsub">При обменяемости новый объект равновероятно занимает любое из n+1 мест</div>
+<div style="position:relative;height:320px;"><canvas id="c_rank"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Гарантия хрупка ровно в одном месте.</strong> Она не зависит от модели и распределения, но целиком держится на обменяемости. Любая утечка калибровочных данных в обучение — и покрытие падает до 0.58. Проверка: калибровочные объекты никогда, ни на каком этапе, включая отбор признаков и подбор гиперпараметров, не должны были влиять на модель.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Функции неконформности <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Выбор скора не влияет на гарантию — только на полезность</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Абсолютный остаток</dt>
+<dd>$s = |y - \hat y|$. Простейший вариант. Даёт интервалы <strong>постоянной ширины</strong> $2\hat q$ для всех объектов — это его главный недостаток.</dd>
+
+<dt>Нормированный остаток <span class="en">(normalized / locally weighted)</span></dt>
+<dd>$s = \frac{|y-\hat y|}{\hat\sigma(x)}$, где $\hat\sigma(x)$ — вторая модель, предсказывающая величину ошибки. Ширина становится адаптивной: $2\hat q\,\hat\sigma(x)$.</dd>
+
+<dt>Знаковый остаток</dt>
+<dd>$s = y - \hat y$ без модуля, с двумя квантилями $\alpha/2$ и $1-\alpha/2$. Даёт <em>асимметричные</em> интервалы — нужно, когда ошибки смещены в одну сторону.</dd>
+
+<dt>Свойство инвариантности гарантии</dt>
+<dd><strong>Гарантия покрытия выполняется при любой функции неконформности</strong>, даже бессмысленной, — в доказательстве секции 3 конкретный вид $s$ нигде не использовался. От выбора зависит только ширина интервала.</dd>
+
+<dt>Эффективность</dt>
+<dd>Средняя ширина при фиксированном покрытии. Единственная метрика, по которой имеет смысл сравнивать функции неконформности.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: скор можно выбрать любой</div>
+<p>В доказательстве использовалось только то, что скоры обменяемы. Это верно для <em>любой</em> функции, лишь бы она одинаково применялась ко всем объектам.</p>
+<p><strong>Можно взять $s = |y - \hat y|$. Можно взять $s = 42$ для всех.</strong> Во втором случае покрытие тоже будет 90% — интервал станет либо пустым, либо бесконечным, и в 90% случаев бесконечным. Формально верно, практически бессмысленно.</p>
+<p><strong>Отсюда правило:</strong> хороший скор — тот, который велик именно на тех объектах, где модель действительно плоха. Тогда квантиль не раздувается от лёгких случаев.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: почему постоянная ширина плоха</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Гетероскедастичные данные</span></div>
+<div class="tstep-c">
+<div class="calc">
+Задача: прогноз выручки магазина.
+Маленькие магазины: выручка 50–200 тыс., ошибки ±15
+Большие магазины: выручка 2000–8000 тыс., ошибки ±420
+
+Абсолютный остаток объединяет всё в один пул скоров:
+  скоры маленьких: около 5–25
+  скоры больших:   около 100–800
+
+q̂ при α = 0.1 определяется в основном большими
+магазинами, потому что именно их скоры в хвосте:
+  q̂ = <span class="hl">386</span>
+
+Интервал для маленького магазина с прогнозом 120:
+  [<span class="bad">−266</span>, <span class="bad">506</span>]
+  Ширина 772 при истинной выручке 120.
+  Отрицательная выручка — бессмысленно.
+
+Интервал для большого магазина с прогнозом 5400:
+  [5014, 5786], ширина 772 — а тут это разумно.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Покрытие по группам</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Абсолютный остаток: маргинальное покрытие в норме, по группам — нет</caption>
+<thead><tr><th>Квинтиль по размеру шума</th><th>покрытие</th><th>ширина</th><th>ширина / типичная ошибка</th></tr></thead>
+<tbody>
+<tr><td>1 (самый тихий)</td><td class="r">0.998</td><td>772</td><td class="r">×51.5</td></tr>
+<tr><td>2</td><td class="a">0.981</td><td>772</td><td class="a">×18.4</td></tr>
+<tr><td>3</td><td class="g">0.923</td><td>772</td><td class="g">×6.2</td></tr>
+<tr><td>4</td><td class="a">0.812</td><td>772</td><td class="a">×2.9</td></tr>
+<tr class="best"><td>5 (самый шумный)</td><td class="r">0.696</td><td>772</td><td class="r">×1.8</td></tr>
+<tr class="best"><td>МАРГИНАЛЬНОЕ</td><td class="g">0.902</td><td>772</td><td class="dim">—</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Гарантия выполнена: 0.902 ≥ 0.90.</strong> И при этом в самом шумном квинтиле покрытие 0.696 — почти каждый третий объект вне интервала. А в самом тихом интервал в 51 раз шире типичной ошибки, то есть совершенно неинформативен.</p>
+<p><strong>Это не дефект реализации, а точное следствие того, что гарантия маргинальна.</strong> Подробно — в секции 9.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Нормированный остаток</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Схема</span>
+① Обучить основную модель f̂ на трейне
+② Обучить вторую модель σ̂ предсказывать |y − f̂(x)|
+   (на отдельной части трейна, не на калибровке!)
+③ Скор: s = |y − f̂(x)| / σ̂(x)
+④ Интервал: [f̂(x) − q̂·σ̂(x), f̂(x) + q̂·σ̂(x)]
+
+<span class="lbl">Числа</span>
+q̂ на нормированных скорах = <span class="hl">2.31</span>
+
+Маленький магазин: σ̂ = 14.2
+  интервал [120 − 2.31×14.2, 120 + 2.31×14.2]
+         = [<span class="res">87.2</span>, <span class="res">152.8</span>], ширина <span class="res">65.6</span>
+  <span class="dim">было 772 — в 11.8 раза уже</span>
+
+Большой магазин: σ̂ = 397
+  интервал [5400 − 917, 5400 + 917]
+         = [4483, 6317], ширина <span class="hl">1834</span>
+  <span class="dim">было 772 — стало шире, и это правильно</span>
+</div>
+<div class="ct">
+<table>
+<caption>Покрытие по группам после нормировки</caption>
+<thead><tr><th>Квинтиль</th><th>покрытие (абс.)</th><th>покрытие (норм.)</th><th>ширина (абс.)</th><th>ширина (норм.)</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="r">0.998</td><td class="g">0.914</td><td>772</td><td class="g">66</td></tr>
+<tr><td>2</td><td class="a">0.981</td><td class="g">0.908</td><td>772</td><td class="g">184</td></tr>
+<tr><td>3</td><td class="g">0.923</td><td class="g">0.897</td><td>772</td><td class="g">421</td></tr>
+<tr><td>4</td><td class="a">0.812</td><td class="g">0.893</td><td>772</td><td>968</td></tr>
+<tr class="best"><td>5</td><td class="r">0.696</td><td class="g">0.888</td><td>772</td><td class="a">1834</td></tr>
+<tr class="best"><td>МАРГИНАЛЬНОЕ</td><td class="g">0.902</td><td class="g">0.900</td><td>772</td><td class="g">695</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Оба столбца покрытия удовлетворяют гарантии, но распределение принципиально разное.</strong> Нормированный вариант держит 0.888–0.914 во всех квинтилях, а средняя ширина ещё и меньше — 695 против 772. Это редкий случай, когда лучше по обоим критериям сразу.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сводка функций неконформности</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Выбор скора для регрессии</caption>
+<thead><tr><th>Скор</th><th>Формула</th><th>Ширина</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr><td>Абсолютный остаток</td><td class="note">|y − ŷ|</td><td class="r">постоянная</td><td class="note">гомоскедастичные данные, быстрый прототип</td></tr>
+<tr class="best"><td>Нормированный</td><td class="note">|y − ŷ| / σ̂(x)</td><td class="g">адаптивная</td><td class="note">гетероскедастичность, есть чем обучить σ̂</td></tr>
+<tr class="best"><td>CQR</td><td class="note">max(q̂<sub>lo</sub>−y, y−q̂<sub>hi</sub>)</td><td class="g">адаптивная</td><td class="note">лучший вариант по умолчанию, секция 6</td></tr>
+<tr><td>Знаковый остаток</td><td class="note">y − ŷ, два квантиля</td><td class="a">асимметричная</td><td class="note">смещённые ошибки</td></tr>
+<tr><td>Относительный</td><td class="note">|y − ŷ| / |ŷ|</td><td class="g">пропорциональная</td><td class="note">мультипликативный шум, положительная целевая</td></tr>
+<tr><td>По логарифму</td><td class="note">|ln y − ln ŷ|</td><td class="g">пропорциональная</td><td class="note">то же, устойчивее к нулям в ŷ</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cl warn" style="margin-top:14px;"><span class="cli">⚠️</span><div><strong>Модель $\hat\sigma$ обучается не на калибровочной выборке.</strong> Если она её видела, скоры перестают быть обменяемыми и гарантия исчезает. Нужны три части: обучение $\hat f$, обучение $\hat\sigma$, калибровка. Либо — CQR, где вторая модель не нужна.</div></div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Постоянная ширина против адаптивной</div>
+<div class="chsub">Абсолютный остаток даёт покрытие 0.696 в шумном квинтиле; нормированный держит 0.888–0.914 везде</div>
+<div style="position:relative;height:340px;"><canvas id="c_norm"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Conformal для классификации <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Наивный скор, APS и RAPS — три компромисса между размером и честностью</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Множество классов <span class="en">(prediction set)</span></dt>
+<dd>Вместо одного класса метод выдаёт набор. Размер набора — прямая мера неуверенности: один класс означает уверенность, пять — что модель не разобралась.</dd>
+
+<dt>Пустое множество</dt>
+<dd>Возможный исход: ни один класс не прошёл порог. Означает «объект не похож ни на что виденное» — полезный сигнал об аномалии, но требует обработки в проде.</dd>
+
+<dt>Наивный скор <span class="en">(LAC, least ambiguous set-valued classifier)</span></dt>
+<dd>$s = 1 - \hat p(y\mid x)$ — единица минус вероятность истинного класса. Даёт <strong>минимальный средний размер</strong> множества, но плохое покрытие для трудных объектов.</dd>
+
+<dt>APS <span class="en">(Adaptive Prediction Sets)</span></dt>
+<dd>Скор — накопленная вероятность классов, отсортированных по убыванию, вплоть до истинного включительно. Даёт лучшее <em>условное</em> покрытие ценой заметно бо́льших множеств.</dd>
+
+<dt>RAPS <span class="en">(Regularized APS)</span></dt>
+<dd>APS со штрафом за размер множества: к скору добавляется $\lambda\cdot\max(0, \text{ранг} - k_{\text{reg}})$. Компромисс между двумя предыдущими.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: где остановиться в списке классов</div>
+<p>Модель выдала вероятности по классам. Отсортируем их по убыванию: 0.55, 0.30, 0.15.</p>
+<p><strong>Наивный подход:</strong> берём все классы, чья вероятность выше порога. Порог подбирается конформно.</p>
+<p><strong>APS:</strong> идём по отсортированному списку сверху вниз и накапливаем сумму, пока она не превысит порог. Тоже конформный, но порог — по накопленной массе, а не по отдельной вероятности.</p>
+<p><strong>Разница принципиальна.</strong> Наивный на трудном объекте с вероятностями 0.34/0.33/0.33 возьмёт либо все три, либо ни одного — порог един. APS всегда возьмёт столько, сколько нужно для набора массы, и потому лучше адаптируется к трудности объекта.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: строим множества тремя способами</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Наивный скор: калибровка</span></div>
+<div class="tstep-c">
+<div class="calc">
+n = 19 калибровочных объектов.
+Скор s_i = 1 − p̂(истинный класс | x_i)
+
+Отсортированные скоры:
+0.02 0.03 0.05 0.07 0.09 0.11 0.13 0.16 0.19 0.22
+0.26 0.30 0.35 0.41 0.48 0.57 0.68 <span class="hl">0.79</span> 0.93
+                                    ↑ 18-й
+
+α = 0.1, k = ⌈20 × 0.9⌉ = 18
+q̂ = <span class="res">0.79</span>
+
+Правило множества:
+  C(x) = { y : 1 − p̂(y|x) ≤ 0.79 }
+       = { y : p̂(y|x) ≥ <span class="res">0.21</span> }
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Наивный скор: применение</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Порог p ≥ 0.21 на трёх объектах разной трудности</caption>
+<thead><tr><th>Объект</th><th>p(класс 1)</th><th>p(класс 2)</th><th>p(класс 3)</th><th>множество</th><th>размер</th></tr></thead>
+<tbody>
+<tr><td>A — лёгкий</td><td class="g">0.92</td><td>0.05</td><td>0.03</td><td class="note">{1}</td><td class="g">1</td></tr>
+<tr><td>B — средний</td><td class="g">0.55</td><td class="g">0.30</td><td>0.15</td><td class="note">{1, 2}</td><td>2</td></tr>
+<tr><td>C — трудный</td><td class="g">0.40</td><td class="g">0.35</td><td class="g">0.25</td><td class="note">{1, 2, 3}</td><td class="a">3</td></tr>
+<tr class="best"><td>D — очень трудный</td><td class="a">0.34</td><td class="a">0.33</td><td class="a">0.33</td><td class="note">{1, 2, 3}</td><td class="a">3</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Размер множества адаптируется к трудности</strong> — уже хорошо. Но обратите внимание на объекты C и D: они разной трудности, а множество одинаковое. Порог единый и не различает «модель почти уверена в двух вариантах» и «модель не имеет мнения».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">APS: скор через накопленную вероятность</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Определение скора</span>
+Отсортировать классы по убыванию вероятности.
+Скор = сумма вероятностей от начала до истинного класса
+       включительно.
+
+Пример калибровочного объекта:
+  p = [0.55, 0.30, 0.15], истинный класс — второй
+  отсортировано: 0.55 (кл.1), 0.30 (кл.2), 0.15 (кл.3)
+  истинный класс на позиции 2
+  s = 0.55 + 0.30 = <span class="hl">0.85</span>
+
+Если бы истинным был первый: s = 0.55
+Если бы третий: s = 0.55 + 0.30 + 0.15 = 1.00
+</div>
+<div class="calc"><span class="lbl">Калибровка, n = 19</span>
+Отсортированные APS-скоры:
+0.18 0.24 0.31 0.38 0.44 0.51 0.57 0.62 0.68 0.73
+0.78 0.82 0.86 0.89 0.92 0.95 0.97 <span class="hl">0.99</span> 1.00
+                                    ↑ 18-й
+q̂ = <span class="res">0.99</span>
+
+Правило множества:
+  идти по отсортированным классам, накапливая сумму,
+  включать классы, пока накопленная сумма не достигнет 0.99
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">APS: применение</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Накапливаем до 0.99</caption>
+<thead><tr><th>Объект</th><th>накопленные суммы</th><th>множество APS</th><th>размер APS</th><th>размер наивного</th></tr></thead>
+<tbody>
+<tr><td>A</td><td class="note">0.92 → 0.97 → 1.00</td><td class="note">{1, 2, 3}</td><td class="a">3</td><td class="g">1</td></tr>
+<tr><td>B</td><td class="note">0.55 → 0.85 → 1.00</td><td class="note">{1, 2, 3}</td><td class="a">3</td><td>2</td></tr>
+<tr><td>C</td><td class="note">0.40 → 0.75 → 1.00</td><td class="note">{1, 2, 3}</td><td class="a">3</td><td class="a">3</td></tr>
+<tr><td>D</td><td class="note">0.34 → 0.67 → 1.00</td><td class="note">{1, 2, 3}</td><td class="a">3</td><td class="a">3</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>При трёх классах APS вырождается</strong> — порог 0.99 почти всегда требует всех классов. На трёх классах преимущество APS не видно; оно проявляется при десятках и сотнях классов, где хвост распределения длинный и накопленная масса 0.99 набирается на первых пяти-десяти классах из тысячи.</p>
+<div class="calc"><span class="lbl">На задаче со 1000 классами (ImageNet-подобная)</span>
+средний размер множества:
+  наивный:  <span class="hl">1.84</span>
+  APS:      <span class="hl">18.7</span>
+  RAPS:     <span class="hl">2.41</span>
+
+покрытие для «лёгких» объектов (топ-1 вероятность &gt; 0.9):
+  наивный: <span class="bad">0.994</span>  <span class="dim">перепокрытие</span>
+  APS:     0.951
+  RAPS:    0.968
+
+покрытие для «трудных» (топ-1 вероятность &lt; 0.4):
+  наивный: <span class="bad">0.712</span>  <span class="dim">катастрофа</span>
+  APS:     <span class="res">0.858</span>
+  RAPS:    <span class="res">0.831</span>
+
+маргинальное покрытие у всех трёх: <span class="res">≈ 0.902</span> ✓
+</div>
+<p><strong>Вот в чём разница.</strong> Наивный скор даёт компактные множества (1.84 класса в среднем), но добивается этого, недопокрывая трудные объекты: там, где модель не уверена, истинный класс выпадает из множества в 29% случаев. APS платит размером за то, чтобы трудные объекты покрывались почти так же хорошо, как лёгкие.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">RAPS: компромисс</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Скор RAPS</span>
+s_RAPS = s_APS + λ · max(0, rank(y) − k_reg)
+
+где rank(y) — позиция истинного класса в отсортированном
+списке, k_reg — сколько классов «бесплатны»,
+λ — штраф за каждый следующий.
+
+Типичные значения: k_reg = 5, λ = 0.01
+
+<span class="lbl">Что это делает</span>
+Классы дальше пятой позиции получают штраф,
+и включать их в множество становится «дорого».
+Длинный хвост APS обрезается.
+
+Замер на 1000 классах:
+  λ = 0     (чистый APS):  размер <span class="hl">18.7</span>, покрытие трудных 0.858
+  λ = 0.005:               размер <span class="hl">4.62</span>, покрытие трудных 0.844
+  λ = 0.01:                размер <span class="hl">2.41</span>, покрытие трудных 0.831
+  λ = 0.05:                размер <span class="hl">1.91</span>, покрытие трудных 0.771
+  λ = ∞ (≈ наивный):       размер 1.84, покрытие трудных <span class="bad">0.712</span>
+
+λ = 0.01 сокращает размер в <span class="res">7.8 раза</span>
+при потере покрытия трудных всего на <span class="res">0.027</span>.
+</div>
+<div class="ct">
+<table>
+<caption>Выбор скора для классификации</caption>
+<thead><tr><th>Скор</th><th>Размер множества</th><th>Условное покрытие</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr><td>Наивный (LAC)</td><td class="g">минимальный</td><td class="r">плохое</td><td class="note">мало классов, важен размер</td></tr>
+<tr><td>APS</td><td class="r">большой</td><td class="g">хорошее</td><td class="note">критично не пропустить истину</td></tr>
+<tr class="best"><td>RAPS</td><td class="g">умеренный</td><td class="g">хорошее</td><td class="note">по умолчанию при многих классах</td></tr>
+<tr><td>Mondrian (секция 7)</td><td class="a">зависит</td><td class="g">по классам гарантировано</td><td class="note">важен баланс по классам</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Пустые множества</span></div>
+<div class="tstep-c">
+<div class="calc">
+При наивном скоре множество может оказаться пустым:
+ни один класс не набрал p ≥ 1 − q̂.
+
+Доля пустых множеств:
+  α = 0.05:  <span class="hl">0.2%</span>
+  α = 0.10:  <span class="hl">1.4%</span>
+  α = 0.20:  <span class="hl">7.8%</span>
+
+<b>Это не баг.</b> Пустое множество означает «объект
+не похож ни на что из калибровочной выборки» —
+готовый детектор аномалий (см. тему 1.6).
+
+Но в проде это надо обработать:
+  ① вернуть argmax с пометкой «низкая уверенность»
+  ② отправить на ручную проверку
+  ③ форсировать минимальный размер 1 (гарантия
+     при этом сохраняется — множество только растёт)
+
+Вариант ③ безопасен: увеличение множества
+не может уменьшить покрытие.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Наивный, APS и RAPS: размер против условного покрытия</div>
+<div class="chsub">Маргинальное покрытие у всех 0.902; наивный добивается этого, теряя трудные объекты</div>
+<div style="position:relative;height:340px;"><canvas id="c_cls"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Параметр регуляризации λ в RAPS</div>
+<div class="chsub">λ = 0.01 сокращает размер в 7.8 раза, теряя 0.027 покрытия трудных объектов</div>
+<div style="position:relative;height:330px;"><canvas id="c_raps"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Conformalized Quantile Regression <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Лучший вариант по умолчанию для регрессии</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Квантильная регрессия <span class="en">(quantile regression)</span></dt>
+<dd>Модель, предсказывающая не среднее, а заданный квантиль условного распределения. Обучается минимизацией пинбол-потери: $\rho_\tau(u) = u(\tau - \mathbb{1}[u<0])$.</dd>
+
+<dt>CQR</dt>
+<dd>Берём две квантильные модели — для $\alpha/2$ и $1-\alpha/2$ — и конформно корректируем полученный интервал. Ширина адаптивна <em>по построению</em>, дополнительная модель $\hat\sigma$ не нужна.</dd>
+
+<dt>Скор CQR</dt>
+<dd>$s = \max\bigl(\hat q_{\text{lo}}(x) - y,\ y - \hat q_{\text{hi}}(x)\bigr)$. Положителен, когда $y$ вне интервала (расстояние наружу), отрицателен, когда внутри (минус расстояние до ближайшего края).</dd>
+
+<dt>Двусторонняя коррекция</dt>
+<dd>Итоговый интервал $[\hat q_{\text{lo}}(x) - \hat q,\ \hat q_{\text{hi}}(x) + \hat q]$. При $\hat q < 0$ интервал <em>сужается</em> — так бывает, если квантильная модель была излишне консервативна.</dd>
+
+<dt>Пинбол-потеря <span class="en">(pinball loss)</span></dt>
+<dd>Асимметричная потеря: недооценка штрафуется весом $\tau$, переоценка весом $1-\tau$. При $\tau=0.05$ переоценка штрафуется в 19 раз сильнее — модель учится быть нижней границей.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: сначала интервал, потом поправка</div>
+<p>Квантильная регрессия сама умеет строить интервалы — она напрямую предсказывает 5-й и 95-й процентили. Проблема: как всякая обученная модель, она может ошибаться, и гарантии покрытия у неё нет.</p>
+<p><strong>CQR берёт этот интервал и конформно его подправляет.</strong> Если на калибровочной выборке он покрывал слишком редко — расширяет. Если слишком часто — сужает.</p>
+<p>Выигрыш: ширина изначально адаптивна, потому что квантильная модель сама видит, где шум больше. Конформная поправка добавляет к этому гарантию.</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 CQR</div>
+<p><strong>①</strong> Обучить $\hat q_{\text{lo}}$ и $\hat q_{\text{hi}}$ на уровнях $\alpha/2$ и $1-\alpha/2$.<br>
+<strong>②</strong> На калибровочной: $s_i = \max\bigl(\hat q_{\text{lo}}(x_i) - y_i,\ y_i - \hat q_{\text{hi}}(x_i)\bigr)$.<br>
+<strong>③</strong> $\hat q = s_{(k)}$, $k = \lceil (n+1)(1-\alpha)\rceil$.<br>
+<strong>④</strong> $C(x) = \bigl[\hat q_{\text{lo}}(x) - \hat q,\ \hat q_{\text{hi}}(x) + \hat q\bigr]$.</p>
+<p class="fnote">Скор отрицателен для объектов внутри интервала. Если больше $1-\alpha$ доли объектов внутри, то $\hat q < 0$ и интервал сужается — метод исправляет консерватизм квантильной модели в обе стороны.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: CQR на калибровочной выборке</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Считаем скоры</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Пять из девятнадцати калибровочных объектов</caption>
+<thead><tr><th>#</th><th>q̂<sub>lo</sub></th><th>q̂<sub>hi</sub></th><th>y</th><th>q̂<sub>lo</sub> − y</th><th>y − q̂<sub>hi</sub></th><th>s = max</th><th>внутри?</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>8.0</td><td>12.0</td><td>10.2</td><td>−2.2</td><td>−1.8</td><td class="g">−1.8</td><td class="g">да</td></tr>
+<tr><td>2</td><td>15.0</td><td>19.0</td><td>20.5</td><td>−5.5</td><td class="r">+1.5</td><td class="r">+1.5</td><td class="r">нет</td></tr>
+<tr><td>3</td><td>5.0</td><td>7.0</td><td>4.1</td><td class="r">+0.9</td><td>−2.9</td><td class="r">+0.9</td><td class="r">нет</td></tr>
+<tr><td>4</td><td>22.0</td><td>31.0</td><td>26.5</td><td>−4.5</td><td>−4.5</td><td class="g">−4.5</td><td class="g">да</td></tr>
+<tr><td>5</td><td>11.0</td><td>14.0</td><td>12.5</td><td>−1.5</td><td>−1.5</td><td class="g">−1.5</td><td class="g">да</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Читаем знак скора</span>
+Отрицательный скор = y внутри интервала,
+                     модуль = расстояние до ближайшего края.
+Положительный скор = y снаружи,
+                     значение = насколько вышел.
+
+Объект 4: y = 26.5 при интервале [22, 31].
+  До нижнего края: 4.5, до верхнего: 4.5 — ровно посередине.
+  s = −4.5, самый «безопасный» из пяти.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Квантиль</span></div>
+<div class="tstep-c">
+<div class="calc">
+Все 19 скоров, отсортированы:
+
+−2.8 −2.4 −2.1 −1.8 −1.5 −1.2 −0.9 −0.6 −0.3 0.0
+ 0.2  0.4  0.7  0.9  1.2  1.5  1.9 <span class="hl">2.4</span>  3.6
+                                    ↑ 18-й
+
+k = ⌈20 × 0.9⌉ = 18
+q̂ = <span class="res">+2.4</span>
+
+<span class="lbl">Что это значит</span>
+q̂ &gt; 0: квантильная модель покрывала СЛИШКОМ РЕДКО.
+Из 19 объектов внутри интервала оказались только 10
+(те, у кого скор ≤ 0) — покрытие 10/19 = <span class="bad">0.526</span>
+при заявленных 0.90.
+
+Конформная поправка расширяет интервал на 2.4
+с каждой стороны, доводя покрытие до гарантированных 0.90.
+</div>
+<p><strong>Это типичная картина.</strong> Квантильная регрессия почти всегда недопокрывает: она обучалась минимизировать пинбол-потерю, а не достигать номинального покрытия, и на новых данных её квантили смещены внутрь. CQR ровно эту ошибку и исправляет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Строим интервалы</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Три новых объекта с разной неопределённостью</caption>
+<thead><tr><th>Объект</th><th>q̂<sub>lo</sub></th><th>q̂<sub>hi</sub></th><th>ширина до</th><th>интервал CQR</th><th>ширина после</th></tr></thead>
+<tbody>
+<tr><td>тихий</td><td>11.2</td><td>16.8</td><td class="g">5.6</td><td class="note">[8.8, 19.2]</td><td class="g">10.4</td></tr>
+<tr><td>средний</td><td>24.0</td><td>34.0</td><td>10.0</td><td class="note">[21.6, 36.4]</td><td>14.8</td></tr>
+<tr><td>шумный</td><td>40.0</td><td>62.0</td><td class="a">22.0</td><td class="note">[37.6, 64.4]</td><td class="a">26.8</td></tr>
+</tbody>
+</table>
+</div>
+<div class="iv">
+<div class="ivcap">Ширина адаптивна: конформная поправка одинакова (+2.4 с каждой стороны), базовый интервал разный</div>
+<div class="ivrow"><span class="ivlbl">тихий</span><span class="ivbar"><i style="left:5%;width:15%;background:#16a34a;"></i></span><span class="ivval">10.4</span></div>
+<div class="ivrow"><span class="ivlbl">средний</span><span class="ivbar"><i style="left:24%;width:22%;background:#b45309;"></i></span><span class="ivval">14.8</span></div>
+<div class="ivrow"><span class="ivlbl">шумный</span><span class="ivbar"><i style="left:52%;width:40%;background:#dc2626;"></i></span><span class="ivval">26.8</span></div>
+<div class="ivrow"><span class="ivlbl">split conf.</span><span class="ivbar"><i style="left:5%;width:32%;background:#94a3b8;"></i><i style="left:24%;width:32%;background:#94a3b8;"></i><i style="left:52%;width:32%;background:#94a3b8;"></i></span><span class="ivval">18.1 везде</span></div>
+</div>
+<p><strong>Нижняя строка — базовый split conformal</strong> с постоянной шириной 18.1. Для тихого объекта он в 1.7 раза шире нужного, для шумного — на треть уже. CQR распределяет ширину туда, где она действительно требуется.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сравнение с базовым методом</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Покрытие по квинтилям шума, целевое 0.90</caption>
+<thead><tr><th>Квинтиль</th><th>split conformal</th><th>CQR</th><th>ширина split</th><th>ширина CQR</th></tr></thead>
+<tbody>
+<tr><td>1 (тихий)</td><td class="r">0.998</td><td class="g">0.915</td><td>18.1</td><td class="g">10.4</td></tr>
+<tr><td>2</td><td class="a">0.981</td><td class="g">0.904</td><td>18.1</td><td class="g">12.1</td></tr>
+<tr><td>3</td><td class="g">0.923</td><td class="g">0.891</td><td>18.1</td><td class="g">14.8</td></tr>
+<tr><td>4</td><td class="a">0.812</td><td class="g">0.897</td><td>18.1</td><td>19.6</td></tr>
+<tr class="best"><td>5 (шумный)</td><td class="r">0.696</td><td class="g">0.883</td><td>18.1</td><td class="a">26.8</td></tr>
+<tr class="best"><td>МАРГИНАЛЬНОЕ</td><td class="g">0.902</td><td class="g">0.898</td><td>18.1</td><td class="g">16.7</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Итог</span>
+Разброс покрытия по квинтилям:
+  split conformal: 0.696 … 0.998 — размах <span class="bad">0.302</span>
+  CQR:             0.883 … 0.915 — размах <span class="res">0.032</span>
+                                    в <span class="res">9.4 раза</span> ровнее
+
+Средняя ширина:
+  split: 18.1
+  CQR:   <span class="res">16.7</span>  — ещё и на 7.7% уже
+
+Обоюдный выигрыш: и условное покрытие ровнее,
+и средняя ширина меньше.
+</div>
+<p><strong>CQR не даёт формальной гарантии условного покрытия</strong> — её в принципе не существует (секция 9). Но эмпирически размах падает в девять раз, и на практике этого достаточно. Это причина, по которой CQR — разумный выбор по умолчанию для регрессии.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Цена и тонкости</span></div>
+<div class="tstep-c">
+<div class="calc">
+① Нужны ДВЕ модели вместо одной.
+   Для градиентного бустинга это два обучения
+   с objective='quantile' и разными alpha.
+   LightGBM: objective='quantile', alpha=0.05 и 0.95
+   CatBoost: loss_function='Quantile:alpha=0.05'
+
+② Квантильные модели могут пересекаться:
+   q̂_lo(x) &gt; q̂_hi(x) на некоторых объектах.
+   Доля таких: обычно <span class="hl">0.1–2%</span>
+   Лечение: сортировка пары или обучение
+   с ограничением монотонности по alpha.
+
+③ При α/2 = 0.025 квантильная модель обучается
+   на очень редкой части распределения и шумна.
+   Нужно заметно больше данных, чем для регрессии
+   на среднее.
+
+④ Гарантия покрытия НЕ зависит от качества
+   квантильных моделей. Даже если они полная ерунда,
+   q̂ это компенсирует — просто интервал будет широким.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">CQR против split conformal по квинтилям шума</div>
+<div class="chsub">Размах покрытия падает с 0.302 до 0.032 — в 9.4 раза, при меньшей средней ширине</div>
+<div style="position:relative;height:340px;"><canvas id="c_cqr"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Mondrian conformal <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Гарантия внутри каждой группы, а не только в среднем</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Mondrian conformal <span class="en">(групповой конформный)</span></dt>
+<dd>Калибровочная выборка разбивается на группы, и для каждой считается свой $\hat q$. Даёт гарантию покрытия <strong>внутри каждой группы</strong>, а не только маргинально.</dd>
+
+<dt>Таксономия <span class="en">(taxonomy)</span></dt>
+<dd>Функция, приписывающая каждому объекту группу. Может зависеть от $x$ (регион, сегмент), от предсказанного класса, но <em>не</em> от истинного $y$ — иначе обменяемость нарушается.</dd>
+
+<dt>Class-conditional conformal</dt>
+<dd>Частный случай для классификации: группа определяется истинным классом. Даёт гарантию «для каждого класса покрытие не ниже $1-\alpha$» — важно при дисбалансе.</dd>
+
+<dt>Цена группировки</dt>
+<dd>Каждая группа получает собственную калибровочную выборку размера $n_g$, и требование $n_g \ge \frac{1-\alpha}{\alpha}$ применяется к <em>каждой</em>. Слишком мелкое разбиение делает интервалы бесконечными.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: считать квантиль отдельно по каждой группе</div>
+<p>Проблема секции 4: один общий квантиль подстраивается под «средний» объект и промахивается по краям.</p>
+<p><strong>Решение прямолинейное: разбить данные на группы и посчитать свой $\hat q$ для каждой.</strong> Для маленьких магазинов — свой, для больших — свой.</p>
+<p>Гарантия при этом становится сильнее: не «90% в среднем», а «90% внутри каждой группы». Доказательство то же самое, просто применённое к каждой группе отдельно.</p>
+<p><strong>Плата — дробление выборки.</strong> Было 2000 калибровочных объектов на всё; при десяти группах станет по 200 на каждую, и квантиль в каждой оценивается шумнее.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: групповые квантили</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Разбиваем и считаем</span></div>
+<div class="tstep-c">
+<div class="calc">
+Калибровочная выборка: 2000 объектов.
+Группировка: по квинтилям предсказанного значения
+(это функция от x, а не от y — обменяемость сохранена).
+
+Каждая группа: n_g = 400
+Минимум для α = 0.1:  n_g ≥ 9  ✓ с большим запасом
+Индекс: k_g = ⌈401 × 0.9⌉ = ⌈360.9⌉ = <span class="hl">361</span>
+</div>
+<div class="ct">
+<table>
+<caption>Свой квантиль для каждой группы</caption>
+<thead><tr><th>Группа</th><th>n<sub>g</sub></th><th>k<sub>g</sub></th><th>q̂<sub>g</sub></th><th>ширина 2q̂<sub>g</sub></th><th>покрытие</th></tr></thead>
+<tbody>
+<tr><td>1 (тихая)</td><td>400</td><td>361</td><td class="g">3.7</td><td class="g">7.4</td><td class="g">0.903</td></tr>
+<tr><td>2</td><td>400</td><td>361</td><td class="g">5.9</td><td class="g">11.8</td><td class="g">0.897</td></tr>
+<tr><td>3</td><td>400</td><td>361</td><td>8.4</td><td>16.8</td><td class="g">0.911</td></tr>
+<tr><td>4</td><td>400</td><td>361</td><td class="a">12.6</td><td class="a">25.2</td><td class="g">0.894</td></tr>
+<tr><td>5 (шумная)</td><td>400</td><td>361</td><td class="r">19.8</td><td class="r">39.6</td><td class="g">0.899</td></tr>
+<tr class="best"><td>Общий q̂ (без групп)</td><td>2000</td><td>1801</td><td>9.05</td><td>18.1</td><td class="g">0.902</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец покрытия — главный результат.</strong> Все пять групп в диапазоне 0.894–0.911 против 0.696–0.998 у общего квантиля. Гарантия теперь действует внутри каждой группы, а не только в среднем по всем.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Сравнение трёх подходов</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Один датасет, три способа</caption>
+<thead><tr><th>Метод</th><th>маргинальное</th><th>размах по группам</th><th>ср. ширина</th><th>гарантия по группам</th></tr></thead>
+<tbody>
+<tr><td>Split conformal</td><td class="g">0.902</td><td class="r">0.302</td><td>18.1</td><td class="r">нет</td></tr>
+<tr><td>Нормированный остаток</td><td class="g">0.900</td><td class="a">0.026</td><td class="g">16.9</td><td class="r">нет (эмпирически хорошо)</td></tr>
+<tr><td>CQR</td><td class="g">0.898</td><td class="a">0.032</td><td class="g">16.7</td><td class="r">нет (эмпирически хорошо)</td></tr>
+<tr class="best"><td>Mondrian по квинтилям</td><td class="g">0.901</td><td class="g">0.017</td><td>20.2</td><td class="g">ДА</td></tr>
+<tr class="best"><td>Mondrian + CQR</td><td class="g">0.899</td><td class="g">0.014</td><td class="g">16.4</td><td class="g">ДА</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Ключевое различие последнего столбца</span>
+CQR и нормированный остаток дают ровное покрытие
+<b>эмпирически</b> — потому что модель σ̂ или квантильная
+модель хорошо угадали структуру шума.
+
+Mondrian даёт его <b>по построению</b>: если группа
+определена, гарантия внутри неё доказана
+тем же аргументом из секции 3.
+
+<b>Если структуру шума угадать не удалось</b>
+(σ̂ обучилась плохо), CQR перестанет держать
+ровное покрытие, а Mondrian продолжит.
+
+<b>Комбинация Mondrian + CQR</b> берёт лучшее:
+адаптивную ширину от CQR и гарантию по группам
+от Mondrian. Ширина 16.4 — минимальная из всех.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Что происходит при слишком мелком разбиении</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Те же 2000 объектов, разное число групп</span>
+  5 групп:   n_g = 400, k = 361  →  ширина <span class="res">20.2</span>
+ 20 групп:   n_g = 100, k = ⌈101×0.9⌉ = 91  →  ширина <span class="hl">21.8</span>
+ 50 групп:   n_g = 40,  k = ⌈41×0.9⌉ = 37   →  ширина <span class="hl">24.6</span>
+100 групп:   n_g = 20,  k = ⌈21×0.9⌉ = 19   →  ширина <span class="bad">31.4</span>
+250 групп:   n_g = 8,   k = ⌈9×0.9⌉ = 9 &gt; 8 →  <span class="bad">+∞</span>
+
+Ширина растёт, потому что квантиль в маленькой группе
+оценивается шумно и вынужденно берётся ближе к максимуму:
+  при n_g = 400 берём 361-й из 400 = 90.2 перцентиль
+  при n_g = 20  берём 19-й из 20   = <span class="bad">95.0</span> перцентиль
+  при n_g = 8   нужен 9-й из 8     = не существует
+</div>
+<p><strong>Правило выбора числа групп.</strong> Нужно $n_g \ge \frac{1-\alpha}{\alpha}$ формально и $n_g \gtrsim \frac{10(1-\alpha)}{\alpha}$ практически: при $\alpha=0.1$ это 90 объектов на группу, чтобы избыточная ширина оставалась в пределах 10%. Из 2000 калибровочных объектов это максимум 22 группы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Class-conditional для дисбаланса</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Задача: 4 класса, сильный дисбаланс</span>
+класс A: 78% данных
+класс B: 15%
+класс C:  5%
+класс D:  2%
+
+<span class="lbl">Обычный conformal, α = 0.1</span>
+маргинальное покрытие: 0.901 ✓
+покрытие по классам:
+  A: <span class="res">0.938</span>
+  B: 0.874
+  C: <span class="bad">0.762</span>
+  D: <span class="bad">0.581</span>
+
+Гарантия соблюдена, а редкий класс D
+пропускается в 42% случаев.
+
+<span class="lbl">Class-conditional Mondrian</span>
+покрытие по классам:
+  A: <span class="res">0.902</span>   n_g = 1560
+  B: <span class="res">0.897</span>   n_g = 300
+  C: <span class="res">0.910</span>   n_g = 100
+  D: <span class="res">0.900</span>   n_g = 40
+
+Размер множества вырос: 1.84 → <span class="hl">2.37</span>
+Класс D теперь покрывается как положено.
+</div>
+<p><strong>Тонкость class-conditional conformal.</strong> Группа определяется <em>истинным</em> классом, который при применении неизвестен. Решение: для каждого класса-кандидата проверять, прошёл ли он порог <em>своей</em> группы. Формально: $C(x) = \{y : s(x,y) \le \hat q_y\}$, где $\hat q_y$ — квантиль по калибровочным объектам класса $y$. Обменяемость не нарушается, потому что внутри группы мы сравниваем однородные объекты.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Mondrian: покрытие внутри каждой группы</div>
+<div class="chsub">Общий квантиль даёт разброс 0.696–0.998; групповой — 0.894–0.911 по построению</div>
+<div style="position:relative;height:340px;"><canvas id="c_mond"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Цена мелкого разбиения на группы</div>
+<div class="chsub">При n_g = 8 требуемый индекс превышает размер группы, интервал становится бесконечным</div>
+<div style="position:relative;height:320px;"><canvas id="c_groups"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Дрейф и adaptive conformal <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Когда обменяемость нарушена и гарантия перестаёт действовать</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>ACI <span class="en">(Adaptive Conformal Inference)</span></dt>
+<dd>Онлайн-схема: уровень $\alpha_t$ подстраивается после каждого наблюдения. Промахнулись — $\alpha$ уменьшается, интервал расширяется; попали — $\alpha$ растёт, интервал сужается.</dd>
+
+<dt>Правило обновления</dt>
+<dd>$\alpha_{t+1} = \alpha_t + \gamma(\alpha - \text{err}_t)$, где $\text{err}_t = 1$ при промахе и $0$ при попадании. Это градиентный шаг по частоте ошибок.</dd>
+
+<dt>Скорость адаптации $\gamma$</dt>
+<dd>Шаг обучения. Большой $\gamma$ — быстрая реакция на дрейф, но дёрганая ширина в стабильные периоды. Малый — плавно, но медленно. Типично $\gamma \in [0.005, 0.05]$.</dd>
+
+<dt>Долгосрочная гарантия</dt>
+<dd>ACI не даёт покрытия на каждом шаге, но гарантирует, что <strong>средняя за $T$ шагов</strong> частота ошибок сходится к $\alpha$: $\bigl|\frac{1}{T}\sum \text{err}_t - \alpha\bigr| \le \frac{\max(\alpha_1, 1-\alpha_1)+\gamma}{\gamma T}$. Гарантия <em>без каких-либо предположений о дрейфе вообще</em>.</dd>
+
+<dt>Вырождение при сильном дрейфе</dt>
+<dd>Если модель систематически промахивается, $\alpha_t$ уходит в ноль и интервал становится бесконечным. Формально корректно, практически — сигнал, что модель пора переобучать.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: термостат для покрытия</div>
+<p>Обменяемость нарушена — данные меняются со временем, и калибровка вчерашнего дня уже не подходит к сегодняшнему. Классическая гарантия исчезла.</p>
+<p><strong>Идея ACI: закрыть цикл обратной связью.</strong> Промахнулись — расширяем интервал. Попали — чуть сужаем.</p>
+<p>Это ровно термостат: холодно — греем сильнее, жарко — слабее. Мгновенная температура скачет, но средняя держится у заданной. Так же и здесь: покрытие на конкретном шаге не гарантировано, средняя частота ошибок — сходится к $\alpha$.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Adaptive Conformal Inference</div>
+$$\alpha_{t+1} = \alpha_t + \gamma\bigl(\alpha - \text{err}_t\bigr), \qquad \text{err}_t = \mathbb{1}\bigl[y_t \notin C_t(x_t)\bigr]$$
+$$\Bigl|\tfrac{1}{T}\textstyle\sum_{t=1}^{T}\text{err}_t - \alpha\Bigr| \;\le\; \frac{\max(\alpha_1,\,1-\alpha_1) + \gamma}{\gamma T}$$
+<p class="fnote">Правая часть не содержит <em>никаких</em> предположений о том, как меняются данные — дрейф может быть произвольным, даже враждебным. Цена: гарантия долгосрочная и убывает как $1/T$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: десять шагов ACI вручную</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Параметры и первые шаги</span></div>
+<div class="tstep-c">
+<div class="calc">
+целевой α = 0.10, скорость γ = 0.05, начальный α₁ = 0.100
+
+При попадании (err = 0): Δ = γ(0.10 − 0) = <span class="hl">+0.005</span>
+При промахе  (err = 1): Δ = γ(0.10 − 1) = <span class="hl">−0.045</span>
+
+Промах «стоит» в 9 раз больше, чем попадание —
+именно поэтому равновесие устанавливается
+при частоте промахов 1 к 9, то есть 10%.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Прогон</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Десять шагов: сначала стабильно, с пятого — дрейф</caption>
+<thead><tr><th>t</th><th>используем α<sub>t</sub></th><th>ширина</th><th>результат</th><th>Δ</th><th>α<sub>t+1</sub></th></tr></thead>
+<tbody>
+<tr><td>1</td><td>0.100</td><td>4.12</td><td class="g">попали</td><td>+0.005</td><td>0.105</td></tr>
+<tr><td>2</td><td>0.105</td><td>4.06</td><td class="g">попали</td><td>+0.005</td><td>0.110</td></tr>
+<tr><td>3</td><td>0.110</td><td>4.01</td><td class="g">попали</td><td>+0.005</td><td>0.115</td></tr>
+<tr><td>4</td><td>0.115</td><td>3.96</td><td class="g">попали</td><td>+0.005</td><td>0.120</td></tr>
+<tr class="best"><td>5</td><td>0.120</td><td>3.91</td><td class="r">ПРОМАХ</td><td class="r">−0.045</td><td class="a">0.075</td></tr>
+<tr><td>6</td><td>0.075</td><td class="a">4.53</td><td class="r">ПРОМАХ</td><td class="r">−0.045</td><td class="a">0.030</td></tr>
+<tr><td>7</td><td>0.030</td><td class="a">5.66</td><td class="g">попали</td><td>+0.005</td><td>0.035</td></tr>
+<tr><td>8</td><td>0.035</td><td class="a">5.48</td><td class="g">попали</td><td>+0.005</td><td>0.040</td></tr>
+<tr class="best"><td>9</td><td>0.040</td><td>5.31</td><td class="r">ПРОМАХ</td><td class="r">−0.045</td><td class="r">−0.005 → 0</td></tr>
+<tr><td>10</td><td class="r">0.000</td><td class="r">+∞</td><td class="g">попали</td><td>+0.005</td><td>0.005</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Разбор поведения</span>
+Шаги 1–4: попадания подряд, α растёт, интервал СУЖАЕТСЯ
+  4.12 → 3.91. Схема экономит ширину, пока всё хорошо.
+
+Шаг 5–6: два промаха, α падает с 0.120 до 0.030,
+  интервал расширяется 3.91 → 5.66 (<span class="hl">+45%</span>).
+  Реакция быстрая, за два шага.
+
+Шаг 9: α уходит в отрицательную зону, обрезается до 0.
+  Интервал становится бесконечным — покрытие
+  гарантировано тривиально.
+
+Шаг 10: α начинает восстанавливаться, +0.005 за шаг.
+  Возврат к 0.10 займёт 20 шагов.
+</div>
+<p><strong>Бесконечный интервал — не поломка, а честный сигнал.</strong> Метод сообщает: «на этих данных я не могу дать содержательный интервал с требуемой гарантией». Практическая реакция — не игнорировать, а переобучать модель.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Долгосрочная гарантия численно</span></div>
+<div class="tstep-c">
+<div class="calc">
+Граница: |средняя частота ошибок − α| ≤ (max(α₁, 1−α₁) + γ)/(γT)
+
+α₁ = 0.1, γ = 0.05:
+  числитель = max(0.1, 0.9) + 0.05 = 0.95
+
+  T = 100:    0.95/(0.05×100)   = <span class="bad">0.190</span>   <span class="dim">бесполезно</span>
+  T = 1 000:  0.95/(0.05×1000)  = <span class="hl">0.019</span>
+  T = 10 000: 0.95/(0.05×10000) = <span class="res">0.0019</span>
+  T = 100 000:                    <span class="res">0.00019</span>
+
+При T = 10 000 частота ошибок гарантированно
+в диапазоне [0.0981, 0.1019] — <b>при любом дрейфе</b>.
+
+<span class="lbl">Наша десятишаговая трассировка</span>
+промахов: 3 из 10 (шаги 5, 6, 9)
+частота: 0.30 при цели 0.10
+
+Граница при T = 10: 0.95/(0.05×10) = 1.9 — не ограничивает.
+Это ожидаемо: на коротких горизонтах гарантии нет.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Выбор γ</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Резкий сдвиг распределения на шаге 500</caption>
+<thead><tr><th>γ</th><th>шагов до восстановления</th><th>минимальное покрытие в провале</th><th>размах ширины в стабильный период</th><th>граница при T=10000</th></tr></thead>
+<tbody>
+<tr><td>0.005</td><td class="r">~380</td><td class="r">0.58</td><td class="g">±3%</td><td class="a">0.0190</td></tr>
+<tr><td>0.01</td><td class="a">~180</td><td class="r">0.62</td><td class="g">±6%</td><td class="g">0.0095</td></tr>
+<tr class="best"><td>0.05</td><td class="g">~40</td><td class="a">0.71</td><td class="a">±22%</td><td class="g">0.0019</td></tr>
+<tr><td>0.10</td><td class="g">~20</td><td class="g">0.79</td><td class="r">±41%</td><td class="g">0.0010</td></tr>
+<tr><td>0.20</td><td class="g">~12</td><td class="g">0.83</td><td class="r">±74%</td><td class="g">0.0005</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Компромисс</span>
+Большой γ:
+  ✓ быстрое восстановление после дрейфа
+  ✓ более тесная долгосрочная граница
+  ✗ ширина интервала прыгает даже когда всё стабильно
+    (±74% при γ = 0.2 — пользователю это заметно)
+
+Малый γ:
+  ✓ стабильная ширина
+  ✗ долгое восстановление и глубокий провал покрытия
+
+<b>Практический выбор:</b> γ = 0.05 при ежедневных
+обновлениях, γ = 0.01 при ежечасных.
+Ориентир: γ ≈ 1/(число наблюдений за характерное
+время дрейфа).
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Альтернативы и когда что</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Работа с нарушенной обменяемостью</caption>
+<thead><tr><th>Метод</th><th>Что делает</th><th>Когда</th></tr></thead>
+<tbody>
+<tr class="best"><td>ACI</td><td class="note">подстраивает α по обратной связи</td><td class="note">метки приходят быстро, дрейф произвольный</td></tr>
+<tr><td>Скользящее окно калибровки</td><td class="note">пересчитывает q̂ по последним N наблюдениям</td><td class="note">плавный дрейф, метки есть</td></tr>
+<tr><td>Взвешенный conformal</td><td class="note">веса по правдоподобию сдвига</td><td class="note">ковариантный сдвиг, известна плотность</td></tr>
+<tr><td>Экспоненциальное взвешивание</td><td class="note">старые скоры весят меньше</td><td class="note">плавный дрейф, нужна гладкость</td></tr>
+<tr><td>Ничего не делать</td><td class="note">полагаться на исходную гарантию</td><td class="note">данные действительно обменяемы</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Замер на данных с медленным дрейфом, 5000 шагов</span>
+статический conformal:      покрытие <span class="bad">0.712</span>
+скользящее окно 500:        покрытие <span class="hl">0.874</span>
+экспоненц. взвешивание:     покрытие <span class="hl">0.881</span>
+ACI, γ = 0.05:              покрытие <span class="res">0.898</span>
+ACI + скользящее окно:      покрытие <span class="res">0.901</span>
+
+Комбинация выигрывает: окно отслеживает изменение
+формы распределения ошибок, ACI страхует от того,
+что окно не успевает.
+</div>
+<p><strong>Важное ограничение всех этих методов.</strong> Они требуют, чтобы метки приходили — иначе неоткуда взять $\text{err}_t$. При задержке меток в 45 дней ACI будет реагировать на дрейф с задержкой в 45 дней. Для таких задач остаётся мониторинг косвенных сигналов, как в теме 1.4, секция 14.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">ACI: α подстраивается под дрейф</div>
+<div class="chsub">Промах «стоит» в 9 раз больше попадания — равновесие устанавливается при частоте ошибок 10%</div>
+<div style="position:relative;height:340px;"><canvas id="c_aci"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Резкий сдвиг на шаге 500: разные γ</div>
+<div class="chsub">Быстрая адаптация ценой дёрганой ширины в стабильные периоды</div>
+<div style="position:relative;height:330px;"><canvas id="c_gamma"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Чего conformal не даёт <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Маргинальное покрытие — не то же самое, что условное, и разница фундаментальна</div>
+
+<div class="def">
+<div class="def-t">📖 Два вида покрытия</div>
+<dl>
+<dt>Маргинальное покрытие</dt>
+<dd>$\mathbb{P}\bigl(Y \in C(X)\bigr) \ge 1-\alpha$, где вероятность берётся по <em>совместному</em> распределению $(X, Y)$. Это то, что conformal гарантирует.</dd>
+
+<dt>Условное покрытие</dt>
+<dd>$\mathbb{P}\bigl(Y \in C(X) \mid X = x\bigr) \ge 1-\alpha$ для <em>каждого</em> $x$. Это то, чего обычно хотят, и чего conformal <strong>не даёт</strong>.</dd>
+
+<dt>Теорема о невозможности</dt>
+<dd>Нетривиальное условное покрытие свободным от распределения методом достижимо <strong>только</strong> бесконечными интервалами (Вовк; Лей и Вассерман). Это не ограничение конкретного алгоритма, а фундаментальный барьер.</dd>
+
+<dt>Промежуточные варианты</dt>
+<dd>Групповое покрытие (Mondrian, секция 7) — достижимо. Приближённое условное покрытие (CQR, нормированный остаток) — достижимо эмпирически без гарантий.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: 90% чего именно</div>
+<p>«Интервал покрывает истину в 90% случаев» — звучит однозначно, но допускает два прочтения.</p>
+<p><strong>Маргинальное:</strong> если взять сто случайных объектов, примерно девяносто будут покрыты. Про <em>конкретный</em> объект ничего не сказано.</p>
+<p><strong>Условное:</strong> для каждого конкретного объекта, если бы мы могли повторить эксперимент много раз, он был бы покрыт в 90% повторов.</p>
+<p><strong>Разница смертельна на практике.</strong> Маргинальные 90% совместимы с «в тихом сегменте покрываем 99.8%, в шумном 69.6%» — и именно это происходит по умолчанию.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🚨</span> Трассировка: тривиально валидный и бесполезный метод</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Конструкция, которая формально проходит</span></div>
+<div class="tstep-c">
+<div class="calc">
+Метод:
+  с вероятностью 1 − α  выдать C(x) = вся числовая ось
+  с вероятностью α      выдать C(x) = пустое множество
+
+  (монетка бросается независимо от x и y)
+
+Маргинальное покрытие:
+  P(Y ∈ C(X)) = (1−α)·1 + α·0 = <span class="res">1 − α</span>  ✓ РОВНО ЦЕЛЬ
+
+Условное покрытие для любого x:
+  P(Y ∈ C(X) | X = x) = 1 − α  ✓ тоже выполняется!
+
+Полезность: <span class="bad">нулевая</span>
+Средняя ширина: <span class="bad">бесконечная</span>
+</div>
+<p><strong>Этот метод удовлетворяет обеим гарантиям</strong> и абсолютно бесполезен. Он показывает, что гарантия покрытия сама по себе ничего не значит без второго критерия — эффективности. Именно поэтому conformal-методы сравнивают по <em>ширине при фиксированном покрытии</em>, а не по покрытию.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Реальный провал, а не искусственный</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Данные из секции 4, split conformal с |y − ŷ|</span>
+Маргинальное покрытие: <span class="res">0.902</span> ✓ гарантия соблюдена
+
+По квинтилям шума:
+  квинтиль 1: <span class="bad">0.998</span>   интервал в 51 раз шире нужного
+  квинтиль 2: 0.981
+  квинтиль 3: 0.923
+  квинтиль 4: 0.812
+  квинтиль 5: <span class="bad">0.696</span>   каждый третий объект вне интервала
+
+Размах: <span class="bad">0.302</span>
+
+<b>Никакого нарушения. Это ровно то, что гарантировано,
+и ровно то, что обычно не имеется в виду.</b>
+</div>
+<div class="ct">
+<table>
+<caption>Разбиения, по которым покрытие расходится</caption>
+<thead><tr><th>Разбиение</th><th>мин. покрытие</th><th>макс. покрытие</th><th>размах</th></tr></thead>
+<tbody>
+<tr class="best"><td>По уровню шума</td><td class="r">0.696</td><td class="r">0.998</td><td class="r">0.302</td></tr>
+<tr><td>По величине прогноза</td><td class="r">0.741</td><td class="a">0.981</td><td class="r">0.240</td></tr>
+<tr><td>По региону</td><td class="a">0.834</td><td class="a">0.948</td><td class="a">0.114</td></tr>
+<tr><td>По сегменту клиента</td><td class="a">0.812</td><td class="a">0.957</td><td class="a">0.145</td></tr>
+<tr><td>Случайное разбиение</td><td class="g">0.891</td><td class="g">0.914</td><td class="g">0.023</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка — контроль.</strong> По случайному разбиению покрытие ровное (размах 0.023 — это шум оценки). Расхождение появляется только по <em>содержательным</em> разбиениям, и это признак того, что структура ошибки модели неоднородна.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Почему условное покрытие невозможно</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Набросок аргумента</span>
+Пусть X непрерывен. Требуем:
+  P(Y ∈ C(x) | X = x) ≥ 1 − α  для КАЖДОГО x
+
+Но при непрерывном X каждое конкретное значение x
+встречается в данных ровно ноль раз.
+Никакая конечная выборка не содержит информации
+о поведении в точке x.
+
+Значит, чтобы гарантия выполнялась для ЛЮБОГО
+распределения, C(x) обязан покрывать всё, что
+теоретически возможно в точке x — а без предположений
+о гладкости это вся область значений Y.
+
+<b>Формально (Лей и Вассерман, 2014):</b>
+любая процедура с нетривиальным условным покрытием
+без предположений о распределении имеет
+бесконечную ожидаемую ширину.
+</div>
+<p><strong>Это не значит, что дело безнадёжно.</strong> Это значит, что за приближение к условному покрытию нужно платить <em>предположениями</em>: либо о структуре шума (нормированный остаток, CQR), либо задавая группы явно (Mondrian). Бесплатно бывает только маргинальное.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Что делать на практике</span></div>
+<div class="tstep-c">
+<div class="calc">
+① <b>Всегда проверять покрытие по срезам.</b>
+   Маргинальное 0.902 ничего не говорит.
+   Разбейте по: величине прогноза, ключевым признакам,
+   бизнес-сегментам, времени. Считайте покрытие в каждом.
+
+② <b>Использовать адаптивные скоры.</b>
+   CQR или нормированный остаток снижают размах
+   с 0.302 до 0.03 без всяких гарантий, просто эмпирически.
+
+③ <b>Задавать группы явно там, где это критично.</b>
+   Mondrian даёт гарантию внутри группы по построению.
+   Требует n_g ≥ 90 на группу при α = 0.1.
+
+④ <b>Отслеживать ширину, а не только покрытие.</b>
+   Покрытие 0.998 при ширине в 51 раз больше нужной —
+   это тоже провал, просто в другую сторону.
+
+⑤ <b>Мониторить размах покрытия как отдельную метрику.</b>
+   Порог тревоги: размах по бизнес-сегментам &gt; 0.05.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Маргинальные 90% и что за ними скрывается</div>
+<div class="chsub">Все три метода дают покрытие 0.90 в среднем — распределение по сегментам принципиально разное</div>
+<div style="position:relative;height:340px;"><canvas id="c_cond"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главное недопонимание темы.</strong> «Conformal даёт гарантию покрытия 90%» верно, но обычно понимается как «для моего объекта вероятность попадания 90%». Это <em>неверно</em>. Верно только «в среднем по всем объектам». Для конкретного сегмента может быть 0.696 — и это не нарушение, а определение.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Jackknife+, CV+ и full conformal <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как не терять данные на калибровочную выборку</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Full conformal <span class="en">(transductive)</span></dt>
+<dd>Для каждого кандидата $y$ модель переобучается на данных с добавленным объектом $(x_{n+1}, y)$. Использует все данные, но требует переобучения на каждое значение сетки — практически неприменимо.</dd>
+
+<dt>Jackknife+</dt>
+<dd>$n$ моделей, каждая обучена без одного объекта. Интервал строится из остатков leave-one-out и прогнозов соответствующих моделей. Гарантия <strong>$1-2\alpha$</strong>, а не $1-\alpha$ — вдвое слабее в худшем случае.</dd>
+
+<dt>CV+</dt>
+<dd>То же через $K$-кратную кросс-валидацию: $K$ моделей вместо $n$. Стоимость падает с $n$ до $K$ обучений при почти той же эффективности.</dd>
+
+<dt>Слабая гарантия $1-2\alpha$</dt>
+<dd>Худший случай, доказанный без предположений. Эмпирически jackknife+ и CV+ почти всегда дают покрытие близко к $1-\alpha$; провал до $1-2\alpha$ требует патологически нестабильной модели.</dd>
+
+<dt>Стабильность модели</dt>
+<dd>Насколько прогноз меняется при удалении одного объекта. Для стабильных моделей (бустинг с регуляризацией, линейные) jackknife+ практически неотличим от split conformal по покрытию, но не теряет данные.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: жалко отдавать данные под калибровку</div>
+<p>Split conformal требует отрезать кусок данных — обычно 10–20%. При маленькой выборке это больно: модель обучается на меньшем, и качество падает.</p>
+<p><strong>Идея jackknife+:</strong> обучить $n$ моделей, каждую без одного объекта. Тогда для каждого объекта есть честный «внешний» прогноз, полученный моделью, которая его не видела. Из этих остатков и строится интервал.</p>
+<p><strong>Плата:</strong> $n$ обучений вместо одного, и гарантия формально слабее — $1-2\alpha$ вместо $1-\alpha$. CV+ снижает стоимость до $K$ обучений.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: четыре схемы на одних данных</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Постановка: маленькая выборка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Всего данных: 500 объектов. Целевое покрытие 90%.
+Задача, где данных мало и каждый объект на счету.
+
+<span class="lbl">Split conformal</span>
+трейн 400 + калибровка 100
+Модель обучена на 400 → качество ниже
+
+<span class="lbl">Jackknife+</span>
+500 моделей, каждая на 499 объектах
+Все 500 объектов участвуют в калибровке
+
+<span class="lbl">CV+ (K = 10)</span>
+10 моделей, каждая на 450 объектах
+Все 500 объектов дают остатки
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Результаты</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>500 объектов, целевое покрытие 0.90</caption>
+<thead><tr><th>Метод</th><th>обучений</th><th>объектов на обучение</th><th>покрытие</th><th>ср. ширина</th><th>гарантия</th></tr></thead>
+<tbody>
+<tr><td>Split conformal</td><td class="g">1</td><td class="a">400</td><td class="g">0.911</td><td class="a">5.84</td><td class="g">1 − α</td></tr>
+<tr class="best"><td>CV+ (K=10)</td><td class="g">10</td><td class="g">450</td><td class="g">0.903</td><td class="g">5.21</td><td class="a">1 − 2α</td></tr>
+<tr><td>CV+ (K=5)</td><td class="g">5</td><td>400</td><td class="g">0.906</td><td>5.47</td><td class="a">1 − 2α</td></tr>
+<tr class="best"><td>Jackknife+</td><td class="r">500</td><td class="g">499</td><td class="g">0.901</td><td class="g">5.09</td><td class="a">1 − 2α</td></tr>
+<tr><td>Full conformal</td><td class="r">500 × сетка</td><td class="g">500</td><td class="g">0.900</td><td class="g">5.02</td><td class="g">1 − α</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Что видно</span>
+Ширина split conformal: 5.84
+Ширина CV+ (K=10):      5.21  — на <span class="res">10.8%</span> уже
+Ширина jackknife+:      5.09  — на <span class="res">12.8%</span> уже
+
+Причина: модель обучена на 450–499 объектах
+вместо 400, качество выше, остатки меньше.
+
+Фактическое покрытие всех методов: 0.900–0.911.
+Формальная граница 1 − 2α = 0.80 не достигается
+даже близко — на стабильных моделях она пессимистична.
+
+CV+ с K = 10 — <b>практический оптимум</b>:
+почти вся выгода jackknife+ за 2% его стоимости.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Когда слабая гарантия проявляется</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Искусственно нестабильная модель</span>
+Дерево без ограничения глубины на 30 объектах:
+удаление одного объекта радикально меняет структуру.
+
+  jackknife+ покрытие: <span class="bad">0.834</span>
+  граница 1 − 2α = 0.80  ✓ соблюдена
+  split conformal:      <span class="res">0.897</span>
+
+<span class="lbl">Стабильная модель (бустинг с регуляризацией)</span>
+  jackknife+ покрытие: <span class="res">0.901</span>
+  split conformal:     <span class="res">0.903</span>
+  разница в пределах шума
+
+<b>Правило:</b> jackknife+ и CV+ безопасны для
+стабильных моделей. Для нестабильных
+(глубокие деревья без регуляризации, kNN с k=1,
+модели на грани переобучения) берите split conformal
+с его строгой гарантией.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Как выбирать</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Схема по объёму данных</caption>
+<thead><tr><th>Данных</th><th>Рекомендация</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>&lt; 200</td><td class="k">jackknife+ или CV+ (K=n/10)</td><td class="note">каждый объект на счету</td></tr>
+<tr><td>200 – 2 000</td><td class="k">CV+ (K = 10)</td><td class="note">лучший компромисс</td></tr>
+<tr class="best"><td>2 000 – 50 000</td><td class="k">split conformal</td><td class="note">потеря 10% данных незаметна</td></tr>
+<tr><td>&gt; 50 000</td><td class="k">split conformal</td><td class="note">калибровочной выборки хватает с запасом</td></tr>
+<tr><td>Любой объём, дорогое обучение</td><td class="k">split conformal</td><td class="note">одно обучение вместо K</td></tr>
+<tr><td>Нестабильная модель</td><td class="k">split conformal</td><td class="note">строгая гарантия 1 − α</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Практический вывод.</strong> При объёмах, типичных для промышленных задач, split conformal почти всегда правильный выбор: потеря 10% данных незначима, а гарантия строгая и одно обучение. CV+ имеет смысл там, где данных действительно мало — медицинские исследования, редкие события, дорогая разметка.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Четыре схемы: ширина против стоимости обучения</div>
+<div class="chsub">CV+ с K=10 даёт почти всю выгоду jackknife+ за 2% его стоимости</div>
+<div style="position:relative;height:330px;"><canvas id="c_jack"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Conformal, калибровка и Байес <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Три разных ответа на три разных вопроса</div>
+
+<div class="def">
+<div class="def-t">📖 Что каждый метод обещает</div>
+<dl>
+<dt>Калибровка (тема 1.7)</dt>
+<dd>Обещает, что <em>число</em> «вероятность 0.30» означает частоту 30%. Работает с точечными вероятностями, ничего не говорит про множества.</dd>
+
+<dt>Conformal</dt>
+<dd>Обещает, что <em>множество</em> покрывает истину с частотой $1-\alpha$. Не даёт вероятности отдельного исхода, даёт границу.</dd>
+
+<dt>Байесовский апостериор</dt>
+<dd>Обещает полное распределение $p(y \mid x, \text{данные})$ — но только при верной модели и априорном. При неверной спецификации гарантий нет.</dd>
+
+<dt>Связь калибровки и conformal</dt>
+<dd>Хорошо откалиброванная модель даёт <em>более узкие</em> conformal-множества, потому что скоры лучше упорядочены. Но conformal работает и на некалиброванной — просто менее эффективно.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: три метода на одном вопросе</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Один объект, три ответа</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Вопрос: сколько выручки принесёт этот клиент</span>
+
+<b>Точечный прогноз модели:</b> 14.5
+
+<b>После калибровки (тема 1.7):</b>
+  не применимо напрямую — калибровка про вероятности,
+  а не про непрерывную целевую.
+  Для классификации дала бы: P(отток) = 0.30,
+  и это означало бы честные 30%.
+
+<b>Conformal, α = 0.1:</b>
+  интервал [12.44, 16.56]
+  «истина внутри в 90% случаев, в среднем по объектам»
+  Про вероятность конкретных значений — ничего.
+
+<b>Байесовский апостериор:</b>
+  N(14.5, 1.8²), полное распределение
+  P(y &gt; 16) = 0.20, P(y ∈ [13,15]) = 0.40, и так далее
+  Верно, ЕСЛИ модель и априорное верны.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Что происходит при неверной спецификации</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Данные с тяжёлыми хвостами, модель предполагает нормальность</caption>
+<thead><tr><th>Метод</th><th>заявленное покрытие</th><th>фактическое</th><th>ширина</th></tr></thead>
+<tbody>
+<tr><td>Байес (нормальное правдоподобие)</td><td>0.90</td><td class="r">0.782</td><td class="g">3.52</td></tr>
+<tr><td>Байес (t-распределение, df=3)</td><td>0.90</td><td class="a">0.871</td><td>4.68</td></tr>
+<tr><td>Бутстрап</td><td>0.90</td><td class="a">0.859</td><td class="g">3.91</td></tr>
+<tr class="best"><td>Conformal</td><td>0.90</td><td class="g">0.903</td><td class="a">5.14</td></tr>
+<tr class="best"><td>CQR</td><td>0.90</td><td class="g">0.899</td><td class="g">4.22</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Байес с правильным правдоподобием почти попадает</strong> (0.871), с неправильным — сильно мимо (0.782). Conformal не знает и не должен знать, какое распределение у данных, и попадает в цель.</p>
+<p><strong>Но у Байеса есть то, чего у conformal нет:</strong> полное распределение. Можно спросить «какова вероятность превысить 16?» — conformal на такой вопрос не отвечает, он даёт только множество при фиксированном $\alpha$.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Они дополняют друг друга</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Рабочая связка</span>
+① Обучить модель, дающую распределение
+   (байесовскую, квантильную, ансамбль)
+② Использовать её как источник скора неконформности
+③ Обернуть в conformal
+
+Получаем:
+  форму распределения — от модели
+  гарантию покрытия — от conformal
+
+<span class="lbl">Пример: conformal поверх байесовской модели</span>
+скор s = −log p_апостериор(y | x)
+
+  чистый Байес:            покрытие <span class="bad">0.782</span>
+  conformal поверх Байеса: покрытие <span class="res">0.901</span>
+  ширина при этом:         4.09 против 5.14 у split conformal
+                           <span class="res">на 20% уже</span>
+
+Байес даёт хорошую форму, conformal чинит калибровку.
+</div>
+<div class="ct">
+<table>
+<caption>Какой инструмент для какого вопроса</caption>
+<thead><tr><th>Вопрос</th><th>Инструмент</th></tr></thead>
+<tbody>
+<tr><td>Означает ли «0.30» частоту 30%?</td><td class="k">калибровка (тема 1.7)</td></tr>
+<tr class="best"><td>В каком диапазоне лежит ответ с гарантией?</td><td class="k">conformal</td></tr>
+<tr><td>Какова вероятность превысить порог?</td><td class="k">Байес или квантильная модель</td></tr>
+<tr><td>Насколько модель уверена в этом объекте?</td><td class="k">размер conformal-множества</td></tr>
+<tr><td>Не аномален ли объект?</td><td class="k">пустое conformal-множество</td></tr>
+<tr><td>Всё сразу с гарантией</td><td class="k">conformal поверх байесовской модели</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Заявленное и фактическое покрытие на данных с тяжёлыми хвостами</div>
+<div class="chsub">Conformal поверх байесовской модели берёт форму от Байеса и гарантию от conformal</div>
+<div style="position:relative;height:330px;"><canvas id="c_bayes"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Практика: размер выборки и эффективность <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Сколько данных нужно на калибровку и как читать ширину</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📏</span> Трассировка: сколько объектов действительно нужно</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Формальный минимум и практический</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Формальный минимум: n ≥ (1−α)/α</span>
+α = 0.10  →  n ≥ 9
+α = 0.05  →  n ≥ 19
+α = 0.01  →  n ≥ 99
+
+Этого хватает, чтобы интервал был конечным.
+Но избыточная ширина при таком n огромна.
+
+<span class="lbl">Избыточное покрытие и его цена</span>
+Ожидаемое покрытие ≈ (1−α) + 1/(n+1)
+
+  n = 19:    0.90 + 0.050 = <span class="bad">0.950</span>  перебор на 5.0 п.п.
+  n = 99:    0.90 + 0.010 = <span class="hl">0.910</span>  перебор на 1.0 п.п.
+  n = 199:   0.90 + 0.005 = <span class="hl">0.905</span>
+  n = 999:   0.90 + 0.001 = <span class="res">0.901</span>
+  n = 9999:  0.90 + 0.0001 = <span class="res">0.9001</span>
+</div>
+<div class="ct">
+<table>
+<caption>Избыточная ширина из-за малой калибровочной выборки</caption>
+<thead><tr><th>n</th><th>ожид. покрытие</th><th>ср. ширина</th><th>избыток ширины</th><th>станд. откл. ширины</th></tr></thead>
+<tbody>
+<tr><td>19</td><td class="r">0.950</td><td class="r">6.84</td><td class="r">+66%</td><td class="r">±1.91</td></tr>
+<tr><td>49</td><td class="a">0.920</td><td class="a">5.12</td><td class="a">+24%</td><td class="a">±0.87</td></tr>
+<tr><td>99</td><td class="a">0.910</td><td>4.61</td><td>+12%</td><td>±0.52</td></tr>
+<tr><td>199</td><td class="g">0.905</td><td>4.37</td><td>+6%</td><td>±0.34</td></tr>
+<tr class="best"><td>499</td><td class="g">0.902</td><td class="g">4.21</td><td class="g">+2%</td><td class="g">±0.20</td></tr>
+<tr><td>999</td><td class="g">0.901</td><td class="g">4.16</td><td class="g">+1%</td><td class="g">±0.14</td></tr>
+<tr><td>4999</td><td class="g">0.900</td><td class="g">4.12</td><td class="g">0%</td><td class="g">±0.06</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец «станд. откл. ширины» часто упускают.</strong> При $n=19$ ширина скачет на ±1.91 в зависимости от того, какие объекты попали в калибровку, — то есть на 28%. При $n=499$ разброс ±0.20, то есть 5%. <em>Воспроизводимость интервалов не менее важна, чем их средняя ширина.</em></p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Рабочие ориентиры</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Размер калибровочной выборки по задаче</caption>
+<thead><tr><th>Ситуация</th><th>Минимум</th><th>Рекомендуемо</th><th>Правило</th></tr></thead>
+<tbody>
+<tr><td>Регрессия, α = 0.1</td><td>99</td><td class="g">500–1000</td><td class="note">n ≈ 50/α</td></tr>
+<tr><td>Регрессия, α = 0.05</td><td>199</td><td class="g">1000–2000</td><td class="note">n ≈ 50/α</td></tr>
+<tr><td>Регрессия, α = 0.01</td><td>999</td><td class="g">5000–10000</td><td class="note">n ≈ 50/α</td></tr>
+<tr class="best"><td>Mondrian, G групп</td><td>99·G</td><td class="g">500·G</td><td class="note">правило применяется к каждой группе</td></tr>
+<tr><td>Class-conditional, C классов</td><td>99·C</td><td class="g">500·C</td><td class="note">считать по редчайшему классу</td></tr>
+<tr><td>CQR</td><td>199</td><td class="g">1000+</td><td class="note">квантильным моделям нужно больше на обучение</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Простое правило</span>
+n ≈ 50 / α  даёт избыточную ширину около 2%
+n ≈ 10 / α  даёт около 10%
+n ≈ 1 / α   даёт около 60% и большой разброс
+
+Проверка на своих данных:
+① посчитать интервал на полной калибровочной выборке
+② бутстрапом пересэмплировать её 200 раз
+③ посмотреть разброс ширины
+   если &gt; 10% — калибровочной выборки мало
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Как читать ширину интервала</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Ширина — это метрика качества модели</span>
+Отслеживайте отношение:
+  ширина интервала / размах целевой переменной
+
+  &lt; 0.10:  модель отличная
+  0.10–0.25: рабочая
+  0.25–0.50: слабая, интервал малополезен
+  &gt; 0.50:  интервал бессмысленен
+
+Замер по итерациям улучшения модели:
+  базовая линия (среднее):  ширина 41.2  отношение <span class="bad">0.68</span>
+  линейная регрессия:       ширина 18.7  отношение <span class="hl">0.31</span>
+  бустинг:                  ширина 11.4  отношение <span class="hl">0.19</span>
+  бустинг + признаки:       ширина  7.9  отношение <span class="res">0.13</span>
+  CQR поверх бустинга:      ширина  6.8  отношение <span class="res">0.11</span>
+
+Покрытие во всех пяти случаях: <span class="res">0.90</span>
+</div>
+<p><strong>Покрытие не различает эти пять моделей вообще</strong> — оно 0.90 у всех, включая предсказание среднего. Ширина различает их идеально. Это делает ширину conformal-интервала удобной сводной метрикой качества, выраженной в единицах целевой переменной.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Мониторинг в проде</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что отслеживать и с какими порогами</caption>
+<thead><tr><th>Метрика</th><th>Норма</th><th>Тревога</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr class="best"><td>Эмпирическое покрытие</td><td class="note">0.88–0.93 при цели 0.90</td><td class="r">&lt; 0.85</td><td class="note">нарушена обменяемость, дрейф</td></tr>
+<tr><td>Размах покрытия по сегментам</td><td class="note">&lt; 0.05</td><td class="a">&gt; 0.10</td><td class="note">неоднородная структура ошибки</td></tr>
+<tr class="best"><td>Средняя ширина</td><td class="note">стабильна ±10%</td><td class="a">рост &gt; 25%</td><td class="note">модель деградирует</td></tr>
+<tr><td>Доля пустых множеств</td><td class="note">&lt; 2%</td><td class="a">&gt; 5%</td><td class="note">приток аномальных объектов</td></tr>
+<tr><td>Ширина / размах целевой</td><td class="note">&lt; 0.25</td><td class="a">&gt; 0.40</td><td class="note">интервал теряет полезность</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Важно про первую строку</span>
+Покрытие 0.88 при цели 0.90 может быть просто шумом.
+Стандартная ошибка оценки покрытия по m наблюдениям:
+  σ = √(0.9 × 0.1 / m)
+
+  m = 100:   σ = <span class="hl">0.030</span>  → 0.88 в пределах шума
+  m = 1000:  σ = <span class="hl">0.0095</span> → 0.88 подозрительно (2.1σ)
+  m = 10000: σ = <span class="res">0.0030</span> → 0.88 однозначно проблема (6.7σ)
+
+Порог тревоги должен зависеть от m,
+иначе будете ловить шум или пропускать реальный дрейф.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Избыточная ширина при малой калибровочной выборке</div>
+<div class="chsub">При n = 19 ширина завышена на 66% и скачет на ±28% между разбиениями</div>
+<div style="position:relative;height:340px;"><canvas id="c_size"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Ширина интервала как метрика качества модели</div>
+<div class="chsub">Покрытие 0.90 у всех пяти моделей; ширина различает их идеально</div>
+<div style="position:relative;height:330px;"><canvas id="c_width"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пятнадцать ошибок</div>
+
+<div class="pitfalls">
+<div class="pf"><span class="pfn">1</span><span class="pfc"><b>Понимать гарантию как условную.</b> «Для моего объекта вероятность попадания 90%» — неверно. Верно только «в среднем по всем объектам». В шумном квинтиле покрытие было 0.696 при маргинальных 0.902, и это не нарушение, а определение.</span></div>
+
+<div class="pf"><span class="pfn">2</span><span class="pfc"><b>Калибровать на данных, которые видела модель.</b> Обменяемость ломается, скоры занижены переобучением. Покрытие падает до 0.58 при цели 0.90 — хуже, чем вообще без conformal.</span></div>
+
+<div class="pf"><span class="pfn">3</span><span class="pfc"><b>Отбирать признаки или подбирать гиперпараметры на всех данных.</b> Скрытая форма той же утечки: калибровочная выборка косвенно повлияла на модель. Покрытие 0.83 вместо 0.90, и найти причину крайне трудно.</span></div>
+
+<div class="pf"><span class="pfn">4</span><span class="pfc"><b>Брать обычный перцентиль вместо конформного.</b> При $n=19$ обычный 90-й перцентиль — это 17-й элемент (1.74), конформный — 18-й (2.06). Разница 18% ширины, и без неё гарантия не выполняется.</span></div>
+
+<div class="pf"><span class="pfn">5</span><span class="pfc"><b>Игнорировать минимум $n \ge (1-\alpha)/\alpha$.</b> При $\alpha=0.01$ и $n=50$ требуемый индекс 51 превышает размер выборки — квантиль бесконечен. Библиотека может молча вернуть максимум вместо честного $+\infty$.</span></div>
+
+<div class="pf"><span class="pfn">6</span><span class="pfc"><b>Использовать абсолютный остаток на гетероскедастичных данных.</b> Постоянная ширина 772 при типичной ошибке 15 в тихом сегменте и 420 в шумном. Покрытие 0.998 и 0.696 соответственно. Берите CQR или нормированный остаток.</span></div>
+
+<div class="pf"><span class="pfn">7</span><span class="pfc"><b>Обучать модель $\hat\sigma$ для нормированного остатка на калибровочной выборке.</b> Та же утечка, что в пункте 2, только менее очевидная. Нужны три непересекающиеся части либо CQR, где вторая модель не требуется.</span></div>
+
+<div class="pf"><span class="pfn">8</span><span class="pfc"><b>Делить кластеризованные данные случайно.</b> Пять записей одного клиента попадают и в трейн, и в калибровку. Эффективный размер калибровочной выборки меньше номинального, покрытие проседает до 0.85. Делить надо по клиентам.</span></div>
+
+<div class="pf"><span class="pfn">9</span><span class="pfc"><b>Применять conformal к временному ряду без поправок.</b> Обменяемость нарушена по построению: будущее не обменяемо с прошлым. Покрытие 0.71 вместо 0.90. Нужен ACI, скользящее окно или взвешенный conformal.</span></div>
+
+<div class="pf"><span class="pfn">10</span><span class="pfc"><b>Смотреть только на покрытие.</b> Метод, выдающий бесконечный интервал с вероятностью $1-\alpha$ и пустой с вероятностью $\alpha$, имеет идеальное покрытие и нулевую пользу. <em>Ширина — обязательная вторая метрика.</em></span></div>
+
+<div class="pf"><span class="pfn">11</span><span class="pfc"><b>Не проверять покрытие по срезам.</b> Маргинальные 0.902 совместимы с размахом 0.302 по сегментам. Разбивайте по величине прогноза, ключевым признакам, времени и бизнес-сегментам — и считайте покрытие в каждом.</span></div>
+
+<div class="pf"><span class="pfn">12</span><span class="pfc"><b>Дробить Mondrian на слишком мелкие группы.</b> При $n_g = 8$ и $\alpha=0.1$ требуемый индекс 9 не существует — интервал бесконечен. Практический ориентир: $n_g \ge 10(1-\alpha)/\alpha$, то есть 90 объектов на группу.</span></div>
+
+<div class="pf"><span class="pfn">13</span><span class="pfc"><b>Брать наивный скор для классификации со многими классами.</b> Средний размер множества 1.84 выглядит отлично, но покрытие трудных объектов 0.712. RAPS даёт 2.41 при 0.831 — обычно это правильный размен.</span></div>
+
+<div class="pf"><span class="pfn">14</span><span class="pfc"><b>Применять jackknife+ к нестабильной модели.</b> Гарантия там всего $1-2\alpha$, и на глубоком дереве без регуляризации покрытие действительно падает до 0.834. Для стабильных моделей разницы нет, для нестабильных берите split conformal.</span></div>
+
+<div class="pf"><span class="pfn">15</span><span class="pfc"><b>Ставить фиксированный порог тревоги на покрытие.</b> Стандартная ошибка оценки покрытия равна $\sqrt{\alpha(1-\alpha)/m}$: при $m=100$ это 0.030, при $m=10000$ — 0.003. Порог 0.85 либо ловит шум, либо пропускает реальный дрейф — в зависимости от объёма.</span></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев, где интервал важнее точки</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏭</span><div><div class="sysname">Прогноз спроса и планирование закупок</div><div class="syssub">Решение принимается по верхней границе, а не по среднему</div></div></div>
+<div class="sysbody">
+<p><strong>Постановка.</strong> Прогноз спроса на 12 000 SKU. Закупка по точечному прогнозу означает дефицит примерно в половине случаев — распределение спроса скошено, и среднее не покрывает пики.</p>
+<p><strong>Почему conformal, а не квантильная регрессия напрямую.</strong> Квантильные модели обучались отдельно по каждой товарной категории и систематически недопокрывали: на калибровке фактическое покрытие 95-го квантиля оказалось 0.79 вместо 0.95. CQR исправил это за одну поправку $\hat q = +2.4$ единиц, без переобучения.</p>
+<p><strong>Mondrian по категориям — обязателен.</strong> Общий квантиль давал покрытие 0.98 для стабильных категорий (бакалея) и 0.71 для сезонных (садовый инвентарь). После группировки по 14 категориям — диапазон 0.891–0.912. Калибровочная выборка 32 000 записей, по 2 300 на группу, что заведомо выше порога 90.</p>
+<p><strong>Экономический эффект считается через ширину, а не покрытие.</strong> Верхняя граница интервала — это уровень запаса. Сужение интервала на единицу напрямую высвобождает оборотный капитал. Переход с абсолютного остатка на CQR сузил средний интервал на 23% при том же покрытии — <em>это и есть результат проекта</em>.</p>
+<p><strong>ACI поверх всего.</strong> Спрос дрейфует, и статическая калибровка деградирует за 6–8 недель. $\gamma = 0.02$ при недельном цикле пересчёта. За два года покрытие держится в 0.887–0.914 без единой ручной перекалибровки.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🩺</span><div><div class="sysname">Диагностика по снимкам с отправкой на врача</div><div class="syssub">Размер множества решает, кто принимает решение</div></div></div>
+<div class="sysbody">
+<p><strong>Схема.</strong> Модель классифицирует снимок на 14 диагнозов. Если conformal-множество содержит один класс — ответ отдаётся автоматически. Если два и более — снимок идёт к врачу. Пустое множество — тоже к врачу, с пометкой «нетипичный случай».</p>
+<p><strong>Здесь размер множества — это буквально маршрутизация.</strong> При $\alpha = 0.05$ единственный класс получается у 61% снимков, и они закрываются автоматически. Остальные 39% идут к врачу — это и есть нагрузка на человека, и она регулируется параметром $\alpha$.</p>
+<p><strong>Class-conditional conformal — не опция, а требование.</strong> Обычный conformal давал покрытие 0.94 для частых диагнозов и <em>0.58 для редких</em>, которые как раз опаснее всего пропустить. После перехода на поклассовые квантили — 0.947–0.958 по всем 14 классам. Цена: средний размер множества вырос с 1.42 до 1.89, автоматизация упала с 61% до 48%.</p>
+<p><strong>Пустые множества оказались самой ценной частью.</strong> 1.7% снимков не получили ни одного класса — среди них доля редких и нетипичных патологий была в 11 раз выше базовой. Фактически бесплатный детектор аномалий, полученный как побочный продукт.</p>
+<p><strong>Что показывается врачу.</strong> Не вероятности (им не доверяют), а множество: «модель не исключает: пневмония, ателектаз». Врач воспринимает это как список для проверки, а не как вердикт — <em>и это принципиально изменило принятие системы</em>.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">💰</span><div><div class="sysname">Оценка недвижимости с публикацией диапазона</div><div class="syssub">Пользователь видит интервал, и он должен быть честным</div></div></div>
+<div class="sysbody">
+<p><strong>Требование.</strong> Сервис показывает «оценка 8.4 млн, диапазон 7.6–9.3 млн». Пользователи проверяют попадания по реальным сделкам, и завышенная уверенность немедленно бьёт по репутации.</p>
+<p><strong>Почему не бутстрап.</strong> Он мерил разброс модели, а не полную ошибку: покрытие 0.71 при заявленных 0.90. Пользователи заметили это раньше команды — по обсуждениям на форумах.</p>
+<p><strong>Mondrian по географии и типу.</strong> 68 групп: 17 округов × 4 типа жилья. Минимум объектов в группе — 340, что выше порога. Покрытие по группам 0.884–0.919 против разброса 0.74–0.97 при общем квантиле. <em>Важно, что группы совпадают с тем, как пользователь мысленно сегментирует рынок</em> — жалоба всегда звучит как «в моём районе вы врёте».</p>
+<p><strong>Ширина показывается как индикатор надёжности.</strong> Узкий диапазон — типовая квартира в плотном сегменте. Широкий — уникальный объект, мало аналогов. Пользователю выводится текстом: «мало похожих сделок за последний год». Ширина интервала оказалась понятнее любой метрики уверенности.</p>
+<p><strong>Отдельная проблема — объекты вне обучающего распределения.</strong> Особняки, апартаменты в реконструированных зданиях. Для них ширина уходит за 40% от оценки, и вместо диапазона показывается «недостаточно данных для оценки». Порог — отношение ширины к оценке выше 0.35.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🤖</span><div><div class="sysname">Отбор в человеческую проверку для LLM-пайплайна</div><div class="syssub">Conformal поверх языковой модели для классификации обращений</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> LLM классифицирует обращения в поддержку по 43 категориям. Часть отправляется в автоматический сценарий, часть — оператору. Нужно понять, где модель ненадёжна.</p>
+<p><strong>Скор неконформности — из логитов, а не из текста ответа.</strong> Модель просят выдать вероятности по категориям через логиты токенов-меток. Скор RAPS с $k_{\text{reg}}=3$, $\lambda=0.02$: при 43 классах чистый APS давал множества по 9–14 категорий, бесполезные для маршрутизации.</p>
+<p><strong>Калибровка после каждой смены версии модели.</strong> Замена модели меняет распределение логитов полностью — старый $\hat q$ становится бессмысленным. Держится размеченный «золотой набор» на 2 000 обращений; перекалибровка занимает минуты и входит в чек-лист выката.</p>
+<p><strong>Что дало conformal сверх обычного порога по вероятности.</strong> Порог 0.8 по максимальной вероятности давал покрытие 0.87 для частых категорий и 0.44 для редких — модель систематически переуверена именно на редком. Class-conditional conformal выровнял: 0.893–0.921 по всем 43 категориям.</p>
+<p><strong>Мониторинг доли пустых множеств как детектор новых тем.</strong> Скачок с 1.2% до 4.8% за неделю указал на новый тип обращений после релиза продукта. <em>Сигнал пришёл на девять дней раньше, чем это заметила команда поддержки.</em></p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⚡</span><div><div class="sysname">Прогноз нагрузки на энергосеть</div><div class="syssub">Временной ряд, где обменяемость нарушена по построению</div></div></div>
+<div class="sysbody">
+<p><strong>Постановка.</strong> Почасовой прогноз нагрузки на сутки вперёд. Резерв мощности планируется по верхней границе; недооценка означает аварию, переоценка — прямые издержки.</p>
+<p><strong>Обменяемость нарушена, и это не лечится выбором скора.</strong> Статический conformal, откалиброванный на прошлом квартале, давал покрытие 0.73 при цели 0.95 — сезонность, погода, изменение потребления. Гарантия исчезла полностью.</p>
+<p><strong>ACI с $\gamma = 0.03$.</strong> Метки приходят через час, обратная связь почти мгновенная — идеальные условия для адаптивной схемы. Покрытие за год: 0.947 при цели 0.95, при том что распределение менялось непрерывно.</p>
+<p><strong>Плюс скользящее окно на 30 дней.</strong> ACI страхует от резких сдвигов, окно отслеживает медленное изменение формы распределения ошибок. Раздельно: 0.912 (только окно) и 0.938 (только ACI); вместе — 0.947.</p>
+<p><strong>Асимметричные интервалы.</strong> Цена недооценки в 40 раз выше цены переоценки, поэтому используются раздельные квантили: $\alpha_{\text{низ}} = 0.15$, $\alpha_{\text{верх}} = 0.002$. Формально это два независимых односторонних conformal-интервала, каждый со своей гарантией. <em>Симметричный интервал здесь был бы прямой потерей денег.</em></p>
+<p><strong>Ширина интервала пошла в KPI команды.</strong> Резерв мощности — это верхняя граница минус прогноз. Сужение интервала на 1% при сохранении покрытия даёт измеримую экономию, и команда оптимизирует именно её, а не MAE.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы</div>
+<div class="sdesc">Тридцать вопросов</div>
+
+<h3>Основы</h3>
+
+<div class="qa"><div class="q">1. Что такое conformal prediction одним предложением?</div><div class="a">Метод, превращающий любой точечный прогноз в множество с гарантией покрытия $1-\alpha$, верной для любой модели и любого распределения данных при единственном условии — обменяемости.</div></div>
+
+<div class="qa"><div class="q">2. Какое единственное предположение нужно?</div><div class="a">Обменяемость: совместное распределение объектов не меняется при перестановке. Слабее, чем независимость и одинаковая распределённость. <em>Именно её ломает временной дрейф.</em></div></div>
+
+<div class="qa"><div class="q">3. Делает ли conformal модель лучше?</div><div class="a">Нет. Он честно сообщает, насколько она плоха. Плохая модель даёт широкие интервалы с покрытием 90%, хорошая — узкие с тем же покрытием. Покрытие гарантировано всегда, полезность — нет.</div></div>
+
+<div class="qa"><div class="q">4. Почему берётся $\lceil (n+1)(1-\alpha)\rceil$, а не обычный перцентиль?</div><div class="a">Новый объект тоже участвует в ранжировании — всего $n+1$ значение. При $n=19$, $\alpha=0.1$ конформный индекс 18, обычный перцентиль дал бы 17. Разница 18% ширины, и без неё гарантия не выполняется.</div></div>
+
+<div class="qa"><div class="q">5. Какой минимальный размер калибровочной выборки?</div><div class="a">$n \ge \frac{1-\alpha}{\alpha}$: при $\alpha=0.1$ это 9, при $\alpha=0.01$ — 99. Меньше — интервал обязан быть бесконечным. Практический ориентир $n \approx 50/\alpha$ даёт избыточную ширину около 2%.</div></div>
+
+<h3>Гарантия</h3>
+
+<div class="qa"><div class="q">6. Как доказывается гарантия?</div><div class="a">Из обменяемости следует, что ранг нового объекта среди $n+1$ скоров равномерен: $\mathbb{P}(R=j) = \frac{1}{n+1}$. Событие покрытия эквивалентно $\{R \le k\}$, значит $\mathbb{P} = \frac{k}{n+1} \ge 1-\alpha$. Всё доказательство.</div></div>
+
+<div class="qa"><div class="q">7. Есть ли верхняя граница покрытия?</div><div class="a">Да: $\mathbb{P} < 1-\alpha + \frac{1}{n+1}$. При $n=19$ это диапазон $[0.90,\ 0.95)$. При малом $n$ метод систематически перестраховывается, и это стоит лишней ширины.</div></div>
+
+<div class="qa"><div class="q">8. Зависит ли гарантия от выбора функции неконформности?</div><div class="a">Нет — в доказательстве конкретный вид $s$ нигде не используется. Даже бессмысленный скор даёт покрытие $1-\alpha$. От выбора зависит только ширина.</div></div>
+
+<div class="qa"><div class="q">9. Что ломает гарантию сильнее всего?</div><div class="a">Калибровка на данных, которые видела модель: покрытие 0.58 при цели 0.90. Скоры занижены переобучением, обменяемость нарушена. Второе по опасности — временной дрейф (0.71).</div></div>
+
+<div class="qa"><div class="q">10. Что делать с кластеризованными данными?</div><div class="a">Делить по кластерам, а не по записям. Пять записей одного клиента в трейне и калибровке уменьшают эффективный размер калибровочной выборки; покрытие проседает до 0.85.</div></div>
+
+<h3>Условное покрытие</h3>
+
+<div class="qa"><div class="q">11. Означает ли «покрытие 90%», что для моего объекта вероятность 90%?</div><div class="a"><b>Нет.</b> Гарантия маргинальная — в среднем по всем объектам. Конкретный сегмент может иметь 0.696 при маргинальных 0.902, и это не нарушение, а определение.</div></div>
+
+<div class="qa"><div class="q">12. Можно ли получить условное покрытие?</div><div class="a">Свободным от распределения методом — только бесконечными интервалами (теорема Лея и Вассермана). Это фундаментальный барьер, а не ограничение алгоритма. За приближение приходится платить предположениями.</div></div>
+
+<div class="qa"><div class="q">13. Приведите тривиально валидный и бесполезный метод.</div><div class="a">С вероятностью $1-\alpha$ выдавать всю числовую ось, с вероятностью $\alpha$ — пустое множество. Покрытие ровно $1-\alpha$, и маргинальное, и условное. Польза нулевая. <em>Поэтому ширина — обязательная вторая метрика.</em></div></div>
+
+<div class="qa"><div class="q">14. Как приблизиться к условному покрытию?</div><div class="a">Три пути: адаптивный скор (CQR, нормированный остаток) — размах падает с 0.302 до 0.03 эмпирически; Mondrian — гарантия внутри заданных групп по построению; проверка покрытия по срезам — обязательная гигиена в любом случае.</div></div>
+
+<h3>Функции неконформности</h3>
+
+<div class="qa"><div class="q">15. Чем плох абсолютный остаток?</div><div class="a">Даёт постоянную ширину для всех объектов. На гетероскедастичных данных: ширина 772 при типичной ошибке 15 в тихом сегменте (покрытие 0.998) и 420 в шумном (покрытие 0.696).</div></div>
+
+<div class="qa"><div class="q">16. Что такое нормированный остаток?</div><div class="a">$s = |y-\hat y|/\hat\sigma(x)$, где $\hat\sigma$ — вторая модель, предсказывающая величину ошибки. Ширина становится адаптивной. <b>Важно:</b> $\hat\sigma$ обучается не на калибровочной выборке, иначе обменяемость ломается.</div></div>
+
+<div class="qa"><div class="q">17. Что такое CQR?</div><div class="a">Две квантильные модели на уровнях $\alpha/2$ и $1-\alpha/2$ плюс конформная поправка. Скор $s = \max(\hat q_{\text{lo}}-y,\ y-\hat q_{\text{hi}})$. Ширина адаптивна по построению, вторая модель не нужна.</div></div>
+
+<div class="qa"><div class="q">18. Насколько CQR лучше базового метода?</div><div class="a">Размах покрытия по квинтилям шума: 0.302 у split conformal против 0.032 у CQR — в 9.4 раза ровнее. Средняя ширина при этом меньше: 16.7 против 18.1. Выигрыш по обоим критериям.</div></div>
+
+<div class="qa"><div class="q">19. Что означает отрицательный скор в CQR?</div><div class="a">Объект внутри интервала квантильной модели, модуль скора — расстояние до ближайшего края. Если $\hat q < 0$, интервал <em>сужается</em> — метод исправляет излишний консерватизм квантильной модели.</div></div>
+
+<h3>Классификация</h3>
+
+<div class="qa"><div class="q">20. Что выдаёт conformal при классификации?</div><div class="a">Множество классов. Размер — прямая мера неуверенности: один класс означает уверенность, пять — что модель не разобралась. Возможно и пустое множество.</div></div>
+
+<div class="qa"><div class="q">21. Наивный скор, APS или RAPS?</div><div class="a">На 1000 классах: наивный даёт размер 1.84 при покрытии трудных объектов <b>0.712</b>; APS — 18.7 при 0.858; RAPS — 2.41 при 0.831. RAPS обычно правильный компромисс.</div></div>
+
+<div class="qa"><div class="q">22. Что делать с пустыми множествами?</div><div class="a">Это сигнал аномалии — объект не похож ни на что из калибровочной выборки. В проде: вернуть argmax с пометкой, отправить на проверку или форсировать размер 1. Последнее безопасно — увеличение множества не уменьшает покрытие.</div></div>
+
+<div class="qa"><div class="q">23. Как гарантировать покрытие для редкого класса?</div><div class="a">Class-conditional Mondrian: свой квантиль по каждому классу. В примере класс с долей 2% имел покрытие 0.581 при обычном conformal и 0.900 при поклассовом. Цена — размер множества с 1.84 до 2.37.</div></div>
+
+<h3>Дрейф и вариации</h3>
+
+<div class="qa"><div class="q">24. Что делать при дрейфе?</div><div class="a">ACI: $\alpha_{t+1} = \alpha_t + \gamma(\alpha - \text{err}_t)$. Промах «стоит» в 9 раз больше попадания при $\alpha=0.1$, поэтому равновесие устанавливается при частоте ошибок 10%. Гарантия долгосрочная и не требует никаких предположений о характере дрейфа.</div></div>
+
+<div class="qa"><div class="q">25. Как выбрать $\gamma$?</div><div class="a">Компромисс: $\gamma=0.005$ — восстановление за 380 шагов, но стабильная ширина (±3%); $\gamma=0.2$ — за 12 шагов, но ширина скачет на ±74%. Ориентир: $\gamma \approx 1/(\text{наблюдений за характерное время дрейфа})$.</div></div>
+
+<div class="qa"><div class="q">26. Почему ACI может выдать бесконечный интервал?</div><div class="a">При систематических промахах $\alpha_t$ уходит в ноль. Формально корректно — покрытие гарантировано тривиально. Практически это сигнал переобучить модель, а не игнорировать.</div></div>
+
+<div class="qa"><div class="q">27. Что такое jackknife+ и CV+?</div><div class="a">Способы не терять данные на калибровку: $n$ (или $K$) моделей leave-one-out. Гарантия слабее — $1-2\alpha$, но эмпирически покрытие близко к $1-\alpha$ для стабильных моделей. CV+ с $K=10$ даёт почти всю выгоду jackknife+ за 2% стоимости.</div></div>
+
+<div class="qa"><div class="q">28. Когда jackknife+ действительно проваливается?</div><div class="a">При нестабильной модели. Глубокое дерево без регуляризации на 30 объектах дало покрытие 0.834 — граница $1-2\alpha = 0.80$ соблюдена, но цель 0.90 не достигнута. Для таких моделей берите split conformal.</div></div>
+
+<h3>Сравнения</h3>
+
+<div class="qa"><div class="q">29. Чем conformal отличается от калибровки вероятностей?</div><div class="a">Калибровка (тема 1.7) обещает, что число «0.30» означает частоту 30%. Conformal обещает, что множество покроет истину с частотой $1-\alpha$. Разные вопросы; хорошо откалиброванная модель даёт <em>более узкие</em> conformal-множества.</div></div>
+
+<div class="qa"><div class="q">30. Conformal или байесовские интервалы?</div><div class="a">Байес даёт полное распределение, но гарантия зависит от верности модели: на данных с тяжёлыми хвостами покрытие 0.782 вместо 0.90. Conformal попадает в цель без предположений. <em>Лучшее решение — conformal поверх байесовской модели</em>: форма от Байеса, гарантия от conformal, ширина на 20% меньше базового split conformal.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block1_07_calibration.html">← 1.7 · Калибровка вероятностей</a>
+  <a href="index_roadmap.html" class="next">К содержанию курса →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---- 1. Пять методов ---- */
+mk('c_methods', {type:'bar', data:{
+  labels:['ŷ ± 1.96σ̂','Бутстрап','Байес','MC-dropout','Split conformal','CQR'],
+  datasets:[
+   {label:'фактическое покрытие', data:[0.871,0.903,0.834,0.702,0.951,0.948], backgroundColor:['#dc2626','#d97706','#dc2626','#dc2626','#16a34a','#16a34a'], yAxisID:'y'},
+   {label:'целевое покрытие 0.95', data:[0.95,0.95,0.95,0.95,0.95,0.95], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0, yAxisID:'y'},
+   {label:'ср. ширина / 10', data:[0.384,0.411,0.366,0.291,0.528,0.437], backgroundColor:'#cbd5e1', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0,max:1.0,title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'узкий интервал, покрывающий 87% вместо 95%, — не преимущество, а неверный ответ',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 2. Сходимость покрытия ---- */
+mk('c_conv', {type:'line', data:{
+  labels:['9','19','49','99','199','499','999','9999'],
+  datasets:[
+   {label:'эмпирическое покрытие', data:[0.9986,0.9247,0.9198,0.9048,0.9032,0.9021,0.9005,0.9001],
+    borderColor:'#b45309', backgroundColor:'rgba(180,83,9,.10)', borderWidth:3, tension:.25, pointRadius:6, fill:true},
+   {label:'нижняя граница 1−α', data:[0.90,0.90,0.90,0.90,0.90,0.90,0.90,0.90],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.5, borderDash:[6,4], tension:0, pointRadius:0},
+   {label:'верхняя граница 1−α+1/(n+1)', data:[1.000,0.950,0.920,0.910,0.905,0.902,0.901,0.9001],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2, borderDash:[3,3], tension:.2, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'размер калибровочной выборки n'}},NOG),
+          y:Object.assign({min:0.88,max:1.01,title:{display:true,text:'покрытие'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'избыток покрытия равен 1/(n+1) и оплачивается лишней шириной',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 3. Равномерность ранга ---- */
+mk('c_rank', {type:'bar', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20'],
+  datasets:[{label:'P(ранг нового объекта = j)',
+    data:[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],
+    backgroundColor:['#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#b45309','#dc2626','#dc2626']}]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'ранг R среди n+1 = 20 скоров'}},NOG),
+          y:Object.assign({title:{display:true,text:'вероятность'}},GRID)},
+  plugins:{legend:{display:false},title:{display:true,text:'первые 18 столбцов (оранжевые) = покрытие 18/20 = 0.90; красные = промах',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 4. Постоянная vs адаптивная ширина ---- */
+mk('c_norm', {type:'bar', data:{
+  labels:['квинтиль 1','квинтиль 2','квинтиль 3','квинтиль 4','квинтиль 5','МАРГИНАЛЬНОЕ'],
+  datasets:[
+   {label:'покрытие: абсолютный остаток', data:[0.998,0.981,0.923,0.812,0.696,0.902], backgroundColor:'#dc2626'},
+   {label:'покрытие: нормированный', data:[0.914,0.908,0.897,0.893,0.888,0.900], backgroundColor:'#16a34a'},
+   {label:'цель 0.90', data:[0.90,0.90,0.90,0.90,0.90,0.90], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.6,max:1.05,title:{display:true,text:'покрытие'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'оба удовлетворяют гарантии — распределение по группам принципиально разное',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 5. Классификация ---- */
+mk('c_cls', {type:'bar', data:{
+  labels:['средний размер\nмножества','покрытие\nлёгких','покрытие\nтрудных','маргинальное\nпокрытие'],
+  datasets:[
+   {label:'Наивный (LAC)', data:[1.84,0.994,0.712,0.902], backgroundColor:'#dc2626'},
+   {label:'APS', data:[18.7,0.951,0.858,0.902], backgroundColor:'#2563eb'},
+   {label:'RAPS (λ=0.01)', data:[2.41,0.968,0.831,0.902], backgroundColor:'#16a34a'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({type:'logarithmic',title:{display:true,text:'значение (лог. шкала)'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'наивный скор даёт компактные множества, недопокрывая трудные объекты на 0.19',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 6. RAPS lambda ---- */
+mk('c_raps', {type:'line', data:{
+  labels:['0','0.005','0.01','0.05','∞ (наивный)'],
+  datasets:[
+   {label:'средний размер множества', data:[18.7,4.62,2.41,1.91,1.84],
+    borderColor:'#b45309', backgroundColor:'transparent', borderWidth:3, tension:.2, pointRadius:6, yAxisID:'y'},
+   {label:'покрытие трудных объектов ×10', data:[8.58,8.44,8.31,7.71,7.12],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:3, tension:.2, pointRadius:6, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'параметр регуляризации λ'}},NOG),
+          y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'λ = 0.01: размер падает в 7.8 раза, покрытие трудных — на 0.027',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 7. CQR ---- */
+mk('c_cqr', {type:'bar', data:{
+  labels:['квинтиль 1','квинтиль 2','квинтиль 3','квинтиль 4','квинтиль 5'],
+  datasets:[
+   {label:'покрытие split conformal', data:[0.998,0.981,0.923,0.812,0.696], backgroundColor:'#fca5a5', yAxisID:'y'},
+   {label:'покрытие CQR', data:[0.915,0.904,0.891,0.897,0.883], backgroundColor:'#16a34a', yAxisID:'y'},
+   {label:'ширина CQR / 30', data:[0.347,0.403,0.493,0.653,0.893], type:'line',
+    borderColor:'#b45309', backgroundColor:'transparent', borderWidth:3, tension:.25, pointRadius:5, yAxisID:'y'},
+   {label:'ширина split / 30 (постоянна)', data:[0.603,0.603,0.603,0.603,0.603], type:'line',
+    borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.3,max:1.05,title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'ширина CQR растёт вместе с шумом — постоянная линия split не адаптируется',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 8. Mondrian ---- */
+mk('c_mond', {type:'bar', data:{
+  labels:['группа 1','группа 2','группа 3','группа 4','группа 5'],
+  datasets:[
+   {label:'покрытие: общий квантиль', data:[0.998,0.981,0.923,0.812,0.696], backgroundColor:'#fca5a5'},
+   {label:'покрытие: Mondrian', data:[0.903,0.897,0.911,0.894,0.899], backgroundColor:'#16a34a'},
+   {label:'цель 0.90', data:[0.90,0.90,0.90,0.90,0.90], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.6,max:1.05,title:{display:true,text:'покрытие'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'Mondrian даёт гарантию внутри группы по построению, а не эмпирически',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 9. Число групп ---- */
+mk('c_groups', {type:'line', data:{
+  labels:['5','10','20','50','100','200','250'],
+  datasets:[
+   {label:'средняя ширина интервала', data:[20.2,20.8,21.8,24.6,31.4,48.9,null],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.25, pointRadius:6, fill:true, yAxisID:'y'},
+   {label:'объектов в группе n_g', data:[400,200,100,40,20,10,8],
+    borderColor:'#2563eb', backgroundColor:'transparent', borderWidth:2.5, borderDash:[5,4], tension:.2, pointRadius:5, yAxisID:'y'},
+   {label:'минимум n_g = 9 при α=0.1', data:[9,9,9,9,9,9,9],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2, borderDash:[3,3], tension:0, pointRadius:0, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'число групп (всего 2000 калибровочных объектов)'}},NOG),
+          y:Object.assign({type:'logarithmic',title:{display:true,text:'значение (лог. шкала)'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'при 250 группах n_g = 8 < 9 — интервал становится бесконечным',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 10. ACI ---- */
+mk('c_aci', {type:'line', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10'],
+  datasets:[
+   {label:'α_t (используемый уровень)', data:[0.100,0.105,0.110,0.115,0.120,0.075,0.030,0.035,0.040,0.000],
+    borderColor:'#b45309', backgroundColor:'rgba(180,83,9,.12)', borderWidth:3, tension:.15, pointRadius:6, fill:true, yAxisID:'y'},
+   {label:'целевой α = 0.10', data:[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0, yAxisID:'y'},
+   {label:'промах (1 = да)', data:[0,0,0,0,1,1,0,0,1,0],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.5, stepped:'after', pointRadius:4, yAxisID:'y1'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'шаг t'}},NOG),
+          y:Object.assign({min:0,max:0.14,title:{display:true,text:'α_t'}},GRID),
+          y1:{position:'right',min:0,max:1.6,ticks:{stepSize:1},grid:{display:false},title:{display:true,text:'промах'}}},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'промах опускает α на 0.045, попадание поднимает на 0.005 — отношение 9:1',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 11. Выбор gamma ---- */
+mk('c_gamma', {type:'bar', data:{
+  labels:['γ=0.005','γ=0.01','γ=0.05','γ=0.10','γ=0.20'],
+  datasets:[
+   {label:'шагов до восстановления / 10', data:[38,18,4,2,1.2], backgroundColor:'#dc2626'},
+   {label:'мин. покрытие в провале ×10', data:[5.8,6.2,7.1,7.9,8.3], backgroundColor:'#16a34a'},
+   {label:'размах ширины в стабильный период, %/10', data:[0.3,0.6,2.2,4.1,7.4], backgroundColor:'#d97706'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'масштабированное значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'быстрая адаптация ценой дёрганой ширины: γ=0.05 — практический компромисс',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 12. Условное покрытие ---- */
+mk('c_cond', {type:'line', data:{
+  labels:['сегмент 1','сегмент 2','сегмент 3','сегмент 4','сегмент 5'],
+  datasets:[
+   {label:'split conformal (|y−ŷ|)', data:[0.998,0.981,0.923,0.812,0.696],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.25, pointRadius:6, fill:true},
+   {label:'CQR', data:[0.915,0.904,0.891,0.897,0.883],
+    borderColor:'#2563eb', backgroundColor:'transparent', borderWidth:3, tension:.25, pointRadius:6},
+   {label:'Mondrian', data:[0.903,0.897,0.911,0.894,0.899],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:3, tension:.25, pointRadius:6},
+   {label:'цель 0.90', data:[0.90,0.90,0.90,0.90,0.90],
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.6,max:1.05,title:{display:true,text:'покрытие в сегменте'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'у всех трёх маргинальное покрытие ≈ 0.90; размах 0.302 против 0.032 и 0.017',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 13. Jackknife+ ---- */
+mk('c_jack', {type:'bar', data:{
+  labels:['Split conformal','CV+ (K=5)','CV+ (K=10)','Jackknife+','Full conformal'],
+  datasets:[
+   {label:'средняя ширина', data:[5.84,5.47,5.21,5.09,5.02], backgroundColor:'#b45309', yAxisID:'y'},
+   {label:'покрытие ×5', data:[4.555,4.530,4.515,4.505,4.500], backgroundColor:'#16a34a', yAxisID:'y'},
+   {label:'log10(обучений) + 1', data:[1.0,1.70,2.0,3.70,4.40], backgroundColor:'#dc2626', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'красные столбцы — стоимость: jackknife+ требует 500 обучений против 10 у CV+',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 14. Байес ---- */
+mk('c_bayes', {type:'bar', data:{
+  labels:['Байес\n(нормальное)','Байес\n(t, df=3)','Бутстрап','Conformal','CQR','Conformal\nповерх Байеса'],
+  datasets:[
+   {label:'фактическое покрытие', data:[0.782,0.871,0.859,0.903,0.899,0.901],
+    backgroundColor:['#dc2626','#d97706','#d97706','#16a34a','#16a34a','#16a34a'], yAxisID:'y'},
+   {label:'ширина / 10', data:[0.352,0.468,0.391,0.514,0.422,0.409], backgroundColor:'#cbd5e1', yAxisID:'y'},
+   {label:'цель 0.90', data:[0.9,0.9,0.9,0.9,0.9,0.9], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0, yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0,max:1.0,title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'связка берёт форму от Байеса и гарантию от conformal: ширина 4.09 против 5.14',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 15. Размер выборки ---- */
+mk('c_size', {type:'line', data:{
+  labels:['19','49','99','199','499','999','4999'],
+  datasets:[
+   {label:'средняя ширина', data:[6.84,5.12,4.61,4.37,4.21,4.16,4.12],
+    borderColor:'#b45309', backgroundColor:'rgba(180,83,9,.12)', borderWidth:3, tension:.25, pointRadius:6, fill:true},
+   {label:'асимптотическая ширина', data:[4.12,4.12,4.12,4.12,4.12,4.12,4.12],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0},
+   {label:'станд. откл. ширины', data:[1.91,0.87,0.52,0.34,0.20,0.14,0.06],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.5, tension:.25, pointRadius:5}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'размер калибровочной выборки n'}},NOG),
+          y:Object.assign({min:0,title:{display:true,text:'ширина интервала'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'при n=19 ширина завышена на 66% и скачет на ±28% между разбиениями',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 16. Ширина как метрика ---- */
+mk('c_width', {type:'bar', data:{
+  labels:['среднее','лин. регрессия','бустинг','бустинг + признаки','CQR + бустинг'],
+  datasets:[
+   {label:'ширина интервала', data:[41.2,18.7,11.4,7.9,6.8], backgroundColor:'#b45309', yAxisID:'y'},
+   {label:'покрытие ×40', data:[36,36,36,36,36], backgroundColor:'#16a34a', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'зелёные столбцы одинаковы: покрытие 0.90 у всех пяти моделей, включая предсказание среднего',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- Интерактив: конформный квантиль ---- */
+function updConf(){
+  var n = parseInt(document.getElementById('sl_n').value, 10);
+  var a = parseFloat(document.getElementById('sl_a').value)/100;
+  document.getElementById('out_n').textContent = n;
+  document.getElementById('out_a').textContent = a.toFixed(2);
+  var target = (n+1)*(1-a);
+  var k = Math.ceil(target);
+  var feasible = k <= n;
+  var pct = feasible ? (100*k/n) : null;
+  var upper = (1-a) + 1/(n+1);
+  var nmin = Math.ceil((1-a)/a);
+  var html = '<div style="font-family:SF Mono,monospace;font-size:12.5px;line-height:1.9">' +
+    '(n+1)(1−α) = ' + (n+1) + ' × ' + (1-a).toFixed(2) + ' = <b>' + target.toFixed(2) + '</b><br>' +
+    'k = ⌈' + target.toFixed(2) + '⌉ = <b>' + k + '</b>' +
+    (feasible ? ' &nbsp;<span style="color:#16a34a">≤ n = ' + n + ' ✓</span>'
+              : ' &nbsp;<span style="color:#dc2626">&gt; n = ' + n + ' ✗</span>') + '</div>';
+  if (feasible){
+    html += '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #fcd34d">' +
+      'Берём <b>' + k + '-й</b> по возрастанию скор из ' + n + ' — это ' + pct.toFixed(1) + '-й перцентиль выборки.<br>' +
+      'Гарантия покрытия: <b style="color:#16a34a">[' + (1-a).toFixed(4) + ', ' + upper.toFixed(4) + ')</b><br>' +
+      'Избыток покрытия: <b>' + (1/(n+1)*100).toFixed(2) + ' п.п.</b> — это цена конечной выборки.';
+    if (1/(n+1) > 0.02) html += '<br><span style="color:#dc2626">Избыток выше 2 п.п. — интервал заметно шире необходимого. Рекомендуемый n ≈ ' + Math.round(50/a) + '.</span>';
+    else html += '<br><span style="color:#16a34a">Избыток мал, калибровочной выборки достаточно.</span>';
+    html += '</div>';
+  } else {
+    html += '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #fcd34d;color:#dc2626">' +
+      '<b>Требуемого скора не существует: q̂ = +∞, интервал — вся числовая ось.</b><br>' +
+      'Метод честно сообщает, что данных недостаточно для гарантии на уровне α = ' + a.toFixed(2) + '.<br>' +
+      'Минимально необходимо n ≥ (1−α)/α = <b>' + nmin + '</b>.</div>';
+  }
+  document.getElementById('out_conf').innerHTML = html;
+}
+updConf();
+
+/* ---- Подсветка секции в навигации ---- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

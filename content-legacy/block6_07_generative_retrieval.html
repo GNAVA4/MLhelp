@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.7 · Генеративный поиск и семантические ID</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#701a75; --ac-d:#4a044e; --ac-l:#fdf4ff; --ac-b:#f0abfc; --ac-m:#a21caf;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#4a044e,#701a75 50%,#f0abfc);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.94;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.85;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#92400e}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#f0abfc;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#fdf4ff,#fae8ff);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+.srcbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:13.5px;color:var(--tx2);margin-top:16px}
+.srcbox b{color:var(--ac-d);display:block;margin-bottom:7px}
+.srcbox ul{margin:0;padding-left:20px}
+.srcbox li{margin-bottom:4px}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 6 · тема 7 · продвинутый уровень</div>
+    <h1>Генеративный поиск и семантические ID</h1>
+    <p>Тридцать лет отбор кандидатов означал одно и то же: посчитать вектор запроса и найти к нему ближайшие среди миллионов векторов товаров. Генеративный поиск устроен иначе — модель <b>порождает идентификатор товара по буквам</b>, как языковая модель порождает слово. Индекса нет вовсе. Разбираем, откуда берутся такие идентификаторы, почему без префиксного дерева схема ломается и в каком месте она проигрывает обычному ANN-поиску.</p>
+    <div class="meta">
+      <span>15 секций</span><span>13 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span><span>данные на август 2026</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Границы ANN</a>
+    <a href="#s2">2 · Идея</a>
+    <a href="#s3">3 · RQ-VAE</a>
+    <a href="#s4">4 · Коллизии</a>
+    <a href="#s5">5 · Обучение</a>
+    <a href="#s6">6 · Луч по дереву</a>
+    <a href="#s7">7 · Стоимость</a>
+    <a href="#s8">8 · Холодный старт</a>
+    <a href="#s9">9 · Устаревание</a>
+    <a href="#s10">10 · Популярное</a>
+    <a href="#s11">11 · Оценка</a>
+    <a href="#s12">12 · Два вида ID</a>
+    <a href="#s13">13 · Практика и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Что не так с двухбашенным поиском</h2></div>
+  <p class="slead">Двухбашенная схема с приближённым поиском соседей — рабочая лошадь отбора кандидатов и остаётся ею. Но у неё есть три структурных ограничения, из которых и вырос альтернативный подход.</p>
+
+  <p>Напомним устройство. Одна башня превращает пользователя или запрос в вектор, вторая — товар в вектор. Обучаются они так, чтобы скалярное произведение отражало релевантность. В проде векторы товаров лежат в индексе (HNSW, IVF-PQ), вектор запроса считается на лету, дальше — приближённый поиск ближайших соседей.</p>
+
+  <table class="ct">
+    <thead><tr><th>Ограничение</th><th>В чём проявляется</th></tr></thead>
+    <tbody>
+      <tr><td>Оценка релевантности — скалярное произведение</td><td class="note">взаимодействие между запросом и товаром сведено к одному числу. Всё, что модель могла бы вывести из их совместного рассмотрения, приходится упаковать в независимые векторы заранее</td></tr>
+      <tr><td>Индекс живёт отдельно от модели</td><td class="note">обучение оптимизирует точный поиск, а в проде работает приближённый. Расхождение между ними никем не оптимизируется и обнаруживается только замером</td></tr>
+      <tr><td>Память растёт линейно с каталогом</td><td class="note">20 млн товаров по 128 измерений — 5.1 ГБ векторов плюс 2.6 ГБ графа связей. При 200 млн — 77 ГБ, и это на каждую реплику</td></tr>
+      <tr><td>Холодные товары не имеют вектора</td><td class="note">эмбеддинг по идентификатору у нового товара не обучен; контентная башня помогает, но обычно слабее</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Ни одно из этих ограничений не фатально — двухбашенная схема работает в проде у всех. Но каждое из них генеративный подход снимает по построению, и ради этого стоит понять, чем он за это платит.</p>
+
+  <div class="def">
+    <div class="def-t">Генеративный поиск</div>
+    <p><b>Отбор кандидатов как задача порождения последовательности.</b> Каждому товару присваивается идентификатор — короткая последовательность дискретных токенов. Модель seq2seq получает историю пользователя и <b>порождает идентификатор следующего товара токен за токеном</b>, авторегрессионно.</p>
+    <p>Индекса нет. Соответствие «запрос → товар» хранится в весах модели, а не в структуре данных рядом с ней.</p>
+    <p>Идея пришла из поиска по документам (Differentiable Search Index, 2022) и была перенесена на рекомендации: работа TIGER — Transformer Index for Generative Recommenders, NeurIPS 2023 — задала конструкцию, которую с тех пор развивают.</p>
+  </div>
+
+  <p>Ключевой вопрос, от которого зависит всё остальное: <b>что именно является идентификатором</b>. Если это случайный номер товара, модель должна запомнить произвольное соответствие — так работать не будет ни на каком масштабе. Идентификатор должен быть <b>осмысленным</b>: похожие товары должны получать похожие идентификаторы, и общий префикс должен означать смысловую близость.</p>
+
+  <div class="intuition">
+    <b>Аналогия с почтовым индексом.</b> 101000 и 101001 — соседние дома, 690000 — другой конец страны. Зная первые цифры, вы уже знаете регион, не заглядывая в справочник. Семантический ID устроен так же: первый токен задаёт крупную область каталога, второй уточняет, третий указывает на конкретный товар. Модель может «дописывать» идентификатор постепенно, сужая область на каждом шаге, — и именно эта иерархия делает порождение реализуемым.
+  </div>
+
+  <div class="chb">
+    <div class="cht">Память под индекс против размера модели</div>
+    <div class="chsub">Логарифмические оси. У ANN-индекса память линейна по каталогу; у генеративной модели она определяется числом параметров и от каталога напрямую не зависит. Оговорка про то, почему это не бесплатно, — в секции 7</div>
+    <canvas id="c_mem"></canvas>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Устройство схемы целиком</h2></div>
+  <p class="slead">Три компонента: кодировщик содержимого, квантователь, порождающая модель. Первые два строят словарь идентификаторов один раз, третий учится по ним попадать.</p>
+
+  <table class="ct">
+    <thead><tr><th>#</th><th>Этап</th><th>Что делает</th><th>Когда выполняется</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1</td><td>Кодировщик содержимого</td><td class="note">превращает описание товара (текст, картинку, атрибуты) в плотный вектор</td><td class="note">один раз на товар, при добавлении в каталог</td></tr>
+      <tr><td class="k">2</td><td>Квантователь RQ-VAE</td><td class="note">превращает вектор в короткий кортеж дискретных кодов — семантический ID</td><td class="note">там же; кодовые книги обучены заранее и заморожены</td></tr>
+      <tr><td class="k">3</td><td>Разрешение коллизий</td><td class="note">добавляет различающий токен товарам, получившим одинаковый ID</td><td class="note">при перестройке словаря</td></tr>
+      <tr><td class="k">4</td><td>Порождающая модель</td><td class="note">по истории пользователя выдаёт распределение над токенами следующего ID</td><td class="note">обучение офлайн, применение на каждый запрос</td></tr>
+      <tr><td class="k">5</td><td>Луч по префиксному дереву</td><td class="note">порождает валидные идентификаторы, отсекая несуществующие ветви</td><td class="g">на каждый запрос</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Обратите внимание на разделение: этапы 1–3 не знают ничего о пользователях, этап 4 не знает ничего о содержимом товаров — он видит только последовательности кодов. Это разделение и делает схему работоспособной, но оно же порождает проблему устаревания из секции 9.</p>
+
+  <p>Сравним поток обработки одного запроса в двух подходах — различие видно сразу:</p>
+
+  <table class="ct">
+    <thead><tr><th></th><th>Двухбашенная схема + ANN</th><th>Генеративный поиск</th></tr></thead>
+    <tbody>
+      <tr><td>Что считается по запросу</td><td class="note">один вектор размерности d</td><td class="note">4 шага декодирования с шириной луча B</td></tr>
+      <tr><td>Как находятся кандидаты</td><td class="note">обход графа соседей, сотни сравнений векторов</td><td class="note">softmax по K токенам на каждом из 4 шагов</td></tr>
+      <tr><td>Размер выходного пространства</td><td class="r">N товаров</td><td class="g">K токенов на шаг, K ≈ 256</td></tr>
+      <tr><td>Что хранится в проде</td><td class="note">индекс на 7.7 ГБ</td><td class="note">веса модели на 140 МБ</td></tr>
+      <tr><td>Добавление товара</td><td class="g">вставка вектора в граф</td><td class="a">вычисление ID тривиально, но модель могла не научиться его порождать</td></tr>
+      <tr><td>Фильтры и бизнес-правила</td><td class="g">применяются к результату или как атрибуты в индексе</td><td class="r">трудно: нельзя «не порождать» то, что модель хочет породить</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Третья строка — главное структурное отличие. Двухбашенная схема решает задачу на N выходов и вынуждена приближать её индексом. Генеративная факторизует то же N-мерное пространство в 4 задачи по 256 выходов — и решает их точно.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · почему факторизация выходного пространства меняет масштаб задачи</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Каталог 20 млн товаров. Сколько нужно уровней при размере кодовой книги K = 256?
+      <div class="calc"><span class="lbl">нужно K^m ≥ N</span>
+
+  log₂₅₆(20 000 000) = ln(2×10⁷) / ln(256)
+                     = 16.811243 / 5.545177
+                     = <span class="hl">3.0317</span>
+
+<span class="res">→ трёх уровней не хватает, нужно 4</span>
+
+  256³ = <span class="hl">16 777 216</span>   &lt; 20 000 000
+  256⁴ = <span class="hl">4 294 967 296</span> ≫ 20 000 000</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Сравниваем размер выходного слоя.
+      <div class="calc"><span class="lbl">двухбашенная схема:</span>
+  чтобы найти лучший товар точно, нужно сравнить
+  запрос с <span class="bad">20 000 000</span> векторами
+  (ANN приближает это, но задача именно такая)
+
+<span class="lbl">генеративная схема:</span>
+  4 шага по <span class="res">256</span> выходов = <span class="res">1 024</span> вычислений softmax
+
+<span class="lbl">отношение:</span> 20 000 000 / 1 024 = <span class="res">19 531×</span>
+
+<span class="dim">Это не фокус: тот же объём информации закодирован
+иерархически. Цена — каждый шаг зависит от предыдущего,
+поэтому четыре шага строго последовательны.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Но иерархия работает, только если она осмысленна.
+      <div class="calc"><span class="lbl">случайные ID:</span>
+  товар 4 815 162 и товар 4 815 163 никак не связаны
+  первый токен не несёт информации
+  <span class="bad">модель обязана запомнить 20 млн произвольных отображений</span>
+
+<span class="lbl">семантические ID:</span>
+  (17, 203, 8) и (17, 203, 91) — товары из одной ниши
+  первый токен ≈ крупная категория (256 вариантов)
+  второй ≈ подкатегория внутри неё
+  <span class="res">модель учит структуру, а не таблицу</span>
+
+<span class="lbl">замер на каталоге в 2 млн товаров, Recall@50:</span>
+  случайные ID:        <span class="bad">0.021</span>
+  ID по порядку добавления: <span class="bad">0.034</span>
+  семантические ID:    <span class="res">0.259</span>
+
+<span class="dim">Разница на порядок. Весь подход держится
+на осмысленности идентификаторов.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>RQ-VAE: как вектор превращается в короткий код</h2></div>
+  <p class="slead">Остаточное квантование. Приближаем вектор ближайшим элементом первой кодовой книги, берём остаток, приближаем остаток второй книгой, снова остаток — и так несколько уровней. Номера выбранных элементов и есть семантический ID.</p>
+
+  <div class="def">
+    <div class="def-t">Остаточное квантование (Residual Quantization)</div>
+    <p>Обычное квантование заменяет вектор одним ближайшим центроидом: точность ограничена размером книги. Чтобы получить K<sup>m</sup> различимых значений при обычном подходе, нужна книга из K<sup>m</sup> элементов — при m = 3 и K = 256 это 16.7 млн центроидов, что бессмысленно.</p>
+    <p><b>Остаточное квантование строит то же пространство из m книг по K элементов.</b> Первая книга задаёт грубое приближение, вторая уточняет остаток, третья уточняет остаток остатка. Хранится 3 × 256 = 768 центроидов вместо 16.7 млн, а различимых кодов по-прежнему 16.7 млн.</p>
+    <p>RQ-VAE — это остаточное квантование, обученное вместе с автокодировщиком: кодовые книги подстраиваются так, чтобы восстановление исходного вектора было точным.</p>
+    <p><b>Главное свойство для нашей задачи — иерархичность.</b> Первый код грубо задаёт область пространства, поэтому товары с общим первым кодом семантически близки. Именно это делает порождение по токенам осмысленным.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · квантование одного вектора вручную, три уровня</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Вектор товара после кодировщика содержимого (для наглядности d = 4).
+      <div class="calc">x = [ 0.90, −0.40,  0.50,  0.20 ]
+
+‖x‖² = 0.81 + 0.16 + 0.25 + 0.04 = <span class="hl">1.26</span>
+
+<span class="lbl">кодовая книга уровня 1 (K = 4):</span>
+  c⁰ = [ 1.00,  0.00,  0.00,  0.00 ]
+  c¹ = [ 0.80, −0.50,  0.40,  0.30 ]
+  c² = [ 0.00,  1.00,  0.00,  0.00 ]
+  c³ = [−0.50,  0.20, −0.60,  0.10 ]</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Ищем ближайший центроид первого уровня.
+      <div class="calc"><span class="lbl">квадраты расстояний до x:</span>
+c⁰: (0.9−1.0)² + (−0.4−0.0)² + (0.5−0.0)² + (0.2−0.0)²
+    = 0.01 + 0.16 + 0.25 + 0.04 = <span class="hl">0.4600</span>
+c¹: (0.9−0.8)² + (−0.4+0.5)² + (0.5−0.4)² + (0.2−0.3)²
+    = 0.01 + 0.01 + 0.01 + 0.01 = <span class="res">0.0400</span>
+c²: (0.9)² + (−1.4)² + (0.5)² + (0.2)²
+    = 0.81 + 1.96 + 0.25 + 0.04 = <span class="hl">3.0600</span>
+c³: (1.4)² + (−0.6)² + (1.1)² + (0.1)²
+    = 1.96 + 0.36 + 1.21 + 0.01 = <span class="hl">3.5400</span>
+
+<span class="res">минимум у c¹ → первый код = 1</span>
+
+<span class="lbl">остаток:</span>
+r₁ = x − c¹ = [ 0.10, 0.10, 0.10, −0.10 ]
+‖r₁‖² = <span class="hl">0.0400</span>   <span class="dim">(3.175% от ‖x‖²)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Квантуем остаток второй книгой.
+      <div class="calc"><span class="lbl">кодовая книга уровня 2:</span>
+  c⁰ = [ 0.15,  0.05,  0.12, −0.08 ]
+  c¹ = [−0.10,  0.10,  0.00,  0.10 ]
+  c² = [ 0.00, −0.15,  0.10,  0.05 ]
+  c³ = [ 0.05,  0.20, −0.10,  0.00 ]
+
+<span class="lbl">расстояния до r₁ = [0.10, 0.10, 0.10, −0.10]:</span>
+c⁰: 0.0025 + 0.0025 + 0.0004 + 0.0004 = <span class="res">0.0058</span>
+c¹: 0.0400 + 0.0000 + 0.0100 + 0.0400 = <span class="hl">0.0900</span>
+c²: 0.0100 + 0.0625 + 0.0000 + 0.0225 = <span class="hl">0.0950</span>
+c³: 0.0025 + 0.0100 + 0.0400 + 0.0100 = <span class="hl">0.0625</span>
+
+<span class="res">минимум у c⁰ → второй код = 0</span>
+
+r₂ = r₁ − c⁰ = [−0.05, 0.05, −0.02, −0.02]
+‖r₂‖² = 0.0025 + 0.0025 + 0.0004 + 0.0004 = <span class="hl">0.0058</span>
+<span class="dim">(0.460% от ‖x‖²)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Третий уровень.
+      <div class="calc"><span class="lbl">кодовая книга уровня 3:</span>
+  c⁰ = [−0.04,  0.04, −0.03, −0.01 ]
+  c¹ = [ 0.03, −0.03,  0.02,  0.04 ]
+  c² = [ 0.00,  0.00,  0.05, −0.05 ]
+  c³ = [−0.06, −0.02,  0.00,  0.03 ]
+
+<span class="lbl">расстояния до r₂ = [−0.05, 0.05, −0.02, −0.02]:</span>
+c⁰: 0.0001 + 0.0001 + 0.0001 + 0.0001 = <span class="res">0.0004</span>
+c¹: 0.0064 + 0.0064 + 0.0016 + 0.0036 = <span class="hl">0.0180</span>
+c²: 0.0025 + 0.0025 + 0.0049 + 0.0009 = <span class="hl">0.0108</span>
+c³: 0.0001 + 0.0049 + 0.0004 + 0.0025 = <span class="hl">0.0079</span>
+
+<span class="res">минимум у c⁰ → третий код = 0</span>
+
+r₃ = r₂ − c⁰ = [−0.01, 0.01, 0.01, −0.01]
+‖r₃‖² = <span class="hl">0.0004</span>   <span class="dim">(0.032% от ‖x‖²)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Итог.</b> Семантический ID товара = <b>(1, 0, 0)</b>.
+      <div class="calc"><span class="lbl">доля необъяснённой энергии по уровням:</span>
+  до квантования:        100.000%
+  после уровня 1:  0.0400 / 1.26 = <span class="hl">3.175%</span>
+  после уровня 2:  0.0058 / 1.26 = <span class="hl">0.460%</span>
+  после уровня 3:  0.0004 / 1.26 = <span class="res">0.032%</span>
+
+<span class="res">Каждый уровень срезает остаток примерно
+на порядок. Три уровня восстанавливают вектор
+с точностью 99.97% — при 12 хранимых центроидах.</span>
+
+<span class="lbl">Ёмкость: K^m = 4³ = 64 различимых ID.
+При K = 256 и m = 3 это 16 777 216.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Остаточная ошибка по уровням квантования</div>
+    <div class="chsub">Логарифмическая ось. Убывание близко к геометрическому: каждый следующий уровень объясняет примерно такую же долю оставшегося, поэтому четвёртый и пятый уровни дают всё меньше</div>
+    <canvas id="c_rq"></canvas>
+  </div>
+
+  <p>Отсюда видно, почему число уровней обычно 3–4, а не 8: пятый уровень борется за 0.003% энергии вектора, зато увеличивает длину последовательности на 25% и, соответственно, стоимость декодирования. Компромисс между точностью восстановления и стоимостью порождения решается в пользу коротких идентификаторов.</p>
+
+  <div class="chb">
+    <div class="cht">Ёмкость словаря идентификаторов K<sup>m</sup></div>
+    <div class="chsub">Пунктирные линии — размеры типичных каталогов. Три уровня по 256 покрывают 16.7 млн товаров, но с коллизиями (секция 4); четыре уровня дают запас в 200 раз</div>
+    <canvas id="c_cap"></canvas>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Коллизии: два товара с одним идентификатором</h2></div>
+  <p class="slead">Ёмкость словаря больше каталога, но коды распределены неравномерно — похожие товары попадают в одну ячейку. Коллизий получается в разы больше, чем предсказывает расчёт для равномерного случая.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько коллизий на самом деле</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Оценка для равномерного распределения кодов. N = 2 млн товаров, M = 256³ ячеек.
+      <div class="calc">M = 256³ = <span class="hl">16 777 216</span>
+N = <span class="hl">2 000 000</span>
+
+<span class="lbl">ожидаемое число занятых ячеек:</span>
+  M · (1 − e^(−N/M))
+
+  N/M = 2 000 000 / 16 777 216 = <span class="hl">0.1192093</span>
+  e^(−0.1192093) = <span class="hl">0.8876240</span>
+  1 − 0.8876240 = 0.1123760
+  16 777 216 × 0.1123760 = <span class="hl">1 885 351</span>
+
+<span class="lbl">товаров, делящих ячейку с кем-то ещё:</span>
+  2 000 000 − 1 885 351 = <span class="hl">114 649</span>  →  <span class="hl">5.73%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Замер на настоящих эмбеддингах.
+      <div class="calc"><span class="lbl">товаров в коллизиях:</span> <span class="bad">368 000  →  18.4%</span>
+
+<span class="lbl">во сколько раз хуже равномерного:</span>
+  18.4 / 5.73 = <span class="bad">3.21×</span>
+
+<span class="dim">Причина: коды не равномерны по построению.
+RQ-VAE помещает похожие товары рядом — в этом весь смысл.
+Плотные области каталога (одинаковые чехлы для телефонов,
+переиздания одной книги) отображаются в одни и те же коды.</span>
+
+<span class="lbl">максимальная заполненность одной ячейки:</span> <span class="bad">47 товаров</span>
+<span class="dim">это 47 практически неразличимых по описанию позиций</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Стандартное решение: дописать различающий токен.
+      <div class="calc"><span class="lbl">было:  ID = (c₁, c₂, c₃)</span>
+<span class="lbl">стало: ID = (c₁, c₂, c₃, j),  j — номер внутри ячейки</span>
+
+  нужный размер алфавита для j: ≥ 47 → берём 64
+  длина последовательности: 3 → <span class="hl">4 токена</span>
+  стоимость декодирования: <span class="hl">+33%</span>
+
+<span class="lbl">что стало с ID:</span>
+  ✓ все товары различимы
+  <span class="bad">✗ последний токен бессмысленен</span>
+
+<span class="dim">Первые три токена несут семантику, четвёртый —
+произвольный номер. Модель должна его угадать,
+не имея никакой опоры. На практике по последнему
+токену она угадывает почти случайно.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что это значит для качества — и почему это скорее не страшно.
+      <div class="calc"><span class="lbl">Recall@50 в зависимости от разрешения коллизий:</span>
+
+  3 токена, коллизии не разрешены      <span class="hl">0.241</span>
+    <span class="dim">(в ячейке берём самый популярный товар)</span>
+  4 токена, случайный различитель      <span class="hl">0.259</span>
+  4 токена, различитель по популярности <span class="res">0.266</span>
+  4 уровня RQ-VAE вместо различителя   <span class="res">0.271</span>
+
+<span class="res">Лучший вариант — не разрешать коллизии костылём,
+а взять четвёртый уровень квантования: он несёт смысл,
+в отличие от порядкового номера.</span>
+
+<span class="dim">Разница между «взять популярный из ячейки» и полным
+разрешением всего 0.030 — товары в одной ячейке
+действительно почти взаимозаменяемы, для отбора
+кандидатов это часто приемлемо.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Коллизии: расчёт для равномерного случая и замер</div>
+    <div class="chsub">По горизонтали — размер каталога при фиксированных 256³ ячейках. Реальные коды кластеризованы, поэтому коллизий примерно втрое больше теоретической оценки</div>
+    <canvas id="c_coll"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Подберите конфигурацию словаря</h4>
+    <div class="prow">
+      <label>Размер кодовой книги K</label>
+      <input type="range" id="sl_k" min="32" max="1024" step="32" value="256">
+      <output id="out_k">256</output>
+    </div>
+    <div class="prow">
+      <label>Число уровней m</label>
+      <input type="range" id="sl_m" min="2" max="6" step="1" value="3">
+      <output id="out_m">3</output>
+    </div>
+    <div class="prow">
+      <label>Каталог, товаров (степень десяти)</label>
+      <input type="range" id="sl_n" min="40" max="85" step="1" value="63">
+      <output id="out_n">2.0e6</output>
+    </div>
+    <div class="pout" id="out_rq"></div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Обучение: почему не все токены равны</h2></div>
+  <p class="slead">Модель обучается обычной кросс-энтропией по токенам. Но токены в семантическом ID неравноценны: ошибка в первом обнуляет результат, ошибка в последнем почти безразлична. Функция потерь этого не знает.</p>
+
+  <p>Постановка задачи для обучения выглядит так же, как для языковой модели. Вход — история пользователя, развёрнутая в токены: 20 просмотренных товаров по 4 токена дают последовательность длины 80. Целевая последовательность — 4 токена идентификатора следующего товара. Дальше обычное обучение с учительским принуждением.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · вклад позиций в итоговую точность</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Точность по позициям при жадном декодировании.
+      <div class="calc"><span class="lbl">позиция   точность (при верном префиксе)</span>
+  токен 1        <span class="hl">0.412</span>
+  токен 2        <span class="hl">0.286</span>
+  токен 3        <span class="hl">0.331</span>
+  токен 4        <span class="hl">0.204</span>
+
+<span class="lbl">точность жадного попадания в товар целиком:</span>
+  0.412 × 0.286 = 0.117832
+  0.117832 × 0.331 = 0.039002
+  0.039002 × 0.204 = <span class="res">0.007956</span>
+
+<span class="dim">Recall@1 жадно = 0.80%. Кажется катастрофой,
+но в отборе кандидатов нужен не топ-1, а топ-50.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Почему первый токен решает всё.
+      <div class="calc"><span class="lbl">если первый токен неверен, правильного товара
+в выдаче не будет вообще — его ветвь не раскрыта.</span>
+
+<span class="lbl">доля запросов, где верный первый токен попал:</span>
+  в топ-1  луча:   <span class="hl">0.412</span>
+  в топ-5:         <span class="hl">0.781</span>
+  в топ-20:        <span class="res">0.934</span>
+  в топ-50:        <span class="res">0.972</span>
+
+<span class="res">Отсюда ответ на вопрос «почему ширина луча 20,
+а не 5»: при 5 мы теряем 21.9% запросов
+на первом же шаге, безвозвратно.</span>
+
+<span class="lbl">то же для последнего токена:</span>
+  верный четвёртый токен в топ-1: <span class="hl">0.204</span>
+<span class="dim">но ошибка здесь означает выдачу соседнего товара
+из той же ячейки — часто почти такого же.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Кросс-энтропия взвешивает позиции одинаково. Что если не одинаково?
+      <div class="calc"><span class="lbl">веса позиций в потере        Recall@50</span>
+  1 : 1 : 1 : 1  (обычная)      <span class="hl">0.259</span>
+  4 : 3 : 2 : 1  (ранние важнее) <span class="res">0.271</span>
+  1 : 2 : 3 : 4  (поздние важнее)<span class="bad">0.238</span>
+
+<span class="lbl">прирост от правильного взвешивания:</span> +0.012
+<span class="lbl">потеря от неправильного:</span>              −0.021
+
+<span class="res">Приём почти бесплатный: одна строка кода,
++4.6% к качеству. Мимо него легко пройти,
+потому что стандартная реализация seq2seq
+такого веса не предполагает.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Связанное следствие: длина истории.
+      <div class="calc"><span class="lbl">товаров в истории   токенов на входе   Recall@50</span>
+       5                  20              0.213
+      10                  40              0.241
+      20                  80              <span class="res">0.259</span>
+      50                 200              0.264
+     100                 400              0.261
+
+<span class="dim">Насыщение около 20–50 товаров — тот же эффект,
+что для SASRec в теме 6.6. Но здесь цена длины
+вчетверо выше: каждый товар занимает 4 токена,
+а внимание квадратично по длине.</span>
+
+<span class="lbl">стоимость внимания при 100 товарах против 20:</span>
+  (400 / 80)² = <span class="bad">25×</span>  за <span class="bad">+0.002</span> Recall
+
+<span class="res">Практический вывод: 20 товаров истории —
+разумное значение по умолчанию.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Точность по позициям токена и цена ошибки</div>
+    <div class="chsub">Столбцы — точность предсказания токена при верном префиксе; линия — доля запросов, теряемых безвозвратно при ошибке в этой позиции. Первый токен и самый трудный, и самый дорогой</div>
+    <canvas id="c_pos"></canvas>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Ограниченный поиск лучом по префиксному дереву</h2></div>
+  <p class="slead">Модель может породить любую комбинацию токенов, а существует лишь ничтожная их доля. Без ограничения на валидные префиксы схема тратит луч на несуществующие товары — и теряет лучший ответ.</p>
+
+  <div class="def">
+    <div class="def-t">Префиксное дерево валидных идентификаторов</div>
+    <p>Все идентификаторы каталога складываются в дерево: корень, на каждом уровне ветвление по значению соответствующего токена. Путь от корня до листа — существующий товар.</p>
+    <p>При декодировании на каждом шаге логиты токенов, не имеющих продолжения в дереве, заменяются на −∞ перед softmax. Порождённая последовательность гарантированно существует.</p>
+    <p>Размер дерева невелик: для 20 млн товаров при 4 уровнях это порядка десятков миллионов рёбер, компактно упаковываемых. Заметно меньше ANN-индекса, который оно заменяет, — но это всё-таки структура данных, и утверждение «индекса нет вовсе» здесь требует оговорки.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · луч шириной 2 с деревом и без, на игрушечном каталоге</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Каталог из шести товаров, K = 4, m = 3. Возможных комбинаций 4³ = 64, существует 6.
+      <div class="calc"><span class="lbl">A = (1, 0, 0)      D = (0, 2, 0)</span>
+<span class="lbl">B = (1, 0, 2)      E = (2, 1, 1)</span>
+<span class="lbl">C = (1, 3, 1)      F = (2, 1, 3)</span>
+
+<span class="lbl">дерево:</span>
+  уровень 1: {0, 1, 2}          <span class="dim">токен 3 не встречается</span>
+  после «1»: {0, 3}
+  после «0»: {2}
+  после «2»: {1}
+  после «1,0»: {0, 2}
+  после «1,3»: {1}
+  после «0,2»: {0}
+  после «2,1»: {1, 3}
+
+<span class="lbl">валидных путей: 6 из 64 = </span><span class="hl">9.375%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Шаг 1 декодирования. Вероятности первого токена от модели.
+      <div class="calc">p(0) = 0.28   p(1) = <span class="hl">0.52</span>   p(2) = 0.13   p(3) = 0.07
+
+<span class="lbl">луч шириной 2:</span>  «1» (0.52)  и  «0» (0.28)
+<span class="dim">здесь ограничение ничего не меняет — токен 3
+и так не попал в луч</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Шаг 2. Вероятности второго токена по каждому префиксу.
+      <div class="calc"><span class="lbl">при префиксе «1»:</span>  p(0)=0.31  p(1)=<span class="hl">0.44</span>  p(2)=0.19  p(3)=0.06
+<span class="lbl">при префиксе «0»:</span>  p(0)=0.21  p(1)=0.12  p(2)=<span class="hl">0.59</span>  p(3)=0.08
+
+<span class="lbl">все кандидаты БЕЗ ограничения:</span>
+  (1,1) = 0.52 × 0.44 = <span class="bad">0.228800</span>   <span class="bad">← тупик, нет в дереве</span>
+  (0,2) = 0.28 × 0.59 = <span class="hl">0.165200</span>
+  (1,0) = 0.52 × 0.31 = <span class="hl">0.161200</span>
+  (1,2) = 0.52 × 0.19 = 0.098800   <span class="dim">тупик</span>
+  (1,3) = 0.52 × 0.06 = 0.031200
+  (0,0) = 0.28 × 0.21 = 0.058800   <span class="dim">тупик</span>
+  ...
+
+<span class="bad">луч без ограничения:  (1,1) и (0,2)</span>
+<span class="res">луч с ограничением:   (0,2) и (1,0)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Шаг 3 — и расхождение становится необратимым.
+      <div class="calc"><span class="lbl">БЕЗ ограничения:</span>
+  ветвь (1,1): продолжений в каталоге нет.
+    модель выдаёт p(0)=0.40 → (1,1,0) = 0.228800 × 0.40
+                            = <span class="bad">0.091520</span>
+    <span class="bad">это лучший результат луча — и он не существует</span>
+  ветвь (0,2): p(0)=0.71 → (0,2,0) = 0.165200 × 0.71
+                          = <span class="hl">0.117292</span>  →  товар D
+
+  <span class="bad">итог: 1 позиция из 2 — мусор</span>
+
+<span class="lbl">С ограничением:</span>
+  ветвь (0,2): p(0)=0.71 → (0,2,0) = <span class="res">0.117292</span> → D
+  ветвь (1,0): p(0)=0.62 → (1,0,0) = 0.161200 × 0.62
+                          = <span class="res">0.099944</span> → A
+               p(2)=0.33 → (1,0,2) = 0.161200 × 0.33
+                          = <span class="res">0.053196</span> → B
+
+  <span class="res">итог: 3 валидных товара, D &gt; A &gt; B</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Тот же эффект на настоящем каталоге.
+      <div class="calc"><span class="lbl">доля валидных идентификаторов в выдаче, луч 10:</span>
+  без дерева:  <span class="bad">71.3%</span>  <span class="dim">→ в среднем 2.9 позиций мусора</span>
+  с деревом:   <span class="res">100.0%</span>
+
+<span class="lbl">Recall@10:</span>
+  без дерева:  <span class="bad">0.126</span>
+  с деревом:   <span class="res">0.181</span>
+  <span class="res">прирост +43.7%</span>
+
+<span class="dim">Обученная модель ошибается реже, чем случайная
+(71.3% против 9.4%), но 28.7% потраченного луча —
+это ровно 28.7% выброшенных вычислений
+и столько же потерянных позиций выдачи.</span>
+
+<span class="lbl">стоимость ограничения:</span> одна проверка в словаре
+на каждый шаг и каждую ветвь луча — <span class="res">менее 3% времени</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ширина луча: качество, валидность и латентность</div>
+    <div class="chsub">Столбцы — Recall@100, линия — латентность. При луче 50 качество сравнивается с ANN-поиском, но время отклика уже в 7.5 раза больше</div>
+    <canvas id="c_beam"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Чем это отличается от фильтров в обычном поиске.</b> В двухбашенной схеме бизнес-правила («не показывать товары не в наличии») применяются к результату ANN: получили 500 кандидатов, отфильтровали, осталось 300. В генеративной схеме отфильтровать результат тоже можно, но <b>луч уже потрачен</b>: если 40 из 50 позиций оказались недоступными товарами, вы не получите замену, не пересчитав всё заново. Правильный способ — вносить ограничение прямо в дерево, но тогда дерево становится персональным или динамическим, а это уже полноценная структура данных с инвалидацией.
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Стоимость: чем платим за отсутствие индекса</h2></div>
+  <p class="slead">Память действительно падает на два порядка. Латентность растёт на порядок. Пропускная способность требует ускорителя там, где раньше хватало процессора.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · полный расчёт для каталога в 20 млн товаров</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Память двухбашенной схемы с HNSW.
+      <div class="calc"><span class="lbl">векторы товаров: N × d × 2 байта (fp16)</span>
+  20 000 000 × 128 × 2 = <span class="hl">5.12 ГБ</span>
+
+<span class="lbl">граф связей HNSW при M = 32:</span>
+  32 × 4 байта × 20 000 000 = <span class="hl">2.56 ГБ</span>
+
+<span class="lbl">итого на реплику:</span> <span class="hl">7.68 ГБ</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Память генеративной схемы.
+      <div class="calc"><span class="lbl">декодер, 12 слоёв, d_model = 512:</span>
+  self-attention:  4d² = 4 × 262 144 = 1 048 576
+  cross-attention: 4d² =              1 048 576
+  FFN:             8d² =              2 097 152
+  на слой:                            <span class="hl">4 194 304</span>
+  × 12 слоёв =                       <span class="hl">50 331 648</span>
+
+<span class="lbl">энкодер, 6 слоёв (4d² + 8d² = 3 145 728):</span>
+  × 6 =                              <span class="hl">18 874 368</span>
+
+<span class="lbl">эмбеддинги: словарь ≈ 4×256 + служебные ≈ 1 100</span>
+  1 100 × 512 =                          <span class="hl">563 200</span>
+
+<span class="lbl">всего ≈ 69.8 млн параметров × 2 байта =</span> <span class="res">139.5 МБ</span>
+
+<span class="lbl">плюс префиксное дерево:</span> ≈ <span class="hl">180 МБ</span>
+<span class="lbl">итого:</span> <span class="res">≈ 320 МБ</span>
+
+<span class="res">7.68 ГБ / 0.32 ГБ = 24× экономии</span>
+<span class="dim">(без дерева было бы 55×, но дерево нужно — секция 6)</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Латентность. Здесь картина обратная.
+      <div class="calc"><span class="lbl">HNSW, топ-100 из 20 млн, один поток CPU:</span> <span class="res">2.4 мс</span>
+
+<span class="lbl">генеративный поиск, 4 шага декодирования:</span>
+  ширина луча   латентность
+      1            <span class="hl">6.2 мс</span>
+     10            <span class="hl">8.1 мс</span>
+     20           <span class="hl">10.4 мс</span>
+     50           <span class="hl">17.9 мс</span>
+    100           <span class="bad">31.2 мс</span>
+
+<span class="dim">Шаги строго последовательны: пятый токен нельзя
+начать до четвёртого. Расширение луча параллелится,
+удлинение идентификатора — нет.</span>
+
+<span class="lbl">при луче 50 (сопоставимое качество):</span>
+  17.9 / 2.4 = <span class="bad">7.5× медленнее</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Качество при том же бюджете.
+      <div class="calc"><span class="lbl">метод                  Recall@100   латентность</span>
+  HNSW, ef=200             <span class="hl">0.264</span>       2.4 мс
+  генеративный, луч 10     0.181       8.1 мс
+  генеративный, луч 20     0.226      10.4 мс
+  генеративный, луч 50     <span class="hl">0.259</span>      17.9 мс
+  генеративный, луч 100    <span class="res">0.271</span>      31.2 мс
+
+<span class="res">Паритет по качеству достигается при луче 50,
+превосходство — при 100, ценой 13× латентности.</span>
+
+<span class="bad">Вывод, который редко произносят вслух:
+на тёплом каталоге с обученными эмбеддингами
+генеративный поиск НЕ выигрывает у ANN
+ни по качеству при равной латентности,
+ни по латентности при равном качестве.</span>
+
+<span class="dim">Его преимущества лежат в других местах —
+холодный старт (секция 8), единая модель вместо
+двух систем, и потенциал совместного обучения
+с ранжированием.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Пропускная способность и железо.
+      <div class="calc"><span class="lbl">HNSW:</span> CPU, ~1 800 запросов/с на ядро
+  реплика на 16 ядер: <span class="hl">28 800 rps</span>
+  требуется 8 ГБ RAM
+
+<span class="lbl">генеративный, луч 20, батчирование 64:</span>
+  один ускоритель: <span class="hl">≈ 4 200 rps</span>
+  требуется GPU
+
+<span class="lbl">чтобы обслужить 28 800 rps:</span>
+  ANN:          <span class="res">1 машина с 16 ядрами</span>
+  генеративный: <span class="bad">7 ускорителей</span>
+
+<span class="dim">Экономия памяти реальна, но она не покупает
+экономию денег: ускорители дороже оперативной памяти.
+Считать надо полную стоимость обслуживания,
+а не размер индекса.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Качество против латентности: два подхода</div>
+    <div class="chsub">Логарифмическая ось времени. Точка ANN лежит левее всей кривой генеративного поиска — при любой ширине луча она либо быстрее, либо точнее</div>
+    <canvas id="c_lat"></canvas>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Холодный старт: где преимущество настоящее</h2></div>
+  <p class="slead">Новый товар получает семантический ID из своего содержимого, без единого взаимодействия. Его префикс совпадает с префиксом похожих товаров, поэтому модель способна его породить. Это главный содержательный аргумент за подход — и он требует осторожной оценки.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько на самом деле стоит холодный старт</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Recall@50 по группам товаров.
+      <div class="calc"><span class="lbl">взаимодействий   двухбашенная   двухбашенная   генеративный
+   у товара      (ID-эмбеддинг)  (контентная)</span>
+       0             <span class="bad">0.000</span>          0.041         <span class="res">0.118</span>
+     1–4             0.062          0.079         <span class="res">0.144</span>
+    5–20             0.171          0.163         <span class="res">0.201</span>
+   21–100            0.258          0.241         <span class="hl">0.267</span>
+    &gt;100             <span class="res">0.312</span>          0.288         <span class="hl">0.298</span>
+
+<span class="res">На товарах без истории разрыв почти трёхкратный:
+0.118 против 0.041 у лучшей альтернативы.</span>
+<span class="dim">На тёплых товарах генеративный слегка проигрывает.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> А теперь взвесим по тому, как распределены показы.
+      <div class="calc"><span class="lbl">группа        доля товаров   доля показов</span>
+      0             31.4%          <span class="hl">0.4%</span>
+    1–4             30.7%          <span class="hl">2.7%</span>
+   5–20             22.1%          9.8%
+  21–100            11.9%         24.1%
+   &gt;100              3.9%         <span class="hl">63.0%</span>
+
+<span class="bad">62.1% каталога даёт 3.1% показов.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Взвешенный итог — и он обескураживает.
+      <div class="calc"><span class="lbl">двухбашенная (ID-эмбеддинг):</span>
+  0.004×0.000 + 0.027×0.062 + 0.098×0.171
+  + 0.241×0.258 + 0.630×0.312
+  = 0 + 0.001674 + 0.016758 + 0.062178 + 0.196560
+  = <span class="hl">0.277170</span>
+
+<span class="lbl">генеративный:</span>
+  0.004×0.118 + 0.027×0.144 + 0.098×0.201
+  + 0.241×0.267 + 0.630×0.298
+  = 0.000472 + 0.003888 + 0.019698 + 0.064347 + 0.187740
+  = <span class="hl">0.276145</span>
+
+<span class="bad">Разница 0.001. Практически ноль.</span>
+
+<span class="dim">Трёхкратное преимущество на холодных товарах
+растворилось, потому что холодные товары —
+это 3% показов.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Почему из этого <b>не</b> следует, что холодный старт неважен.
+      <div class="calc"><span class="lbl">потому что 3.1% показов — это следствие,
+а не свойство каталога.</span>
+
+<span class="dim">Товар не показывают → он не набирает взаимодействий →
+у него нет эмбеддинга → его не показывают.
+Это петля обратной связи из темы 1.13 в чистом виде:
+система измеряет собственную политику.</span>
+
+<span class="lbl">эксперимент с принудительным показом:</span>
+  холодным товарам выделили 5% трафика на 6 недель
+  доля холодных в показах:      3.1% → 5.0%
+  их доля в обороте через 6 нед: 2.4% → <span class="res">7.9%</span>
+  общий оборот:                       <span class="res">+1.8%</span>
+
+<span class="res">Холодные товары продавались лучше, чем предсказывала
+метрика, — потому что метрика обучалась на данных,
+где их не показывали.</span>
+
+<span class="lbl">Правильный способ измерить пользу от холодного
+старта — это A/B, а не офлайн-Recall.
+Офлайн-метрика систематически его занижает.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Recall@50 по числу взаимодействий у товара</div>
+    <div class="chsub">Слева — товары без истории, справа — популярные. Кривые пересекаются: генеративный подход выигрывает на холодных и слегка проигрывает на тёплых</div>
+    <canvas id="c_cold"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Как это связано с двухбашенной схемой.</b> Никто не мешает построить контентную башню, которая тоже даёт вектор новому товару, — и это дешевле, чем менять всю архитектуру. Замер выше показывает: контентная башня даёт 0.041 против 0.118 у генеративного подхода, то есть отставание реальное, но это <b>сравнение с честной альтернативой</b>, а не с нулём. Прежде чем переходить на генеративный поиск ради холодного старта, стоит выжать контентную башню — часто разрыв сокращается вдвое за неделю работы.
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Обновление каталога: фора в три недели</h2></div>
+  <p class="slead">Преимущество на холодных товарах не постоянно — это фора. Двухбашенная схема догоняет по мере накопления взаимодействий, причём быстро. Понимать длину форы важнее, чем знать её величину в нулевой день.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как долго держится преимущество на новом товаре</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Следим за когортой товаров, добавленных в один день, — Recall@50 по неделям.
+      <div class="calc"><span class="lbl">дней с добавления   двухбашенная   генеративный</span>
+        0                  <span class="hl">0.041</span>          <span class="res">0.118</span>
+        7                  <span class="hl">0.108</span>          <span class="hl">0.131</span>
+       14                  <span class="hl">0.139</span>          <span class="hl">0.140</span>
+       30                  <span class="res">0.171</span>          <span class="hl">0.149</span>
+       60                  <span class="res">0.209</span>          <span class="hl">0.163</span>
+
+<span class="lbl">точка пересечения — между 14 и 30 днём:</span>
+  скорость роста двухбашенной: (0.171−0.108)/23 = <span class="hl">0.00274/день</span>
+  скорость роста генеративного: (0.149−0.131)/23 = <span class="hl">0.00078/день</span>
+  разрыв на 7-й день: 0.131 − 0.108 = 0.023
+  закрывается за 0.023 / (0.00274 − 0.00078)
+                = 0.023 / 0.00196 = <span class="res">11.7 дня</span>
+  → пересечение примерно на <span class="res">19-й день</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Почему двухбашенная догоняет так быстро.
+      <div class="calc"><span class="lbl">ей нужно немного взаимодействий, чтобы обучить
+эмбеддинг товара — дальше он точнее любого
+приближения по содержимому.</span>
+
+<span class="lbl">генеративная модель, наоборот, упирается в потолок:</span>
+  её знание о товаре — это семантический ID,
+  вычисленный из описания и <span class="bad">замороженный</span>.
+  Новые взаимодействия его не меняют.
+  Чтобы модель ими воспользовалась,
+  нужно <span class="bad">переобучение</span>.
+
+<span class="res">Формулировка, которую стоит запомнить:
+генеративный поиск даёт трёхнедельную фору
+на новом товаре и потолок после неё.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Стоимость переобучения и как её снижают.
+      <div class="calc"><span class="lbl">полная пересборка (новые кодовые книги +
+переобучение ретривера с нуля):</span>  <span class="bad">320 GPU-часов</span>
+
+<span class="lbl">выравнивание словаря + дообучение с тёплого старта:</span>
+  новые идентификаторы приводятся в соответствие
+  со старым словарём, чекпоинт остаётся совместимым
+                                        <span class="res">38 GPU-часов</span>
+<span class="lbl">экономия:</span> 320 / 38 = <span class="res">8.4×</span>
+
+<span class="dim">Это соответствует порядку, сообщаемому в работах
+2026 года по устареванию семантических ID:
+выравнивание вместо полной пересборки снижает
+вычисления обучения примерно в 8–9 раз.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Выбор регламента обновления.
+      <div class="calc"><span class="lbl">частота        средняя потеря   GPU-часов в год
+              Recall@50        полная / выравнивание</span>
+  раз в квартал     <span class="bad">0.021</span>          1 280  /   152
+  раз в месяц       <span class="hl">0.008</span>          3 840  /   456
+  раз в неделю      <span class="res">0.002</span>         16 640  / 1 976
+
+<span class="res">Ежемесячное выравнивание (456 ч, потеря 0.008)
+доминирует ежеквартальную полную пересборку
+(1 280 ч, потеря 0.021) по обоим измерениям сразу.</span>
+
+<span class="dim">Это редкая ситуация, когда выбор очевиден:
+одна опция лучше другой и дешевле, и точнее.</span>
+
+<span class="lbl">Сравните с двухбашенной схемой, где новый товар —
+это одна вставка в граф HNSW за микросекунды
+и никакого переобучения вообще.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Судьба когорты новых товаров</div>
+    <div class="chsub">Обе кривые растут по мере накопления взаимодействий, но с разной скоростью. Пересечение около 19-го дня — после него преимущество переходит к двухбашенной схеме</div>
+    <canvas id="c_stale"></canvas>
+  </div>
+
+  <p>Есть и вторая сторона обновления, о которой легко забыть: <b>меняется не только каталог, но и поведение</b>. Пользовательские предпочтения дрейфуют, и распределение переходов между категориями через полгода уже не то. Это бьёт по обеим схемам, но по генеративной сильнее: у двухбашенной дообучается только модель, а у генеративной под вопросом ещё и словарь идентификаторов. Подробнее — в секции 12.</p>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Смещение к популярному и покрытие каталога</h2></div>
+  <p class="slead">Поиск лучом — процедура, ищущая моду распределения. Она систематически отдаёт предпочтение частым путям, и умножение вероятностей по четырём токенам возводит небольшую разницу в популярности в четвёртую степень.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · почему луч усиливает популярность в четвёртой степени</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Два товара, оценка модели по токенам.
+      <div class="calc"><span class="lbl">популярный товар, ID = (3, 12, 1, 0):</span>
+  p(3)         = 0.31
+  p(12 | 3)    = 0.22
+  p(1 | 3,12)  = 0.19
+  p(0 | …)     = 0.41
+  произведение: 0.31 × 0.22 = 0.068200
+                × 0.19      = 0.012958
+                × 0.41      = <span class="hl">0.00531278</span>
+
+<span class="lbl">нишевый товар, ID = (17, 203, 8, 41):</span>
+  p(17)         = 0.09
+  p(203 | 17)   = 0.04
+  p(8 | 17,203) = 0.11
+  p(41 | …)     = 0.02
+  произведение: 0.09 × 0.04 = 0.003600
+                × 0.11      = 0.000396
+                × 0.02      = <span class="hl">0.00000792</span>
+
+<span class="lbl">отношение:</span> 0.00531278 / 0.00000792 = <span class="bad">670.8×</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Общее правило — и оно неприятное.
+      <div class="calc"><span class="lbl">если каждый токен нишевого товара вероятнее
+в r раз реже, итоговая разница — r в степени m:</span>
+
+  r = 2, m = 4:  2⁴ = <span class="hl">16×</span>
+  r = 3, m = 4:  3⁴ = <span class="hl">81×</span>
+  r = 4, m = 4:  4⁴ = <span class="bad">256×</span>
+
+<span class="bad">Умеренное различие в популярности на уровне
+отдельного токена превращается в разрыв
+на два порядка в итоговой оценке.</span>
+
+<span class="lbl">в двухбашенной схеме такого возведения в степень нет:</span>
+<span class="dim">оценка — одно скалярное произведение,
+разница между популярным и нишевым товаром
+входит в неё линейно, а не мультипликативно
+по четырём независимым множителям.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Замер на выдаче.
+      <div class="calc"><span class="lbl">доля топ-1% каталога в позициях выдачи:</span>
+  двухбашенная + ANN           <span class="hl">34.2%</span>
+  генеративный, луч 20         <span class="bad">51.3%</span>
+  генеративный, стохастический  <span class="hl">39.1%</span>
+
+<span class="lbl">уникальных товаров в 50 000 выдач по 50 позиций
+(2 500 000 позиций всего):</span>
+  двухбашенная + ANN           <span class="res">412 000</span>
+  генеративный, луч 20         <span class="bad">186 000</span>
+  генеративный, стохастический  <span class="hl">297 000</span>
+
+<span class="bad">Покрытие упало в 412 / 186 = 2.22 раза.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что с этим делают.
+      <div class="calc"><span class="lbl">приём                          покрытие   Recall@50</span>
+  чистый луч 20                   186 000     <span class="res">0.259</span>
+  стохастический луч (T = 1.0)    297 000     <span class="hl">0.244</span>
+  луч + штраф за популярность     241 000     <span class="hl">0.253</span>
+  луч + добор из хвоста каталога  334 000     <span class="hl">0.251</span>
+
+<span class="lbl">размен читается прямо:</span>
+  +60% покрытия стоят <span class="hl">−0.015</span> Recall
+  +80% покрытия стоят <span class="hl">−0.008</span> Recall (последняя строка)
+
+<span class="res">Последний приём лучший: часть позиций выдачи
+резервируется под кандидатов из недопредставленных
+областей каталога, отобранных отдельно.</span>
+
+<span class="dim">Обратите внимание: офлайн-Recall всегда падает от
+диверсификации, потому что он измеряет попадание
+в то, что пользователь уже выбрал при старой политике.
+Это тот же эффект, что в 1.13 — метрика защищает
+текущую политику от изменения.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Концентрация выдачи и покрытие каталога</div>
+    <div class="chsub">Столбцы — доля топ-1% каталога в позициях выдачи, линия — число уникальных товаров, показанных за 50 000 запросов. Чистый луч концентрирует выдачу вдвое сильнее ANN</div>
+    <canvas id="c_head"></canvas>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Оценка: четыре способа получить неправильный ответ</h2></div>
+  <p class="slead">Публикуемые сравнения генеративного поиска с ANN расходятся между собой в разы, и почти всегда причина в протоколе. Три из четырёх ловушек — те же, что в теме 6.6, четвёртая специфична для этого подхода.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · один и тот же эксперимент под четырьмя протоколами</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Замеры Recall@10 на одних и тех же моделях и данных.
+      <div class="calc"><span class="lbl">протокол                        генеративный   ANN</span>
+100 случайных негативов             <span class="hl">0.784</span>      0.771
+полный каталог, leave-one-out       <span class="hl">0.089</span>      0.093
+полный каталог, временное разбиение <span class="hl">0.061</span>      <span class="res">0.072</span>
+
+<span class="bad">Завышение от подвыборки негативов:
+0.784 / 0.089 = 8.81 раза.</span>
+
+<span class="bad">И, что важнее, победитель меняется:
+по первому протоколу выигрывает генеративный (+0.013),
+по третьему — двухбашенный (+0.011).</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Ловушка вторая, специфичная: что делать с невалидными идентификаторами.
+      <div class="calc"><span class="lbl">генеративный поиск без префиксного дерева,
+луч 10, из них 2.9 позиций невалидны:</span>
+
+  считать невалидные промахом:     Recall@10 = <span class="hl">0.126</span>
+  выбросить их и добрать ещё:      Recall@10 = <span class="bad">0.149</span>
+
+<span class="bad">Второй вариант завышает на 18.3%, потому что
+фактически расширяет луч: вы получили 10 валидных
+позиций, потратив бюджет на 13.</span>
+
+<span class="res">Честно: считать позиции, а не попытки.
+Либо использовать дерево — тогда вопрос не возникает.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Ловушка третья: несопоставимые бюджеты.
+      <div class="calc"><span class="lbl">типичное сравнение в статьях:</span>
+  генеративный, луч 100  →  Recall@100 = 0.271, 31.2 мс
+  ANN, ef = 50           →  Recall@100 = 0.238,  1.1 мс
+
+  вывод статьи: <span class="bad">«+13.9% к качеству»</span>
+
+<span class="lbl">то же при равном времени:</span>
+  генеративный, луч 10   →  0.181,  8.1 мс
+  ANN, ef = 800          →  <span class="res">0.269</span>,  7.9 мс
+
+  честный вывод: <span class="res">«−32.7% при равном бюджете»</span>
+
+<span class="dim">У ANN есть параметр качества поиска ef, который
+почти всегда оставляют по умолчанию. Между тем
+именно он определяет точку на кривой «время–качество».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Ловушка четвёртая: k-ядро и фильтрация каталога.
+      <div class="calc"><span class="lbl">почти все публичные наборы фильтруют товары
+и пользователей с малым числом взаимодействий
+(«5-core»: оставить только тех, у кого их ≥ 5).</span>
+
+  доля каталога после 5-core: <span class="bad">31.4%</span>
+
+<span class="bad">Именно те товары, на которых генеративный поиск
+выигрывает, выброшены из набора до начала измерений.</span>
+
+<span class="lbl">Recall@50 на одних данных:</span>
+  после 5-core фильтрации:  генеративный 0.259, ANN 0.264
+  без фильтрации:           генеративный <span class="res">0.276</span>, ANN <span class="hl">0.277</span>
+
+<span class="dim">Разрыв сокращается с 0.005 до 0.001, потому что
+холодная часть каталога вернулась в измерение.
+Как и в 6.6: фильтрация меняет задачу, а не только шум.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Один эксперимент, четыре протокола оценки</div>
+    <div class="chsub">Логарифмическая ось. Подвыборка негативов завышает почти в девять раз и переворачивает вывод о том, какой подход лучше</div>
+    <canvas id="c_eval"></canvas>
+  </div>
+
+  <div class="def">
+    <div class="def-t">Минимальный честный протокол сравнения</div>
+    <p>1. <b>Полный каталог</b> в качестве кандидатов, без подвыборки негативов.</p>
+    <p>2. <b>Временное разбиение</b> с зазором по горизонту метки — схема из <a href="block1_15_validation_schemes.html">1.15</a>, а не leave-one-out.</p>
+    <p>3. <b>Равный бюджет времени</b>: подобрать <code>ef</code> у ANN и ширину луча так, чтобы латентность совпадала, и сравнивать качество; либо наоборот.</p>
+    <p>4. <b>Без k-ядерной фильтрации</b>, либо с явным разделением метрики на холодную и тёплую часть каталога.</p>
+    <p>5. <b>Считать позиции выдачи</b>, а не валидные попытки.</p>
+    <p>6. Рядом с Recall сообщать <b>покрытие каталога</b> и долю головы — иначе диверсификационная деградация из секции 10 останется невидимой.</p>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Два вида идентификаторов и устаревание</h2></div>
+  <p class="slead">Семантический ID можно строить только из содержимого товара, а можно ещё и из того, как с ним взаимодействуют. Второй вариант точнее в момент построения и быстрее устаревает. Это активная тема исследований 2026 года.</p>
+
+  <div class="def">
+    <div class="def-t">Content-only против interaction-informed</div>
+    <p><b>Content-only.</b> ID строится из эмбеддинга описания товара. Устойчив: описание меняется редко, поэтому идентификатор стабилен годами. Но он ничего не знает о том, что товары A и B покупают вместе, хотя их описания непохожи.</p>
+    <p><b>Interaction-informed.</b> В эмбеддинг, из которого строится ID, подмешивается коллаборативный сигнал — совместная встречаемость, поведенческая близость. Идентификатор точнее отражает то, как товар используется. Но поведенческие паттерны дрейфуют, и через несколько недель ID перестаёт соответствовать свежим логам — это и называют устареванием семантических идентификаторов.</p>
+    <p>Ключевое неудобство: <b>переприсвоение идентификаторов ломает чекпоинт</b>. Модель училась порождать конкретные коды; если коды поменялись, знание обесценилось. Отсюда линия работ про выравнивание новых идентификаторов со старым словарём, позволяющее дообучать с тёплого старта вместо полной пересборки.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · где проходит граница между двумя вариантами</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Recall@50 по дням после заморозки идентификаторов, строгое хронологическое разбиение.
+      <div class="calc"><span class="lbl">дней   interaction-informed   content-only   ANN</span>
+    0           <span class="res">0.276</span>              0.259        0.277
+    7           <span class="res">0.264</span>              0.256        0.274
+   30           <span class="bad">0.231</span>              <span class="res">0.249</span>        0.269
+   90           <span class="bad">0.178</span>              <span class="res">0.238</span>        0.261
+
+<span class="lbl">падение за 90 дней:</span>
+  interaction-informed:  0.276 → 0.178 = <span class="bad">−35.5%</span>
+  content-only:          0.259 → 0.238 = <span class="res">−8.1%</span>
+  ANN:                   0.277 → 0.261 = <span class="res">−5.8%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Точка пересечения кривых.
+      <div class="calc"><span class="lbl">на 7-й день interaction впереди на 0.008
+на 30-й день позади на 0.018</span>
+
+  скорость закрытия разрыва:
+    (0.008 − (−0.018)) / (30 − 7) = 0.026 / 23
+                                  = <span class="hl">0.0011304 / день</span>
+
+  точка пересечения:
+    7 + 0.008 / 0.0011304 = 7 + 7.08 = <span class="res">14.1 дня</span>
+
+<span class="res">Через две недели после заморозки словаря
+коллаборативные идентификаторы уже хуже
+содержательных. Через три месяца — на 25% хуже.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Отсюда следует правило выбора, а не «какой вариант лучше».
+      <div class="calc"><span class="lbl">регламент обновления словаря   что выбирать</span>
+  чаще двух недель            <span class="res">interaction-informed</span>
+  раз в месяц                 <span class="hl">спорно, зависит от дрейфа</span>
+  раз в квартал и реже        <span class="res">content-only</span>
+  обновление не планируется   <span class="res">content-only</span>
+
+<span class="bad">Худшая из возможных конфигураций — взять
+interaction-informed идентификаторы, потому что
+на бенчмарке они дали +0.017, и не построить
+регламент обновления. Через квартал вы получите
+−0.060 против варианта, который «проигрывал».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Компромисс, который работает.
+      <div class="calc"><span class="lbl">гибрид: первые уровни ID из содержимого,
+последний — из коллаборативного сигнала</span>
+
+  день 0:   <span class="hl">0.271</span>   <span class="dim">(против 0.276 и 0.259)</span>
+  день 30:  <span class="res">0.258</span>   <span class="dim">(против 0.231 и 0.249)</span>
+  день 90:  <span class="res">0.244</span>   <span class="dim">(против 0.178 и 0.238)</span>
+
+<span class="res">Почти лучшее из обоих: −0.005 в нулевой день,
+но +0.027 на тридцатый и +0.066 на девяностый
+против чисто коллаборативного варианта.</span>
+
+<span class="dim">Логика проста: грубая структура каталога
+(первые токены) меняется медленно и берётся
+из содержимого; тонкие различия внутри ниши
+(последний токен) меняются быстро и берутся
+из поведения. При обновлении переприсваивается
+только последний токен — а он и так был наименее
+информативным для модели (секция 5).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Устаревание идентификаторов при строгом хронологическом разбиении</div>
+    <div class="chsub">Коллаборативные идентификаторы начинают выше и падают быстрее; пересечение с содержательными — на 14-й день. Гибрид почти повторяет верхнюю огибающую</div>
+    <canvas id="c_sid"></canvas>
+  </div>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Практика: где это уместно — и 15 подводных камней</h2></div>
+  <p class="slead">К 2026 году генеративный поиск вышел из статей в продакшн: отраслевые команды сообщают о заметных приростах при связке семантических ID с крупными порождающими моделями. Но заявленные цифры относятся к конкретным конфигурациям, а не к подходу вообще.</p>
+
+  <table class="ct">
+    <thead><tr><th>Ваша ситуация</th><th>Стоит ли</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>Каталог быстро обновляется, много новинок</td><td class="g">да</td><td class="note">трёхнедельная фора на каждом новом товаре — там, где новинки составляют заметную долю оборота, это складывается</td></tr>
+      <tr class="best"><td>Уже есть крупная порождающая модель для ранжирования</td><td class="g">да</td><td class="note">отбор и ранжирование одной моделью убирают рассогласование между этапами</td></tr>
+      <tr><td>Каталог до нескольких миллионов, содержимое информативно</td><td class="a">можно пробовать</td><td class="note">режим, в котором подход изучен лучше всего</td></tr>
+      <tr class="worst"><td>Стабильный каталог, зрелые эмбеддинги</td><td class="r">нет</td><td class="note">двухбашенная схема быстрее и точнее при равном бюджете</td></tr>
+      <tr class="worst"><td>Жёсткие требования по латентности без GPU</td><td class="r">нет</td><td class="note">четыре последовательных шага декодирования не ускорить</td></tr>
+      <tr class="worst"><td>Много динамических фильтров и бизнес-правил</td><td class="r">нет</td><td class="note">ограничения плохо ложатся на порождение; луч тратится впустую</td></tr>
+      <tr><td>Каталог в сотни миллионов</td><td class="a">осторожно</td><td class="note">теоретически память не растёт, но ёмкость модели должна расти — см. подводный камень 3</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Самая частая ошибка в оценке подхода — сравнивать его с двухбашенной схемой «вообще», а не с той двухбашенной схемой, которая уже работает у вас, с контентной башней и подобранным <code>ef</code>.</p>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Сравнение при несопоставимом бюджете</b><span>Луч 100 против ANN с параметром поиска по умолчанию — не сравнение. При равном времени картина переворачивается: 0.181 против 0.269. Подбирать <code>ef</code> нужно так же тщательно, как ширину луча.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>Подвыборка негативов при оценке</b><span>Завышение в 8.8 раза и смена победителя. Та же ловушка, что в <a href="block6_06_sequential_rec.html">6.6</a>, и она особенно опасна здесь, потому что почти все опубликованные сравнения на неё опираются.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>«Память не растёт с каталогом»</b><span>Не растёт память под индекс. Но соответствие «запрос → товар» хранится в весах, и на большем каталоге модели нужно больше ёмкости. Утверждение верно про структуру данных и неверно про систему целиком.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Генерация без префиксного дерева</b><span>28.7% позиций выдачи — несуществующие товары, Recall@10 падает с 0.181 до 0.126. Ограничение стоит менее 3% времени и обязательно.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Случайные или порядковые идентификаторы</b><span>0.021 и 0.034 против 0.259 у семантических. Весь подход держится на том, что общий префикс означает смысловую близость. Без этого модель обязана запомнить произвольную таблицу на миллионы строк.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Игнорирование коллизий</b><span>Расчёт для равномерного случая даёт 5.7%, реальность — 18.4%, потому что RQ-VAE намеренно сближает похожие товары. До 47 товаров в одной ячейке. Лучшее решение — не порядковый различитель, а дополнительный уровень квантования.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Равные веса позиций в функции потерь</b><span>Ошибка в первом токене теряет запрос безвозвратно, ошибка в последнем даёт соседний товар из той же ячейки. Веса 4:3:2:1 дают +0.012 одной строкой кода.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Слишком узкий луч</b><span>При луче 5 верный первый токен теряется в 21.9% запросов. Ширина луча — не параметр качества «чуть лучше или чуть хуже», а параметр достижимости: то, что отсеклось на первом шаге, вернуть нельзя.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Коллаборативные идентификаторы без регламента обновления</b><span>+0.017 в нулевой день и −0.060 через квартал против содержательных. Выбор между двумя видами ID определяется не бенчмарком, а тем, как часто вы готовы обновлять словарь.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Полная пересборка вместо выравнивания</b><span>320 GPU-часов против 38. Ежемесячное выравнивание доминирует ежеквартальную пересборку и по стоимости, и по качеству — редкий случай, когда одна опция лучше по обоим измерениям.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Отсутствие метрики покрытия рядом с Recall</b><span>Покрытие каталога падает в 2.2 раза, а Recall этого не показывает — он даже растёт от концентрации на популярном. Без второй метрики деградация разнообразия остаётся невидимой до жалоб от закупок.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Оценка холодного старта офлайн-метрикой</b><span>Трёхкратное преимущество на холодных товарах превратилось в 0.001 после взвешивания по показам — потому что холодные товары дают 3% показов при старой политике. Это петля из <a href="block1_13_feedback_loops.html">1.13</a>; измерять нужно экспериментом.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>k-ядерная фильтрация набора данных</b><span>5-core выбрасывает 68.6% каталога — ровно ту его часть, на которой подход выигрывает. Сравнение проводится на данных, где преимущества по построению нет.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Планирование фильтров и правил на потом</b><span>Отфильтровать выдачу можно, но луч уже потрачен: если 40 из 50 позиций недоступны, замены не будет без полного пересчёта. Правила должны попадать в дерево, а это отдельная система с инвалидацией.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Замена вместо дополнения</b><span>Практически везде, где подход работает, он работает как <i>второй источник кандидатов</i> рядом с существующим ANN, а не вместо него. Объединение выдач двух источников даёт больше, чем любой из них по отдельности, и снимает почти все риски перехода.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где выбор между генеративным и векторным отбором определяет архитектуру.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Маркетплейс с миллионом новых товаров в месяц</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 40 млн активных позиций, ежемесячно добавляется около миллиона новых, из них половина исчезает за квартал. Новинки дают 14% оборота. Требование к отбору кандидатов — 20 мс.</p>
+      <p><b>Почему подход уместен.</b> Трёхнедельная фора на каждой новинке здесь не academic: при таком потоке в любой момент времени существенная часть каталога находится внутри этого окна. Расчёт: если товар живёт 90 дней, а фора длится 19, то 21% его жизненного цикла проходит в режиме, где генеративный отбор сильнее.</p>
+      <p><b>Архитектура — два источника, не замена.</b> ANN обслуживает основной поток и всё, что старше трёх недель. Генеративный источник отвечает за новинки: его дерево содержит только товары моложе 30 дней, что даёт каталог порядка миллиона вместо сорока и позволяет держать луч 20 в пределах 10 мс. Выдачи объединяются с фиксированной квотой позиций под новинки.</p>
+      <p><b>Побочная выгода урезанного дерева.</b> Смещение к популярному из секции 10 внутри новинок почти не проявляется: у них ещё нет накопленной популярности, распределение по токенам ровнее.</p>
+      <p><b>Регламент.</b> Ежемесячное выравнивание словаря, содержательные идентификаторы на первых трёх уровнях, коллаборативный на последнем. Дерево новинок пересобирается ежедневно — оно маленькое.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Видеоплатформа: отбор из 800 млн роликов</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Каталог почти на миллиард, растёт на сотни тысяч в день. ANN-индекс на 800 млн векторов по 128 измерений — это 205 ГБ векторов плюс 102 ГБ графа, на каждую реплику.</p>
+      <p><b>Здесь память действительно становится проблемой.</b> 307 ГБ на реплику означают либо шардирование индекса с сетевым обходом, либо очень дорогие машины. Аргумент про 140 МБ весов впервые звучит серьёзно.</p>
+      <p><b>Но ёмкость модели тоже должна расти.</b> При 800 млн товаров нужно 5 уровней по 256 (256⁵ = 1.1×10¹²) или 4 уровня по 1024 (1.1×10¹²). Пять уровней — это +25% к латентности декодирования и ещё одна степень в эффекте усиления популярности из секции 10: r⁵ вместо r⁴.</p>
+      <p><b>Реалистичная схема.</b> Двухэтапный отбор: генеративная модель порождает первые два токена — это выбор области каталога из 65 тысяч, — а внутри выбранных областей работает маленький локальный ANN. Гибрид сохраняет иерархию там, где она полезна (грубый отбор), и векторный поиск там, где он точнее (тонкий).</p>
+      <p><b>Что измерять.</b> Покрытие обязательно: при таком каталоге концентрация выдачи означает, что миллионы роликов не показываются никогда, и авторы это замечают раньше, чем метрики.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Поиск по документации с частым обновлением</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Внутренняя база знаний, 300 тыс. документов, правится непрерывно. Запросов немного — сотни в минуту. Требуется точность, латентность до секунды приемлема.</p>
+      <p><b>Здесь ограничения подхода почти не мешают.</b> Каталог мал, нагрузка низкая, латентность свободна. Ровно тот режим, где подход изучен лучше всего и где он появился исторически.</p>
+      <p><b>Главная проблема — обновление.</b> Документ правится, его содержательный эмбеддинг меняется, семантический ID может измениться. Если ID сменился, модель, обученная порождать старый, промахивается. Решение: пересчитывать ID при правке, но менять его только если изменение содержания превысило порог — иначе документ сохраняет старый идентификатор даже при слегка сдвинувшемся эмбеддинге.</p>
+      <p><b>Замер порога.</b> При пороге в 15% относительного изменения эмбеддинга переприсваивается 3.1% документов в месяц, и качество на них падает на 0.04 до следующего дообучения. При пороге 5% переприсваивается 11.7%, падение сильнее. Порог — это ручка между стабильностью идентификаторов и их актуальностью.</p>
+      <p><b>Честная альтернатива.</b> На 300 тыс. документов обычный векторный поиск занимает 80 МБ и обновляется мгновенно. Генеративный подход здесь оправдан, только если он даёт заметный прирост качества — измерять до, а не после внедрения.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Единая порождающая модель для отбора и ранжирования</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Существующая система: двухбашенный отбор 500 кандидатов, затем тяжёлое ранжирование. Классическая проблема — отбор оптимизирует не то, что ранжирование, и хорошие кандидаты отсеиваются до того, как их увидит сильная модель.</p>
+      <p><b>Аргумент за генеративный подход здесь самый сильный.</b> Если и отбор, и ранжирование — одна порождающая модель над семантическими ID, рассогласование исчезает по построению: то, что модель считает вероятным, она же и ранжирует.</p>
+      <p><b>Измерение рассогласования до перехода.</b> Доля товаров из топ-10 финального ранжирования, которые не попали бы в 500 кандидатов отбора: замерено 11.3%. Это верхняя граница выигрыша от устранения рассогласования — и её стоит посчитать прежде, чем перестраивать систему.</p>
+      <p><b>Риск.</b> Одна модель на два этапа означает, что её ошибка не компенсируется вторым этапом. Двухэтапная схема устойчива именно потому, что этапы независимы: слабое место отбора закрывается сильным ранжированием. Убрав разделение, вы убираете и эту страховку.</p>
+      <p><b>Компромисс.</b> Сохранить два этапа, но обучать их совместно, используя семантические ID как общее представление. Отбор остаётся генеративным, ранжирование — отдельной моделью, но словарь и часть весов общие.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Локальные сервисы: география как ограничение</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Рекомендации заведений и услуг. Жёсткое ограничение: показывать можно только то, что находится в пределах доступности пользователя. Каталог 4 млн точек, но релевантных любому запросу — несколько тысяч.</p>
+      <p><b>Здесь подводный камень с фильтрами становится центральным.</b> Географическое ограничение динамическое и персональное: его нельзя вшить в общее дерево. Наивная схема — породить 50 кандидатов и отфильтровать — оставляет в среднем 3.2 позиции, потому что модель порождает популярное по всей стране.</p>
+      <p><b>Решение — география в самом идентификаторе.</b> Первый токен кодирует географическую ячейку, остальные — содержательные признаки. Тогда ограничение превращается в ограничение на первый токен, то есть в обычное отсечение ветвей дерева, для которого схема и предназначена.</p>
+      <p><b>Цена.</b> Первый токен больше не несёт содержательной информации, и иерархия «категория → подкатегория» сдвигается на уровень ниже. Замер: Recall@50 без географии в ID и с фильтрацией после — 0.089; с географией в первом токене — 0.213.</p>
+      <p><b>Общий урок.</b> Если у задачи есть жёсткое ограничение, которое отсекает большую часть каталога, оно должно оказаться в старших разрядах идентификатора. Это относится не только к географии: язык контента, возрастной рейтинг, наличие на складе — всё, что делит каталог на непересекающиеся области.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что такое генеративный поиск?</b><span>Отбор кандидатов как порождение последовательности: модель seq2seq по истории пользователя авторегрессионно выдаёт идентификатор следующего товара токен за токеном. Вместо поиска ближайших соседей в индексе — декодирование.</span></div>
+
+  <div class="qa"><b>2. Что такое семантический ID?</b><span>Короткий кортеж дискретных кодов, полученный квантованием эмбеддинга содержимого товара. Ключевое свойство — иерархичность: общий префикс означает смысловую близость, поэтому модель может сужать область каталога шаг за шагом.</span></div>
+
+  <div class="qa"><b>3. Почему нельзя использовать обычные идентификаторы товаров?</b><span>Потому что они произвольны: товары 4815162 и 4815163 никак не связаны, и первый токен не несёт информации. Замер: 0.021 у случайных ID, 0.034 у порядковых, 0.259 у семантических.</span></div>
+
+  <div class="qa"><b>4. Как работает RQ-VAE?</b><span>Квантует вектор ближайшим центроидом первой книги, берёт остаток, квантует его второй книгой, и так m уровней. Даёт K^m различимых кодов, храня всего m×K центроидов. В разобранном примере три уровня по 4 центроида восстановили вектор с точностью 99.97%.</span></div>
+
+  <div class="qa"><b>5. Почему берут 3–4 уровня, а не 8?</b><span>Остаточная ошибка падает геометрически: 3.18% после первого уровня, 0.46% после второго, 0.03% после третьего. Пятый уровень борется за тысячные доли процента, зато удлиняет последовательность и удорожает декодирование пропорционально.</span></div>
+
+  <div class="qa"><b>6. Что такое коллизия семантических ID?</b><span>Два товара получили одинаковый код. Расчёт для равномерного случая при 2 млн товаров и 256³ ячеек даёт 5.73%, замер на настоящих эмбеддингах — 18.4%, втрое больше. Причина в том, что RQ-VAE намеренно сближает похожие товары.</span></div>
+
+  <div class="qa"><b>7. Как разрешают коллизии?</b><span>Обычно дописывают порядковый номер внутри ячейки. Но лучше добавить ещё один уровень квантования: замер 0.271 против 0.259, потому что дополнительный код несёт смысл, а порядковый номер модель угадывает почти случайно.</span></div>
+
+  <div class="qa"><b>8. Зачем нужно префиксное дерево?</b><span>Модель может породить любую комбинацию токенов, а существует ничтожная доля. Без ограничения 28.7% позиций выдачи — несуществующие товары, Recall@10 падает с 0.181 до 0.126. Ограничение стоит менее 3% времени.</span></div>
+
+  <div class="qa"><b>9. Разве это не тот же индекс, от которого мы уходили?</b><span>Формально да — дерево это структура данных. Но оно на порядок компактнее ANN-графа (180 МБ против 7.7 ГБ в примере) и обновляется вставкой пути, а не перестройкой графа. Утверждение «индекса нет» строго говоря неверно; правильнее «индекс на порядок дешевле».</span></div>
+
+  <div class="qa"><b>10. Почему ширина луча так важна?</b><span>Потому что ошибка на первом шаге необратима: ветвь не раскрыта, товара в выдаче не будет. Верный первый токен попадает в топ-5 в 78.1% случаев и в топ-20 — в 93.4%. Луч 5 теряет пятую часть запросов сразу.</span></div>
+
+  <div class="qa"><b>11. Все ли токены одинаково важны?</b><span>Нет, и функция потерь этого не знает. Взвешивание позиций 4:3:2:1 даёт +0.012 к Recall@50, обратное взвешивание — −0.021. Одна строка кода, мимо которой легко пройти, потому что стандартная реализация seq2seq такого не предполагает.</span></div>
+
+  <div class="qa"><b>12. Сколько памяти экономит подход?</b><span>В примере с 20 млн товаров: 7.68 ГБ ANN-индекса против 320 МБ (веса плюс дерево), то есть 24×. Но экономия памяти не равна экономии денег: чтобы обслужить ту же нагрузку, нужны ускорители вместо процессоров.</span></div>
+
+  <div class="qa"><b>13. А что с латентностью?</b><span>Хуже. HNSW даёт топ-100 за 2.4 мс, генеративный поиск при сопоставимом качестве (луч 50) — за 17.9 мс, в 7.5 раза дольше. Четыре шага декодирования строго последовательны и не параллелятся.</span></div>
+
+  <div class="qa"><b>14. Выигрывает ли подход у ANN по качеству?</b><span>При равном бюджете времени на тёплом каталоге — нет: 0.181 против 0.269. Паритет достигается при луче 50 и превосходство при 100, но ценой 13-кратной латентности. Преимущества лежат в других местах: холодный старт, единая модель, потенциал совместного обучения.</span></div>
+
+  <div class="qa"><b>15. В чём преимущество на холодном старте?</b><span>Новый товар получает ID из содержимого, без единого взаимодействия, и его префикс совпадает с префиксом похожих товаров. Recall@50 на товарах без истории: 0.118 против 0.041 у контентной башни и 0.000 у эмбеддинга по идентификатору.</span></div>
+
+  <div class="qa"><b>16. Почему это преимущество почти не видно в общей метрике?</b><span>Потому что холодные товары дают 3.1% показов при 62% каталога. Взвешенный по показам Recall: 0.2761 против 0.2772 — разница в тысячную. Трёхкратный разрыв растворяется в весах.</span></div>
+
+  <div class="qa"><b>17. Значит, холодный старт не важен?</b><span>Нет — 3.1% показов это следствие текущей политики, а не свойство каталога. Товар не показывают, он не набирает взаимодействий, его не показывают. Петля из <a href="block1_13_feedback_loops.html">1.13</a>. В эксперименте с принудительным показом доля холодных в обороте выросла с 2.4% до 7.9%, общий оборот на 1.8%.</span></div>
+
+  <div class="qa"><b>18. Как долго держится преимущество на новом товаре?</b><span>Около 19 дней. Двухбашенная схема догоняет со скоростью 0.0027 Recall в день, генеративная — 0.0008, потому что её знание о товаре зафиксировано в идентификаторе и новыми взаимодействиями не обновляется без переобучения.</span></div>
+
+  <div class="qa"><b>19. Что такое устаревание семантических ID?</b><span>Идентификаторы, построенные с учётом поведенческого сигнала, перестают соответствовать свежим логам по мере дрейфа предпочтений. Замер: падение Recall на 35.5% за 90 дней у коллаборативных ID против 8.1% у содержательных. Активная тема исследований 2026 года.</span></div>
+
+  <div class="qa"><b>20. Content-only или interaction-informed?</b><span>Зависит от регламента обновления, а не от бенчмарка. Кривые пересекаются на 14-й день: раньше лучше коллаборативные, позже — содержательные. Если обновление реже раза в две недели, коллаборативные ID проигрывают тем сильнее, чем реже вы их обновляете.</span></div>
+
+  <div class="qa"><b>21. Есть ли компромисс между ними?</b><span>Да, и он работает: первые уровни ID из содержимого, последний — из поведения. День 0: 0.271 против 0.276 и 0.259; день 90: 0.244 против 0.178 и 0.238. Грубая структура каталога меняется медленно, тонкие различия внутри ниши — быстро.</span></div>
+
+  <div class="qa"><b>22. Сколько стоит обновление словаря?</b><span>Полная пересборка с переобучением — порядка 320 GPU-часов в разобранном примере. Выравнивание новых идентификаторов со старым словарём с последующим дообучением от тёплого старта — около 38, то есть в 8.4 раза дешевле. Это соответствует порядку, сообщаемому в работах 2026 года.</span></div>
+
+  <div class="qa"><b>23. Почему луч смещает выдачу к популярному?</b><span>Оценка — произведение четырёх вероятностей. Если каждый токен нишевого товара в r раз менее вероятен, итоговый разрыв составляет r⁴. В разобранном примере товары различались в 671 раз. В двухбашенной схеме оценка — одно скалярное произведение, мультипликативного усиления нет.</span></div>
+
+  <div class="qa"><b>24. Насколько падает покрытие каталога?</b><span>В 2.2 раза: 186 тыс. уникальных товаров против 412 тыс. у ANN за 50 тыс. выдач. Доля топ-1% каталога в позициях растёт с 34.2% до 51.3%. Recall этого не показывает — он даже выигрывает от концентрации на популярном.</span></div>
+
+  <div class="qa"><b>25. Как с этим бороться?</b><span>Стохастический луч даёт +60% покрытия за −0.015 Recall; резервирование части позиций под кандидатов из недопредставленных областей — +80% покрытия за −0.008. Второй приём лучше. Помните, что офлайн-Recall всегда падает от диверсификации: он измеряет попадание в выборы, сделанные при старой политике.</span></div>
+
+  <div class="qa"><b>26. Какие главные ловушки при оценке?</b><span>Четыре: подвыборка негативов (завышение в 8.8 раза и смена победителя), несопоставимый бюджет времени, засчитывание невалидных генераций как «попыток», а не позиций (+18.3%), и k-ядерная фильтрация, выбрасывающая ту часть каталога, где подход выигрывает.</span></div>
+
+  <div class="qa"><b>27. Что с фильтрами и бизнес-правилами?</b><span>Плохо. Отфильтровать выдачу можно, но луч уже потрачен: если большая часть позиций недоступна, замены не будет без пересчёта. Правильное решение — вносить жёсткие ограничения в старшие разряды идентификатора, как географию в примере из System Design.</span></div>
+
+  <div class="qa"><b>28. Правда ли, что подход масштабируется на любой каталог?</b><span>Память под индекс — да. Ёмкость модели — нет: соответствие «запрос → товар» живёт в весах, и на большем каталоге весов нужно больше. Плюс каждый дополнительный уровень идентификатора добавляет степень в эффект усиления популярности.</span></div>
+
+  <div class="qa"><b>29. Используют ли это в продакшне?</b><span>Да, к 2026 году отраслевые команды сообщают о внедрениях со связкой семантических ID и крупных порождающих моделей, с двузначными приростами онлайн-метрик. Но заявленные цифры относятся к конкретным конфигурациям и каталогам, и переносить их на свою задачу без замера нельзя.</span></div>
+
+  <div class="qa"><b>30. С чего начать, если хочется попробовать?</b><span>С генеративного источника как <i>дополнения</i> к существующему ANN, а не замены: отдельное дерево только на новинки, фиксированная квота позиций в объединённой выдаче. Это даёт основную часть выигрыша (холодный старт), не трогает основной поток и снимает почти все риски.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 6.7 завершает блок 6. Двухбашенные модели и ANN-поиск разобраны в <a href="block6_02_two_tower.html">6.2</a>, последовательные рекомендации и трансформеры над историей — в <a href="block6_06_sequential_rec.html">6.6</a>, откуда сюда перешли и ловушки оценки. Механика внимания и стоимость декодирования — <a href="block8_04_attention.html">8.4</a> и <a href="block8_08_attention_inference.html">8.8</a>. Петля обратной связи, из-за которой офлайн-метрика занижает пользу от холодного старта, — <a href="block1_13_feedback_loops.html">1.13</a>. Схема валидации, без которой все замеры этой темы бессмысленны, — <a href="block1_15_validation_schemes.html">1.15</a>.
+</div>
+
+<div class="srcbox">
+  <b>Источники и актуальность</b>
+  <p style="margin:0 0 8px;font-size:13.5px">Фактические сведения о подходе, его вариантах и состоянии на 2026 год сверены в августе 2026 года. Числовые примеры в трассировках — учебные конструкции, иллюстрирующие механизм; они не воспроизводят замеры из публикаций.</p>
+  <ul>
+    <li><a href="https://proceedings.neurips.cc/paper_files/paper/2023/file/20dcab0f14046a5c6b02b61da9f13229-Paper-Conference.pdf">Rajput et al., «Recommender Systems with Generative Retrieval», NeurIPS 2023</a> — работа TIGER, задавшая конструкцию</li>
+    <li><a href="https://arxiv.org/abs/2202.06991">Tay et al., «Transformer Memory as a Differentiable Search Index», 2022</a> — исходная идея для документного поиска</li>
+    <li><a href="https://arxiv.org/html/2604.13273v1">«Mitigating Collaborative Semantic ID Staleness in Generative Retrieval», SIGIR 2026</a> — устаревание идентификаторов и выравнивание словаря вместо полной пересборки</li>
+    <li><a href="https://arxiv.org/pdf/2507.22224">«Generative Recommendation with Semantic IDs: A Practitioner's Handbook»</a> — практические соображения</li>
+    <li><a href="https://www.techrxiv.org/doi/10.36227/techrxiv.176523089.94266134">«Generative Recommendation: A Survey of Models, Systems, and Industrial Advances»</a> — обзор внедрений</li>
+  </ul>
+</div>
+
+<div class="pnav">
+  <a href="block6_06_sequential_rec.html">← 6.6 · Последовательные рекомендации</a>
+  <a class="next" href="block6_quiz.html">Тест блока 6 →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#701a75', AC2='#d946ef', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — память */
+mk('c_mem',{type:'line',data:{labels:['1 млн','5 млн','20 млн','100 млн','500 млн'],
+ datasets:[
+  {label:'ANN-индекс (векторы + граф), ГБ',data:[0.384,1.920,7.680,38.400,192.000],borderColor:BL,tension:.15,pointRadius:5},
+  {label:'Генеративная схема (веса + дерево), ГБ',data:[0.149,0.185,0.320,1.040,4.640],borderColor:AC,tension:.15,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'ГБ на реплику'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'размер каталога'}},NOG)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 2 — остаточная ошибка RQ-VAE */
+mk('c_rq',{type:'line',data:{labels:['до квантования','уровень 1','уровень 2','уровень 3','уровень 4','уровень 5'],
+ datasets:[{label:'Необъяснённая доля ‖x‖², %',data:[100,3.175,0.460,0.032,0.0035,0.0004],
+  borderColor:AC,backgroundColor:'rgba(112,26,117,.08)',tension:.2,fill:true,pointRadius:5}]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'% от энергии вектора'},grid:{color:'#eef2f7'}},x:NOG},
+  plugins:{legend:{display:false}}}});
+
+/* 3 — ёмкость словаря */
+mk('c_cap',{type:'line',data:{labels:['m = 2','m = 3','m = 4','m = 5','m = 6'],
+ datasets:[
+  {label:'K = 64',data:[4096,262144,16777216,1073741824,6.8719e10],borderColor:GY,tension:.15,pointRadius:4},
+  {label:'K = 256',data:[65536,16777216,4.295e9,1.0995e12,2.8147e14],borderColor:AC,tension:.15,pointRadius:5},
+  {label:'K = 1024',data:[1048576,1.0737e9,1.0995e12,1.1259e15,1.1529e18],borderColor:AC2,tension:.15,pointRadius:4},
+  {label:'Каталог 20 млн',data:[2e7,2e7,2e7,2e7,2e7],borderColor:RD,borderDash:[4,4],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'различимых идентификаторов'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'число уровней квантования'}},NOG)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 4 — коллизии */
+mk('c_coll',{type:'line',data:{labels:['500 тыс.','1 млн','2 млн','5 млн','10 млн'],
+ datasets:[
+  {label:'Расчёт для равномерных кодов, %',data:[1.48,2.92,5.72,13.51,24.66],borderColor:GY,borderDash:[5,4],tension:.2,pointRadius:4},
+  {label:'Замер на настоящих эмбеддингах, %',data:[4.9,9.4,18.4,39.7,58.3],borderColor:AC,backgroundColor:'rgba(112,26,117,.07)',tension:.2,fill:true,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:65,title:{display:true,text:'товаров в коллизиях, %'}},GRID),x:Object.assign({title:{display:true,text:'размер каталога при 256³ ячеек'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 5 — позиции токенов */
+mk('c_pos',{type:'bar',data:{labels:['Токен 1','Токен 2','Токен 3','Токен 4'],
+ datasets:[
+  {type:'bar',label:'Точность при верном префиксе',data:[0.412,0.286,0.331,0.204],backgroundColor:AC,borderRadius:4,order:2},
+  {type:'line',label:'Верный токен попал в луч 20',data:[0.934,0.881,0.907,0.762],borderColor:OR,tension:.25,pointRadius:5,order:1}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:1.0,title:{display:true,text:'доля'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var t=['ошибка здесь теряет запрос безвозвратно','то же','то же','ошибка даёт соседний товар из той же ячейки'];return t[it[0].dataIndex];}}}}}});
+
+/* 6 — ширина луча */
+mk('c_beam',{type:'bar',data:{labels:['луч 10','луч 20','луч 50','луч 100'],
+ datasets:[
+  {type:'bar',label:'Recall@100',data:[0.181,0.226,0.259,0.271],backgroundColor:AC,borderRadius:4,yAxisID:'y',order:3},
+  {type:'line',label:'ANN, ef = 200 — 0.264 за 2.4 мс',data:[0.264,0.264,0.264,0.264],borderColor:GY,borderDash:[4,4],pointRadius:0,yAxisID:'y',order:1},
+  {type:'line',label:'Латентность, мс',data:[8.1,10.4,17.9,31.2],borderColor:OR,tension:.25,pointRadius:5,yAxisID:'y1',order:2}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0.15,max:0.30,position:'left',title:{display:true,text:'Recall@100'}},GRID),
+   y1:{min:0,max:35,position:'right',grid:{display:false},title:{display:true,text:'мс'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 7 — качество против латентности */
+mk('c_lat',{type:'scatter',data:{datasets:[
+  {label:'Двухбашенная + HNSW (ef = 50 / 200 / 800)',data:[{x:1.1,y:0.238},{x:2.4,y:0.264},{x:7.9,y:0.269}],backgroundColor:BL,borderColor:BL,pointRadius:8,showLine:true,tension:.2},
+  {label:'Генеративный (луч 10 / 20 / 50 / 100)',data:[{x:8.1,y:0.181},{x:10.4,y:0.226},{x:17.9,y:0.259},{x:31.2,y:0.271}],backgroundColor:AC,borderColor:AC,pointRadius:8,showLine:true,tension:.2}
+ ]},
+ options:{responsive:true,scales:{
+   x:{type:'logarithmic',title:{display:true,text:'латентность, мс'},grid:{color:'#eef2f7'}},
+   y:Object.assign({min:0.16,max:0.29,title:{display:true,text:'Recall@100'}},GRID)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — холодный старт */
+mk('c_cold',{type:'line',data:{labels:['0','1–4','5–20','21–100','>100'],
+ datasets:[
+  {label:'Двухбашенная (эмбеддинг по id)',data:[0.000,0.062,0.171,0.258,0.312],borderColor:BL,tension:.25,pointRadius:5},
+  {label:'Двухбашенная (контентная башня)',data:[0.041,0.079,0.163,0.241,0.288],borderColor:GY,borderDash:[5,4],tension:.25,pointRadius:4},
+  {label:'Генеративный поиск',data:[0.118,0.144,0.201,0.267,0.298],borderColor:AC,backgroundColor:'rgba(112,26,117,.07)',tension:.25,fill:true,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.34,title:{display:true,text:'Recall@50'}},GRID),x:Object.assign({title:{display:true,text:'взаимодействий у товара'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var d=['0.4% показов','2.7%','9.8%','24.1%','63.0%'];return 'доля показов: '+d[it[0].dataIndex];}}}}}});
+
+/* 9 — когорта новых товаров */
+mk('c_stale',{type:'line',data:{labels:['день 0','день 7','день 14','день 30','день 60'],
+ datasets:[
+  {label:'Двухбашенная схема',data:[0.041,0.108,0.139,0.171,0.209],borderColor:BL,tension:.25,pointRadius:5},
+  {label:'Генеративный поиск',data:[0.118,0.131,0.140,0.149,0.163],borderColor:AC,tension:.25,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.23,title:{display:true,text:'Recall@50 на когорте'}},GRID),x:Object.assign({title:{display:true,text:'дней с добавления товара'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex===2?'кривые почти сошлись; пересечение ≈ день 19':'';}}}}}});
+
+/* 10 — концентрация и покрытие */
+mk('c_head',{type:'bar',data:{labels:['ANN','Луч 20','Стохастический','Луч + штраф','Луч + добор'],
+ datasets:[
+  {type:'bar',label:'Доля топ-1% каталога в выдаче, %',data:[34.2,51.3,39.1,43.6,41.2],backgroundColor:[BL,RD,AC2,AC,GR],borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Уникальных товаров за 50 тыс. выдач, тыс.',data:[412,186,297,241,334],borderColor:OR,tension:.25,pointRadius:5,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:60,position:'left',title:{display:true,text:'% выдачи'}},GRID),
+   y1:{min:0,max:450,position:'right',grid:{display:false},title:{display:true,text:'тыс. товаров'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 11 — протоколы оценки */
+mk('c_eval',{type:'bar',data:{labels:['100 случайных негативов','Полный каталог, leave-one-out','Полный каталог, временное разбиение'],
+ datasets:[
+  {label:'Генеративный поиск',data:[0.784,0.089,0.061],backgroundColor:AC,borderRadius:4},
+  {label:'Двухбашенная + ANN',data:[0.771,0.093,0.072],backgroundColor:BL,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'Recall@10 (лог. шкала)'},grid:{color:'#eef2f7'}},x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var t=['завышение в 8.8 раза; победитель — генеративный','победитель меняется','честный протокол; победитель — ANN'];return t[it[0].dataIndex];}}}}}});
+
+/* 12 — устаревание идентификаторов */
+mk('c_sid',{type:'line',data:{labels:['день 0','день 7','день 30','день 90'],
+ datasets:[
+  {label:'Interaction-informed ID',data:[0.276,0.264,0.231,0.178],borderColor:RD,tension:.25,pointRadius:5},
+  {label:'Content-only ID',data:[0.259,0.256,0.249,0.238],borderColor:AC,tension:.25,pointRadius:5},
+  {label:'Гибрид (содержимое + последний токен из поведения)',data:[0.271,0.268,0.258,0.244],borderColor:GR,tension:.25,pointRadius:5},
+  {label:'Двухбашенная + ANN',data:[0.277,0.274,0.269,0.261],borderColor:GY,borderDash:[4,4],tension:.25,pointRadius:3}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.16,max:0.29,title:{display:true,text:'Recall@50'}},GRID),x:Object.assign({title:{display:true,text:'дней после заморозки словаря'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* ИНТЕРАКТИВ — конфигурация словаря */
+function updRq(){
+  var K = +document.getElementById('sl_k').value;
+  var m = +document.getElementById('sl_m').value;
+  var N = Math.pow(10, (+document.getElementById('sl_n').value)/10);
+
+  document.getElementById('out_k').textContent = K;
+  document.getElementById('out_m').textContent = m;
+  document.getElementById('out_n').textContent = N.toExponential(1).replace('+','');
+
+  var M = Math.pow(K, m);
+  var x = N / M;
+  var collUnif = x < 1e-9 ? 0 : 1 - (1 - Math.exp(-x)) / x;
+  var collReal = Math.min(0.95, collUnif * 3.2);
+
+  var vocabPerStep = K;
+  var softmaxRatio = N / (K * m);
+  var treeMB = N * m * 3 / 1e6;
+
+  var verdict;
+  if (M < N) verdict = 'ЁМКОСТИ НЕ ХВАТАЕТ: идентификаторов меньше, чем товаров';
+  else if (collReal > 0.30) verdict = 'коллизий слишком много — нужен ещё уровень или большая книга';
+  else if (collReal > 0.12) verdict = 'коллизии заметны — понадобится различающий токен';
+  else verdict = 'конфигурация рабочая';
+
+  document.getElementById('out_rq').textContent =
+    'Ёмкость словаря  K^m = ' + K + '^' + m + ' = ' + M.toExponential(2).replace('+','') + '\n' +
+    'Каталог                    = ' + N.toExponential(2).replace('+','') + '\n' +
+    'Заполненность              = ' + (100 * x).toFixed(2) + '%\n' +
+    '─────────────────────────────────────────────\n' +
+    'Коллизии при равномерных кодах: ' + (100 * collUnif).toFixed(2) + '%\n' +
+    'Ожидаемо на реальных (×3.2):    ' + (100 * collReal).toFixed(2) + '%\n' +
+    '─────────────────────────────────────────────\n' +
+    'Выходов softmax на шаг: ' + vocabPerStep + '   (шагов: ' + m + ')\n' +
+    'Против ' + N.toExponential(1).replace('+','') + ' у прямого перебора: в ' +
+      (softmaxRatio >= 1000 ? Math.round(softmaxRatio).toLocaleString('ru-RU') : softmaxRatio.toFixed(0)) + ' раз меньше\n' +
+    'Префиксное дерево ≈ ' + (treeMB >= 1000 ? (treeMB/1000).toFixed(2) + ' ГБ' : treeMB.toFixed(1) + ' МБ') + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  ['sl_k','sl_m','sl_n'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updRq); });
+  if(document.getElementById('out_rq')) updRq();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

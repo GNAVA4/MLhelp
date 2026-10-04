@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.9 · Mixture of Experts</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#c2410c;--rf-l:#fff7ed;--rf-b:#fdba74;--rf-d:#7c2d12;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#7c2d12,#c2410c 50%,#fdba74);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(194,65,12,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.vi .flabel{color:var(--vi);} .fbox.te .flabel{color:var(--teal);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.red .flabel{color:var(--red);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#7c2d12;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#7c2d12,#c2410c);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ffedd5;padding:2px 6px;border-radius:4px;font-weight:700;color:#7c2d12;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--vi-b);border-left:4px solid var(--vi);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--vi);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ffedd5;color:#7c2d12;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Схема экспертов --- */
+.exp{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin:14px 0;}
+.expcap{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:14px;}
+.exprow{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12.5px;}
+.explbl{min-width:70px;font-weight:700;color:var(--text2);font-size:12px;font-family:'SF Mono',monospace;}
+.expbar{flex:1;height:22px;background:#f8fafc;border-radius:5px;position:relative;overflow:hidden;}
+.expbar i{position:absolute;top:0;bottom:0;left:0;border-radius:5px;background:#fdba74;}
+.expbar i.on{background:#c2410c;}
+.expval{min-width:88px;text-align:right;font-family:'SF Mono',monospace;font-weight:700;font-size:12px;color:var(--rf);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#fdba74;font-style:normal;}
+.sysh{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysc p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa b{font-size:14.5px;font-weight:700;color:var(--text);display:block;margin-bottom:8px;line-height:1.6;}
+.qa p{font-size:13.8px;color:var(--text2);line-height:1.78;margin:0;}
+.qa p em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;margin-bottom:9px;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#7c2d12;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){.tstep-c{padding-left:0;} .calc{font-size:10.5px;} .explbl{min-width:52px;font-size:11px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning под капотом · Тема 9 · новая</div>
+  <h1>Mixture of Experts</h1>
+  <p class="sub">Модель с <strong>46.96 млрд</strong> параметров тратит на токен столько же вычислений,
+     сколько плотная на 13.14 млрд — и по качеству соответствует плотной на 28 млрд.
+     Без балансировки маршрутизатор схлопывается: коэффициент вариации нагрузки
+     <strong>1.099</strong> вместо 0.061, и <strong>39.9%</strong> токенов теряют эксперта.
+     Всё держится на одном вспомогательном слагаемом в лоссе.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–7, 9–10, 12</span>
+    <span>🟣 продвинутый — секции 8, 11</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем MoE</a>
+  <a href="#s2">2. Устройство слоя</a>
+  <a href="#s3">3. Маршрутизация токена</a>
+  <a href="#s4">4. Общие и активные</a>
+  <a href="#s5">5. Схлопывание</a>
+  <a href="#s6">6. Вспомогательный лосс</a>
+  <a href="#s7">7. Capacity factor</a>
+  <a href="#s8">8. Экспертный параллелизм</a>
+  <a href="#s9">9. Гранулярность</a>
+  <a href="#s10">10. Что выучивают эксперты</a>
+  <a href="#s11">11. Нестабильность</a>
+  <a href="#s12">12. Экономика инференса</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 3 — ядро.</strong> Один токен, восемь экспертов: softmax по восьми логитам, отбор top-2, перенормировка весов до <em>0.645659</em> и <em>0.354341</em>, взвешенная сумма выходов.</li>
+    <li><strong>Секция 4</strong> — арифметика параметров: 46.96 млрд общих, 13.14 млрд активных, отношение <em>3.57</em>. При этом FLOP на токен равен 26.3 гигафлоп, как у плотной 13B.</li>
+    <li><strong>Секции 5–6</strong> — почему без вспомогательного лосса всё схлопывается и как одна формула $\alpha E \sum f_i P_i$ это чинит: значение падает с 2.208 до 1.000.</li>
+    <li>Секция 7 — capacity factor и отброс токенов: при несбалансированной маршрутизации теряется от 17.5% до 49.3% в зависимости от запаса.</li>
+    <li>Секция 12 — честная экономика: MoE выигрывает на малом батче и проигрывает на большом, если не использовать экспертный параллелизм.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Зачем MoE <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Разорвать связь между числом параметров и стоимостью токена</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Плотная модель <span class="en">(dense)</span></dt>
+<dd>Каждый параметр участвует в обработке каждого токена. Удвоение параметров удваивает вычисления на токен.</dd>
+
+<dt>Условные вычисления <span class="en">(conditional computation)</span></dt>
+<dd>Для каждого токена активируется только часть параметров, выбранная в зависимости от него самого. Параметры растут, вычисления — нет.</dd>
+
+<dt>Общие параметры <span class="en">(total params)</span></dt>
+<dd>Сколько всего весов в модели. Определяет объём памяти и, в значительной мере, потолок качества.</dd>
+
+<dt>Активные параметры <span class="en">(active params)</span></dt>
+<dd>Сколько весов участвует в обработке одного токена. Определяет стоимость вычислений: FLOP на токен ≈ 2 × активных.</dd>
+
+<dt>Эксперт</dt>
+<dd>Отдельная копия FFN-блока. В слое их $E$ штук, а токен направляется в $k$ из них (обычно $k = 1$ или 2).</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: библиотека против энциклопедии</div>
+<p>Плотная модель — это энциклопедия, которую надо прочитать целиком, чтобы ответить на любой вопрос. Больше знаний — дольше чтение.</p>
+<p><strong>MoE — библиотека с каталогом.</strong> Знаний в ней в разы больше, но на каждый вопрос читаются две книги, а не все. Каталог (маршрутизатор) выбирает какие.</p>
+<p>Плата: библиотеку целиком надо где-то хранить, и она занимает место независимо от того, сколько книг вы прочли. Отсюда все практические сложности темы.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: что даёт разрыв связи</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Плотная модель: параметры и вычисления связаны</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Базовое соотношение</span>
+FLOP на токен ≈ 2 × число параметров
+<span class="dim">(множитель 2 — умножение и накопление)</span>
+
+Плотная 7B:  2 × 7.5e9  = <span class="hl">15.0 ГФЛОП</span>
+Плотная 13B: 2 × 13.1e9 = <span class="hl">26.3 ГФЛОП</span>
+Плотная 47B: 2 × 47.0e9 = <span class="hl">93.9 ГФЛОП</span>
+
+<b>Чтобы утроить параметры,
+надо утроить вычисления на токен.</b>
+</div>
+<div class="calc"><span class="lbl">Почему это ограничение</span>
+Бюджет обучения фиксирован в FLOP.
+При фиксированном бюджете:
+  больше параметров → меньше токенов
+  меньше параметров → больше токенов
+
+Законы масштабирования говорят,
+что нужно и то и другое. Плотная
+архитектура заставляет выбирать.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">MoE: связь разорвана</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Устройство</span>
+Вместо одного FFN на слой — <span class="hl">8</span> копий.
+Токен направляется в <span class="hl">2</span> из них.
+
+Параметров стало в 8 раз больше.
+Вычислений на токен — в 2 раза больше,
+а не в 8.
+
+<span class="lbl">Чтобы добавить ещё параметров</span>
+Добавляем экспертов: 8 → 16 → 64.
+Активными остаются те же 2.
+<b>FLOP на токен не меняется вовсе.</b>
+</div>
+<div class="ct">
+<table>
+<caption>Три модели при равном бюджете обучения</caption>
+<thead><tr><th>Модель</th><th>общих</th><th>активных</th><th>ФЛОП/токен</th><th>токенов обучения</th><th>PPL</th></tr></thead>
+<tbody>
+<tr><td>Плотная 7B</td><td>7.50B</td><td>7.50B</td><td class="g">15.0 ГФЛОП</td><td class="g">1.40T</td><td>6.85</td></tr>
+<tr><td>Плотная 13B</td><td>13.14B</td><td>13.14B</td><td>26.3 ГФЛОП</td><td>0.75T</td><td>6.71</td></tr>
+<tr class="best"><td>MoE 47B / 13B</td><td class="k">46.96B</td><td class="g">13.14B</td><td class="g">26.3 ГФЛОП</td><td>0.75T</td><td class="g">6.31</td></tr>
+<tr><td colspan="6" class="note">Бюджет обучения одинаков: 26.3 ГФЛОП × 0.75T ≈ 15.0 ГФЛОП × 1.40T ≈ 2.0 × 10²² ФЛОП</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка бюджетов</span>
+Плотная 7B:  15.0e9 × 1.40e12 = <span class="res">2.10e22</span>
+Плотная 13B: 26.3e9 × 0.75e12 = <span class="res">1.97e22</span>
+MoE:         26.3e9 × 0.75e12 = <span class="res">1.97e22</span>
+
+<b>При равном бюджете MoE выигрывает
+0.40 перплексии у плотной 13B</b>
+и 0.54 у плотной 7B.
+
+Причина: у неё в 3.57 раза больше
+параметров при той же стоимости токена.
+</div>
+<p><strong>Это и есть весь смысл MoE в одной таблице.</strong> Архитектура не даёт ничего бесплатно — она переносит стоимость из вычислений в память и коммуникацию. Выигрыш возникает потому, что вычисления при обучении дефицитнее памяти, и обменивать одно на другое выгодно.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Что MoE стоит</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Плата за условные вычисления</caption>
+<thead><tr><th>Плата</th><th>величина</th><th>где разбирается</th></tr></thead>
+<tbody>
+<tr class="best"><td>Память под все параметры</td><td class="r">×3.57 против активных</td><td class="note">секция 12</td></tr>
+<tr><td>Балансировка нагрузки</td><td class="a">отдельный лосс, иначе схлопывание</td><td class="note">секции 5–6</td></tr>
+<tr class="best"><td>Отброс токенов при переполнении</td><td class="r">от 0% до 49% в зависимости от запаса</td><td class="note">секция 7</td></tr>
+<tr><td>Коммуникация all-to-all</td><td class="a">+33% времени на быстрой шине</td><td class="note">секция 8</td></tr>
+<tr class="best"><td>Нестабильность обучения</td><td class="a">всплески лосса, нужен z-loss</td><td class="note">секция 11</td></tr>
+<tr><td>Сложность инференса</td><td class="a">выигрыш только при малом батче</td><td class="note">секция 12</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Практический вывод</span>
+MoE выгоден там, где <b>вычисления
+дороже памяти</b>: обучение больших
+моделей, инференс с малым батчем
+на дорогом железе.
+
+MoE невыгоден там, где <b>память
+дороже вычислений</b>: инференс
+на устройстве, большой батч
+без экспертного параллелизма,
+развёртывание на одной карте.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Параметры против вычислений на токен</div>
+<div class="chsub">MoE 47B тратит на токен столько же, сколько плотная 13B, при качестве плотной 28B</div>
+<div style="position:relative;height:340px;"><canvas id="c_why"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Устройство слоя <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Маршрутизатор и эксперты вместо одного FFN</div>
+
+<div class="fbox">
+<div class="flabel">📐 Слой MoE</div>
+$$g(x) = \operatorname{softmax}(W_r x) \in \mathbb{R}^E, \qquad \mathcal{T} = \operatorname{top-}k\bigl(g(x)\bigr)$$
+$$y = \sum_{i \in \mathcal{T}} \frac{g_i(x)}{\sum_{j\in\mathcal{T}} g_j(x)} \cdot \text{FFN}_i(x)$$
+<p class="fnote">$W_r$ — матрица маршрутизатора размера $E \times d$, крошечная по сравнению с экспертами. Перенормировка по выбранным $k$ нужна, чтобы веса суммировались в единицу — иначе масштаб выхода менялся бы от токена к токену.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: что где лежит</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Размеры компонентов</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Конфигурация для всей темы</span>
+d_model = <span class="hl">4 096</span>
+d_ffn эксперта = <span class="hl">14 336</span>  <span class="dim">(отношение 3.5)</span>
+Экспертов E = <span class="hl">8</span>, top-k = <span class="hl">2</span>
+Слоёв = <span class="hl">32</span>
+Внимание: GQA-8, 32 головы по 128
+
+<span class="lbl">Один эксперт (gated FFN)</span>
+3 матрицы: gate, up, down
+3 × 4 096 × 14 336 = <span class="res">176 160 768</span>
+                   ≈ 176.16M параметров
+</div>
+<div class="calc"><span class="lbl">Маршрутизатор</span>
+W_r: E × d = 8 × 4 096 = <span class="res">32 768</span> параметров
+
+Отношение к одному эксперту:
+  32 768/176 160 768 = <span class="res">0.0186%</span>
+
+<b>Маршрутизатор в 5 375 раз меньше
+одного эксперта.</b> Он практически
+бесплатен по памяти и вычислениям,
+но определяет всё поведение слоя.
+</div>
+<div class="ct">
+<table>
+<caption>Параметры на один слой</caption>
+<thead><tr><th>Компонент</th><th>формула</th><th>параметров</th><th>активно на токен</th></tr></thead>
+<tbody>
+<tr><td>Внимание (GQA-8)</td><td class="note">W_q + W_o + W_k + W_v</td><td>41.943M</td><td class="g">41.943M</td></tr>
+<tr><td>Маршрутизатор</td><td class="note">E × d</td><td class="g">0.033M</td><td class="g">0.033M</td></tr>
+<tr class="best"><td>Эксперты (8 штук)</td><td class="note">8 × 3 × d × d_ffn</td><td class="r">1 409.286M</td><td class="g">352.322M</td></tr>
+<tr><td colspan="2">Итого на слой</td><td class="r">1 451.262M</td><td class="g">394.298M</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка</span>
+8 × 176.160768 = <span class="res">1 409.286144M</span>
+2 × 176.160768 = <span class="res">352.321536M</span>
+
+41.943 + 0.033 + 1 409.286 = <span class="res">1 451.262M</span>
+41.943 + 0.033 + 352.322 = <span class="res">394.298M</span>
+
+Отношение: 1 451.262/394.298 = <span class="res">3.681</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Где ставить MoE-слои</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Варианты размещения</caption>
+<thead><tr><th>Схема</th><th>MoE-слоёв из 32</th><th>общих параметров</th><th>PPL</th><th>коммуникация</th></tr></thead>
+<tbody>
+<tr><td>Все слои</td><td class="r">32</td><td class="r">46.96B</td><td class="g">6.31</td><td class="r">100%</td></tr>
+<tr class="best"><td>Каждый второй</td><td class="g">16</td><td>30.05B</td><td class="g">6.34</td><td class="g">50%</td></tr>
+<tr><td>Каждый четвёртый</td><td class="g">8</td><td class="a">21.59B</td><td>6.48</td><td class="g">25%</td></tr>
+<tr class="best"><td>Только вторая половина</td><td class="g">16</td><td>30.05B</td><td class="a">6.41</td><td class="g">50%</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Что видно</span>
+<b>Каждый второй слой</b> даёт почти то же
+качество (6.34 против 6.31) при вдвое
+меньшей коммуникации и на треть
+меньшем объёме памяти.
+
+Это самый распространённый выбор
+на практике.
+
+<span class="lbl">Последняя строка</span>
+Размещение MoE только во второй половине
+хуже равномерного чередования
+(6.41 против 6.34) при том же числе слоёв.
+<b>Специализация нужна и в средних слоях,
+где формируются основные представления.</b>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="exp">
+<div class="expcap">Слой MoE: маршрутизатор выбирает 2 эксперта из 8, остальные простаивают</div>
+<div class="exprow"><span class="explbl">Маршрутиз.</span><span class="expbar"><i class="on" style="width:0.5%;"></i></span><span class="expval">0.033M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 1</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 2</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 3</span><span class="expbar"><i class="on" style="width:12.5%;"></i></span><span class="expval">176.16M ← 0.646</span></div>
+<div class="exprow"><span class="explbl">Эксперт 4</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 5</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 6</span><span class="expbar"><i class="on" style="width:12.5%;"></i></span><span class="expval">176.16M ← 0.354</span></div>
+<div class="exprow"><span class="explbl">Эксперт 7</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+<div class="exprow"><span class="explbl">Эксперт 8</span><span class="expbar"><i style="width:12.5%;"></i></span><span class="expval">176.16M</span></div>
+</div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Маршрутизация одного токена <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Восемь логитов, softmax, top-2, перенормировка</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: полный проход одного токена</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Логиты маршрутизатора</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Вход</span>
+Вектор токена x проходит через W_r
+и даёт восемь чисел:
+
+  E1: <span class="hl">2.1</span>   E2: <span class="hl">0.4</span>   E3: <span class="hl">3.5</span>   E4: <span class="hl">−0.8</span>
+  E5: <span class="hl">1.2</span>   E6: <span class="hl">2.9</span>   E7: <span class="hl">0.1</span>   E8: <span class="hl">−1.5</span>
+</div>
+<div class="calc"><span class="lbl">Экспоненты</span>
+e^2.1  = <span class="hl">8.166170</span>
+e^0.4  = <span class="hl">1.491825</span>
+e^3.5  = <span class="hl">33.115452</span>
+e^−0.8 = <span class="hl">0.449329</span>
+e^1.2  = <span class="hl">3.320117</span>
+e^2.9  = <span class="hl">18.174145</span>
+e^0.1  = <span class="hl">1.105171</span>
+e^−1.5 = <span class="hl">0.223130</span>
+
+<span class="lbl">Сумма</span>
+8.166170 + 1.491825 = 9.657995
++ 33.115452 = 42.773447
++ 0.449329 = 43.222776
++ 3.320117 = 46.542893
++ 18.174145 = 64.717038
++ 1.105171 = 65.822209
++ 0.223130 = <span class="res">66.045339</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Вероятности</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Распределение маршрутизатора по восьми экспертам</caption>
+<thead><tr><th>Эксперт</th><th>логит</th><th>exp(логит)</th><th>вероятность</th><th>в top-2?</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>2.1</td><td>8.166170</td><td>0.123644</td><td class="dim">нет</td></tr>
+<tr><td>E2</td><td>0.4</td><td>1.491825</td><td>0.022588</td><td class="dim">нет</td></tr>
+<tr class="best"><td>E3</td><td class="k">3.5</td><td class="k">33.115452</td><td class="k">0.501404</td><td class="g">да ①</td></tr>
+<tr><td>E4</td><td>−0.8</td><td>0.449329</td><td>0.006803</td><td class="dim">нет</td></tr>
+<tr><td>E5</td><td>1.2</td><td>3.320117</td><td>0.050271</td><td class="dim">нет</td></tr>
+<tr class="best"><td>E6</td><td class="k">2.9</td><td class="k">18.174145</td><td class="k">0.275176</td><td class="g">да ②</td></tr>
+<tr><td>E7</td><td>0.1</td><td>1.105171</td><td>0.016733</td><td class="dim">нет</td></tr>
+<tr><td>E8</td><td>−1.5</td><td>0.223130</td><td>0.003378</td><td class="dim">нет</td></tr>
+<tr><td colspan="4">Сумма вероятностей</td><td class="g">1.000000</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка E3</span>
+33.115452/66.045339 = <span class="res">0.501404</span>
+
+<span class="lbl">Проверка суммы</span>
+0.123644 + 0.022588 + 0.501404 + 0.006803
++ 0.050271 + 0.275176 + 0.016733 + 0.003378
+= <span class="res">0.999997</span> ✓ <span class="dim">(округление)</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Перенормировка top-2</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Зачем нужна</span>
+Сумма выбранных вероятностей
+меньше единицы:
+  0.501404 + 0.275176 = <span class="hl">0.776580</span>
+
+Если использовать их как есть,
+масштаб выхода будет меняться
+от токена к токену: у «уверенных»
+токенов сумма ближе к 1, у «сомневающихся»
+может быть 0.3.
+
+<span class="lbl">Перенормировка</span>
+w₃ = 0.501404/0.776580 = <span class="res">0.645659</span>
+w₆ = 0.275176/0.776580 = <span class="res">0.354341</span>
+сумма = <span class="res">1.000000</span> ✓
+</div>
+<div class="calc"><span class="lbl">Выход слоя</span>
+Пусть FFN₃(x) = <span class="hl">1.240</span>, FFN₆(x) = <span class="hl">−0.380</span>
+<span class="dim">(скалярно для наглядности; на деле это векторы)</span>
+
+y = 0.645659 × 1.240 + 0.354341 × (−0.380)
+  = 0.800617 + (−0.134650)
+  = <span class="res">0.665967</span>
+
+Остальные шесть экспертов
+<b>не вычисляются вовсе</b>.
+</div>
+<div class="calc"><span class="lbl">Куда идёт градиент</span>
+① В FFN₃ и FFN₆ — обычным образом.
+② В маршрутизатор — <b>через веса</b>
+   w₃ и w₆, которые входят в выход
+   как множители.
+
+Важно: градиент маршрутизатора
+существует только для <b>выбранных</b>
+экспертов. Про невыбранных
+он ничего не узнаёт.
+
+<b>Отсюда и склонность к схлопыванию:</b>
+кто получил токены, тот учится
+и становится лучше; кто не получил —
+не учится и остаётся хуже.
+Секция 5.
+</div>
+<p><strong>Обратите внимание на последний абзац — это ключ ко всей теме.</strong> Отбор top-$k$ недифференцируем сам по себе, и обучение маршрутизатора идёт только по величине весов выбранных экспертов. Механизм по своей природе самоусиливающийся, и без внешнего противодействия он приводит к вырождению.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Распределение маршрутизатора и отбор top-2</div>
+<div class="chsub">E3 и E6 выбраны; после перенормировки их веса 0.645659 и 0.354341</div>
+<div style="position:relative;height:340px;"><canvas id="c_route"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Общие и активные параметры <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Арифметика, из которой следует вся экономика</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: собираем модель</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Складываем по слоям</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">На один слой (из секции 2)</span>
+общих:   <span class="hl">1 451.262M</span>
+активных: <span class="hl">394.298M</span>
+
+<span class="lbl">32 слоя</span>
+общих:   32 × 1 451.262 = <span class="hl">46 440.4M</span>
+активных: 32 × 394.298 = <span class="hl">12 617.5M</span>
+
+<span class="lbl">Эмбеддинги (связанные вход/выход)</span>
+128 000 × 4 096 = <span class="hl">524.3M</span>
+активны всегда
+
+<span class="lbl">Итого</span>
+общих:   46 440.4 + 524.3 = <span class="res">46 964.7M</span> = 46.96B
+активных: 12 617.5 + 524.3 = <span class="res">13 141.8M</span> = 13.14B
+
+Отношение: 46 964.7/13 141.8 = <span class="res">3.573</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Как отношение зависит от конфигурации</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Разные E и k при том же размере эксперта</caption>
+<thead><tr><th>E</th><th>k</th><th>общих</th><th>активных</th><th>отношение</th><th>ФЛОП/токен</th></tr></thead>
+<tbody>
+<tr><td>1 (плотная)</td><td>1</td><td>7.50B</td><td>7.50B</td><td>1.00</td><td class="g">15.0 ГФЛОП</td></tr>
+<tr><td>4</td><td>1</td><td>24.44B</td><td class="g">7.50B</td><td>3.26</td><td class="g">15.0 ГФЛОП</td></tr>
+<tr><td>4</td><td>2</td><td>24.44B</td><td>13.14B</td><td>1.86</td><td>26.3 ГФЛОП</td></tr>
+<tr class="best"><td>8</td><td>2</td><td class="k">46.96B</td><td>13.14B</td><td class="k">3.57</td><td>26.3 ГФЛОП</td></tr>
+<tr><td>16</td><td>2</td><td class="r">91.99B</td><td>13.14B</td><td class="r">7.00</td><td>26.3 ГФЛОП</td></tr>
+<tr class="best"><td>64</td><td>2</td><td class="r">362.2B</td><td class="g">13.14B</td><td class="r">27.6</td><td class="g">26.3 ГФЛОП</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка строки E=16, k=2</span>
+Эксперты на слой: 16 × 176.161 = <span class="hl">2 818.57M</span>
+Слой всего: 2 818.57 + 41.943 + 0.066 = <span class="hl">2 860.58M</span>
+32 слоя: <span class="hl">91 538.6M</span>
++ эмбеддинги 524.3 = <span class="res">92 062.9M</span> ≈ 92.0B
+
+Активных не меняется: <span class="res">13.14B</span>
+Отношение: 92 062.9/13 141.8 = <span class="res">7.005</span>
+</div>
+<div class="calc"><span class="lbl">Ключевое наблюдение</span>
+Последние три строки имеют
+<b>одинаковый ФЛОП на токен</b> — 26.3.
+Общих параметров при этом от 47 до 362 млрд.
+
+<b>Число экспертов — это ручка,
+которая увеличивает ёмкость модели
+бесплатно по вычислениям.</b>
+
+Но не бесплатно по памяти,
+коммуникации и стабильности —
+именно эти три ограничения
+и определяют реальный предел.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Отдача убывает</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Качество при росте числа экспертов, k = 2, равный бюджет обучения</caption>
+<thead><tr><th>E</th><th>общих</th><th>PPL</th><th>прирост к предыдущему</th><th>эквивалентная плотная</th></tr></thead>
+<tbody>
+<tr><td>1 (плотная 13B)</td><td>13.14B</td><td>6.71</td><td class="dim">—</td><td>13.1B</td></tr>
+<tr><td>2</td><td>19.8B</td><td>6.52</td><td class="g">−0.19</td><td>18B</td></tr>
+<tr class="best"><td>4</td><td>24.4B</td><td>6.41</td><td class="g">−0.11</td><td>22B</td></tr>
+<tr><td>8</td><td>46.96B</td><td>6.31</td><td>−0.10</td><td class="k">28B</td></tr>
+<tr class="best"><td>16</td><td>92.0B</td><td>6.24</td><td class="a">−0.07</td><td>32B</td></tr>
+<tr><td>32</td><td>182B</td><td>6.19</td><td class="a">−0.05</td><td>36B</td></tr>
+<tr><td>64</td><td>362B</td><td class="r">6.17</td><td class="r">−0.02</td><td>38B</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Форма отдачи</span>
+Каждое удвоение числа экспертов
+даёт всё меньше:
+  1→2:   −0.19
+  2→4:   −0.11
+  4→8:   −0.10
+  8→16:  −0.07
+  16→32: −0.05
+  32→64: −0.02
+
+При этом память растёт вдвое
+на каждом шаге.
+
+<b>Практический диапазон E = 8…64.</b>
+Выше 64 прирост качества не окупает
+ни памяти, ни сложности балансировки.
+</div>
+<div class="calc"><span class="lbl">Про «эквивалентную плотную»</span>
+MoE 47B/13B по бенчмаркам ведёт себя
+примерно как плотная <span class="hl">28B</span>.
+
+Плотная 28B стоила бы
+  2 × 28e9 = <span class="hl">56 ГФЛОП</span> на токен
+MoE стоит <span class="res">26.3 ГФЛОП</span>
+
+<b>Экономия вычислений при равном
+качестве: ×2.13.</b>
+
+Это и есть итоговая цифра, ради
+которой MoE существует.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Убывающая отдача от числа экспертов</div>
+<div class="chsub">Удвоение с 32 до 64 даёт −0.02 перплексии при удвоении памяти</div>
+<div style="position:relative;height:340px;"><canvas id="c_params"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: конфигурация MoE</label>
+  <label style="margin-top:2px;">Число экспертов E</label>
+  <input type="range" id="sl_e" min="1" max="64" step="1" value="8" oninput="updMoe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_e">8</span><span>64</span></div>
+  <label style="margin-top:14px;">Активных экспертов top-k</label>
+  <input type="range" id="sl_k" min="1" max="8" step="1" value="2" oninput="updMoe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_k">2</span><span>8</span></div>
+  <label style="margin-top:14px;">Capacity factor</label>
+  <input type="range" id="sl_cf" min="100" max="300" step="5" value="125" oninput="updMoe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1.00</span><span class="out" id="out_cf">1.25</span><span>3.00</span></div>
+  <label style="margin-top:14px;">Дисбаланс нагрузки (CV × 100)</label>
+  <input type="range" id="sl_imb" min="0" max="150" step="5" value="6" oninput="updMoe()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0 (идеал)</span><span class="out" id="out_imb">0.06</span><span>1.50</span></div>
+  <div class="res" id="out_moe"></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Схлопывание маршрутизатора <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Без противодействия несколько экспертов забирают всё</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: богатые богатеют</div>
+<p>Эксперт, получивший больше токенов, лучше обучается. Обучившись лучше, он даёт меньший лосс. Маршрутизатор, видя это, направляет к нему ещё больше токенов.</p>
+<p>Эксперт, не получивший токенов, <strong>не обучается вовсе</strong> — его веса остаются близкими к инициализации. Маршрутизатор к нему не обращается, и он не получает шанса исправиться.</p>
+<p>Механизм замкнут и самоусиливается. Без внешнего вмешательства из восьми экспертов через несколько тысяч шагов реально работают два-три.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: как выглядит схлопывание</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Нагрузка на шаге 5 000 без вспомогательного лосса</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Батч</span>
+Токенов: <span class="hl">4 096</span>
+top-k = 2 → назначений: <span class="hl">8 192</span>
+При идеальном балансе: <span class="hl">1 024</span> на эксперта
+</div>
+<div class="ct">
+<table>
+<caption>Фактическая нагрузка</caption>
+<thead><tr><th>Эксперт</th><th>без вспом. лосса</th><th>отклонение</th><th>с вспом. лоссом</th><th>отклонение</th></tr></thead>
+<tbody>
+<tr class="best"><td>E1</td><td class="r">3 120</td><td class="r">+2 096</td><td class="g">1 140</td><td class="g">+116</td></tr>
+<tr><td>E2</td><td class="r">2 410</td><td class="r">+1 386</td><td class="g">1 085</td><td class="g">+61</td></tr>
+<tr><td>E3</td><td class="a">1 580</td><td class="a">+556</td><td class="g">1 050</td><td class="g">+26</td></tr>
+<tr><td>E4</td><td>620</td><td>−404</td><td class="g">1 030</td><td class="g">+6</td></tr>
+<tr><td>E5</td><td class="a">290</td><td class="a">−734</td><td class="g">1 010</td><td class="g">−14</td></tr>
+<tr><td>E6</td><td class="r">110</td><td class="r">−914</td><td class="g">980</td><td class="g">−44</td></tr>
+<tr><td>E7</td><td class="r">45</td><td class="r">−979</td><td class="g">955</td><td class="g">−69</td></tr>
+<tr class="best"><td>E8</td><td class="r">17</td><td class="r">−1 007</td><td class="g">942</td><td class="g">−82</td></tr>
+<tr><td>Сумма</td><td>8 192</td><td class="dim">0</td><td>8 192</td><td class="dim">0</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Коэффициент вариации без лосса</span>
+Квадраты отклонений:
+  2 096² = 4 393 216
+  1 386² = 1 920 996
+    556² =   309 136
+    404² =   163 216
+    734² =   538 756
+    914² =   835 396
+    979² =   958 441
+  1 007² = 1 014 049
+     сумма = <span class="hl">10 133 206</span>
+
+дисперсия = 10 133 206/8 = <span class="hl">1 266 650.75</span>
+sd = <span class="hl">1 125.46</span>
+CV = 1 125.46/1 024 = <span class="bad">1.0991</span>
+</div>
+<div class="calc"><span class="lbl">Коэффициент вариации с лоссом</span>
+Квадраты отклонений:
+  116² = 13 456    61² = 3 721
+   26² =    676     6² =    36
+   14² =    196    44² = 1 936
+   69² =  4 761    82² = 6 724
+     сумма = <span class="hl">31 506</span>
+
+дисперсия = 31 506/8 = <span class="hl">3 938.25</span>
+sd = <span class="hl">62.76</span>
+CV = 62.76/1 024 = <span class="res">0.0613</span>
+
+<b>Улучшение в 1.0991/0.0613 = 17.9 раза.</b>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Два следствия схлопывания</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">① Часть параметров бесполезна</span>
+E6, E7, E8 получили 110, 45 и 17
+назначений из 8 192 — суммарно <span class="bad">2.1%</span>.
+
+Это 3 × 176.16M = <span class="bad">528.5M</span> параметров
+на слой, которые почти не обучаются
+и не приносят пользы.
+
+При 32 слоях: <span class="bad">16.9 млрд</span> параметров
+занимают память впустую.
+</div>
+<div class="calc"><span class="lbl">② Переполнение и отброс</span>
+Capacity factor 1.25 → вместимость
+эксперта = 1.25 × 1 024 = <span class="hl">1 280</span>
+
+E1: 3 120 − 1 280 = <span class="bad">1 840</span> отброшено
+E2: 2 410 − 1 280 = <span class="bad">1 130</span> отброшено
+E3: 1 580 − 1 280 = <span class="bad">300</span> отброшено
+Остальные помещаются.
+
+Всего: 1 840 + 1 130 + 300 = <span class="bad">3 270</span>
+из 8 192 = <span class="bad">39.9%</span>
+
+С вспомогательным лоссом максимум
+равен 1 140 &lt; 1 280 → отброшено <span class="res">0</span>.
+</div>
+<p><strong>Второе следствие важнее первого.</strong> Неиспользуемые параметры — просто впустую занятая память. Отброшенные токены проходят слой без вклада FFN вообще, то есть теряют треть вычислений и получают заметно худшее представление. При 39.9% отброса модель фактически перестаёт быть тем, чем задумывалась.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Как схлопывание развивается во времени</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Коэффициент вариации нагрузки по шагам обучения</caption>
+<thead><tr><th>Шаг</th><th>без вспом. лосса</th><th>с вспом. лоссом</th><th>отброшено (без лосса)</th></tr></thead>
+<tbody>
+<tr><td>100</td><td class="g">0.14</td><td class="g">0.11</td><td class="g">0%</td></tr>
+<tr><td>500</td><td class="a">0.41</td><td class="g">0.09</td><td class="g">2.1%</td></tr>
+<tr class="best"><td>1 000</td><td class="a">0.68</td><td class="g">0.08</td><td class="a">14.3%</td></tr>
+<tr><td>5 000</td><td class="r">1.10</td><td class="g">0.06</td><td class="r">39.9%</td></tr>
+<tr class="best"><td>20 000</td><td class="r">1.62</td><td class="g">0.06</td><td class="r">54.7%</td></tr>
+<tr><td>50 000</td><td class="r">1.94</td><td class="g">0.05</td><td class="r">61.2%</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Что видно</span>
+На первых сотнях шагов разницы нет —
+маршрутизатор ещё случаен.
+
+К шагу 1 000 без лосса уже теряется
+<b>14.3% токенов</b>, и дальше только хуже.
+
+<b>К шагу 50 000 работают полтора
+эксперта из восьми.</b>
+
+С вспомогательным лоссом CV стабилен
+на уровне 0.05–0.11 всё обучение.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Нагрузка на экспертов с балансировкой и без</div>
+<div class="chsub">Коэффициент вариации 1.099 против 0.061 — разница в 17.9 раза</div>
+<div style="position:relative;height:340px;"><canvas id="c_balance"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Развитие схлопывания по шагам обучения</div>
+<div class="chsub">К шагу 1 000 без вспомогательного лосса теряется 14.3% токенов, к 50 000 — 61.2%</div>
+<div style="position:relative;height:330px;"><canvas id="c_collapse"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Вспомогательный лосс <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Одна формула, которая держит всю конструкцию</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Лосс балансировки нагрузки</div>
+$$\mathcal{L}_{\text{aux}} = \alpha \cdot E \cdot \sum_{i=1}^{E} f_i \, P_i$$
+<p class="fnote">$f_i$ — <em>доля токенов</em>, фактически направленных к эксперту $i$ (жёсткий счёт, недифференцируем). $P_i$ — <em>средняя вероятность</em>, которую маршрутизатор присвоил эксперту $i$ (мягкая, дифференцируема). Произведение соединяет наблюдаемую нагрузку с величиной, через которую течёт градиент.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: почему именно такая форма</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Минимум достигается при равномерности</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Идеальный баланс</span>
+f_i = P_i = 1/E для всех i
+
+Σ f_i P_i = E × (1/E)(1/E) = E/E² = <span class="hl">1/E</span>
+
+L_aux = α · E · (1/E) = <span class="res">α</span>
+
+<b>Минимальное значение равно α</b>
+и достигается ровно при равномерном
+распределении.
+</div>
+<div class="calc"><span class="lbl">Наш несбалансированный случай</span>
+f_i = нагрузка/8 192:
+  0.380859, 0.294189, 0.192871, 0.075684,
+  0.035400, 0.013428, 0.005493, 0.002075
+
+Считаем Σ f_i² <span class="dim">(приближая P_i ≈ f_i)</span>:
+  0.380859² = <span class="hl">0.145054</span>
+  0.294189² = <span class="hl">0.086547</span>
+  0.192871² = <span class="hl">0.037199</span>
+  0.075684² = <span class="hl">0.005728</span>
+  0.035400² = <span class="hl">0.001253</span>
+  0.013428² = <span class="hl">0.000180</span>
+  0.005493² = <span class="hl">0.000030</span>
+  0.002075² = <span class="hl">0.000004</span>
+       сумма = <span class="hl">0.275995</span>
+
+L_aux/α = 8 × 0.275995 = <span class="bad">2.207960</span>
+</div>
+<div class="calc"><span class="lbl">Сравнение</span>
+При балансе:      Σf² = 8 × (1/8)² = <span class="res">0.125</span>
+                  L/α = 8 × 0.125 = <span class="res">1.000</span>
+При схлопывании:  Σf² = <span class="bad">0.275995</span>
+                  L/α = <span class="bad">2.207960</span>
+
+Превышение минимума в <b>2.21 раза</b>.
+При α = 0.01 вклад в общий лосс:
+  0.0221 против 0.0100 при балансе.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Почему произведение жёсткого на мягкое</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Проблема</span>
+Величина, которую хочется выровнять, —
+это f_i, фактическое число токенов.
+Но f_i получается через top-k,
+и <b>градиента по нему нет</b>.
+
+<span class="lbl">Решение</span>
+Умножаем на P_i — среднюю вероятность,
+которая дифференцируема.
+
+∂L/∂P_i = α · E · f_i
+
+<b>Градиент по вероятности эксперта
+пропорционален его фактической
+нагрузке.</b>
+</div>
+<div class="calc"><span class="lbl">Что это делает</span>
+Эксперт с большой нагрузкой f_i
+получает большой градиент, толкающий
+его вероятность <b>вниз</b>.
+
+Эксперт с малой нагрузкой получает
+почти нулевой градиент и потому
+не давится.
+
+В сумме давление перераспределяет
+вероятностную массу от перегруженных
+к недогруженным.
+
+<b>Это работает именно потому,
+что множитель — фактическая нагрузка,
+а не сама вероятность.</b>
+Иначе получилось бы Σ P², что
+выравнивало бы вероятности, а не токены.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Выбор коэффициента α</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Влияние α на баланс и качество</caption>
+<thead><tr><th>α</th><th>CV нагрузки</th><th>отброшено</th><th>PPL</th><th>оценка</th></tr></thead>
+<tbody>
+<tr><td>0 (нет лосса)</td><td class="r">1.94</td><td class="r">61.2%</td><td class="r">7.42</td><td class="r">схлопывание</td></tr>
+<tr><td>0.001</td><td class="a">0.48</td><td class="a">11.4%</td><td class="a">6.49</td><td class="a">слабо</td></tr>
+<tr class="best"><td>0.01</td><td class="g">0.06</td><td class="g">0.0%</td><td class="g">6.31</td><td class="g">оптимум</td></tr>
+<tr><td>0.05</td><td class="g">0.03</td><td class="g">0.0%</td><td>6.36</td><td>слегка пережато</td></tr>
+<tr class="best"><td>0.2</td><td class="g">0.01</td><td class="g">0.0%</td><td class="a">6.58</td><td class="a">специализация подавлена</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Компромисс</span>
+Слишком малый α → схлопывание
+Слишком большой α → маршрутизация
+становится почти случайной,
+и эксперты не специализируются
+
+<b>Оптимум около 0.01</b> и он довольно
+пологий: от 0.005 до 0.05 разница
+в перплексии менее 1%.
+
+<span class="lbl">Признак пережатия</span>
+CV ниже 0.02 при E = 8 означает,
+что маршрутизатор распределяет
+почти равномерно, то есть
+<b>перестал зависеть от токена</b>.
+Проверяется взаимной информацией
+между выбором эксперта и токеном —
+секция 10.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Вспомогательный лосс: значение при разных распределениях</div>
+<div class="chsub">Минимум 1.000 при равномерности, 2.208 при схлопывании</div>
+<div style="position:relative;height:330px;"><canvas id="c_aux"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Capacity factor и отброс токенов <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Сколько запаса держать под неравномерность</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Вместимость эксперта</div>
+$$\text{capacity} = \text{CF} \cdot \frac{T \cdot k}{E}$$
+<p class="fnote">$T$ — токенов в батче, $k$ — top-k, $E$ — экспертов. Дробь равна средней нагрузке при идеальном балансе. Capacity factor CF — запас на неравномерность. Токены сверх вместимости <strong>отбрасываются</strong>: они проходят слой только через остаточную связь.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: запас против потерь</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Базовая вместимость</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Наш случай</span>
+T = 4 096, k = 2, E = 8
+базовая нагрузка = 4 096 × 2/8 = <span class="hl">1 024</span>
+
+CF = 1.00 → вместимость <span class="hl">1 024</span>
+CF = 1.25 → вместимость <span class="hl">1 280</span>
+CF = 1.50 → вместимость <span class="hl">1 536</span>
+CF = 2.00 → вместимость <span class="hl">2 048</span>
+</div>
+<div class="ct">
+<table>
+<caption>Отброс при двух режимах маршрутизации</caption>
+<thead><tr><th>CF</th><th>вместимость</th><th>отброшено при CV = 0.06</th><th>отброшено при CV = 1.10</th><th>буфер памяти</th></tr></thead>
+<tbody>
+<tr class="best"><td>1.00</td><td>1 024</td><td class="a">2.55%</td><td class="r">49.3%</td><td class="g">1.00×</td></tr>
+<tr><td>1.10</td><td>1 126</td><td class="g">0.17%</td><td class="r">44.9%</td><td class="g">1.10×</td></tr>
+<tr class="best"><td>1.25</td><td>1 280</td><td class="g">0.00%</td><td class="r">39.9%</td><td>1.25×</td></tr>
+<tr><td>1.50</td><td>1 536</td><td class="g">0.00%</td><td class="r">30.5%</td><td class="a">1.50×</td></tr>
+<tr class="best"><td>2.00</td><td>2 048</td><td class="g">0.00%</td><td class="a">17.5%</td><td class="r">2.00×</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка CF = 1.50 при CV = 1.10</span>
+Вместимость 1 536.
+Нагрузки: 3 120, 2 410, 1 580, 620,
+          290, 110, 45, 17
+
+Превышения:
+  E1: 3 120 − 1 536 = <span class="bad">1 584</span>
+  E2: 2 410 − 1 536 = <span class="bad">874</span>
+  E3: 1 580 − 1 536 = <span class="bad">44</span>
+  остальные помещаются
+
+всего 1 584 + 874 + 44 = <span class="bad">2 502</span>
+2 502/8 192 = <span class="bad">30.5%</span>
+</div>
+<div class="calc"><span class="lbl">Главный вывод таблицы</span>
+При хорошей балансировке (CV = 0.06)
+достаточно <b>CF = 1.10–1.25</b>,
+и отброс практически нулевой.
+
+При схлопывании (CV = 1.10) даже
+<b>CF = 2.0 не спасает</b>: теряется 17.5%,
+а буфер вдвое больше.
+
+<b>Capacity factor — не замена
+балансировке, а страховка от остаточной
+неравномерности.</b>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Чем плох отброс</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Что происходит с отброшенным токеном</span>
+Он не проходит через выбранного
+эксперта вообще. Его выход в этом
+слое равен только остаточной связи:
+  y = x  <span class="dim">(вместо x + FFN-вклада)</span>
+
+При top-2 отброс одного из двух
+экспертов означает потерю
+соответствующей доли вклада;
+отброс обоих — полную потерю FFN
+в этом слое.
+</div>
+<div class="ct">
+<table>
+<caption>Влияние отброса на качество</caption>
+<thead><tr><th>Доля отброшенных</th><th>PPL</th><th>ухудшение</th></tr></thead>
+<tbody>
+<tr class="best"><td>0%</td><td class="g">6.31</td><td class="g">—</td></tr>
+<tr><td>1%</td><td class="g">6.33</td><td class="g">+0.3%</td></tr>
+<tr><td>5%</td><td>6.49</td><td>+2.9%</td></tr>
+<tr class="best"><td>15%</td><td class="a">7.02</td><td class="a">+11.3%</td></tr>
+<tr><td>30%</td><td class="r">8.15</td><td class="r">+29.2%</td></tr>
+<tr><td>50%</td><td class="r">10.44</td><td class="r">+65.5%</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Форма зависимости</span>
+До 1% — практически бесплатно.
+До 5% — терпимо.
+Выше 15% — модель заметно деградирует.
+
+<b>Рабочий порог: отброс менее 1%.</b>
+
+Достигается сочетанием:
+  вспомогательный лосс (CV → 0.06)
+  + CF = 1.10–1.25
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Альтернативы отбросу</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что делать с переполнением</caption>
+<thead><tr><th>Подход</th><th>механика</th><th>плюс</th><th>минус</th></tr></thead>
+<tbody>
+<tr class="best"><td>Отброс (token dropping)</td><td class="note">лишние токены пропускают слой</td><td class="g">фиксированные размеры тензоров</td><td class="r">потеря качества</td></tr>
+<tr><td>Переполнение во второго эксперта</td><td class="note">не поместился в первый — идёт во второй</td><td class="g">меньше потерь</td><td class="a">сложнее реализация</td></tr>
+<tr class="best"><td>Expert Choice</td><td class="note">эксперт выбирает токены, а не наоборот</td><td class="g">баланс идеален по построению</td><td class="r">токен может не получить ни одного</td></tr>
+<tr><td>Без ограничения вместимости</td><td class="note">динамические размеры</td><td class="g">нулевые потери</td><td class="r">неэффективно на ускорителях</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Expert Choice подробнее</span>
+Переворачивает задачу: каждый эксперт
+берёт себе <b>ровно capacity</b> токенов
+с наибольшими баллами.
+
+Баланс идеален по построению —
+вспомогательный лосс не нужен вовсе.
+
+<b>Цена:</b> некоторые токены не выбирает
+никто, а некоторые выбирают все.
+Замер: 3.1% токенов не получают
+ни одного эксперта, 8.7% получают
+четыре и больше.
+
+<span class="lbl">Когда что</span>
+Обучение: Expert Choice привлекателен
+  балансом, но неприменим при
+  авторегрессивной генерации — там
+  токены приходят по одному.
+Инференс: только token choice.
+</div>
+<p><strong>Последний пункт объясняет, почему token choice остаётся стандартом.</strong> Expert Choice требует видеть весь батч сразу, чтобы эксперты могли выбрать лучшие токены. При генерации по одному токену выбирать не из чего, и схема вырождается. Модель, обученная одним способом, не может работать другим.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Отброс токенов по capacity factor</div>
+<div class="chsub">При хорошем балансе достаточно CF = 1.25; при схлопывании не спасает даже 2.0</div>
+<div style="position:relative;height:340px;"><canvas id="c_capacity"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Экспертный параллелизм <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Память меняется на коммуникацию</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Экспертный параллелизм <span class="en">(expert parallelism)</span></dt>
+<dd>Эксперты распределены по устройствам: каждое хранит свою часть. Токены пересылаются к нужным экспертам и возвращаются обратно.</dd>
+
+<dt>All-to-all</dt>
+<dd>Коллективная операция, в которой каждое устройство отправляет данные каждому другому. Выполняется дважды на слой: рассылка токенов (dispatch) и сбор результатов (combine).</dd>
+
+<dt>Объём коммуникации</dt>
+<dd>Определяется числом токенов, размерностью модели и capacity factor. Не зависит от размера эксперта — пересылаются активации, а не веса.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: сколько стоит all-to-all</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Объём пересылок</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Конфигурация</span>
+Устройств: <span class="hl">8</span>, экспертов 8 → <b>по одному на карту</b>
+Токенов на карту: <span class="hl">4 096</span>
+d_model = 4 096, fp16 (2 байта)
+CF = 1.25 → вместимость <span class="hl">1 280</span> на эксперта
+
+<span class="lbl">Рассылка (dispatch)</span>
+Буферы размером с вместимость:
+  8 экспертов × 1 280 × 4 096 × 2 байта
+  = <span class="hl">83 886 080</span> байт = <span class="hl">80 МиБ</span>
+
+<span class="lbl">Сбор (combine)</span>
+Столько же: <span class="hl">80 МиБ</span>
+
+На слой на карту: <span class="res">160 МиБ</span> = 167.77 МБ
+На 32 слоя: <span class="res">5 368.7 МБ</span> = 5.369 ГБ
+</div>
+<div class="calc"><span class="lbl">Вычисления для сравнения</span>
+На карту на слой:
+  вместимость × 2 × параметров эксперта
+  = 1 280 × 2 × 176.161e6
+  = <span class="hl">4.510e11</span> ФЛОП = 451 ГФЛОП
+
+При 989 ТФЛОПС: 451e9/989e12 = <span class="hl">0.456 мс</span>
+На 32 слоя: <span class="res">14.59 мс</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Зависимость от соединения</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Время all-to-all при разных соединениях, 5.369 ГБ на прямой проход</caption>
+<thead><tr><th>Соединение</th><th>пропускная способность</th><th>время</th><th>доля от вычислений</th><th>пригодно?</th></tr></thead>
+<tbody>
+<tr class="best"><td>NVLink внутри узла</td><td class="g">900 ГБ/с</td><td class="g">5.97 мс</td><td class="g">40.9%</td><td class="g">да</td></tr>
+<tr><td>PCIe 5.0 ×16</td><td class="a">128 ГБ/с</td><td class="a">41.9 мс</td><td class="r">287%</td><td class="r">нет</td></tr>
+<tr class="best"><td>InfiniBand 400G</td><td class="a">50 ГБ/с</td><td class="r">107.4 мс</td><td class="r">736%</td><td class="r">нет</td></tr>
+<tr><td>Ethernet 100G</td><td class="r">12.5 ГБ/с</td><td class="r">429.5 мс</td><td class="r">2 944%</td><td class="r">нет</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка строки InfiniBand</span>
+5.369e9/50e9 = <span class="res">0.1074 с</span> = 107.4 мс
+107.4/14.59 = <span class="res">7.36</span> → 736%
+
+<b>Коммуникация в 7.4 раза дороже
+вычислений.</b> Ускоритель простаивает
+88% времени.
+</div>
+<div class="calc"><span class="lbl">Правило</span>
+<b>Экспертный параллелизм — только
+внутри узла с быстрой шиной.</b>
+
+При E = 8 и восьми картах в узле
+это выполняется естественно.
+При E = 64 придётся либо класть
+по 8 экспертов на карту (память),
+либо выходить за узел (коммуникация).
+
+Именно это, а не качество,
+ограничивает число экспертов
+сверху на практике.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Что увеличивает коммуникацию</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Множители объёма all-to-all</caption>
+<thead><tr><th>Параметр</th><th>влияние</th><th>пример</th></tr></thead>
+<tbody>
+<tr class="best"><td>Capacity factor</td><td class="note">линейно</td><td class="note">CF 1.25 → 2.00 увеличивает объём в 1.6 раза</td></tr>
+<tr><td>Число токенов в батче</td><td class="note">линейно</td><td class="note">удвоение батча удваивает пересылки</td></tr>
+<tr class="best"><td>d_model</td><td class="note">линейно</td><td class="note">пересылаются активации размера d</td></tr>
+<tr><td>Доля MoE-слоёв</td><td class="note">линейно</td><td class="note">каждый второй слой → вдвое меньше</td></tr>
+<tr class="best"><td>Число экспертов E</td><td class="note">не влияет</td><td class="note">объём определяется токенами, не экспертами</td></tr>
+<tr><td>Размер эксперта</td><td class="note">не влияет</td><td class="note">пересылаются активации, а не веса</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Две последние строки важны</span>
+Можно увеличить E с 8 до 64
+или сделать экспертов вчетверо больше —
+<b>коммуникация не изменится.</b>
+
+Пересылается токен размера d_model
+к своим k экспертам, и это всё.
+
+<span class="lbl">Отсюда практический приём</span>
+MoE-слои ставят через один
+(секция 2): качество падает на 0.03
+перплексии, а коммуникация —
+<b>вдвое</b>. Один из самых выгодных
+компромиссов в архитектуре.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Коммуникация против вычислений</div>
+<div class="chsub">Внутри узла 41%, за пределами узла — в разы дороже вычислений</div>
+<div style="position:relative;height:340px;"><canvas id="c_comm"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Гранулярность и общие эксперты <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Много маленьких экспертов лучше нескольких больших</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: сколько комбинаций</div>
+<p>Восемь экспертов с выбором двух дают 28 возможных сочетаний. Тридцать два эксперта вчетверо меньшего размера с выбором восьми дают <strong>десять с половиной миллионов</strong>.</p>
+<p>Параметров при этом столько же — и общих, и активных. Разница только в том, на сколько частей разрезан один и тот же объём.</p>
+<p>Мелкая нарезка даёт модели гораздо больше способов скомбинировать знание под конкретный токен. Это и есть основной аргумент за тонкую гранулярность.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: одинаковые параметры, разная нарезка</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Две конфигурации при равных параметрах</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Крупная нарезка</span>
+E = 8, d_ffn эксперта = 14 336, top-2
+На эксперта: 3 × 4 096 × 14 336 = <span class="hl">176.161M</span>
+Всего: 8 × 176.161 = <span class="hl">1 409.29M</span>
+Активно: 2 × 176.161 = <span class="hl">352.32M</span>
+
+<span class="lbl">Тонкая нарезка</span>
+E = 32, d_ffn эксперта = 3 584, top-8
+На эксперта: 3 × 4 096 × 3 584 = <span class="hl">44.040M</span>
+Всего: 32 × 44.040 = <span class="hl">1 409.29M</span> ✓ то же
+Активно: 8 × 44.040 = <span class="hl">352.32M</span> ✓ то же
+</div>
+<div class="calc"><span class="lbl">Число комбинаций</span>
+C(8, 2) = 8!/(2!·6!) = 28/1 = <span class="hl">28</span>
+
+C(32, 8) = 32!/(8!·24!)
+  числитель: 32×31×30×29×28×27×26×25
+    32×31 = 992
+    ×30 = 29 760
+    ×29 = 863 040
+    ×28 = 24 165 120
+    ×27 = 652 458 240
+    ×26 = 16 963 914 240
+    ×25 = 424 097 856 000
+  знаменатель: 8! = 40 320
+  = 424 097 856 000/40 320 = <span class="res">10 518 300</span>
+
+Отношение: 10 518 300/28 = <span class="res">375 653.6</span>
+</div>
+<div class="ct">
+<table>
+<caption>Сравнение при равных параметрах и равном бюджете</caption>
+<thead><tr><th>Конфигурация</th><th>всего</th><th>активно</th><th>комбинаций</th><th>PPL</th></tr></thead>
+<tbody>
+<tr><td>E=8, top-2</td><td>1 409.29M</td><td>352.32M</td><td class="r">28</td><td>6.31</td></tr>
+<tr class="best"><td>E=16, top-4</td><td>1 409.29M</td><td>352.32M</td><td>1 820</td><td class="g">6.25</td></tr>
+<tr><td>E=32, top-8</td><td>1 409.29M</td><td>352.32M</td><td class="g">10 518 300</td><td class="g">6.19</td></tr>
+<tr class="best"><td>E=64, top-16</td><td>1 409.29M</td><td>352.32M</td><td class="g">4.9 × 10¹⁴</td><td class="g">6.17</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Выигрыш и его цена</span>
+От E=8 к E=32: PPL 6.31 → <span class="res">6.19</span>, минус 1.9%
+<b>Бесплатно по параметрам и вычислениям.</b>
+
+Цена:
+① Балансировать 32 эксперта труднее,
+   чем 8. Нужен больший α.
+② Матричные умножения становятся
+   мельче и хуже утилизируют ускоритель:
+   замер — <span class="bad">−12%</span> фактической
+   производительности при переходе
+   с 8 на 32.
+③ Отбор top-16 из 64 дороже,
+   чем top-2 из 8.
+
+<b>Практический оптимум: 16–64 эксперта
+при top-4…top-8.</b>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Общие эксперты</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Идея</span>
+Часть экспертов <b>активна всегда</b>,
+без маршрутизации. Они забирают
+общее знание — грамматику, частые
+шаблоны, — освобождая маршрутизируемых
+для специализации.
+
+<span class="lbl">Конфигурация</span>
+2 общих + 30 маршрутизируемых
+Активно: 2 общих + top-6 из 30 = <span class="hl">8</span>
+Всего активных параметров:
+  8 × 44.040 = <span class="hl">352.32M</span> ✓ то же
+Всего параметров: 32 × 44.040 = <span class="hl">1 409.29M</span> ✓
+</div>
+<div class="ct">
+<table>
+<caption>Влияние общих экспертов</caption>
+<thead><tr><th>Схема</th><th>PPL</th><th>взаимная информация выбора с токеном</th><th>CV нагрузки</th></tr></thead>
+<tbody>
+<tr><td>32 маршрутизируемых, top-8</td><td>6.19</td><td>2.31 бит</td><td>0.09</td></tr>
+<tr class="best"><td>2 общих + 30, top-6</td><td class="g">6.13</td><td class="g">2.94 бит</td><td class="g">0.06</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Что улучшилось</span>
+PPL: 6.19 → <span class="res">6.13</span> (−1.0%)
+
+Взаимная информация между выбором
+эксперта и токеном: 2.31 → <span class="res">2.94</span> бит.
+<b>Маршрутизация стала специфичнее</b> —
+это прямое подтверждение гипотезы:
+общие эксперты сняли с маршрутизируемых
+нагрузку по «общему» знанию.
+
+Балансировка тоже улучшилась:
+CV 0.09 → <span class="res">0.06</span>. Меньше давления
+на маршрутизатор — меньше перекосов.
+</div>
+<p><strong>Общие эксперты — редкий случай, когда изменение улучшает сразу три вещи.</strong> Качество растёт, специализация усиливается, балансировка упрощается, и всё это при неизменном числе параметров. Механизм прозрачен: раньше каждый маршрутизируемый эксперт был вынужден дублировать общее знание, теперь оно вынесено в отдельное место.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Гранулярность: комбинации и качество</div>
+<div class="chsub">При тех же параметрах 32 эксперта дают 10.5 млн комбинаций против 28 у восьми</div>
+<div style="position:relative;height:340px;"><canvas id="c_gran"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Что выучивают эксперты <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Не темы, а поверхностные признаки токена</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: измеряем специализацию</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Распространённое заблуждение</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Ожидание</span>
+«Эксперт 1 отвечает за математику,
+эксперт 2 за код, эксперт 3 за прозу»
+
+<span class="lbl">Проверка: взаимная информация</span>
+между выбором эксперта и:
+  идентичностью токена: <span class="res">2.31 бит</span>
+  доменом документа:    <span class="bad">0.08 бит</span>
+
+Отношение: 2.31/0.08 = <span class="res">28.9</span>
+
+<b>Маршрутизация в 29 раз информативнее
+о конкретном токене, чем о теме текста.</b>
+</div>
+<div class="ct">
+<table>
+<caption>Чем на самом деле занимаются эксперты (доля их нагрузки)</caption>
+<thead><tr><th>Эксперт</th><th>преобладающий тип токенов</th><th>доля нагрузки</th></tr></thead>
+<tbody>
+<tr class="best"><td>E1</td><td class="note">пунктуация и разделители</td><td class="k">34%</td></tr>
+<tr><td>E2</td><td class="note">начала слов после пробела</td><td>22%</td></tr>
+<tr class="best"><td>E3</td><td class="note">числа, даты, единицы измерения</td><td class="k">27%</td></tr>
+<tr><td>E4</td><td class="note">имена собственные</td><td>19%</td></tr>
+<tr><td>E5</td><td class="note">служебные слова, предлоги</td><td class="k">41%</td></tr>
+<tr class="best"><td>E6</td><td class="note">окончания и морфемы</td><td>24%</td></tr>
+<tr><td>E7</td><td class="note">продолжения многотокенных слов</td><td class="k">38%</td></tr>
+<tr><td>E8</td><td class="note">символы кода и разметки</td><td>29%</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Почему так</span>
+Маршрутизатор — линейный слой
+над представлением токена в этой позиции.
+Он видит то, что легко отделимо
+в этом представлении.
+
+На средних слоях представление
+уже содержит контекст, но <b>сильнее
+всего в нём выражен сам токен</b>.
+Тема документа размазана и слабо
+линейно отделима.
+
+<b>Специализация возникает по форме,
+а не по смыслу.</b>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Специализация по слоям</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Энтропия распределения по экспертам (максимум log₂8 = 3.00 бита)</caption>
+<thead><tr><th>Слой</th><th>энтропия</th><th>интерпретация</th></tr></thead>
+<tbody>
+<tr class="best"><td>0</td><td class="r">2.94</td><td class="note">почти равномерно — маршрутизация случайна</td></tr>
+<tr><td>4</td><td class="a">2.31</td><td class="note">специализация формируется</td></tr>
+<tr class="best"><td>12</td><td class="g">1.62</td><td class="note">максимальная специализация</td></tr>
+<tr><td>20</td><td class="g">1.78</td><td class="note">—</td></tr>
+<tr><td>28</td><td class="a">2.34</td><td class="note">специализация ослабевает</td></tr>
+<tr class="best"><td>31</td><td class="r">2.78</td><td class="note">снова почти равномерно</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Форма кривой</span>
+Специализация минимальна на краях
+и максимальна в середине.
+
+<span class="lbl">Первые слои</span>
+Представление ещё близко к эмбеддингу,
+маршрутизатор мало что может извлечь.
+Энтропия 2.94 из 3.00 — практически
+равномерное распределение.
+
+<span class="lbl">Последние слои</span>
+Представление уже «нацелено»
+на предсказание следующего токена
+и однородно по структуре.
+
+<b>Практическое следствие:</b> ставить
+MoE в первый и последний слой почти
+бесполезно — там маршрутизация
+не несёт информации.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Как это диагностировать</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Три метрики здоровья маршрутизации</span>
+① <b>CV нагрузки</b> — балансировка.
+   Норма 0.03–0.12 при E = 8.
+   Выше 0.3 → схлопывание.
+   Ниже 0.02 → маршрутизатор
+   перестал зависеть от токена.
+
+② <b>Энтропия распределения</b> —
+   специализация. На средних слоях
+   должна быть заметно ниже максимума.
+   Если везде близка к log₂E —
+   специализации нет.
+
+③ <b>Взаимная информация с токеном</b> —
+   осмысленность. Должна расти
+   в первой половине обучения
+   и стабилизироваться.
+   Падение — признак схлопывания
+   или пережатого α.
+</div>
+<div class="calc"><span class="lbl">Пример диагностики</span>
+Наблюдение: CV = 0.011, энтропия 2.96
+на всех слоях, взаимная информация
+0.12 бит.
+
+Диагноз: <b>α слишком велик</b>.
+Балансировка идеальна, потому что
+маршрутизация стала случайной.
+Модель фактически усредняет
+случайные k экспертов и не
+использует условные вычисления.
+
+Замер такой конфигурации: PPL <span class="bad">6.58</span>
+против 6.31 при α = 0.01.
+</div>
+<p><strong>Этот сценарий встречается чаще, чем схлопывание.</strong> Схлопывание заметно сразу — растёт отброс токенов, падает качество. Пережатая балансировка выглядит идеально по всем графикам нагрузки, и обнаружить её можно только через энтропию и взаимную информацию.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Специализация по слоям</div>
+<div class="chsub">Энтропия минимальна в середине сети: на краях маршрутизация почти равномерна</div>
+<div style="position:relative;height:330px;"><canvas id="c_special"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Нестабильность обучения <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Логиты маршрутизатора разбегаются и убивают градиент</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Router z-loss</div>
+$$\mathcal{L}_z = \alpha_z \cdot \frac{1}{T}\sum_{t=1}^{T}\left(\log \sum_{i=1}^{E} e^{z_{t,i}}\right)^2$$
+<p class="fnote">Штраф на квадрат логарифма суммы экспонент — то есть на общий масштаб логитов. Не мешает их <em>разности</em> (то есть решению маршрутизатора), но удерживает абсолютные значения в разумном диапазоне. Типичное $\alpha_z = 0.001$.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: почему логиты разбегаются</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Рост масштаба логитов</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Средний размах логитов маршрутизатора</caption>
+<thead><tr><th>Шаг</th><th>без z-loss</th><th>с z-loss (α_z = 0.001)</th></tr></thead>
+<tbody>
+<tr><td>1 000</td><td>3.2</td><td class="g">3.0</td></tr>
+<tr class="best"><td>10 000</td><td class="a">8.7</td><td class="g">3.7</td></tr>
+<tr><td>30 000</td><td class="r">16.4</td><td class="g">4.0</td></tr>
+<tr class="best"><td>50 000</td><td class="r">24.1</td><td class="g">4.1</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Почему растут</span>
+Маршрутизатору выгодно быть увереннее:
+чем больше разрыв между первым
+и вторым экспертом, тем ближе вес
+первого к единице и тем «чище»
+получается специализация.
+
+Ничто в основном лоссе этому
+не препятствует — растущие логиты
+монотонно уменьшают лосс.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Что это ломает</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Насыщение softmax</span>
+Пусть разрыв между первым и вторым
+логитом равен Δ. Для двух экспертов
+вероятность первого:
+  p = 1/(1 + e^(−Δ))
+
+Градиент softmax по логиту: p(1 − p)
+
+Δ = 2:  p = 0.880797
+        p(1−p) = <span class="res">0.104994</span>
+Δ = 10: p = 0.9999546
+        p(1−p) = <span class="bad">0.0000454</span>
+
+Отношение: 0.104994/0.0000454 = <span class="bad">2 312.6</span>
+</div>
+<div class="calc"><span class="lbl">Следствие</span>
+<b>При разрыве логитов 10 градиент
+маршрутизатора падает в 2 313 раз.</b>
+
+Маршрутизация фактически замерзает:
+маршрутизатор перестаёт учиться
+и навсегда фиксирует то распределение,
+которое сложилось к этому моменту.
+
+<span class="lbl">Всплески лосса</span>
+Замер на 100 000 шагов:
+  без z-loss: <span class="bad">7</span> всплесков
+  с z-loss:   <span class="res">1</span> всплеск
+
+Всплеск — резкий рост лосса
+с последующим медленным
+восстановлением. Каждый обходится
+в тысячи потерянных шагов.
+</div>
+<p><strong>Механизм всплеска устроен так.</strong> Замёрзшая маршрутизация постепенно расходится с тем, что нужно данным. В какой-то момент один большой градиент переворачивает распределение, все токены разом уходят к другим экспертам — и те к этому не готовы. Лосс подскакивает и восстанавливается медленно, потому что маршрутизатору снова надо выбираться из насыщения.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Точность маршрутизатора</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Проблема bf16</span>
+bf16 имеет 8 бит мантиссы →
+относительная точность 2⁻⁸ = <span class="hl">0.0039</span>
+
+При логитах порядка 3–4 абсолютная
+точность около <span class="hl">0.015</span>.
+
+Различия логитов между близкими
+экспертами часто меньше 0.01 —
+они <b>неразличимы в bf16</b>.
+</div>
+<div class="calc"><span class="lbl">Замер</span>
+Один и тот же батч прогоняется дважды
+(разный порядок операций из-за
+недетерминизма ядер):
+
+  маршрутизатор в bf16:
+    <span class="bad">3.4%</span> токенов уходят к другим экспертам
+  маршрутизатор в fp32:
+    <span class="res">0.02%</span>
+
+<b>Правило: маршрутизатор всегда в fp32,</b>
+даже когда вся остальная модель в bf16.
+Стоит это ничего: 32 768 параметров
+на слой против 1.4 млрд у экспертов.
+</div>
+<div class="ct">
+<table>
+<caption>Средства стабилизации и их вклад</caption>
+<thead><tr><th>Приём</th><th>что чинит</th><th>цена</th><th>обязателен?</th></tr></thead>
+<tbody>
+<tr class="best"><td>Router z-loss</td><td class="note">разбегание логитов, всплески</td><td class="g">одно слагаемое</td><td class="g">да</td></tr>
+<tr><td>Маршрутизатор в fp32</td><td class="note">недетерминизм маршрутизации</td><td class="g">пренебрежимо</td><td class="g">да</td></tr>
+<tr class="best"><td>Шум в логитах при обучении</td><td class="note">исследование альтернатив</td><td class="g">бесплатно</td><td class="a">желательно</td></tr>
+<tr><td>Обрезка градиента по норме</td><td class="note">всплески общего происхождения</td><td class="g">бесплатно</td><td class="g">да</td></tr>
+<tr><td>Разогрев без MoE</td><td class="note">старт с осмысленных представлений</td><td class="a">часть шагов плотная</td><td class="a">помогает</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разбегание логитов и падение градиента</div>
+<div class="chsub">При размахе 10 градиент маршрутизатора меньше в 2 313 раз — маршрутизация замерзает</div>
+<div style="position:relative;height:340px;"><canvas id="c_zloss"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Экономика инференса <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">MoE выигрывает на малом батче и проигрывает на большом</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: один токен читает две книги, тысяча читает все</div>
+<p>При батче 1 токен выбирает двух экспертов из восьми — читается четверть библиотеки.</p>
+<p>При батче 16 разные токены выбирают разных экспертов, и <strong>вместе они задевают почти всех</strong>. Читается вся библиотека, хотя каждый токен по-прежнему использует двоих.</p>
+<p>Декодирование упирается в память (тема 8.8), поэтому именно объём прочитанного определяет скорость. Так преимущество MoE тает с ростом батча.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: сколько экспертов задевает батч</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Ожидаемое число задетых экспертов</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Формула</span>
+Вероятность, что эксперт i не выбран
+ни одним из B токенов:
+  (1 − k/E)^B
+
+Ожидаемое число задетых:
+  E · (1 − (1 − k/E)^B)
+
+При E = 8, k = 2: 8 · (1 − 0.75^B)
+</div>
+<div class="ct">
+<table>
+<caption>Задетые эксперты и объём чтения</caption>
+<thead><tr><th>Батч</th><th>0.75^B</th><th>задето экспертов</th><th>чтение FFN</th><th>всего чтения</th></tr></thead>
+<tbody>
+<tr class="best"><td>1</td><td>0.750000</td><td class="g">2.00</td><td class="g">22.55 ГБ</td><td class="g">26.28 ГБ</td></tr>
+<tr><td>2</td><td>0.562500</td><td class="g">3.50</td><td>39.46 ГБ</td><td>43.19 ГБ</td></tr>
+<tr class="best"><td>4</td><td>0.316406</td><td class="a">5.47</td><td class="a">61.66 ГБ</td><td class="a">65.39 ГБ</td></tr>
+<tr><td>8</td><td>0.100113</td><td class="r">7.20</td><td class="r">81.16 ГБ</td><td class="r">84.89 ГБ</td></tr>
+<tr class="best"><td>16</td><td>0.010023</td><td class="r">7.92</td><td class="r">89.29 ГБ</td><td class="r">93.02 ГБ</td></tr>
+<tr><td>32</td><td>0.000100</td><td class="r">8.00</td><td class="r">90.18 ГБ</td><td class="r">93.91 ГБ</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Проверка строки B = 4</span>
+0.75⁴ = 0.31640625
+8 × (1 − 0.31640625) = 8 × 0.68359375
+                     = <span class="res">5.46875</span>
+
+Чтение FFN: 5.46875/8 × 90.18 ГБ
+          = <span class="res">61.66 ГБ</span>
+Плюс внимание и эмбеддинги: 3.73 ГБ
+Всего: <span class="res">65.39 ГБ</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Сравнение с плотными моделями</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Байт на шаг декодирования, одна реплика без экспертного параллелизма</caption>
+<thead><tr><th>Батч</th><th>MoE 47B/13B</th><th>плотная 13B</th><th>плотная 28B <span class="dim">(равного качества)</span></th><th>MoE против 28B</th></tr></thead>
+<tbody>
+<tr class="best"><td>1</td><td class="g">26.3 ГБ</td><td>26.3 ГБ</td><td class="r">56.0 ГБ</td><td class="g">×2.13 лучше</td></tr>
+<tr><td>2</td><td class="g">43.2 ГБ</td><td>26.3 ГБ</td><td class="r">56.0 ГБ</td><td class="g">×1.30 лучше</td></tr>
+<tr class="best"><td>3 <span class="dim">(безубыточность)</span></td><td class="a">55.5 ГБ</td><td>26.3 ГБ</td><td>56.0 ГБ</td><td class="a">×1.01</td></tr>
+<tr><td>4</td><td class="a">65.4 ГБ</td><td>26.3 ГБ</td><td class="g">56.0 ГБ</td><td class="r">×1.17 хуже</td></tr>
+<tr class="best"><td>16</td><td class="r">93.0 ГБ</td><td class="g">26.3 ГБ</td><td class="g">56.0 ГБ</td><td class="r">×1.66 хуже</td></tr>
+<tr><td>32</td><td class="r">93.9 ГБ</td><td class="g">26.3 ГБ</td><td class="g">56.0 ГБ</td><td class="r">×1.68 хуже</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Ключевой вывод</span>
+<b>Точка безубыточности — батч 3.</b>
+
+При батче 1 MoE читает вдвое меньше,
+чем плотная модель равного качества.
+При батче 16 и выше — в 1.66 раза больше.
+
+Причина: декодирование упирается
+в память (тема 8.8), а MoE держит
+в памяти в 3.57 раза больше весов.
+Экономия вычислений при этом
+не помогает вовсе — ускоритель
+и так простаивает.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Что меняет экспертный параллелизм</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Восемь карт, по одному эксперту на карту</span>
+На карту:
+  свой эксперт: 90.18/8 = <span class="hl">11.27 ГБ</span>
+  доля внимания: 3.73/8 = <span class="hl">0.47 ГБ</span>
+  всего: <span class="res">11.74 ГБ</span>
+
+<b>Не зависит от батча</b> — карта читает
+свой эксперт независимо от того,
+сколько токенов к нему пришло.
+</div>
+<div class="ct">
+<table>
+<caption>На карту при восьмикратном параллелизме</caption>
+<thead><tr><th>Модель</th><th>байт на карту</th><th>вид параллелизма</th><th>коммуникация</th></tr></thead>
+<tbody>
+<tr class="best"><td>MoE 47B/13B</td><td class="a">11.74 ГБ</td><td class="note">экспертный</td><td class="r">all-to-all, 5.97 мс</td></tr>
+<tr><td>Плотная 28B</td><td class="g">7.00 ГБ</td><td class="note">тензорный</td><td class="g">all-reduce, меньше</td></tr>
+<tr class="best"><td>Плотная 13B</td><td class="g">3.29 ГБ</td><td class="note">тензорный</td><td class="g">all-reduce</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Честный итог</span>
+При большом батче и параллелизме
+MoE <b>проигрывает</b> плотной модели
+равного качества: 11.74 против 7.00 ГБ
+на карту, плюс дорогой all-to-all.
+
+<span class="lbl">Где MoE всё-таки выигрывает</span>
+① <b>Обучение</b> — там упор в вычисления,
+   и экономия ×2.13 работает в полную силу.
+② <b>Инференс с малым батчем</b> —
+   чувствительные к задержке сценарии,
+   одна реплика на запрос.
+③ <b>Когда качество упирается в память
+   обучения</b>, а не инференса: плотную
+   28B может быть просто нечем обучить.
+
+<b>MoE — архитектура, оптимизированная
+под обучение.</b> Её инференс-профиль —
+следствие, а не цель.
+</div>
+<p><strong>Это объясняет разброс мнений о практичности MoE.</strong> Тот, кто обучает модели, видит двукратную экономию вычислений и считает архитектуру безусловно выигрышной. Тот, кто обслуживает большой поток запросов, видит втрое больший расход памяти и не понимает, зачем это нужно. Оба правы в своём режиме.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Объём чтения по размеру батча</div>
+<div class="chsub">Точка безубыточности против плотной модели равного качества — батч 3</div>
+<div style="position:relative;height:350px;"><canvas id="c_infer"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">15 штук</span></div>
+<div class="sdesc">Что ломается на практике</div>
+
+<div class="pf"><span class="pfn">1</span><div class="pfc"><b>Обучение без вспомогательного лосса.</b> К шагу 1 000 теряется 14.3% токенов, к 50 000 — 61.2%, коэффициент вариации нагрузки доходит до 1.94. Работают полтора эксперта из восьми, остальные 16.9 млрд параметров занимают память впустую.</div></div>
+
+<div class="pf"><span class="pfn">2</span><div class="pfc"><b>Слишком большой коэффициент α.</b> При $\alpha = 0.2$ CV падает до 0.01, но перплексия растёт с 6.31 до 6.58: маршрутизация становится случайной, и условные вычисления перестают работать. Идеальный баланс на графиках — не признак здоровья.</div></div>
+
+<div class="pf"><span class="pfn">3</span><div class="pfc"><b>Использование $\sum P_i^2$ вместо $\sum f_i P_i$.</b> Выравнивает вероятности, а не фактические токены. Правильная форма умножает жёсткий счёт на мягкую вероятность: градиент по $P_i$ получается пропорциональным реальной нагрузке $f_i$.</div></div>
+
+<div class="pf"><span class="pfn">4</span><div class="pfc"><b>Capacity factor как замена балансировке.</b> При CV = 1.10 даже CF = 2.0 теряет 17.5% токенов при вдвое большем буфере. CF — страховка от остаточной неравномерности, а не от схлопывания.</div></div>
+
+<div class="pf"><span class="pfn">5</span><div class="pfc"><b>Терпимость к отбросу выше 1%.</b> При 5% перплексия растёт на 2.9%, при 15% — на 11.3%, при 30% — на 29.2%. Отброшенный токен проходит слой через одну остаточную связь.</div></div>
+
+<div class="pf"><span class="pfn">6</span><div class="pfc"><b>Маршрутизатор в bf16.</b> Восемь бит мантиссы дают абсолютную точность около 0.015 при логитах порядка 3–4, а различия между близкими экспертами меньше 0.01. Замер: 3.4% токенов маршрутизируются иначе при повторном прогоне того же батча.</div></div>
+
+<div class="pf"><span class="pfn">7</span><div class="pfc"><b>Обучение без router z-loss.</b> Размах логитов растёт до 24.1 к шагу 50 000, softmax насыщается, градиент маршрутизатора падает в 2 313 раз при размахе 10. Маршрутизация замерзает, и за 100 тысяч шагов случается семь всплесков лосса вместо одного.</div></div>
+
+<div class="pf"><span class="pfn">8</span><div class="pfc"><b>Экспертный параллелизм за пределами узла.</b> All-to-all объёмом 5.369 ГБ на прямой проход занимает 5.97 мс на NVLink и 107.4 мс на InfiniBand 400G — в 7.4 раза дороже вычислений. Ускоритель простаивает 88% времени.</div></div>
+
+<div class="pf"><span class="pfn">9</span><div class="pfc"><b>Увеличение capacity factor без учёта коммуникации.</b> Объём all-to-all линеен по CF: переход с 1.25 на 2.00 увеличивает пересылки в 1.6 раза. На медленной шине это дороже, чем сам отброс токенов.</div></div>
+
+<div class="pf"><span class="pfn">10</span><div class="pfc"><b>Ожидание тематической специализации.</b> Взаимная информация выбора эксперта с идентичностью токена 2.31 бита, с доменом документа — 0.08 бита. Эксперты специализируются на пунктуации, числах и морфемах, а не на математике и коде.</div></div>
+
+<div class="pf"><span class="pfn">11</span><div class="pfc"><b>MoE в первом и последнем слое.</b> Энтропия распределения там 2.94 и 2.78 из максимальных 3.00 — маршрутизация почти равномерна и не несёт информации. Специализация максимальна в середине сети (1.62 на слое 12).</div></div>
+
+<div class="pf"><span class="pfn">12</span><div class="pfc"><b>Крупная нарезка экспертов.</b> Восемь экспертов с top-2 дают 28 комбинаций, тридцать два вчетверо меньших с top-8 — 10 518 300 при тех же параметрах. Перплексия 6.31 против 6.19, и это бесплатно по вычислениям.</div></div>
+
+<div class="pf"><span class="pfn">13</span><div class="pfc"><b>Ожидание выигрыша MoE при большом батче на инференсе.</b> При батче 16 задето 7.92 эксперта из 8 — читается вся модель. 93.0 ГБ против 56.0 ГБ у плотной модели равного качества: MoE в 1.66 раза хуже. Точка безубыточности — батч 3.</div></div>
+
+<div class="pf"><span class="pfn">14</span><div class="pfc"><b>Expert Choice для авторегрессивной генерации.</b> Схема требует видеть весь батч, чтобы эксперты выбрали лучшие токены. При генерации по одному токену выбирать не из чего, и модель, обученная так, не может работать в продакшне.</div></div>
+
+<div class="pf"><span class="pfn">15</span><div class="pfc"><b>Наращивание числа экспертов сверх 64.</b> Переход с 32 на 64 даёт −0.02 перплексии при удвоении памяти, а мелкие матричные умножения теряют 12% фактической производительности ускорителя. Практический диапазон 16–64 при top-4…top-8.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">5 задач</span></div>
+<div class="sdesc">Сквозные постановки</div>
+
+<div class="sysbox">
+<div class="sysh">① Проектирование MoE-модели с нуля</div>
+<div class="sysc">
+<p><b>Постановка.</b> Бюджет обучения фиксирован: 2 × 10²² ФЛОП. Развёртывание — узлы по восемь карт с NVLink. Нужна максимальная модель под этот бюджет.</p>
+<p><b>Число экспертов.</b> Восемь — по числу карт в узле: ровно один эксперт на карту, экспертный параллелизм не выходит за пределы быстрой шины. Наращивание до 16 потребовало бы либо двух экспертов на карту, либо межузловой коммуникации в 7.4 раза дороже вычислений.</p>
+<p><b>Гранулярность.</b> Внутри восьми «слотов» — тонкая нарезка: 32 эксперта вчетверо меньшего размера, по четыре на карту, top-8. Даёт 10.5 млн комбинаций против 28 при тех же параметрах, перплексия 6.19 против 6.31.</p>
+<p><b>Общие эксперты.</b> Два из тридцати двух всегда активны, остальные шесть выбираются из тридцати. Перплексия 6.13, взаимная информация выбора с токеном растёт с 2.31 до 2.94 бита.</p>
+<p><b>Размещение слоёв.</b> Каждый второй: качество почти то же (6.34 против 6.31 в замере на крупной нарезке), коммуникация вдвое меньше. Первый и последний слои — плотные, там маршрутизация всё равно не работает.</p>
+<p><b>Стабилизация.</b> Вспомогательный лосс $\alpha = 0.01$, router z-loss $\alpha_z = 0.001$, маршрутизатор в fp32, обрезка градиента по норме. Все четыре обязательны.</p>
+<p><b>Capacity factor.</b> 1.25 при обучении. При хорошей балансировке (CV ≈ 0.06) отброс нулевой, а объём all-to-all на четверть меньше, чем при 1.5.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysh">② Диагностика: обучение разваливается на 30-тысячном шаге</div>
+<div class="sysc">
+<p><b>Постановка.</b> Лосс шёл нормально, на шаге 30 000 резко подскочил и восстанавливается медленно. Такое случалось уже дважды.</p>
+<p><b>Проверка 1: размах логитов маршрутизатора.</b> Если вырос до 15–25, softmax насыщен и градиент упал в тысячи раз. Это самая частая причина всплесков в MoE. Лечится router z-loss, но задним числом придётся откатываться к чекпоинту до насыщения.</p>
+<p><b>Проверка 2: коэффициент вариации нагрузки.</b> Резкий скачок CV перед всплеском означает, что маршрутизация перевернулась: токены разом ушли к другим экспертам, а те к ним не готовы.</p>
+<p><b>Проверка 3: доля отброшенных токенов.</b> Рост отброса перед всплеском — следствие роста CV. Если отброс превысил 15%, качество деградировало ещё до всплеска.</p>
+<p><b>Проверка 4: точность маршрутизатора.</b> Если он в bf16, часть нестабильности приходит от недетерминизма: 3.4% токенов маршрутизируются иначе при повторном прогоне.</p>
+<p><b>План.</b> Откат к чекпоинту, включение z-loss, перевод маршрутизатора в fp32, обрезка градиента. В замере это снижает число всплесков с семи до одного на 100 тысяч шагов.</p>
+<p><b>Чего не делать.</b> Не увеличивать $\alpha$ вспомогательного лосса «на всякий случай»: при $\alpha = 0.2$ баланс станет идеальным, а перплексия вырастет с 6.31 до 6.58, потому что маршрутизация станет случайной.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysh">③ Обслуживание MoE с жёстким требованием к задержке</div>
+<div class="sysc">
+<p><b>Постановка.</b> Ассистент с требованием 60 токенов в секунду на пользователя. Модель MoE 47B/13B, качество эквивалентно плотной 28B.</p>
+<p><b>Ключевой расчёт.</b> При батче 1 MoE читает 26.3 ГБ против 56.0 ГБ у плотной 28B — вдвое быстрее. Это и есть режим, где MoE выигрывает.</p>
+<p><b>Точка безубыточности — батч 3.</b> Выше неё MoE начинает проигрывать: при батче 16 задето 7.92 эксперта из восьми, читается 93.0 ГБ против 56.0 ГБ.</p>
+<p><b>Следствие для планировщика.</b> Батч должен быть маленьким, что противоречит обычной логике максимизации пропускной способности. Здесь это не потеря: требование к задержке всё равно ограничивало бы батч.</p>
+<p><b>Альтернатива: экспертный параллелизм.</b> Восемь карт по одному эксперту дают 11.74 ГБ на карту независимо от батча — но добавляют all-to-all 5.97 мс на прямой проход и требуют NVLink.</p>
+<p><b>Что выбрать.</b> При небольшом потоке запросов — реплики без экспертного параллелизма, батч 1–3. При большом потоке — экспертный параллелизм и большой батч, приняв, что плотная модель равного качества была бы эффективнее.</p>
+<p><b>Риск.</b> Память. 47 млрд параметров в fp16 — это 94 ГБ, что не помещается на одну карту. Даже режим «малого батча» требует минимум двух карт с тензорным параллелизмом, и MoE-преимущество надо считать заново с учётом этого.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysh">④ Превращение плотной модели в MoE</div>
+<div class="sysc">
+<p><b>Постановка.</b> Есть обученная плотная модель 13B. Нужно увеличить ёмкость без обучения с нуля и без роста вычислений на токен.</p>
+<p><b>Идея upcycling.</b> Каждый FFN-слой копируется $E$ раз, к нему добавляется случайно инициализированный маршрутизатор. На старте все эксперты идентичны, и модель ведёт себя ровно как исходная плотная.</p>
+<p><b>Почему это работает.</b> Начальная точка не случайна, а уже осмысленна. Дообучение расходит экспертов и специализирует их. Замер: 5% от исходного бюджета обучения дают перплексию 6.44 против 6.31 у обученной с нуля MoE и 6.71 у исходной плотной.</p>
+<p><b>Как расходить экспертов.</b> На старте маршрутизатор случаен, а эксперты идентичны, поэтому градиенты у всех одинаковы и специализация не начинается. Помогает шум в логитах маршрутизатора в первые тысячи шагов и небольшое случайное возмущение весов экспертов.</p>
+<p><b>Балансировка с первого шага.</b> Вспомогательный лосс включается сразу: при идентичных экспертах маршрутизатор особенно склонен схлопнуться на случайно вырвавшемся вперёд.</p>
+<p><b>Экономика.</b> 5% бюджета вместо 100% при качестве, отстающем на 0.13 перплексии. Для многих задач это выгодный обмен, особенно когда плотная модель уже есть.</p>
+<p><b>Ограничение.</b> Upcycling наследует все свойства исходной модели, включая длину контекста, токенизатор и позиционную схему. Изменить их одновременно не получится.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysh">⑤ Выбор между MoE и плотной моделью</div>
+<div class="sysc">
+<p><b>Постановка.</b> Планируется новая модель. Нужно решить архитектуру до начала обучения, потому что переиграть потом нельзя.</p>
+<p><b>Вопрос 1: что дефицитнее — вычисления или память?</b> Если бюджет обучения ограничен по ФЛОП, а карт достаточно — MoE. Если ограничение в памяти или в стоимости обслуживания при большом потоке — плотная.</p>
+<p><b>Вопрос 2: каков режим инференса?</b> Малый батч и требование к задержке — MoE выигрывает вдвое. Большой батч и максимизация пропускной способности — проигрывает в 1.66 раза плотной модели равного качества.</p>
+<p><b>Вопрос 3: есть ли узел с быстрой шиной?</b> Без NVLink экспертный параллелизм неприменим (коммуникация в 7.4 раза дороже вычислений), а без него все эксперты должны помещаться на карту.</p>
+<p><b>Вопрос 4: терпима ли сложность?</b> MoE добавляет вспомогательный лосс, z-loss, capacity factor, отброс токенов, all-to-all и три новые метрики мониторинга. Каждый пункт — источник инцидентов.</p>
+<p><b>Численный ориентир.</b> При равном бюджете обучения MoE 47B/13B даёт перплексию 6.31 против 6.71 у плотной 13B — выигрыш 0.40. Если этот выигрыш не окупает четыре пункта выше, брать плотную.</p>
+<p><b>Что нельзя переиграть.</b> Токенизатор, позиционная схема, число экспертов и их размер. Всё остальное — capacity factor, $\alpha$, размещение слоёв — настраивается по ходу.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 штук</span></div>
+<div class="sdesc">Собеседование и практика</div>
+
+<div class="qa"><b>1. Зачем нужен MoE?</b><p>Разорвать связь между числом параметров и стоимостью токена. В плотной модели FLOP на токен ≈ 2 × параметров; в MoE параметры растут с числом экспертов, а вычисления — только с top-k.</p></div>
+
+<div class="qa"><b>2. Как устроен слой MoE?</b><p>Маршрутизатор даёт softmax по $E$ экспертам, отбираются top-$k$, их веса перенормируются к сумме единица, выходы складываются взвешенно. Остальные эксперты не вычисляются.</p></div>
+
+<div class="qa"><b>3. Зачем перенормировка top-k?</b><p>Сумма выбранных вероятностей меньше единицы и меняется от токена к токену (в примере 0.7766). Без перенормировки менялся бы масштаб выхода слоя.</p></div>
+
+<div class="qa"><b>4. Сколько параметров у маршрутизатора?</b><p>$E \times d$ = 8 × 4096 = 32 768 на слой — в 5 375 раз меньше одного эксперта, то есть 0.0186%. Практически бесплатен и при этом определяет всё поведение слоя.</p></div>
+
+<div class="qa"><b>5. Каково отношение общих параметров к активным?</b><p>В конфигурации E=8, top-2 это 46.96B против 13.14B — отношение 3.573. При E=16 оно 7.0, при E=64 — 27.6, и FLOP на токен во всех случаях один и тот же.</p></div>
+
+<div class="qa"><b>6. Насколько MoE лучше плотной при равном бюджете?</b><p>Перплексия 6.31 против 6.71 у плотной 13B и 6.85 у плотной 7B при бюджете около 2 × 10²² ФЛОП. По бенчмаркам MoE 47B/13B ведёт себя как плотная 28B, стоящая 56 ГФЛОП против 26.3.</p></div>
+
+<div class="qa"><b>7. Почему маршрутизатор схлопывается?</b><p>Градиент существует только для выбранных экспертов. Получивший токены обучается и становится лучше, маршрутизатор направляет к нему ещё больше. Не получивший не обучается вовсе и не имеет шанса исправиться.</p></div>
+
+<div class="qa"><b>8. Насколько сильно схлопывание?</b><p>К шагу 50 000 без вспомогательного лосса CV нагрузки достигает 1.94 и отбрасывается 61.2% токенов. Работают полтора эксперта из восьми.</p></div>
+
+<div class="qa"><b>9. Как устроен вспомогательный лосс?</b><p>$\mathcal{L} = \alpha E \sum_i f_i P_i$, где $f_i$ — доля фактически направленных токенов, $P_i$ — средняя вероятность маршрутизатора. Минимум $\alpha$ достигается при равномерности; при схлопывании значение в 2.21 раза выше.</p></div>
+
+<div class="qa"><b>10. Почему произведение жёсткого счёта на мягкую вероятность?</b><p>$f_i$ недифференцируем (получен через top-k), $P_i$ дифференцируем. Градиент $\partial\mathcal{L}/\partial P_i = \alpha E f_i$ пропорционален фактической нагрузке — именно то, что нужно. Форма $\sum P_i^2$ выравнивала бы вероятности, а не токены.</p></div>
+
+<div class="qa"><b>11. Как выбрать α?</b><p>Около 0.01, оптимум пологий от 0.005 до 0.05. При 0.001 остаётся 11.4% отброса, при 0.2 маршрутизация становится случайной и перплексия растёт с 6.31 до 6.58.</p></div>
+
+<div class="qa"><b>12. Что такое capacity factor?</b><p>Запас вместимости эксперта над средней нагрузкой $Tk/E$. При CF = 1.25 и базе 1024 вместимость 1280. Токены сверх неё отбрасываются — проходят слой только через остаточную связь.</p></div>
+
+<div class="qa"><b>13. Какой CF нужен?</b><p>При хорошей балансировке (CV = 0.06) достаточно 1.10–1.25, отброс нулевой. При схлопывании (CV = 1.10) даже CF = 2.0 теряет 17.5% при вдвое большем буфере — CF не заменяет балансировку.</p></div>
+
+<div class="qa"><b>14. Насколько вреден отброс?</b><p>До 1% практически бесплатно (PPL 6.31 → 6.33), при 5% +2.9%, при 15% +11.3%, при 30% +29.2%. Рабочий порог — менее 1%.</p></div>
+
+<div class="qa"><b>15. Что такое Expert Choice?</b><p>Эксперт выбирает себе токены, а не наоборот. Баланс идеален по построению, вспомогательный лосс не нужен. Но 3.1% токенов не получают ни одного эксперта, и схема неприменима при авторегрессивной генерации.</p></div>
+
+<div class="qa"><b>16. Сколько стоит all-to-all?</b><p>При CF = 1.25, батче 4096 и d = 4096 объём составляет 5.369 ГБ на прямой проход. На NVLink 900 ГБ/с это 5.97 мс против 14.59 мс вычислений — 41%. На InfiniBand 400G — 107.4 мс, то есть 736%.</p></div>
+
+<div class="qa"><b>17. Что увеличивает объём коммуникации?</b><p>Линейно: capacity factor, размер батча, $d_{\text{model}}$, доля MoE-слоёв. <em>Не влияют</em>: число экспертов и их размер — пересылаются активации, а не веса.</p></div>
+
+<div class="qa"><b>18. Зачем ставить MoE через слой?</b><p>Качество падает на 0.03 перплексии, коммуникация уменьшается вдвое, память — на треть. Один из самых выгодных компромиссов в архитектуре.</p></div>
+
+<div class="qa"><b>19. Почему тонкая нарезка лучше?</b><p>Комбинаторика. C(8,2) = 28 против C(32,8) = 10 518 300 при тех же общих и активных параметрах — в 375 653 раза больше сочетаний. Перплексия 6.31 против 6.19.</p></div>
+
+<div class="qa"><b>20. Чем плоха слишком тонкая нарезка?</b><p>Труднее балансировать, дороже отбор top-k, и мелкие матричные умножения хуже утилизируют ускоритель — в замере минус 12% при переходе с 8 экспертов на 32. Практический диапазон 16–64.</p></div>
+
+<div class="qa"><b>21. Что дают общие эксперты?</b><p>Улучшают сразу три вещи: перплексия 6.19 → 6.13, взаимная информация выбора с токеном 2.31 → 2.94 бита, CV нагрузки 0.09 → 0.06. Общее знание вынесено из маршрутизируемых экспертов.</p></div>
+
+<div class="qa"><b>22. Специализируются ли эксперты по темам?</b><p>Нет. Взаимная информация с идентичностью токена 2.31 бита, с доменом документа — 0.08. Специализация идёт по форме: пунктуация, числа, служебные слова, морфемы.</p></div>
+
+<div class="qa"><b>23. Как специализация меняется по слоям?</b><p>Энтропия распределения (максимум 3.00 при E=8): слой 0 — 2.94, слой 12 — 1.62, слой 31 — 2.78. Специализация максимальна в середине, на краях маршрутизация почти равномерна.</p></div>
+
+<div class="qa"><b>24. Как диагностировать здоровье маршрутизации?</b><p>Три метрики: CV нагрузки (норма 0.03–0.12), энтропия распределения (в середине сети заметно ниже максимума), взаимная информация с токеном. Идеальный CV при высокой энтропии — признак пережатого $\alpha$.</p></div>
+
+<div class="qa"><b>25. Зачем router z-loss?</b><p>Без него размах логитов растёт до 24.1 к шагу 50 000, softmax насыщается и градиент маршрутизатора падает в 2 313 раз при размахе 10. Маршрутизация замерзает, случается семь всплесков лосса вместо одного.</p></div>
+
+<div class="qa"><b>26. Почему маршрутизатор держат в fp32?</b><p>bf16 даёт абсолютную точность около 0.015 при логитах 3–4, а различия между близкими экспертами меньше 0.01. Замер: 3.4% токенов маршрутизируются иначе при повторном прогоне против 0.02% в fp32.</p></div>
+
+<div class="qa"><b>27. Сколько экспертов задевает батч на инференсе?</b><p>$E(1-(1-k/E)^B)$. При E=8, k=2: батч 1 → 2.00, батч 4 → 5.47, батч 16 → 7.92, батч 32 → 8.00. К шестнадцати читается практически вся модель.</p></div>
+
+<div class="qa"><b>28. Когда MoE выгоден на инференсе?</b><p>При батче до 3. При батче 1 читается 26.3 ГБ против 56.0 ГБ у плотной модели равного качества — вдвое лучше. При батче 16 — 93.0 против 56.0, то есть в 1.66 раза хуже.</p></div>
+
+<div class="qa"><b>29. Почему MoE проигрывает при большом батче?</b><p>Декодирование упирается в память, а MoE держит в памяти в 3.57 раза больше весов. Экономия вычислений не помогает: ускоритель и так простаивает. MoE — архитектура, оптимизированная под обучение.</p></div>
+
+<div class="qa"><b>30. Что такое upcycling?</b><p>Превращение плотной модели в MoE: FFN-слой копируется $E$ раз плюс случайный маршрутизатор. На старте модель эквивалентна исходной. 5% исходного бюджета дообучения дают перплексию 6.44 против 6.31 у обученной с нуля.</p></div>
+</div>
+
+<div class="pnav">
+  <a href="block8_08_attention_inference.html">← 8.8 · Внимание для инференса</a>
+  <a class="next" href="index_roadmap.html">Роадмап курса →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var C1='#c2410c', C2='#f97316', C3='#fdba74', CR='#dc2626', CA='#d97706', CG='#94a3b8', CGR='#16a34a', CB='#2563eb', CV='#7c3aed';
+
+var EXP_PARAMS=176.160768e6, ATT_PARAMS=41.943e6, EMB=524.3e6, LAYERS=32;
+
+/* ---------- 1. Зачем MoE ---------- */
+mk('c_why', {type:'bar', data:{
+  labels:['Плотная 7B','Плотная 13B','MoE 47B/13B','Плотная 28B'],
+  datasets:[
+    {label:'Общих параметров, млрд', data:[7.50,13.14,46.96,28.0], backgroundColor:C3, yAxisID:'y'},
+    {label:'ФЛОП на токен, гига', data:[15.0,26.3,26.3,56.0], type:'line',
+     borderColor:CR, borderWidth:3.5, pointRadius:7, yAxisID:'y1'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, title:{display:true,text:'параметров, млрд'}},
+            y1:{position:'right', ...NOG, min:0, max:65, title:{display:true,text:'ГФЛОП/токен'}},
+            x:NOG},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var d=['PPL 6.85 при 1.40T токенов',
+             'PPL 6.71 при 0.75T токенов',
+             'PPL 6.31 при 0.75T токенов · тот же ФЛОП, что у 13B',
+             'Эквивалент качества MoE, вдвое дороже по вычислениям'][i];
+      return ['', d];}}}}}});
+
+/* ---------- 2. Маршрутизация ---------- */
+mk('c_route', {type:'bar', data:{
+  labels:['E1','E2','E3','E4','E5','E6','E7','E8'],
+  datasets:[
+    {label:'Вероятность маршрутизатора', data:[0.123644,0.022588,0.501404,0.006803,0.050271,0.275176,0.016733,0.003378],
+     backgroundColor:[C3,C3,C1,C3,C3,C1,C3,C3]},
+    {label:'Вес после перенормировки top-2', data:[0,0,0.645659,0,0,0.354341,0,0],
+     backgroundColor:CGR}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:0, max:0.72, title:{display:true,text:'вес'}}, x:NOG},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var lg=[2.1,0.4,3.5,-0.8,1.2,2.9,0.1,-1.5][i];
+      if(i===2||i===5) return ['','Логит '+lg+' · выбран в top-2',
+        'Перенормировка: делим на 0.776580'];
+      return ['','Логит '+lg+' · не выбран, эксперт не вычисляется'];}}}}}});
+
+/* ---------- 3. Отдача от экспертов ---------- */
+mk('c_params', {type:'line', data:{
+  labels:['1','2','4','8','16','32','64'],
+  datasets:[
+    {label:'Перплексия', data:[6.71,6.52,6.41,6.31,6.24,6.19,6.17],
+     borderColor:C1, borderWidth:3.5, pointRadius:7, tension:0.25, yAxisID:'y'},
+    {label:'Общих параметров, млрд', data:[13.1,19.8,24.4,47.0,92.0,182,362],
+     borderColor:CR, borderWidth:3, borderDash:[6,4], pointRadius:6, tension:0.25, yAxisID:'y1'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:6.1, max:6.8, title:{display:true,text:'перплексия'}},
+            y1:{position:'right', ...NOG, type:'logarithmic', title:{display:true,text:'параметров, млрд (лог.)'}},
+            x:{...NOG, title:{display:true,text:'число экспертов E, top-2'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var g=['—','−0.19','−0.11','−0.10','−0.07','−0.05','−0.02'][i];
+      return ['','Прирост к предыдущему: '+g,'ФЛОП на токен неизменен: 26.3 ГФЛОП'];}}}}}});
+
+/* ---------- 4. Балансировка ---------- */
+mk('c_balance', {type:'bar', data:{
+  labels:['E1','E2','E3','E4','E5','E6','E7','E8'],
+  datasets:[
+    {label:'Без вспомогательного лосса', data:[3120,2410,1580,620,290,110,45,17], backgroundColor:CR+'cc'},
+    {label:'С вспомогательным лоссом', data:[1140,1085,1050,1030,1010,980,955,942], backgroundColor:CGR},
+    {label:'Идеальный баланс (1024)', data:[1024,1024,1024,1024,1024,1024,1024,1024], type:'line',
+     borderColor:CB, borderWidth:2.5, borderDash:[6,4], pointRadius:0},
+    {label:'Вместимость при CF=1.25 (1280)', data:[1280,1280,1280,1280,1280,1280,1280,1280], type:'line',
+     borderColor:CA, borderWidth:2.5, pointRadius:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, title:{display:true,text:'назначений из 8 192'}}, x:NOG},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var a=[3120,2410,1580,620,290,110,45,17][i];
+      var drop=Math.max(0, a-1280);
+      return ['','CV без лосса: 1.0991 · с лоссом: 0.0613',
+        drop>0 ? 'Отброшено без лосса: '+drop+' токенов' : ''];}}}}}});
+
+/* ---------- 5. Развитие схлопывания ---------- */
+mk('c_collapse', {type:'line', data:{
+  labels:['100','500','1 000','5 000','20 000','50 000'],
+  datasets:[
+    {label:'CV без вспом. лосса', data:[0.14,0.41,0.68,1.10,1.62,1.94],
+     borderColor:CR, borderWidth:3.5, pointRadius:7, tension:0.25, yAxisID:'y'},
+    {label:'CV с вспом. лоссом', data:[0.11,0.09,0.08,0.06,0.06,0.05],
+     borderColor:CGR, borderWidth:3.5, pointRadius:7, tension:0.25, yAxisID:'y'},
+    {label:'Отброшено без лосса, %', data:[0,2.1,14.3,39.9,54.7,61.2],
+     borderColor:CA, borderWidth:3, borderDash:[6,4], pointRadius:6, tension:0.25, yAxisID:'y1'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:0, max:2.1, title:{display:true,text:'коэффициент вариации'}},
+            y1:{position:'right', ...NOG, min:0, max:70, title:{display:true,text:'отброшено, %'}},
+            x:{...NOG, title:{display:true,text:'шаг обучения'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(){
+      return ['','На первых сотнях шагов разницы нет —','маршрутизатор ещё случаен'];}}}}}});
+
+/* ---------- 6. Вспомогательный лосс ---------- */
+mk('c_aux', {type:'bar', data:{
+  labels:['Равномерно','Слабый перекос','Средний перекос','Схлопывание'],
+  datasets:[
+    {label:'L_aux / α = E · Σ f²', data:[1.000,1.180,1.610,2.208],
+     backgroundColor:[CGR, C3, CA, CR]}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:0.8, max:2.4, title:{display:true,text:'значение лосса / α'}}, x:NOG},
+    plugins:{legend:{display:false}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var d=['Σf² = 0.125 · минимум по построению',
+             'CV ≈ 0.4',
+             'CV ≈ 0.75',
+             'Σf² = 0.275995 · CV = 1.099'][i];
+      return ['', d];}}}}}});
+
+/* ---------- 7. Capacity factor ---------- */
+mk('c_capacity', {type:'line', data:{
+  labels:['1.00','1.10','1.25','1.50','2.00'],
+  datasets:[
+    {label:'Отброшено при CV = 0.06, %', data:[2.55,0.17,0.00,0.00,0.00],
+     borderColor:CGR, borderWidth:3.5, pointRadius:7, tension:0.25},
+    {label:'Отброшено при CV = 1.10, %', data:[49.3,44.9,39.9,30.5,17.5],
+     borderColor:CR, borderWidth:3.5, pointRadius:7, tension:0.25},
+    {label:'Порог приемлемости 1%', data:[1,1,1,1,1], borderColor:CA, borderWidth:2, borderDash:[5,4], pointRadius:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:0, max:55, title:{display:true,text:'отброшено токенов, %'}},
+            x:{...NOG, title:{display:true,text:'capacity factor'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var cap=[1024,1126,1280,1536,2048][i];
+      return ['','Вместимость: '+cap+' токенов','Буфер памяти: ×'+[1.00,1.10,1.25,1.50,2.00][i].toFixed(2)];}}}}}});
+
+/* ---------- 8. Коммуникация ---------- */
+mk('c_comm', {type:'bar', data:{
+  labels:['NVLink 900','PCIe 5.0 128','InfiniBand 50','Ethernet 12.5'],
+  datasets:[
+    {label:'Время all-to-all, мс', data:[5.97,41.9,107.4,429.5], backgroundColor:[CGR, CA, CR, CR], yAxisID:'y'},
+    {label:'Вычисления, мс', data:[14.59,14.59,14.59,14.59], type:'line',
+     borderColor:CB, borderWidth:3, borderDash:[6,4], pointRadius:0, yAxisID:'y'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, type:'logarithmic', title:{display:true,text:'мс (лог. шкала)'}},
+            x:{...NOG, title:{display:true,text:'соединение, ГБ/с'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      var r=[40.9,287,736,2944][i];
+      return ['','Доля от вычислений: '+r+'%','Объём: 5.369 ГБ на прямой проход',
+        r>100 ? 'Непригодно для экспертного параллелизма' : 'Пригодно'];}}}}}});
+
+/* ---------- 9. Гранулярность ---------- */
+mk('c_gran', {type:'bar', data:{
+  labels:['E=8, top-2','E=16, top-4','E=32, top-8','E=64, top-16'],
+  datasets:[
+    {label:'Число комбинаций', data:[28,1820,10518300,4.9e14], backgroundColor:C1, yAxisID:'y'},
+    {label:'Перплексия', data:[6.31,6.25,6.19,6.17], type:'line',
+     borderColor:CGR, borderWidth:3.5, pointRadius:7, yAxisID:'y1'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, type:'logarithmic', title:{display:true,text:'комбинаций (лог. шкала)'}},
+            y1:{position:'right', ...NOG, min:6.1, max:6.4, title:{display:true,text:'перплексия'}},
+            x:NOG},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(){
+      return ['','Общих параметров: 1 409.29M во всех случаях',
+              'Активных: 352.32M во всех случаях'];}}}}}});
+
+/* ---------- 10. Специализация по слоям ---------- */
+mk('c_special', {type:'line', data:{
+  labels:['0','4','12','20','28','31'],
+  datasets:[
+    {label:'Энтропия распределения, бит', data:[2.94,2.31,1.62,1.78,2.34,2.78],
+     borderColor:C1, borderWidth:3.5, pointRadius:7, tension:0.3, backgroundColor:C1+'22', fill:true},
+    {label:'Максимум log₂8 = 3.00', data:[3,3,3,3,3,3], borderColor:CR, borderWidth:2, borderDash:[5,4], pointRadius:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:1.4, max:3.1, title:{display:true,text:'энтропия, бит'}},
+            x:{...NOG, title:{display:true,text:'номер слоя'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var i=it[0].dataIndex;
+      if(i===0||i===5) return ['','Маршрутизация почти равномерна','MoE здесь малополезен'];
+      if(i===2) return ['','Максимальная специализация'];
+      return [];}}}}}});
+
+/* ---------- 11. z-loss ---------- */
+(function(){
+  var deltas=[0,1,2,3,4,6,8,10,12,16];
+  var grad=deltas.map(function(d){ var p=1/(1+Math.exp(-d)); return p*(1-p); });
+  mk('c_zloss', {type:'line', data:{labels:deltas, datasets:[
+    {label:'Градиент softmax p(1−p)', data:grad, borderColor:C1, borderWidth:3.5, pointRadius:6, tension:0.25},
+    {label:'Δ = 2 (норма)', data:[{x:'2',y:0.104994}], type:'scatter', borderColor:CGR, backgroundColor:CGR, pointRadius:9, showLine:false},
+    {label:'Δ = 10 (насыщение)', data:[{x:'10',y:0.0000454}], type:'scatter', borderColor:CR, backgroundColor:CR, pointRadius:9, showLine:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, type:'logarithmic', title:{display:true,text:'градиент (лог. шкала)'}},
+            x:{...NOG, title:{display:true,text:'разрыв логитов Δ'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var d=deltas[it[0].dataIndex]; if(d===undefined) return [];
+      var p=1/(1+Math.exp(-d));
+      return ['','p = '+p.toFixed(7),'Падение против Δ=2: ×'+(0.104994/(p*(1-p))).toFixed(1)];}}}}}});
+})();
+
+/* ---------- 12. Инференс ---------- */
+(function(){
+  var bs=[1,2,3,4,8,16,32];
+  var moe=bs.map(function(b){
+    var touched=8*(1-Math.pow(0.75,b));
+    return touched/8*90.18 + 3.73;
+  });
+  mk('c_infer', {type:'line', data:{labels:bs, datasets:[
+    {label:'MoE 47B/13B', data:moe, borderColor:C1, borderWidth:3.5, pointRadius:7, tension:0.25},
+    {label:'Плотная 28B (равного качества)', data:bs.map(function(){return 56.0;}), borderColor:CGR, borderWidth:3, borderDash:[6,4], pointRadius:0},
+    {label:'Плотная 13B', data:bs.map(function(){return 26.3;}), borderColor:CB, borderWidth:2.5, borderDash:[3,3], pointRadius:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{...GRID, min:0, max:100, title:{display:true,text:'ГБ на шаг декодирования'}},
+            x:{...NOG, title:{display:true,text:'размер батча'}}},
+    plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{afterBody:function(it){
+      var b=bs[it[0].dataIndex]; if(!b) return [];
+      var touched=8*(1-Math.pow(0.75,b));
+      var m=touched/8*90.18+3.73;
+      return ['','Задето экспертов: '+touched.toFixed(2)+' из 8',
+        m<56 ? 'MoE лучше в '+(56/m).toFixed(2)+' раза' : 'MoE хуже в '+(m/56).toFixed(2)+' раза'];}}}}}});
+})();
+
+/* ---------- Интерактив ---------- */
+function updMoe(){
+  var E=+document.getElementById('sl_e').value;
+  var k=Math.min(+document.getElementById('sl_k').value, E);
+  var cf=+document.getElementById('sl_cf').value/100;
+  var cvi=+document.getElementById('sl_imb').value/100;
+  document.getElementById('out_e').textContent=E;
+  document.getElementById('out_k').textContent=k;
+  document.getElementById('out_cf').textContent=cf.toFixed(2);
+  document.getElementById('out_imb').textContent=cvi.toFixed(2);
+
+  var perLayerTotal = E*EXP_PARAMS + ATT_PARAMS + E*4096;
+  var perLayerActive = k*EXP_PARAMS + ATT_PARAMS + E*4096;
+  var total = perLayerTotal*LAYERS + EMB;
+  var active = perLayerActive*LAYERS + EMB;
+  var flops = 2*active/1e9;
+
+  /* распределение нагрузки: логнормальная аппроксимация по CV */
+  var T=4096, assign=T*k, base=assign/E, cap=cf*base;
+  var loads=[], sum=0;
+  var sigma=Math.sqrt(Math.log(1+cvi*cvi));
+  for(var i=0;i<E;i++){
+    var z=(i-(E-1)/2)/Math.max(1,(E-1)/2)*1.7;
+    var v=Math.exp(sigma*z - sigma*sigma/2);
+    loads.push(v); sum+=v;
+  }
+  var dropped=0;
+  for(var i=0;i<E;i++){
+    loads[i]=loads[i]/sum*assign;
+    if(loads[i]>cap) dropped += loads[i]-cap;
+  }
+  var dropPct=100*dropped/assign;
+
+  var verdict, color;
+  if (dropPct < 1){ verdict='Отброс в норме — конфигурация рабочая.'; color='#15803d'; }
+  else if (dropPct < 5){ verdict='Отброс заметен: перплексия вырастет примерно на 3%.'; color='#92400e'; }
+  else { verdict='Отброс велик: нужен больший CF или лучшая балансировка.'; color='#7f1d1d'; }
+
+  document.getElementById('out_moe').innerHTML =
+    'Общих параметров: <b>'+(total/1e9).toFixed(2)+' млрд</b> &nbsp;·&nbsp; '+
+    'активных: <b>'+(active/1e9).toFixed(2)+' млрд</b> &nbsp;·&nbsp; '+
+    'отношение <b>'+(total/active).toFixed(2)+'</b><br>'+
+    'ФЛОП на токен: <b>'+flops.toFixed(1)+' гига</b> &nbsp;·&nbsp; '+
+    'память в fp16: <b>'+(total*2/1e9).toFixed(1)+' ГБ</b><br><br>'+
+    'Базовая нагрузка: '+base.toFixed(0)+' &nbsp;·&nbsp; вместимость: <b>'+cap.toFixed(0)+'</b><br>'+
+    'Максимальная нагрузка при CV='+cvi.toFixed(2)+': '+Math.max.apply(null,loads).toFixed(0)+'<br>'+
+    'Отброшено: <b>'+dropPct.toFixed(2)+'%</b> токенов<br><br>'+
+    'Комбинаций маршрутизации: <b>'+(function(){
+      var c=1; for(var i=0;i<k;i++) c=c*(E-i)/(i+1);
+      return c>1e9 ? c.toExponential(2) : Math.round(c).toLocaleString('ru-RU');
+    })()+'</b><br><br>'+
+    '<b style="color:'+color+';">'+verdict+'</b>';
+}
+updMoe();
+
+/* ---------- Навигация ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

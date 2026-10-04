@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.2 · CUPED и снижение дисперсии</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#831843; --ac-d:#500724; --ac-l:#fdf2f8; --ac-b:#f9a8d4; --ac-m:#be185d;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#500724,#831843 50%,#f9a8d4);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.95;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.88;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#92400e}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#f9a8d4;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#fdf2f8,#fce7f3);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:16px 20px;margin:0 0 20px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:9px;font-weight:650}
+.fbox .fm{font-family:'SF Mono',Menlo,monospace;font-size:17px;color:var(--ac-d);font-weight:700}
+.fnote{font-size:13.5px;color:var(--tx3);margin-top:9px}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 4 · тема 2 · базовый уровень</div>
+    <h1>CUPED и снижение дисперсии</h1>
+    <p>Единственный приём в A/B-тестировании, который повышает чувствительность <b>ничем не платя</b>: оценка остаётся несмещённой, метрика продолжает измерять то же самое. Вся его сила выражается одним числом — квадратом корреляции с предэкспериментальной ковариатой. Разбираем, откуда берётся эта формула, почему длинный предпериод бывает хуже короткого и почему для бинарной конверсии приём почти бесполезен.</p>
+    <div class="meta">
+      <span>15 секций</span><span>13 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Идея</a>
+    <a href="#s3">3 · Вывод θ*</a>
+    <a href="#s4">4 · Снижение = ρ²</a>
+    <a href="#s5">5 · Несмещённость</a>
+    <a href="#s6">6 · Выбор ковариаты</a>
+    <a href="#s7">7 · Длина предпериода</a>
+    <a href="#s8">8 · Новые пользователи</a>
+    <a href="#s9">9 · Стратификация</a>
+    <a href="#s10">10 · Несколько ковариат</a>
+    <a href="#s11">11 · Ratio-метрики</a>
+    <a href="#s12">12 · Проверка</a>
+    <a href="#s13">13 · Практика и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: дисперсия — единственный доступный рычаг</h2></div>
+  <p class="slead">В формуле чувствительности три входа. Размер эффекта задан продуктом, размер выборки — трафиком и терпением. Остаётся дисперсия, и она единственная поддаётся инженерии.</p>
+
+  <p>Из <a href="block4_01_ab_testing.html">4.1</a>: MDE = (z<sub>1−α/2</sub> + z<sub>1−β</sub>) · σ · √(2/n). Влиять на каждый множитель можно по-разному:</p>
+
+  <table class="ct">
+    <thead><tr><th>Множитель</th><th>Как уменьшить</th><th>Цена</th></tr></thead>
+    <tbody>
+      <tr><td>Квантили α и β</td><td class="note">ослабить требования к ошибкам</td><td class="r">больше ложных выводов; выигрыш мал — переход с 80% на 70% мощности даёт 8%</td></tr>
+      <tr><td>√(2/n)</td><td class="note">ждать дольше или брать больше трафика</td><td class="a">квадратичная отдача: −50% MDE стоит ×4 времени</td></tr>
+      <tr class="best"><td>σ</td><td class="g">CUPED, стратификация, винзоризация</td><td class="g">у CUPED — ничего</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Третья строка — единственная, где отдача линейна: снижение σ вдвое уменьшает MDE вдвое. И только у CUPED в столбце цены стоит прочерк.</p>
+
+  <div class="def">
+    <div class="def-t">В чём отличие CUPED от других приёмов</div>
+    <p><b>Винзоризация</b> снижает дисперсию, изменяя саму метрику: обрезанная выручка — это уже не выручка, и часть эффекта она не видит по построению (расчёт в <a href="block4_01_ab_testing.html">4.1</a>: обрезка выбросила 41.9% выручки из измерения).</p>
+    <p><b>Триггерный анализ</b> снижает дисперсию, изменяя популяцию: вы измеряете эффект на затронутых, а не на всех, и это другая величина.</p>
+    <p><b>CUPED</b> не меняет ни метрику, ни популяцию. Он вычитает из наблюдения ту его часть, которая предсказуема заранее и потому не несёт информации об эффекте. Математическое ожидание оценки не сдвигается ни на йоту — это доказывается в секции 5.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Сколько дней эксперимента экономит CUPED</div>
+    <div class="chsub">Базовая длительность 14 дней. Экономия равна ρ² от исходного срока: при типичной для денежных метрик корреляции 0.68 остаётся 7.5 дня вместо 14</div>
+    <canvas id="c_days"></canvas>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Идея: вычесть предсказуемую часть</h2></div>
+  <p class="slead">Пользователь, тративший 8 000 ₽ в месяц до эксперимента, потратит около того же и во время него. Эта часть его поведения ничего не говорит о вашем изменении — но целиком попадает в дисперсию.</p>
+
+  <div class="def">
+    <div class="def-t">CUPED</div>
+    <p><b>Controlled-experiment Using Pre-Experiment Data.</b> Вместо метрики Y анализируется скорректированная величина:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:16px;text-align:center;color:var(--ac-d)">Y<sub>cuped</sub> = Y − θ · (X − X̄)</p>
+    <p>где <b>X</b> — метрика того же пользователя <i>до</i> начала эксперимента, <b>X̄</b> — её среднее по всем пользователям обеих групп, <b>θ</b> — коэффициент, который мы подберём так, чтобы дисперсия была минимальной.</p>
+    <p><b>Читается так:</b> «сколько пользователь потратил сверх того, что от него ожидалось по его прошлому». Пользователь с прошлым 8 000 и текущим 8 200 вносит в анализ не 8 200, а примерно 200 сверх ожидания. Пользователь с прошлым 300 и текущим 500 вносит примерно столько же — хотя абсолютные величины различаются в шестнадцать раз.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · что происходит с четырьмя пользователями</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Исходные данные. Среднее по предпериоду X̄ = 4 000 ₽, θ = 0.75 (откуда — в секции 3).
+      <div class="calc"><span class="lbl">польз.   X (до)    Y (во время)</span>
+   A      8 000       8 200
+   B        300         500
+   C      4 000       4 100
+   D     11 500       9 800
+
+<span class="lbl">среднее Y:</span> (8 200 + 500 + 4 100 + 9 800)/4 = <span class="hl">5 650</span>
+<span class="lbl">разброс Y:</span> от 500 до 9 800 — <span class="bad">размах 9 300</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Вычитаем предсказуемую часть.
+      <div class="calc"><span class="lbl">Y_cuped = Y − 0.75 × (X − 4 000)</span>
+
+A: 8 200 − 0.75 × (8 000 − 4 000)
+   = 8 200 − 0.75 × 4 000 = 8 200 − 3 000 = <span class="hl">5 200</span>
+B:   500 − 0.75 × (300 − 4 000)
+   = 500 − 0.75 × (−3 700) = 500 + 2 775 = <span class="hl">3 275</span>
+C: 4 100 − 0.75 × (4 000 − 4 000)
+   = 4 100 − 0 = <span class="hl">4 100</span>
+D: 9 800 − 0.75 × (11 500 − 4 000)
+   = 9 800 − 0.75 × 7 500 = 9 800 − 5 625 = <span class="hl">4 175</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сравниваем.
+      <div class="calc"><span class="lbl">среднее Y_cuped:</span>
+  (5 200 + 3 275 + 4 100 + 4 175)/4 = 16 750/4 = <span class="res">4 187.5</span>
+
+<span class="dim">Оно НЕ равно среднему Y — потому что в этом
+крошечном примере X̄ считается по тем же четырём
+наблюдениям и среднее X отличается от 4 000.
+На реальных объёмах X̄ — это фактическое среднее,
+и тогда средние совпадают в точности (секция 5).</span>
+
+<span class="lbl">размах:</span>
+  было:  9 800 − 500   = <span class="bad">9 300</span>
+  стало: 5 200 − 3 275 = <span class="res">1 925</span>
+  <span class="res">сжатие в 4.8 раза</span>
+
+<span class="dim">Пользователь D, потративший 9 800, оказался
+ниже среднего: от него ожидали 11 500,
+он дал меньше. Именно это и есть информация,
+которую несёт эксперимент.</span></div>
+    </div>
+  </div>
+
+  <div class="intuition">
+    <b>Ключевая мысль в одну фразу.</b> Дисперсия метрики складывается из различий <i>между пользователями</i> и из того, что произошло <i>во время эксперимента</i>. Первое к воздействию отношения не имеет и только мешает. CUPED вычитает из наблюдения его предсказуемый уровень, оставляя отклонение от этого уровня — и весь эффект воздействия сидит именно в отклонении.
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Вывод оптимального θ</h2></div>
+  <p class="slead">Коэффициент не подбирается и не настраивается. Он вычисляется точно — из условия минимума дисперсии, которое решается в две строки.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · нахождение θ*</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Записываем дисперсию скорректированной величины.
+      <div class="calc"><span class="lbl">Var(Y − θ(X − X̄))  = Var(Y − θX)</span>
+<span class="dim">вычитание константы X̄ дисперсию не меняет</span>
+
+  = Var(Y) − 2θ·Cov(Y,X) + θ²·Var(X)
+
+<span class="dim">Это квадратичная функция от θ с положительным
+коэффициентом при θ², то есть парабола ветвями
+вверх. У неё ровно один минимум.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Берём производную и приравниваем нулю.
+      <div class="calc">d/dθ [ Var(Y) − 2θ·Cov + θ²·Var(X) ]
+  = −2·Cov(Y,X) + 2θ·Var(X) = 0
+
+  <span class="res">θ* = Cov(Y,X) / Var(X)</span>
+
+<span class="dim">Это в точности коэффициент наклона в регрессии
+Y на X. То есть θ* — это ответ на вопрос
+«на сколько в среднем растёт Y при росте X на единицу».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Подставляем обратно и получаем минимальную дисперсию.
+      <div class="calc">Var_min = Var(Y) − 2·(Cov/Var(X))·Cov
+              + (Cov/Var(X))²·Var(X)
+
+        = Var(Y) − 2·Cov²/Var(X) + Cov²/Var(X)
+
+        <span class="res">= Var(Y) − Cov²/Var(X)</span>
+
+<span class="lbl">выносим Var(Y):</span>
+        = Var(Y) · [ 1 − Cov² / (Var(X)·Var(Y)) ]
+        <span class="res">= Var(Y) · (1 − ρ²)</span>
+
+<span class="dim">где ρ — обычная корреляция Пирсона между
+метрикой во время эксперимента и до него.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Считаем на реальных числах.
+      <div class="calc"><span class="lbl">выручка на пользователя, 200 000 наблюдений:</span>
+  Var(Y)    = 4 210 000
+  Var(X)    = 3 480 000
+  Cov(Y,X)  = 2 610 000
+
+<span class="lbl">θ* = 2 610 000 / 3 480 000 = </span><span class="res">0.750000</span>
+
+<span class="lbl">ρ² = Cov² / (Var(X)·Var(Y))</span>
+   = 2 610 000² / (3 480 000 × 4 210 000)
+   = 6.812100×10¹² / 1.465080×10¹³
+   = <span class="res">0.464964</span>
+  ρ = √0.464964 = <span class="hl">0.681882</span>
+
+<span class="lbl">Var_cuped = 4 210 000 × (1 − 0.464964)</span>
+          = 4 210 000 × 0.535036 = <span class="res">2 252 502</span>
+
+<span class="lbl">проверка вторым способом:</span>
+  Var(Y) − Cov²/Var(X)
+  = 4 210 000 − 6.812100×10¹² / 3 480 000
+  = 4 210 000 − 1 957 500 = <span class="res">2 252 500</span> ✓
+<span class="dim">расхождение 2 — округление ρ²</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Дисперсия как функция θ</div>
+    <div class="chsub">Парабола с минимумом ровно в θ* = 0.75. Обратите внимание: ошибка в θ на ±0.2 стоит менее 4% дисперсии — приём устойчив к неточной оценке коэффициента</div>
+    <canvas id="c_theta"></canvas>
+  </div>
+
+  <p>Устойчивость к ошибке в θ — практически важное свойство. Оно означает, что θ можно оценить на исторических данных, на прошлом эксперименте или на первых днях текущего, и результат почти не пострадает. При θ = 0.55 вместо 0.75 дисперсия составит 2 292 500 вместо 2 252 500 — на 1.8% хуже вместо теоретического оптимума.</p>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Снижение дисперсии равно ρ² — и что это значит на практике</h2></div>
+  <p class="slead">Вся польза приёма сжата в одно число. Это удобно: чтобы понять, стоит ли внедрять CUPED, достаточно посчитать корреляцию — на исторических данных, за пять минут, до всякого эксперимента.</p>
+
+  <div class="def">
+    <div class="def-t">Три величины, которые легко перепутать</div>
+    <p><b>Снижение дисперсии = ρ²</b>. При ρ = 0.68 дисперсия падает на 46.5%.</p>
+    <p><b>Снижение MDE = 1 − √(1 − ρ²)</b>. При том же ρ — всего на 26.8%, потому что MDE зависит от σ, а не от σ².</p>
+    <p><b>Экономия времени = ρ²</b>. Опять 46.5%: срок пропорционален n, а n пропорционален σ².</p>
+    <p>Путаница между первым и вторым — источник завышенных ожиданий. «CUPED снижает дисперсию вдвое» звучит как «вдвое чувствительнее», а на деле означает улучшение MDE на 29%.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Что даёт корреляция с ковариатой</div>
+    <div class="chsub">Обе кривые от ρ. Ниже ρ = 0.4 приём почти ничего не даёт: снижение MDE менее 9%. Осмысленным он становится примерно с ρ = 0.5</div>
+    <canvas id="c_rho"></canvas>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · CUPED на разных типах метрик</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Корреляция «до и во время» для разных метрик на одних и тех же пользователях.
+      <div class="calc"><span class="lbl">метрика                    ρ       ρ²      снижение MDE</span>
+конверсия (бинарная)      <span class="bad">0.31</span>   0.0961      <span class="bad">4.9%</span>
+число сессий              0.62   0.3844     21.5%
+время на сайте            0.66   0.4356     24.9%
+выручка на пользователя   <span class="res">0.68</span>   0.4624     <span class="res">26.7%</span>
+
+<span class="dim">проверка для конверсии:
+1 − √(1 − 0.0961) = 1 − √0.9039
+= 1 − 0.950737 = 0.049263 → 4.93%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Почему бинарная конверсия — худший случай.
+      <div class="calc"><span class="lbl">факт покупки в предпериоде — это 0 или 1.
+Он делит пользователей всего на две группы,
+и внутри каждой остаётся почти вся дисперсия.</span>
+
+<span class="lbl">конверсия среди тех, кто покупал до:</span>  11.4%
+<span class="lbl">конверсия среди тех, кто не покупал:</span>   2.8%
+
+  доля покупавших до: 18%
+  общая конверсия: 0.18×0.114 + 0.82×0.028
+                 = 0.02052 + 0.02296 = <span class="hl">4.35%</span>
+
+<span class="lbl">межгрупповая дисперсия:</span>
+  0.18×(0.114−0.0435)² + 0.82×(0.028−0.0435)²
+  = 0.18×0.004970 + 0.82×0.000240
+  = 0.000895 + 0.000197 = <span class="hl">0.001092</span>
+<span class="lbl">общая дисперсия:</span> 0.0435×0.9565 = <span class="hl">0.041608</span>
+
+  ρ² = 0.001092 / 0.041608 = <span class="bad">0.02625</span>
+
+<span class="dim">Двоичный предиктор физически не может объяснить
+больше нескольких процентов дисперсии двоичного
+исхода. Это не недостаток CUPED, а свойство данных.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что делать с бинарной метрикой.
+      <div class="calc"><span class="res">Использовать непрерывную ковариату вместо бинарной:</span>
+  вместо «покупал ли до» → «сколько потратил до»
+
+<span class="lbl">ρ² конверсии с непрерывной ковариатой:</span> <span class="hl">0.0961</span>
+<span class="lbl">против бинарной:</span> <span class="bad">0.0263</span>
+<span class="res">втрое лучше, хотя всё равно немного</span>
+
+<span class="res">Либо сменить метрику там, где это допустимо:</span>
+  конверсия → выручка на пользователя
+  <span class="dim">одно решение, но обе метрики измеряют
+  связанные вещи, а вторая вчетверо
+  чувствительнее к CUPED</span>
+
+<span class="bad">Чего делать не стоит:</span> внедрять CUPED ради
+бинарной конверсии и ожидать заметного эффекта.
+4.9% снижения MDE — это меньше, чем разброс
+между двумя оценками одной и той же величины.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Эффективность CUPED по типам метрик</div>
+    <div class="chsub">Столбцы — снижение MDE. Приём почти бесполезен для бинарной конверсии и заметно полезен для непрерывных метрик с длинной памятью</div>
+    <canvas id="c_metric"></canvas>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Несмещённость и почему ковариата обязана быть до эксперимента</h2></div>
+  <p class="slead">Это условие выглядит формальностью и нарушается чаще всего. Нарушив его, вы получаете не «чуть менее точную» оценку, а систематически заниженную — причём тем сильнее, чем лучше работает изменение.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · доказательство несмещённости и второй бонус приёма</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Оценка эффекта в CUPED-варианте.
+      <div class="calc">Δ_cuped = [Ȳ_t − θ(X̄_t − X̄)] − [Ȳ_c − θ(X̄_c − X̄)]
+
+<span class="dim">общее X̄ сокращается</span>
+
+        <span class="res">= (Ȳ_t − Ȳ_c) − θ·(X̄_t − X̄_c)</span>
+
+<span class="lbl">берём математическое ожидание:</span>
+  E[Δ_cuped] = E[Ȳ_t − Ȳ_c] − θ·E[X̄_t − X̄_c]
+
+<span class="lbl">X измерен ДО рандомизации, значит группы
+по нему различаются только случайно:</span>
+  E[X̄_t − X̄_c] = 0
+
+  <span class="res">E[Δ_cuped] = E[Ȳ_t − Ȳ_c]</span>
+<span class="dim">оценка эффекта не сдвинулась ни на йоту</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Второй бонус, о котором обычно не говорят: коррекция случайного дисбаланса.
+      <div class="calc"><span class="lbl">в конкретном эксперименте:</span>
+  Ȳ_t = 5 240   Ȳ_c = 5 128
+  наивная разность: <span class="hl">+112 ₽</span>  (+2.18%)
+
+<span class="lbl">но группы случайно вышли неравными
+и по предпериоду:</span>
+  X̄_t = 4 038   X̄_c = 3 986
+  разница: <span class="bad">+52 ₽</span>
+  <span class="dim">тестовой группе достались чуть более
+  «богатые» пользователи — чистая случайность,
+  рандомизация не гарантирует точного равенства</span>
+
+<span class="lbl">CUPED-оценка:</span>
+  112 − 0.75 × 52 = 112 − 39 = <span class="res">+73 ₽</span>  (+1.42%)
+
+<span class="res">Из наблюдаемых 112 рублей 39 объясняются тем,
+что группам достались разные пользователи.
+CUPED вычитает эту часть автоматически.</span>
+
+<span class="dim">Заметьте: это не «исправление ошибки» —
+наивная оценка тоже несмещена. Но в конкретном
+эксперименте она содержит случайный сдвиг,
+который CUPED убирает. Отсюда и снижение
+дисперсии: убран источник разброса.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Теперь то, что ломается при ковариате из периода эксперимента.
+      <div class="calc"><span class="lbl">аналитик решает: «возьму как ковариату метрику
+за первый день эксперимента — она свежее
+и коррелирует сильнее»</span>
+
+<span class="lbl">беда в том, что она УЖЕ затронута воздействием:</span>
+  истинный эффект на Y:              <span class="hl">+2.00%</span>
+  эффект на X (первый день):         <span class="hl">+1.40%</span>
+  θ = 0.75
+
+  Δ_cuped = 2.00 − 0.75 × 1.40
+          = 2.00 − 1.05 = <span class="bad">+0.95%</span>
+
+<span class="bad">Занижение на 52.5%. Половина эффекта
+вычтена как «предсказуемая часть» —
+хотя она и была эффектом.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Для сравнения — корректная ковариата.
+      <div class="calc"><span class="lbl">эффект на предпериодную метрику:</span> <span class="res">+0.02%</span>
+<span class="dim">это чистый шум: воздействие не могло повлиять
+на то, что произошло до его начала</span>
+
+  смещение = 0.75 × 0.02% = <span class="res">0.015 п.п.</span>
+  <span class="res">при измеряемом эффекте 2% — пренебрежимо</span>
+
+<span class="lbl">Проверка, которую стоит делать всегда:</span>
+<span class="res">прогнать сам предпериод как метрику
+эксперимента. Эффект должен быть неотличим
+от нуля. Если он значим — либо ковариата
+не полностью предэкспериментальная, либо
+у вас проблема с рандомизацией (SRM, см. 4.6).</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Смещение оценки при ковариате из периода эксперимента</div>
+    <div class="chsub">По горизонтали — насколько сильно воздействие затронуло саму ковариату. Даже слабое влияние на неё срезает заметную долю измеряемого эффекта</div>
+    <canvas id="c_bias"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Ковариата</th><th>Корректна?</th><th>Почему</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>Метрика за 4 недели до старта</td><td class="g">да</td><td class="note">воздействия ещё не было</td></tr>
+      <tr class="best"><td>Возраст аккаунта на момент старта</td><td class="g">да</td><td class="note">зафиксирован до рандомизации</td></tr>
+      <tr class="best"><td>Страна, платформа, тариф на момент старта</td><td class="g">да</td><td class="note">то же</td></tr>
+      <tr class="worst"><td>Метрика за первый день эксперимента</td><td class="r">нет</td><td class="note">уже затронута воздействием</td></tr>
+      <tr class="worst"><td>Число показов нового элемента</td><td class="r">нет</td><td class="note">существует только в тестовой группе</td></tr>
+      <tr><td>Тариф на момент анализа</td><td class="r">нет</td><td class="note">мог измениться под влиянием эксперимента</td></tr>
+      <tr><td>Метрика за период до старта, но у пользователей, пришедших после</td><td class="a">частично</td><td class="note">корректна, но существует не у всех — секция 8</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Простое правило: ковариата должна быть вычислима на момент рандомизации. Если для её расчёта нужны данные, появившиеся позже, она не годится — независимо от того, насколько хорошо она коррелирует.</p>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Выбор ковариаты</h2></div>
+  <p class="slead">Лучшая ковариата — та же самая метрика за предыдущий период. Это не эвристика: ничто не предсказывает поведение пользователя лучше, чем его собственное недавнее поведение.</p>
+
+  <table class="ct">
+    <thead><tr><th>Кандидат</th><th>ρ</th><th>ρ²</th><th>Снижение MDE</th></tr></thead>
+    <tbody>
+      <tr><td>Та же метрика, 1 неделя до</td><td class="k">0.54</td><td class="k">0.292</td><td class="k">15.8%</td></tr>
+      <tr><td>Та же метрика, 2 недели до</td><td class="k">0.61</td><td class="k">0.372</td><td class="k">20.3%</td></tr>
+      <tr class="best"><td>Та же метрика, 4 недели до</td><td class="k">0.68</td><td class="k">0.462</td><td class="g">26.7%</td></tr>
+      <tr><td>Та же метрика, 8 недель до</td><td class="k">0.70</td><td class="k">0.490</td><td class="k">28.6%</td></tr>
+      <tr><td>Та же метрика, 12 недель до</td><td class="k">0.71</td><td class="k">0.504</td><td class="k">29.6%</td></tr>
+      <tr><td>Число сессий до</td><td class="k">0.41</td><td class="k">0.168</td><td class="a">8.8%</td></tr>
+      <tr><td>Возраст аккаунта</td><td class="k">0.22</td><td class="k">0.048</td><td class="r">2.5%</td></tr>
+      <tr class="best"><td>Регрессия на три ковариаты</td><td class="k">0.76</td><td class="k">0.578</td><td class="g">35.0%</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Значения ρ здесь — для полной популяции, у которой предпериод существует. Столбец «снижение MDE» вычислен как 1 − √(1 − ρ²). Проверка для 4 недель: 1 − √(1 − 0.4624) = 1 − √0.5376 = 1 − 0.733212 = 0.266788.</p>
+
+  <div class="chb">
+    <div class="cht">Кандидаты в ковариаты</div>
+    <div class="chsub">Столбцы — снижение MDE при полном покрытии. Собственное прошлое поведение пользователя доминирует над любыми внешними признаками</div>
+    <canvas id="c_cov"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Почему таблица обманчива.</b> По ней кажется, что чем длиннее предпериод, тем лучше: 12 недель дают 29.6% против 26.7% у четырёх. Но эти числа посчитаны только по тем пользователям, у кого предпериод есть. Чем он длиннее, тем больше пользователей его не имеют — и для них CUPED не работает вовсе. Полный расчёт в следующей секции переворачивает вывод.
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Длина предпериода: почему больше — не лучше</h2></div>
+  <p class="slead">Два эффекта тянут в разные стороны. Длинный предпериод точнее описывает уровень пользователя, но существует у меньшей их доли. Оптимум оказывается посередине, и найти его — вопрос одного расчёта.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · эффективное снижение с учётом покрытия</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Пользователи без предпериода получают X = X̄, то есть нулевую поправку.
+      <div class="calc"><span class="lbl">для них Y_cuped = Y − θ·(X̄ − X̄) = Y</span>
+<span class="dim">CUPED им не помогает, но и не вредит —
+это самый безопасный способ их обработать</span>
+
+<span class="lbl">общая дисперсия смеси:</span>
+  Var = доля_старых × Var(1−ρ²) + доля_новых × Var
+      = Var × (1 − доля_старых × ρ²)
+
+  <span class="res">эффективное ρ²_эфф = доля_старых × ρ²</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем для каждой длины предпериода.
+      <div class="calc"><span class="lbl">длина   доля с      ρ     ρ²      ρ²_эфф   снижение
+        предпер.                            MDE</span>
+1 нед.   93%     0.54  0.2916  0.27119   <span class="hl">14.6%</span>
+2 нед.   88%     0.61  0.3721  0.32745   <span class="hl">18.0%</span>
+4 нед.   77%     0.68  0.4624  0.35605   <span class="res">19.8%</span>
+8 нед.   64%     0.70  0.4900  0.31360   <span class="hl">17.2%</span>
+12 нед.  52%     0.71  0.5041  0.26213   <span class="hl">14.1%</span>
+
+<span class="lbl">проверка для 4 недель:</span>
+  0.77 × 0.4624 = 0.356048
+  1 − √(1 − 0.356048) = 1 − √0.643952
+  = 1 − 0.802467 = <span class="res">0.197533</span> → 19.8% ✓</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Вывод, который противоречит интуиции.
+      <div class="calc"><span class="bad">12 недель дают ХУЖЕ, чем 1 неделя:
+14.1% против 14.6%.</span>
+
+<span class="dim">Хотя корреляция у них 0.71 против 0.54 —
+на треть выше. Но половина пользователей
+за 12 недель до эксперимента ещё не существовала.</span>
+
+<span class="res">Оптимум — 4 недели: 19.8%.
+Это на 40% больше, чем у любого из краёв.</span>
+
+<span class="lbl">форма кривой определяется двумя вещами:</span>
+  скоростью роста ρ с длиной окна
+  <span class="dim">(быстро в начале, потом плато)</span>
+  скоростью убывания покрытия
+  <span class="dim">(зависит от темпа притока новых пользователей)</span>
+
+<span class="res">У продукта с быстрым ростом аудитории оптимум
+сдвигается влево, у зрелого — вправо.
+Считать нужно на своих данных.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Приём, который снимает компромисс.
+      <div class="calc"><span class="res">Использовать разную длину для разных пользователей.</span>
+
+  для тех, кто с нами больше 12 недель → окно 12
+  для тех, кто 4–12 недель            → окно 4
+  для тех, кто меньше 4 недель        → окно 1
+  для совсем новых                    → без поправки
+
+<span class="lbl">θ оценивается отдельно внутри каждой группы</span>
+<span class="dim">это корректно: группы определены признаком,
+известным до рандомизации</span>
+
+<span class="lbl">результат:</span>
+  0.52 × 0.5041 + 0.25 × 0.4624
+  + 0.16 × 0.2916 + 0.07 × 0
+  = 0.262132 + 0.115600 + 0.046656 + 0
+  = <span class="res">0.424388</span>
+
+  снижение MDE = 1 − √0.575612 = <span class="res">24.1%</span>
+
+<span class="res">24.1% против 19.8% у лучшего единого окна.
+Прирост 4.3 п.п. за счёт того, что каждый
+пользователь получил самую длинную историю
+из имеющихся у него.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Компромисс длины предпериода</div>
+    <div class="chsub">Корреляция растёт с длиной окна, покрытие падает. Их произведение — эффективное ρ² — имеет максимум на четырёх неделях</div>
+    <canvas id="c_pre"></canvas>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Новые пользователи: три способа и один правильный</h2></div>
+  <p class="slead">Отсутствие предпериода — не техническая мелочь. Способ его обработки влияет и на корректность оценки, и на то, какую популяцию вы в итоге измерили.</p>
+
+  <table class="ct">
+    <thead><tr><th>Способ</th><th>Что происходит</th><th>Вердикт</th></tr></thead>
+    <tbody>
+      <tr class="worst"><td>Исключить из анализа</td><td class="note">меняется популяция: измеряется эффект на существующих пользователях, а не на всех</td><td class="r">почти всегда неверно</td></tr>
+      <tr class="best"><td>Присвоить X = X̄</td><td class="note">поправка равна нулю, CUPED для них не работает и не вредит; оценка остаётся несмещённой</td><td class="g">безопасный вариант по умолчанию</td></tr>
+      <tr><td>Присвоить X = 0</td><td class="note">поправка равна −θ·X̄ для всех новых; это константа, одинаковая в обеих группах, поэтому смещения нет, но дисперсия растёт</td><td class="a">работает, но хуже предыдущего</td></tr>
+      <tr class="best"><td>Отдельная группа с собственным θ</td><td class="note">ковариатой становится что-то доступное новым: канал привлечения, устройство, день недели регистрации</td><td class="g">лучший, если такие ковариаты есть</td></tr>
+      <tr class="worst"><td>Импутация X моделью</td><td class="a">если модель использует данные периода эксперимента — вносится смещение из секции 5</td><td class="r">опасно</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первая строка — самая распространённая ошибка, потому что она выглядит безобидно: «у них нет ковариаты, уберём». Но новые пользователи — как раз тот сегмент, где эффект чаще всего отличается (в примере из <a href="block4_01_ab_testing.html">4.1</a> он был −4.2% против +1.8%).</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько стоит исключение новых пользователей</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Что показывает эксперимент при разных способах.
+      <div class="calc"><span class="lbl">истинная картина:</span>
+  существующие (77%):  эффект <span class="hl">+1.8%</span>
+  новые (23%):         эффект <span class="bad">−4.2%</span>
+  средний по всем:  0.77×1.8 + 0.23×(−4.2)
+                  = 1.386 − 0.966 = <span class="res">+0.42%</span>
+
+<span class="lbl">оценка при исключении новых:</span> <span class="bad">+1.80%</span>
+<span class="lbl">оценка при X = X̄ для новых:</span>  <span class="res">+0.42%</span>
+
+<span class="bad">Исключение завысило эффект в 4.3 раза
+и изменило вывод с «слабое улучшение»
+на «уверенный успех».</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> При этом чувствительность почти не пострадала.
+      <div class="calc"><span class="lbl">с исключением новых:</span>
+  n = 0.77 × 400 000 = 308 000
+  ρ² = 0.4624, снижение MDE = 26.7%
+  но выборка на 23% меньше:
+  MDE ×√(400 000/308 000) = ×1.1396
+  <span class="hl">итоговое снижение MDE: 16.5%</span>
+
+<span class="lbl">с X = X̄ для новых:</span>
+  n = 400 000, ρ²_эфф = 0.356
+  <span class="res">итоговое снижение MDE: 19.8%</span>
+
+<span class="res">Правильный способ ещё и чувствительнее:
+19.8% против 16.5%. Исключение проигрывает
+по обоим критериям сразу.</span>
+
+<span class="dim">Проверка: 1 − 0.733212×1.1396 = 1 − 0.835569
+= 0.164431 → 16.4%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что даёт отдельная ковариата для новых.
+      <div class="calc"><span class="lbl">доступные признаки новых пользователей
+на момент рандомизации:</span>
+  канал привлечения, устройство, страна,
+  день и час регистрации
+
+<span class="lbl">регрессия метрики на эти признаки:</span>
+  ρ = <span class="hl">0.38</span>, ρ² = 0.1444
+
+<span class="lbl">общее эффективное снижение:</span>
+  0.77 × 0.4624 + 0.23 × 0.1444
+  = 0.356048 + 0.033212 = <span class="res">0.389260</span>
+  снижение MDE = 1 − √0.610740 = <span class="res">21.9%</span>
+
+<span class="res">Против 19.8% при нулевой поправке для новых.
+Прирост скромный, но бесплатный — признаки
+уже есть в системе.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Обработка новых пользователей: точность и чувствительность</div>
+    <div class="chsub">Исключение выглядит как способ повысить качество ковариаты, а на деле проигрывает и по смещению, и по MDE</div>
+    <canvas id="c_new"></canvas>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Стратификация — тот же приём в дискретной форме</h2></div>
+  <p class="slead">Разбиение на страты по предэкспериментальному признаку и последующее взвешивание — это CUPED с категориальной ковариатой. Понимание этого сразу отвечает на вопрос, что из них выбирать.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · стратификация сходится к CUPED снизу</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Постстратификация по квантилям предпериода. Снижение дисперсии равно доле межстратовой дисперсии.
+      <div class="calc"><span class="lbl">число страт   доля объяснённой дисперсии</span>
+      2              0.298
+      5              0.410
+     10              0.447
+     20              0.459
+     50              0.463
+  CUPED (непрерывно) <span class="res">0.465</span>
+
+<span class="dim">Каждая страта заменяет всех своих пользователей
+их общим средним. Чем страт больше, тем ближе
+это приближение к настоящей линии регрессии.</span>
+
+<span class="res">При линейной связи CUPED — предел, к которому
+стратификация стремится. Обойти его она не может.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Но связь бывает нелинейной — и тогда порядок меняется.
+      <div class="calc"><span class="lbl">пример: у пользователей с тратами выше 5 000 ₽
+другой режим поведения — они на годовом тарифе,
+и их метрика ведёт себя качественно иначе</span>
+
+<span class="lbl">метод                        объяснённая дисперсия</span>
+линейный CUPED                     0.465
+стратификация, 10 квантилей        <span class="res">0.512</span>
+
+<span class="res">Здесь стратификация выигрывает: она не
+предполагает линейности и ловит излом,
+который прямая пропустила.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Обобщение, снимающее выбор: вычитать предсказание любой модели.
+      <div class="calc"><span class="lbl">Y_cuped = Y − ( f(X) − среднее f(X) )</span>
+<span class="dim">где f — любая функция предэкспериментальных
+признаков: прямая, ступенчатая, бустинг</span>
+
+<span class="lbl">Несмещённость сохраняется по той же причине,
+что в секции 5: f(X) вычислена до рандомизации,
+значит E[f(X)_t − f(X)_c] = 0.</span>
+
+<span class="lbl">метод                        объяснённая  снижение MDE</span>
+линейный CUPED                  0.465        26.7%
++ квадратичный член             0.481        28.0%
+стратификация, 10 страт         0.512        30.2%
+<span class="res">бустинг на 12 признаках</span>         <span class="res">0.547</span>        <span class="res">32.7%</span>
+
+<span class="dim">проверка последней строки:
+1 − √(1 − 0.547) = 1 − √0.453
+= 1 − 0.673053 = 0.326947 → 32.7%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Ловушка обобщённой формы.
+      <div class="calc"><span class="bad">Если f обучена на тех же данных, где считается
+эффект, её R² завышен — и заявленное снижение
+дисперсии не соответствует реальному.</span>
+
+<span class="lbl">замер, 12 признаков, 200 000 наблюдений:</span>
+  R² на обучающих данных:      <span class="bad">0.671</span> → «42.6%»
+  R² при кросс-подгонке:       <span class="res">0.612</span> → 37.7%
+
+<span class="bad">Разрыв 4.9 п.п. в заявленной чувствительности.</span>
+
+<span class="res">Лечение: обучать f на исторических данных
+до эксперимента, либо использовать кросс-подгонку —
+разбить выборку на фолды, для каждого предсказывать
+моделью, обученной на остальных.</span>
+
+<span class="dim">Смещения оценки эффекта это не создаёт
+(f всё равно от предэкспериментальных данных),
+но завышает ожидания по мощности.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Стратификация против CUPED и его обобщений</div>
+    <div class="chsub">При линейной связи стратификация сходится к CUPED снизу. При нелинейной обходит его — и тогда правильный ответ вычитать предсказание модели, а не прямой</div>
+    <canvas id="c_strat"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Ещё одно применение стратификации, которое CUPED не заменяет.</b> Стратифицированная <b>рандомизация</b> (не постстратификация) распределяет пользователей по группам внутри каждой страты, гарантируя равные доли. Это устраняет случайный дисбаланс <i>до</i> эксперимента, тогда как CUPED корректирует его <i>после</i>. Эффект по дисперсии похожий, но стратифицированная рандомизация ещё и защищает от неудачного распределения крупных клиентов — того самого, из-за которого в <a href="block4_01_ab_testing.html">4.1</a> десять человек несли 99.6% дисперсии.
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Несколько ковариат: регрессионная форма</h2></div>
+  <p class="slead">Обобщение на несколько ковариат тривиально: θ становится вектором, а решение — обычной регрессией. Снижение дисперсии равно коэффициенту детерминации этой регрессии.</p>
+
+  <div class="def">
+    <div class="def-t">Многомерный CUPED</div>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">Y<sub>cuped</sub> = Y − Σ θ<sub>i</sub> · (X<sub>i</sub> − X̄<sub>i</sub>)</p>
+    <p>Оптимальный вектор θ — это коэффициенты регрессии Y на все X сразу, то есть решение обычных нормальных уравнений. Снижение дисперсии равно <b>R²</b> этой регрессии, что естественно обобщает ρ² из одномерного случая.</p>
+    <p><b>Практически это означает,</b> что весь вопрос сводится к построению хорошей предсказательной модели по предэкспериментальным признакам. Все приёмы из <a href="block1_14_feature_engineering.html">1.14</a> здесь применимы — с единственным ограничением, что признаки должны быть вычислимы до рандомизации.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько ковариат имеет смысл добавлять</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Наращиваем состав, R² при кросс-подгонке.
+      <div class="calc"><span class="lbl">состав                    R²      снижение MDE</span>
+метрика за 4 недели       0.462      26.7%
++ метрика за 12 недель    0.521      30.8%
++ число сессий            0.578      35.0%
++ ещё две поведенческие   0.601      36.8%
++ семь демографических    0.612      37.7%
+
+<span class="lbl">проверка третьей строки:</span>
+  1 − √(1 − 0.578) = 1 − √0.422
+  = 1 − 0.649615 = <span class="res">0.350385</span> → 35.0%</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Где остановиться.
+      <div class="calc"><span class="lbl">прирост снижения MDE на каждом шаге:</span>
+  1 → 2 ковариаты:  <span class="res">+4.1 п.п.</span>
+  2 → 3:            <span class="res">+4.2 п.п.</span>
+  3 → 5:            <span class="hl">+1.8 п.п.</span>
+  5 → 12:           <span class="dim">+0.9 п.п.</span>
+
+<span class="res">Три ковариаты дают 35.0% из достижимых 37.7%,
+то есть 93% результата при четверти сложности.</span>
+
+<span class="dim">Демографические признаки почти ничего не добавляют
+поверх поведенческих — они предсказывают то же самое,
+только хуже. Это обычная картина: собственное
+прошлое поведение пользователя доминирует.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сравним с альтернативным вложением тех же усилий.
+      <div class="calc"><span class="lbl">приём                      снижение MDE   риск</span>
+CUPED, 3 ковариаты             <span class="res">35.0%</span>      нет
+винзоризация                   <span class="res">87.5%</span>      смещение
+                                          <span class="dim">(из 4.1: 8.78% → 1.10%)</span>
+оба вместе                     см. ниже
+
+<span class="lbl">важная деталь при совмещении:</span>
+  ρ на сырой метрике:           0.68
+  ρ на винзоризованной:         <span class="bad">0.55</span>
+
+<span class="dim">Винзоризация уже убрала крупных клиентов —
+а именно их предпериод предсказывался лучше всего.
+Поэтому CUPED поверх винзоризации работает слабее.</span>
+
+<span class="lbl">итог по шагам, MDE выручки:</span>
+  сырая метрика:                  8.779%
+  + винзоризация:                 1.100%
+  + CUPED (ρ = 0.55):             <span class="res">0.919%</span>
+  + стратифицированная
+    рандомизация:                 <span class="res">0.882%</span>
+
+<span class="dim">проверка: 1.100 × √(1 − 0.3025)
+= 1.100 × √0.6975 = 1.100 × 0.835165 = 0.9187</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Снижение MDE от числа ковариат</div>
+    <div class="chsub">Насыщение наступает после третьей. Пунктир — завышенная оценка, которую даёт R² на обучающих данных без кросс-подгонки</div>
+    <canvas id="c_multi"></canvas>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>CUPED для ratio-метрик через линеаризацию</h2></div>
+  <p class="slead">К отношению нельзя применить CUPED напрямую — по той же причине, по которой к нему нельзя применить наивную дисперсию. Правильный путь ведёт через линеаризацию, и он же воспроизводит дельта-метод из 4.1 в точности.</p>
+
+  <div class="def">
+    <div class="def-t">Линеаризация ratio-метрики</div>
+    <p>Для метрики R = X̄/Ȳ каждому пользователю сопоставляется линеаризованное значение:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">L<sub>i</sub> = (X<sub>i</sub> − R̄ · Y<sub>i</sub>) / Ȳ</p>
+    <p>Получается обычная метрика на уровне пользователя, к которой применимы все стандартные инструменты: t-тест, CUPED, стратификация. Разность средних L между группами оценивает разность отношений, а дисперсия L в точности равна дисперсии из дельта-метода.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · линеаризация воспроизводит дельта-метод</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Данные из <a href="block4_01_ab_testing.html">4.1</a>: заказы на сессию.
+      <div class="calc">μ_X = 1.24   Var(X) = 2.86
+μ_Y = 8.60   Var(Y) = 41.30   Cov = 7.42
+R̄ = 1.24 / 8.60 = <span class="hl">0.144186</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем L для двух пользователей.
+      <div class="calc"><span class="lbl">активный: 3 заказа, 12 сессий</span>
+  L = (3 − 0.144186 × 12) / 8.60
+    = (3 − 1.730232) / 8.60
+    = 1.269768 / 8.60 = <span class="hl">+0.147647</span>
+  <span class="dim">заказывал чаще, чем ожидалось от 12 сессий</span>
+
+<span class="lbl">пассивный: 0 заказов, 2 сессии</span>
+  L = (0 − 0.144186 × 2) / 8.60
+    = −0.288372 / 8.60 = <span class="hl">−0.033532</span>
+  <span class="dim">не заказал при двух сессиях — слабый минус,
+  потому что от двух сессий много и не ждали</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Проверяем, что среднее L равно нулю и дисперсия совпадает с дельта-методом.
+      <div class="calc"><span class="lbl">среднее:</span>
+  L̄ = (μ_X − R̄·μ_Y) / μ_Y
+    = (1.24 − 0.144186 × 8.60) / 8.60
+    = (1.24 − 1.240000) / 8.60 = <span class="res">0.000000</span>
+<span class="dim">по построению; разность средних между группами
+и есть оцениваемый эффект</span>
+
+<span class="lbl">дисперсия:</span>
+  Var(L) = Var(X − R̄·Y) / μ_Y²
+         = [2.86 − 2×0.144186×7.42
+            + 0.144186²×41.30] / 73.96
+         = [2.86 − 2.139721 + 0.858610] / 73.96
+         = 1.578889 / 73.96 = <span class="res">0.021348</span>
+
+<span class="res">В точности та же величина, что дал дельта-метод
+в 4.1. Линеаризация — это не приближение
+к дельта-методу, а его же запись
+на уровне отдельных наблюдений.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Теперь применяем CUPED к L и сравниваем с неправильными вариантами.
+      <div class="calc"><span class="lbl">способ                          снижение   корректность</span>
+CUPED к отношению X_i/Y_i          <span class="bad">0.31</span>     <span class="bad">смещено</span>
+  <span class="dim">пользовательские отношения не усредняются
+  в общее отношение: среднее X/Y ≠ X̄/Ȳ</span>
+CUPED отдельно к X и Y,
+  затем дельта-метод                0.43     корректно
+<span class="res">линеаризация + CUPED к L</span>            <span class="res">0.44</span>     <span class="res">корректно</span>
+
+<span class="res">Последний вариант проще: после линеаризации
+метрика становится обычной, и вся дальнейшая
+машинерия работает без изменений.</span>
+
+<span class="lbl">ковариата для L:</span> линеаризованная метрика
+за предпериод, посчитанная с тем же R̄</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Три способа применить CUPED к ratio-метрике</div>
+    <div class="chsub">Первый столбец даёт похожее число, но оценка смещена: средние пользовательских отношений не складываются в общее отношение</div>
+    <canvas id="c_ratio"></canvas>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Проверка корректности внедрения</h2></div>
+  <p class="slead">CUPED легко внедрить неправильно так, что расчёт пройдёт без ошибок и выдаст правдоподобные числа. Три проверки закрывают почти все способы ошибиться.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · три обязательные проверки</div>
+    <div class="tstep">
+      <b>Проверка 1.</b> A/A-тесты: доля значимых должна остаться на уровне α.
+      <div class="calc"><span class="lbl">200 A/A-тестов при α = 0.05:</span>
+
+<span class="lbl">n на группу   без CUPED   с CUPED</span>
+     1 000        4.8%       <span class="hl">5.4%</span>
+    10 000        5.1%       <span class="hl">5.1%</span>
+   100 000        4.9%       <span class="res">5.0%</span>
+
+<span class="dim">Небольшое превышение на малых выборках
+объясняется тем, что θ оценивается по тем же
+данным. Смещение убывает как 1/n и на реальных
+объёмах эксперимента незаметно.</span>
+
+<span class="bad">Если доля значимых заметно выше 5% и не падает
+с ростом n — ковариата не полностью
+предэкспериментальная.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Проверка 2.</b> Эффект на самой ковариате должен быть нулевым.
+      <div class="calc"><span class="lbl">прогоняем предпериодную метрику как если бы
+она была метрикой эксперимента:</span>
+
+  эффект: <span class="res">+0.02%</span>,  p = 0.81
+
+<span class="res">Ноль — как и должно быть: воздействие
+не могло повлиять на прошлое.</span>
+
+<span class="bad">Если здесь значимый эффект, возможны три причины:</span>
+  1. ковариата захватывает часть периода
+     эксперимента <span class="dim">(проверить границы окна)</span>
+  2. рандомизация нарушена <span class="dim">(SRM, см. 4.6)</span>
+  3. фильтр на попадание в эксперимент зависит
+     от поведения <span class="dim">(триггер сработал не у всех)</span>
+
+<span class="dim">Третья причина самая коварная: если в эксперимент
+попадают только пользователи, совершившие действие,
+их предпериод уже не сбалансирован.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Проверка 3.</b> Наивная и CUPED-оценки должны различаться случайно, а не систематически.
+      <div class="calc"><span class="lbl">по 200 A/A-тестам:</span>
+  средняя разница оценок:  <span class="res">+0.003 п.п.</span>
+  sd разницы:               0.21 п.п.
+  t = 0.003 / (0.21/√200) = 0.003 / 0.01485
+    = <span class="res">0.202</span>  →  p = 0.84
+
+<span class="res">Систематического расхождения нет.</span>
+
+<span class="bad">Если бы CUPED-оценка была систематически ниже
+наивной, это указывало бы на то, что ковариата
+затронута воздействием (секция 5) — тот случай,
+когда часть эффекта вычитается как «ожидаемая».</span>
+
+<span class="lbl">на боевых экспериментах ту же проверку
+делают так:</span> сравнить наивный и CUPED-эффект
+по 30–50 прошлым запускам. Облако должно лежать
+на диагонали без наклона.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Доля значимых в A/A-тестах</div>
+    <div class="chsub">Оба варианта держатся около номинальных 5%. Небольшое превышение с CUPED на малых выборках убывает с ростом n — это признак корректной реализации, а не дефекта</div>
+    <canvas id="c_aa"></canvas>
+  </div>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Практика — и 15 подводных камней</h2></div>
+  <p class="slead">Приёмы снижения дисперсии складываются, но не аддитивно: каждый следующий работает с тем, что осталось после предыдущего.</p>
+
+  <div class="play">
+    <h4>Посчитайте выигрыш для своей ситуации</h4>
+    <div class="prow">
+      <label>Корреляция ρ с ковариатой</label>
+      <input type="range" id="sl_rho" min="0" max="95" step="1" value="68">
+      <output id="out_rho">0.68</output>
+    </div>
+    <div class="prow">
+      <label>Доля пользователей с предпериодом, %</label>
+      <input type="range" id="sl_cov" min="10" max="100" step="1" value="77">
+      <output id="out_cov">77%</output>
+    </div>
+    <div class="prow">
+      <label>Базовая длительность, дней</label>
+      <input type="range" id="sl_days" min="7" max="84" step="7" value="14">
+      <output id="out_days">14</output>
+    </div>
+    <div class="pout" id="out_cuped"></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Накопление приёмов на метрике выручки</div>
+    <div class="chsub">Логарифмическая ось. Винзоризация даёт основной скачок, CUPED поверх неё — ещё 16%. Заметьте, что после винзоризации корреляция с предпериодом падает с 0.68 до 0.55</div>
+    <canvas id="c_cum"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Порядок внедрения</th><th>Что даёт</th><th>Сложность</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>1. CUPED с одной ковариатой</td><td class="g">20–27% MDE, без смещения</td><td class="g">день работы</td></tr>
+      <tr class="best"><td>2. Подбор длины предпериода</td><td class="g">+3–5 п.п. сверху</td><td class="g">один расчёт</td></tr>
+      <tr><td>3. Обработка новых пользователей</td><td class="g">+2–3 п.п. и корректная популяция</td><td class="g">несколько строк кода</td></tr>
+      <tr><td>4. Две-три ковариаты</td><td class="g">+8 п.п.</td><td class="a">нужна кросс-подгонка</td></tr>
+      <tr><td>5. Линеаризация ratio-метрик</td><td class="g">делает приём применимым</td><td class="a">переписать расчёт метрик</td></tr>
+      <tr><td>6. Нелинейная модель вместо прямой</td><td class="a">+2–5 п.п.</td><td class="r">инфраструктура, риск переобучения</td></tr>
+      <tr><td>7. Стратифицированная рандомизация</td><td class="g">защита от неудачного распределения</td><td class="r">меняет систему назначения групп</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первые три пункта дают около 80% всего достижимого выигрыша и занимают неделю. Дальше отдача резко падает, а сложность растёт — это тот случай, когда останавливаться нужно рано.</p>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Ковариата захватывает период эксперимента</b><span>Самая дорогая ошибка. При эффекте на ковариату +1.4% и θ = 0.75 измеренный эффект занижается с 2.00% до 0.95% — вдвое. Проверка: прогнать саму ковариату как метрику эксперимента, эффект должен быть нулевым.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>Новые пользователи исключены из анализа</b><span>Меняется популяция. В разобранном примере оценка выросла с +0.42% до +1.80% — в 4.3 раза, — потому что выброшен сегмент с отрицательным эффектом. И чувствительность при этом тоже хуже: 16.5% против 19.8%.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>Предпериод выбран как можно длиннее</b><span>Корреляция растёт, покрытие падает, и произведение имеет максимум посередине. В примере 12 недель дали 14.1% — хуже, чем одна неделя (14.6%). Оптимум был на четырёх: 19.8%.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Ожидание, что снижение дисперсии равно снижению MDE</b><span>Дисперсия падает на ρ², а MDE — на 1 − √(1−ρ²). При ρ = 0.68 это 46.5% против 26.7%. Путаница между двумя числами — источник разочарования после внедрения.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>CUPED внедрён ради бинарной конверсии</b><span>Двоичный предиктор объясняет 2.6% дисперсии двоичного исхода, непрерывный — около 9.6%. Снижение MDE 4.9% меньше, чем разброс между двумя оценками одной величины. Приём здесь просто не работает.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>CUPED применён к отношению напрямую</b><span>Среднее пользовательских отношений не равно общему отношению, оценка смещена. Правильный путь — линеаризация: L = (X − R̄·Y)/Ȳ, после чего метрика становится обычной.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Модель для обобщённого CUPED обучена на тех же данных</b><span>R² завышается с 0.612 до 0.671, заявленное снижение MDE — с 37.7% до 42.6%. Смещения оценки эффекта это не создаёт, но обещанная мощность не материализуется. Лечение — кросс-подгонка или обучение на исторических данных.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>θ пересчитывается отдельно в каждой группе</b><span>Тогда поправка перестаёт быть одинаковой для тест и контроля, и оценка эффекта смещается. θ должен считаться <i>один</i> — по объединённым данным обеих групп либо по историческим.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>X̄ взято только по контрольной группе</b><span>Формально это добавляет константу, одинаковую для обеих групп, и эффект не смещает. Но дисперсия оценки X̄ входит в результат, и часть выигрыша теряется. Правильно — общее среднее по обеим группам.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Триггерный фильтр применён после расчёта ковариаты</b><span>Если в эксперимент попадают только пользователи, совершившие некое действие, их предпериод уже не сбалансирован между группами. Проверка 2 из секции 12 это ловит: эффект на ковариате окажется значимым.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Ожидание большого выигрыша поверх винзоризации</b><span>Обрезка убирает крупных клиентов, а именно их поведение предсказывалось предпериодом лучше всего. Корреляция падает с 0.68 до 0.55, и CUPED даёт 16% вместо 27%.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>A/A-проверка не проводилась</b><span>CUPED легко реализовать так, что расчёт пройдёт и выдаст правдоподобные числа. Доля значимых в A/A должна остаться около 5% и не расти. Устойчивое превышение означает, что ковариата не полностью предэкспериментальная.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Демографические признаки добавлены вместо поведенческих</b><span>Семь демографических признаков поверх пяти поведенческих дали +0.9 п.п. к снижению MDE. Собственное прошлое поведение пользователя доминирует над всем остальным — начинать нужно с него.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Результат сообщён без указания, что применён CUPED</b><span>Доверительный интервал становится у́же, и сравнение с прошлыми экспериментами без CUPED некорректно. Метод должен быть частью описания результата наравне с длительностью и размером выборки.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Оптимизация θ вместо оптимизации ковариаты</b><span>Дисперсия устойчива к ошибке в θ: отклонение на 0.2 стоит менее 2%. А выбор ковариаты меняет результат втрое. Усилия нужно тратить на второе, а не на первое.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где снижение дисперсии — архитектурное решение, а не постобработка.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Внедрение CUPED в существующую платформу экспериментов</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Платформа считает 400 экспериментов в год. Нужно добавить CUPED так, чтобы им пользовались все, а не только те, кто про него знает.</p>
+      <p><b>Ключевое решение — считать ковариаты заранее.</b> Ежедневный процесс складывает для каждого пользователя агрегаты за скользящие окна 1, 4 и 12 недель. Когда эксперимент стартует, платформа берёт снимок на дату рандомизации. Без этого CUPED требует ручной работы на каждый запуск и потому не применяется.</p>
+      <p><b>Что включать по умолчанию.</b> CUPED для всех непрерывных метрик, где ρ на исторических данных превышает 0.4. Для бинарных — не включать: 4.9% снижения не оправдывают усложнения отчёта.</p>
+      <p><b>Обязательная витрина.</b> Рядом с эффектом показывать фактическое ρ и снижение MDE в этом конкретном эксперименте. Это одновременно и объяснение, откуда взялся узкий интервал, и диагностика: аномально высокое ρ указывает на утечку периода эксперимента в ковариату.</p>
+      <p><b>Регламент проверки.</b> Ежемесячный прогон 200 A/A-тестов с CUPED и без. Доля значимых должна лежать в интервале, ожидаемом при α = 0.05 и 200 испытаниях: 5% ± 3%. Выход за него — повод остановить автоматическое применение.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Продукт с быстрым притоком новых пользователей</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Приложение растёт на 15% в месяц. Через 12 недель до эксперимента существовало меньше половины текущей аудитории.</p>
+      <p><b>Компромисс сдвигается влево.</b> Расчёт из секции 7 на данных этого продукта даст максимум на одной-двух неделях вместо четырёх, потому что покрытие падает быстрее, чем растёт корреляция.</p>
+      <p><b>Правильное решение — переменное окно.</b> Каждому пользователю берётся самое длинное окно из доступных ему, θ оценивается отдельно внутри каждой группы по длине истории. В разобранном примере это дало 24.1% против 19.8% у лучшего единого окна.</p>
+      <p><b>Отдельная ковариата для совсем новых.</b> Канал привлечения, устройство, страна, час регистрации — всё, что известно на момент рандомизации. ρ около 0.38 даёт немного, но признаки уже есть в системе и ничего не стоят.</p>
+      <p><b>Что проверять особенно тщательно.</b> Эффект у новых пользователей часто противоположен эффекту у существующих. Разбивка по длине истории здесь нужна не только для CUPED, но и как обязательный срез результата — механика в <a href="block4_01_ab_testing.html">4.1</a>.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. B2B: сто клиентов вместо миллиона пользователей</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Корпоративный продукт, 340 клиентов, выручка распределена крайне неравномерно: топ-10 дают 62% оборота. Рандомизация — по клиентам.</p>
+      <p><b>Здесь CUPED работает лучше всего.</b> У B2B-клиентов выручка чрезвычайно стабильна во времени: ρ между соседними кварталами достигает 0.90–0.95. При ρ = 0.92 снижение дисперсии составляет 84.6%, а MDE падает на 60.8%.</p>
+      <p><b>Проверка: 1 − √(1 − 0.8464) = 1 − √0.1536 = 1 − 0.391918 = 0.608082.</b> Это в два с лишним раза больше типичного выигрыша на потребительских метриках — и объясняется тем, что поведение организации меняется медленнее поведения человека.</p>
+      <p><b>Но одного CUPED мало.</b> При 340 наблюдениях и таком распределении случайное попадание двух крупнейших клиентов в одну группу способно определить результат. Нужна стратифицированная рандомизация по размеру: топ-10 распределяются попарно, следующие 30 — блоками, остальные случайно.</p>
+      <p><b>Реалистичная оценка возможностей.</b> Даже со всеми приёмами MDE на такой выборке останется в районе 8–12% по выручке. Это означает, что A/B здесь годится для крупных изменений и не годится для оптимизации — и лучше признать это заранее, чем провести полгода экспериментов без выводов.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Маркетплейс: ratio-метрики повсюду</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Основные метрики — конверсия из просмотра в заказ, средний чек, доля отменённых заказов. Все три — отношения, рандомизация по пользователям.</p>
+      <p><b>Единое решение для всех трёх.</b> Внедрить линеаризацию как стандартный шаг расчёта метрик. После неё каждая ratio-метрика превращается в обычную пользовательскую величину L, и вся дальнейшая машинерия — t-тест, CUPED, стратификация, дельта-метод — работает без изменений.</p>
+      <p><b>Побочная выгода, которая важнее основной.</b> Линеаризация автоматически исправляет ошибку дисперсии из <a href="block4_01_ab_testing.html">4.1</a>, где наивный расчёт занижал стандартную ошибку на 18% и превращал заявленные 5% ошибки первого рода в фактические 10.8%. То есть одно изменение закрывает сразу две проблемы.</p>
+      <p><b>Ковариата для L.</b> Та же линеаризованная метрика за предпериод, посчитанная с тем же коэффициентом R̄. Важно использовать именно общий R̄, а не пересчитывать его для предпериода — иначе величины окажутся в разных шкалах.</p>
+      <p><b>Что легко сломать.</b> Пользователи с нулевым знаменателем. У человека без единой сессии L = 0/Ȳ = 0, что технически корректно, но такие пользователи не несут информации и раздувают выборку. Их обработка должна быть решена явно и одинаково в обеих группах.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Когда CUPED не поможет и что делать вместо</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Новый продукт, три месяца с запуска, метрика — конверсия в первую покупку. Предпериода нет ни у кого: пользователь либо новый, либо уже сконвертировался.</p>
+      <p><b>Честная оценка.</b> CUPED неприменим по двум причинам сразу: ковариаты не существует, а метрика бинарная. Даже будь предпериод, снижение MDE составило бы около 5%.</p>
+      <p><b>Что работает вместо.</b> Первое — ковариаты, известные на момент регистрации: канал привлечения объясняет заметную долю дисперсии конверсии, потому что качество трафика различается в разы. Второе — метрика выше по воронке с большей базовой частотой: конверсия в добавление в корзину происходит в 8 раз чаще покупки и потому измеряется вчетверо точнее по относительной шкале.</p>
+      <p><b>Третье и главное — сменить постановку.</b> При отсутствии способов повысить чувствительность честный вывод из <a href="block4_01_ab_testing.html">4.1</a> звучит так: эксперимент с MDE 20% годится только для изменений, которые меняют конверсию в полтора раза. Такие изменения бывают, и именно их и стоит тестировать, а мелкие улучшения принимать без эксперимента.</p>
+      <p><b>Чего точно не делать.</b> Не внедрять CUPED «на будущее» и не отчитываться о снижении дисперсии, которого нет. Приём, дающий 5%, создаёт иллюзию решённой проблемы там, где проблема осталась.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что делает CUPED?</b><span>Вычитает из метрики её предсказуемую по прошлому часть: Y − θ(X − X̄), где X — та же метрика до эксперимента. Остаётся отклонение от ожидаемого уровня, и весь эффект воздействия сидит именно в нём.</span></div>
+
+  <div class="qa"><b>2. Чему равен оптимальный θ?</b><span>Cov(Y,X)/Var(X) — коэффициент наклона регрессии Y на X. Получается из условия минимума параболы Var(Y) − 2θCov + θ²Var(X). В разобранном примере 2 610 000/3 480 000 = 0.75.</span></div>
+
+  <div class="qa"><b>3. Насколько точно нужно оценить θ?</b><span>Неточно. Дисперсия — парабола с пологим дном: отклонение θ на 0.2 от оптимума стоит менее 2% дисперсии. Поэтому θ можно взять с исторических данных или с прошлого эксперимента. Усилия лучше тратить на выбор ковариаты, который меняет результат втрое.</span></div>
+
+  <div class="qa"><b>4. Чему равно снижение дисперсии?</b><span>Ровно ρ², где ρ — корреляция метрики с ковариатой. Var(Y)(1 − ρ²). Это выводится подстановкой оптимального θ обратно в формулу дисперсии.</span></div>
+
+  <div class="qa"><b>5. А снижение MDE?</b><span>1 − √(1 − ρ²), то есть заметно меньше. При ρ = 0.68 дисперсия падает на 46.5%, а MDE — на 26.7%. Путаница между этими двумя числами — главный источник разочарования после внедрения.</span></div>
+
+  <div class="qa"><b>6. Смещает ли CUPED оценку эффекта?</b><span>Нет. Δ_cuped = (Ȳ_t − Ȳ_c) − θ(X̄_t − X̄_c), и второе слагаемое имеет нулевое ожидание, потому что X измерен до рандомизации. Это единственный приём снижения дисперсии, за который не платят смещением.</span></div>
+
+  <div class="qa"><b>7. Почему ковариата обязана быть предэкспериментальной?</b><span>Иначе E[X̄_t − X̄_c] ≠ 0, и вычитается часть настоящего эффекта. При эффекте на ковариату +1.4% и θ = 0.75 измеренный эффект падает с 2.00% до 0.95% — вдвое.</span></div>
+
+  <div class="qa"><b>8. Как проверить, что ковариата корректна?</b><span>Прогнать её саму как метрику эксперимента. Эффект должен быть неотличим от нуля. Если он значим — либо окно захватывает период эксперимента, либо нарушена рандомизация, либо триггерный фильтр зависит от поведения.</span></div>
+
+  <div class="qa"><b>9. Есть ли у CUPED вторая польза кроме дисперсии?</b><span>Да, он корректирует случайный дисбаланс групп. В примере тестовой группе достались пользователи с предпериодом на 52 ₽ выше, и из наблюдаемых +112 ₽ разницы 39 объяснялись именно этим. CUPED вычел их автоматически.</span></div>
+
+  <div class="qa"><b>10. Какая ковариата лучше всего?</b><span>Та же самая метрика за предыдущий период. Ничто не предсказывает поведение пользователя лучше, чем его собственное недавнее поведение: ρ = 0.68 против 0.41 у числа сессий и 0.22 у возраста аккаунта.</span></div>
+
+  <div class="qa"><b>11. Чем длиннее предпериод, тем лучше?</b><span>Нет. Корреляция растёт (0.54 → 0.71 от одной недели к двенадцати), но доля пользователей с таким предпериодом падает (93% → 52%). Произведение имеет максимум: в примере на четырёх неделях, где эффективное снижение MDE 19.8% против 14.1% у двенадцати недель.</span></div>
+
+  <div class="qa"><b>12. Как снять этот компромисс?</b><span>Взять каждому пользователю самое длинное доступное ему окно и оценивать θ отдельно внутри групп по длине истории. Это корректно, потому что группы определены признаком, известным до рандомизации. В примере дало 24.1% против 19.8%.</span></div>
+
+  <div class="qa"><b>13. Что делать с новыми пользователями?</b><span>Присвоить им X = X̄, тогда поправка равна нулю: CUPED им не помогает, но и не вредит, а оценка остаётся несмещённой. Ещё лучше — отдельная ковариата из доступных им признаков (канал, устройство, час регистрации), ρ около 0.38.</span></div>
+
+  <div class="qa"><b>14. Можно ли просто исключить их из анализа?</b><span>Нет. Это меняет популяцию, а новые пользователи — как раз тот сегмент, где эффект чаще всего отличается. В примере исключение завысило оценку с +0.42% до +1.80%. И чувствительность при этом тоже хуже: 16.5% против 19.8%.</span></div>
+
+  <div class="qa"><b>15. Почему CUPED плохо работает с конверсией?</b><span>Двоичный предиктор объясняет всего 2.6% дисперсии двоичного исхода — это свойство данных, а не метода. С непрерывной ковариатой (сумма трат до) получается около 9.6%, что даёт снижение MDE 4.9%. Практически незаметно.</span></div>
+
+  <div class="qa"><b>16. Как связаны CUPED и стратификация?</b><span>Постстратификация по квантилям предпериода — это CUPED с категориальной ковариатой. При линейной связи она сходится к CUPED снизу: 0.410 при пяти стратах, 0.459 при двадцати, 0.465 у CUPED.</span></div>
+
+  <div class="qa"><b>17. Может ли стратификация обойти CUPED?</b><span>Да, если связь нелинейна. При пороговом эффекте в данных стратификация по десяти квантилям дала 0.512 против 0.465 у линейного CUPED — она не предполагает прямой и ловит излом.</span></div>
+
+  <div class="qa"><b>18. Что такое обобщённый CUPED?</b><span>Вычитание предсказания любой модели по предэкспериментальным признакам: Y − (f(X) − E[f(X)]). Несмещённость сохраняется, потому что f вычислена до рандомизации. Бустинг на 12 признаках дал 0.547 против 0.465 у прямой.</span></div>
+
+  <div class="qa"><b>19. Чем опасна обобщённая форма?</b><span>Переобучением модели f. Если она обучена на тех же данных, R² завышается с 0.612 до 0.671, и заявленное снижение MDE — с 37.7% до 42.6%. Смещения оценки эффекта нет, но обещанная мощность не материализуется. Лечение — кросс-подгонка.</span></div>
+
+  <div class="qa"><b>20. Сколько ковариат имеет смысл брать?</b><span>Три. Они дают 35.0% из достижимых 37.7%, то есть 93% результата. Дальше насыщение: пять ковариат добавляют 1.8 п.п., двенадцать — ещё 0.9. Демографические признаки почти ничего не дают поверх поведенческих.</span></div>
+
+  <div class="qa"><b>21. Можно ли применить CUPED к ratio-метрике напрямую?</b><span>Нет: среднее пользовательских отношений не равно общему отношению, и оценка смещается. Правильный путь — линеаризация L = (X − R̄·Y)/Ȳ, после которой метрика становится обычной пользовательской величиной.</span></div>
+
+  <div class="qa"><b>22. Что даёт линеаризация помимо применимости CUPED?</b><span>Она автоматически даёт правильную дисперсию. Var(L) в примере равна 0.021348 — в точности то же значение, что дал дельта-метод в <a href="block4_01_ab_testing.html">4.1</a>. Одно изменение закрывает и проблему заниженной ошибки, и вопрос применимости CUPED.</span></div>
+
+  <div class="qa"><b>23. Чему равно среднее линеаризованной метрики?</b><span>Нулю по построению: (μ_X − R̄μ_Y)/μ_Y = 0, поскольку R̄ = μ_X/μ_Y. Оцениваемой величиной становится разность средних L между группами, которая с точностью до первого порядка равна разности отношений.</span></div>
+
+  <div class="qa"><b>24. Как проверить корректность внедрения?</b><span>Три проверки: доля значимых в A/A-тестах остаётся около 5% и не растёт с n; эффект на самой ковариате неотличим от нуля; наивная и CUPED-оценки различаются случайно, а не систематически. Последнее проверяется по 30–50 прошлым экспериментам.</span></div>
+
+  <div class="qa"><b>25. Почему в A/A на малых выборках доля значимых чуть выше 5%?</b><span>Потому что θ оценивается по тем же данным. Смещение убывает как 1/n: 5.4% при тысяче наблюдений, 5.0% при ста тысячах. На реальных объёмах эксперимента это незаметно, и наличие такого убывания — признак корректной реализации.</span></div>
+
+  <div class="qa"><b>26. Должен ли θ считаться отдельно в каждой группе?</b><span>Нет, иначе поправка станет разной для теста и контроля и оценка сместится. θ считается один — по объединённым данным обеих групп либо по историческим. То же относится к X̄: брать нужно общее среднее.</span></div>
+
+  <div class="qa"><b>27. Как CUPED сочетается с винзоризацией?</b><span>Хуже, чем каждый по отдельности обещает. Обрезка убирает крупных клиентов, а именно их поведение предсказывалось предпериодом лучше всего: ρ падает с 0.68 до 0.55. Итог по шагам на выручке: 8.78% → 1.10% → 0.92%.</span></div>
+
+  <div class="qa"><b>28. Где CUPED работает лучше всего?</b><span>На B2B-метриках. Поведение организации меняется медленнее поведения человека, ρ между соседними кварталами достигает 0.92, что даёт снижение MDE 60.8% — вдвое больше типичного потребительского случая.</span></div>
+
+  <div class="qa"><b>29. Нужно ли сообщать, что применён CUPED?</b><span>Да, наравне с длительностью и размером выборки. Доверительный интервал становится у́же, и сравнение с прошлыми экспериментами без CUPED некорректно. Полезно показывать фактическое ρ — аномально высокое значение указывает на утечку периода эксперимента в ковариату.</span></div>
+
+  <div class="qa"><b>30. С чего начать внедрение?</b><span>С одной ковариаты — той же метрики за четыре недели до старта — и присвоения X = X̄ новым пользователям. Это день работы и 20–27% снижения MDE. Дальше подбор длины окна и вторая-третья ковариата дают ещё около восьми пунктов, а всё остальное — быстро убывающая отдача при растущей сложности.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 4.2 продолжает <a href="block4_01_ab_testing.html">4.1</a>, откуда взяты формула MDE, разложение дисперсии выручки и дельта-метод. Кластерная рандомизация и её влияние на эффективный размер выборки — <a href="block4_03_switchback.html">4.3</a>, оценка эффекта без рандомизации — <a href="block4_04_causal_ml.html">4.4</a>, корректная остановка — <a href="block4_05_sequential_testing.html">4.5</a>, проверка сбалансированности групп — <a href="block4_06_srm_diagnostics.html">4.6</a>. Построение предсказательной модели для обобщённого CUPED — <a href="block1_14_feature_engineering.html">1.14</a>, а кросс-подгонка, без которой R² завышен, — <a href="block1_15_validation_schemes.html">1.15</a>.
+</div>
+
+<div class="pnav">
+  <a href="block4_01_ab_testing.html">← 4.1 · A/B тестирование</a>
+  <a class="next" href="block4_03_switchback.html">4.3 · Switchback-эксперименты →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#831843', AC2='#ec4899', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — экономия дней */
+mk('c_days',{type:'bar',data:{labels:['0.2','0.3','0.4','0.5','0.68','0.8','0.9'],
+ datasets:[
+  {label:'Дней с CUPED',data:[13.4,12.7,11.8,10.5,7.5,5.0,2.7],backgroundColor:AC,borderRadius:4},
+  {label:'Сэкономлено',data:[0.6,1.3,2.2,3.5,6.5,9.0,11.3],backgroundColor:'#fbcfe8',borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:15,stacked:true,title:{display:true,text:'дней из 14'}},GRID),x:Object.assign({stacked:true,title:{display:true,text:'корреляция ρ с ковариатой'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 2 — дисперсия как функция θ */
+(function(){
+  var xs=[], ys=[];
+  for(var t=-0.2;t<=1.71;t+=0.05){
+    xs.push(t.toFixed(2));
+    ys.push((4210000 - 2*t*2610000 + t*t*3480000)/1e6);
+  }
+  mk('c_theta',{type:'line',data:{labels:xs,datasets:[
+    {label:'Var(Y − θX), млн',data:ys,borderColor:AC,backgroundColor:'rgba(131,24,67,.07)',tension:.2,fill:true,pointRadius:0},
+    {label:'Минимум при θ* = 0.75',data:xs.map(function(v){return Math.abs(+v-0.75)<0.026?2.2525:null;}),borderColor:GR,pointRadius:8,pointBackgroundColor:GR,showLine:false}
+  ]},options:{responsive:true,scales:{y:Object.assign({min:2.0,max:4.6,title:{display:true,text:'дисперсия, млн'}},GRID),x:Object.assign({title:{display:true,text:'θ'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+})();
+
+/* 3 — что даёт корреляция */
+(function(){
+  var xs=[], v=[], m=[];
+  for(var r=0.05;r<=0.951;r+=0.05){
+    xs.push(r.toFixed(2));
+    v.push(100*r*r);
+    m.push(100*(1-Math.sqrt(1-r*r)));
+  }
+  mk('c_rho',{type:'line',data:{labels:xs,datasets:[
+    {label:'Снижение дисперсии = ρ², %',data:v,borderColor:BL,tension:.2,pointRadius:3},
+    {label:'Снижение MDE = 1 − √(1−ρ²), %',data:m,borderColor:AC,backgroundColor:'rgba(131,24,67,.07)',tension:.2,fill:true,pointRadius:3}
+  ]},options:{responsive:true,scales:{y:Object.assign({min:0,max:95,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'корреляция ρ'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+})();
+
+/* 4 — по типам метрик */
+mk('c_metric',{type:'bar',data:{labels:['Конверсия (бинарная)','Число сессий','Время на сайте','Выручка'],
+ datasets:[{label:'Снижение MDE, %',data:[4.9,21.5,24.9,26.7],backgroundColor:[RD,AC2,AC2,AC],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:30,title:{display:true,text:'%'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var r=['ρ = 0.31','ρ = 0.62','ρ = 0.66','ρ = 0.68'];return r[it[0].dataIndex];}}}}}});
+
+/* 5 — смещение при неверной ковариате */
+(function(){
+  var xs=[], ys=[];
+  for(var e=0;e<=2.01;e+=0.1){
+    xs.push(e.toFixed(1));
+    ys.push(2.00 - 0.75*e);
+  }
+  mk('c_bias',{type:'line',data:{labels:xs,datasets:[
+    {label:'Измеренный эффект, %',data:ys,borderColor:RD,backgroundColor:'rgba(185,28,28,.07)',tension:.1,fill:true,pointRadius:0},
+    {label:'Истинный эффект 2.00%',data:xs.map(function(){return 2.0;}),borderColor:GR,borderDash:[4,4],pointRadius:0}
+  ]},options:{responsive:true,scales:{y:Object.assign({min:0,max:2.4,title:{display:true,text:'измеренный эффект, %'}},GRID),x:Object.assign({title:{display:true,text:'эффект воздействия на саму ковариату, %'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+})();
+
+/* 6 — кандидаты в ковариаты */
+mk('c_cov',{type:'bar',data:{labels:['1 нед.','2 нед.','4 нед.','8 нед.','12 нед.','Число сессий','Возраст аккаунта','Регрессия на 3'],
+ datasets:[{label:'Снижение MDE при полном покрытии, %',data:[15.8,20.3,26.7,28.6,29.6,8.8,2.5,35.0],
+  backgroundColor:[AC2,AC2,AC,AC2,AC2,GY,RD,GR],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:38,title:{display:true,text:'%'}},GRID),x:NOG},plugins:{legend:{display:false}}}});
+
+/* 7 — компромисс длины предпериода */
+mk('c_pre',{type:'bar',data:{labels:['1 неделя','2 недели','4 недели','8 недель','12 недель'],
+ datasets:[
+  {type:'bar',label:'Эффективное снижение MDE, %',data:[14.6,18.0,19.8,17.2,14.1],backgroundColor:[AC2,AC2,GR,AC2,AC2],borderRadius:4,yAxisID:'y',order:3},
+  {type:'line',label:'Корреляция ρ',data:[0.54,0.61,0.68,0.70,0.71],borderColor:BL,tension:.25,pointRadius:5,yAxisID:'y1',order:1},
+  {type:'line',label:'Доля с предпериодом',data:[0.93,0.88,0.77,0.64,0.52],borderColor:OR,tension:.25,pointRadius:5,yAxisID:'y1',order:2}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:24,position:'left',title:{display:true,text:'снижение MDE, %'}},GRID),
+   y1:{min:0.4,max:1.0,position:'right',grid:{display:false},title:{display:true,text:'доля'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — новые пользователи */
+mk('c_new',{type:'bar',data:{labels:['Исключить','X = X̄','X = X̄ + отдельная ковариата'],
+ datasets:[
+  {type:'bar',label:'Снижение MDE, %',data:[16.5,19.8,21.9],backgroundColor:[RD,AC,GR],borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Оценка эффекта, % (истина 0.42)',data:[1.80,0.42,0.42],borderColor:BL,tension:.2,pointRadius:6,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:25,position:'left',title:{display:true,text:'снижение MDE, %'}},GRID),
+   y1:{min:0,max:2.1,position:'right',grid:{display:false},title:{display:true,text:'оценка эффекта, %'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 9 — стратификация против CUPED */
+mk('c_strat',{type:'bar',data:{labels:['2 страты','5','10','20','50','Линейный CUPED','+ квадрат','Бустинг'],
+ datasets:[{label:'Объяснённая доля дисперсии',data:[0.298,0.410,0.447,0.459,0.463,0.465,0.481,0.547],
+  backgroundColor:[GY,GY,GY,GY,GY,AC,AC2,GR],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.25,max:0.60,title:{display:true,text:'доля дисперсии'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var d=[15.9,23.2,25.6,26.4,26.6,26.7,28.0,32.7];return 'снижение MDE: '+d[it[0].dataIndex].toFixed(1)+'%';}}}}}});
+
+/* 10 — число ковариат */
+mk('c_multi',{type:'line',data:{labels:['1','2','3','5','12'],
+ datasets:[
+  {label:'Снижение MDE при кросс-подгонке, %',data:[26.7,30.8,35.0,36.8,37.7],borderColor:AC,backgroundColor:'rgba(131,24,67,.08)',tension:.25,fill:true,pointRadius:5},
+  {label:'Завышенная оценка без кросс-подгонки, %',data:[27.1,31.8,36.9,39.8,42.6],borderColor:RD,borderDash:[5,4],tension:.25,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:24,max:45,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'число ковариат'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 11 — ratio-метрики */
+mk('c_ratio',{type:'bar',data:{labels:['CUPED к X/Y напрямую','CUPED к X и Y + дельта','Линеаризация + CUPED'],
+ datasets:[{label:'Снижение дисперсии',data:[0.31,0.43,0.44],backgroundColor:[RD,AC2,GR],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.5,title:{display:true,text:'доля дисперсии'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['оценка смещена','корректно','корректно и проще'];return t[it[0].dataIndex];}}}}}});
+
+/* 12 — A/A-тесты */
+mk('c_aa',{type:'bar',data:{labels:['1 000','10 000','100 000'],
+ datasets:[
+  {type:'bar',label:'Без CUPED, %',data:[4.8,5.1,4.9],backgroundColor:GY,borderRadius:4},
+  {type:'bar',label:'С CUPED, %',data:[5.4,5.1,5.0],backgroundColor:AC,borderRadius:4},
+  {type:'line',label:'Номинальные 5%',data:[5,5,5],borderColor:RD,borderDash:[4,4],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:4,max:6,title:{display:true,text:'доля значимых, %'}},GRID),x:Object.assign({title:{display:true,text:'наблюдений на группу'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 13 — накопление приёмов */
+mk('c_cum',{type:'bar',data:{labels:['Сырая метрика','+ винзоризация','+ CUPED','+ страт. рандомизация'],
+ datasets:[{label:'MDE выручки, %',data:[8.779,1.100,0.919,0.882],
+  backgroundColor:[RD,AC2,AC,GR],borderRadius:4}]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'MDE, % (лог. шкала)'},grid:{color:'#eef2f7'}},x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var t=['CV = 13.98','CV = 1.75','ρ = 0.55 на обрезанной метрике','+4% сверху'];return t[it[0].dataIndex];}}}}}});
+
+/* ИНТЕРАКТИВ */
+function updCuped(){
+  var rho = (+document.getElementById('sl_rho').value)/100;
+  var cov = (+document.getElementById('sl_cov').value)/100;
+  var d0  = +document.getElementById('sl_days').value;
+
+  document.getElementById('out_rho').textContent = rho.toFixed(2);
+  document.getElementById('out_cov').textContent = Math.round(100*cov) + '%';
+  document.getElementById('out_days').textContent = d0;
+
+  var r2 = rho * rho;
+  var r2eff = cov * r2;
+  var varRed = 100 * r2eff;
+  var mdeRed = 100 * (1 - Math.sqrt(1 - r2eff));
+  var dNew = d0 * (1 - r2eff);
+  var saved = d0 - dNew;
+
+  var verdict;
+  if (mdeRed < 5) verdict = 'приём не окупает внедрения — ищите другую ковариату или другую метрику';
+  else if (mdeRed < 12) verdict = 'скромно: внедрять стоит, но большого выигрыша не ждите';
+  else if (mdeRed < 25) verdict = 'типичный рабочий диапазон — внедрять однозначно';
+  else verdict = 'отличный случай: эффект сопоставим с удвоением трафика';
+
+  document.getElementById('out_cuped').textContent =
+    'ρ² = ' + rho.toFixed(2) + '² = ' + r2.toFixed(4) + '\n' +
+    'эффективное ρ² = ' + cov.toFixed(2) + ' × ' + r2.toFixed(4) + ' = ' + r2eff.toFixed(4) + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'снижение дисперсии: ' + varRed.toFixed(1) + '%\n' +
+    'снижение MDE:       ' + mdeRed.toFixed(1) + '%   ← это то, что вы почувствуете\n' +
+    '─────────────────────────────────────────────\n' +
+    'длительность: ' + d0 + ' → ' + dNew.toFixed(1) + ' дней\n' +
+    'сэкономлено:  ' + saved.toFixed(1) + ' дней (' + (100*saved/d0).toFixed(0) + '%)\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  ['sl_rho','sl_cov','sl_days'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updCuped); });
+  if(document.getElementById('out_cuped')) updCuped();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

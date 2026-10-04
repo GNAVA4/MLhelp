@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7.4 · TabPFN и табличные foundation-модели</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#1e3a8a; --ac-d:#172554; --ac-l:#eff6ff; --ac-b:#93c5fd; --ac-m:#2563eb;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#172554,#1e3a8a 50%,#93c5fd);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.94;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.85;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#92400e}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#93c5fd;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+.srcbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:13.5px;color:var(--tx2);margin-top:16px}
+.srcbox b{color:var(--ac-d);display:block;margin-bottom:7px}
+.srcbox ul{margin:0;padding-left:20px}
+.srcbox li{margin-bottom:4px}
+
+.fbox{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:16px 20px;margin:0 0 20px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin-bottom:9px;font-weight:650}
+.fbox .fm{font-family:'SF Mono',Menlo,monospace;font-size:17px;color:var(--ac-d);font-weight:700}
+.fnote{font-size:13.5px;color:var(--tx3);margin-top:9px}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 7 · тема 4 · продвинутый уровень</div>
+    <h1>TabPFN и табличные foundation-модели</h1>
+    <p>Тридцать лет табличное машинное обучение означало «подобрать гиперпараметры и обучить градиентный бустинг». Табличная foundation-модель не обучается на ваших данных вообще: она принимает всю обучающую выборку как контекст и выдаёт предсказания одним прямым проходом. Обучение заменено чтением. Разбираем, почему это работает, что именно сеть выучила на 130 миллионах синтетических датасетов и где этот подход по-прежнему проигрывает CatBoost.</p>
+    <div class="meta">
+      <span>15 секций</span><span>12 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span><span>данные на август 2026</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Смена парадигмы</a>
+    <a href="#s2">2 · Что выучила сеть</a>
+    <a href="#s3">3 · Приор</a>
+    <a href="#s4">4 · Архитектура</a>
+    <a href="#s5">5 · Прямой проход</a>
+    <a href="#s6">6 · Перестановки</a>
+    <a href="#s7">7 · Стоимость</a>
+    <a href="#s8">8 · Версии и границы</a>
+    <a href="#s9">9 · Калибровка</a>
+    <a href="#s10">10 · Где проигрывает</a>
+    <a href="#s11">11 · Экосистема</a>
+    <a href="#s12">12 · Дистилляция</a>
+    <a href="#s13">13 · В работе и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Смена парадигмы: обучение заменено чтением</h2></div>
+  <p class="slead">В обычном пайплайне вы подгоняете параметры модели под ваш датасет градиентным спуском. Табличная foundation-модель не подгоняет ничего: обучающая выборка подаётся ей во вход как контекст, ровно как промпт языковой модели.</p>
+
+  <p>Разница проще, чем кажется, и радикальнее, чем кажется. Сравните два интерфейса:</p>
+
+  <table class="ct">
+    <thead><tr><th></th><th>Градиентный бустинг</th><th>Табличная foundation-модель</th></tr></thead>
+    <tbody>
+      <tr><td><code>fit(X, y)</code></td><td class="note">строит 2000 деревьев градиентным спуском, 320 с с подбором гиперпараметров</td><td class="g">запоминает X и y в буфер, ~0 с</td></tr>
+      <tr><td><code>predict(X_test)</code></td><td class="note">проходит по деревьям, 0.2 мс на объект</td><td class="a">один прямой проход трансформера, где в контексте лежит вся обучающая выборка</td></tr>
+      <tr><td>Где живёт «знание о задаче»</td><td class="note">в весах деревьев, обученных на ваших данных</td><td class="note">в весах трансформера, обученных на 130 млн <b>чужих синтетических</b> данных</td></tr>
+      <tr><td>Гиперпараметры</td><td class="r">10–15 существенных, требуют подбора</td><td class="g">практически нет</td></tr>
+      <tr><td>Что делать при новых данных</td><td class="note">переобучить</td><td class="note">добавить строки в контекст</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Ключевая перестановка: в первом столбце обучение происходит во время <code>fit</code>, во втором — во время <code>predict</code>. Причём во втором случае обучения в привычном смысле нет вообще: ни одного градиентного шага по вашим данным.</p>
+
+  <div class="def">
+    <div class="def-t">Prior-Data Fitted Network (PFN)</div>
+    <p><b>Трансформер, предобученный решать не одну задачу, а бесконечное семейство задач.</b> Во время предобучения из <b>приора</b> — вероятностного распределения над датасетами — сэмплируется синтетический датасет. Часть его строк подаётся сети как контекст с метками, остальные — как запросы без меток. Сеть учится предсказывать скрытые метки.</p>
+    <p>После миллионов таких эпизодов сеть выучивает не решение конкретной задачи, а <b>алгоритм обучения</b>: как из набора размеченных примеров вывести предсказание для нового. Этот алгоритм исполняется одним прямым проходом.</p>
+    <p>Название буквально: сеть подогнана (fitted) под приор (prior) над данными, а не под данные.</p>
+  </div>
+
+  <p>Практическое следствие, ради которого всё это интересно: <b>на малых данных такая модель систематически сильнее подобранного бустинга</b>, а времени тратит на три порядка меньше. Именно поэтому TabPFN оказался востребован в биомедицине, где 200 пациентов — типичный размер выборки, а не в рекомендательных системах.</p>
+
+  <div class="chb">
+    <div class="cht">Преимущество над подобранным CatBoost по размеру датасета</div>
+    <div class="chsub">Иллюстративный профиль, обобщающий публичные бенчмарки: чем меньше данных, тем больше разрыв. За миллионом строк преимущество в качестве исчезает, остаётся преимущество во времени подготовки</div>
+    <canvas id="c_size"></canvas>
+  </div>
+
+  <p>Второе следствие менее очевидно, но для прикладной работы важнее: <b>время до первой приличной модели</b> падает с часов до секунд. Это меняет не качество финального решения, а скорость проверки гипотез. Идею «а если добавить этот источник данных» можно проверить за минуту, а не за вечер.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · бюджет времени на одну проверку гипотезы</div>
+    <div class="tstep">
+      <b>Сценарий.</b> 4 800 строк, 40 признаков, нужно понять, стоит ли добавлять внешний источник.
+      <div class="calc"><span class="lbl">CatBoost с подбором (200 конфигураций Optuna):</span>
+  одно обучение на 5-фолдовой CV:  5 × 1.6 с = 8.0 с
+  200 конфигураций:                200 × 8.0 = <span class="hl">1 600 с</span>
+  два прогона (без источника и с ним): <span class="bad">3 200 с = 53 мин</span>
+
+<span class="lbl">TabPFN, прямой проход:</span>
+  один прогон на 5-фолдовой CV:    5 × 0.42 с = 2.1 с
+  ансамбль из 8 перестановок:      8 × 2.1 = 16.8 с
+  два прогона:                     <span class="res">33.6 с</span>
+
+<span class="lbl">отношение:</span> 3 200 / 33.6 = <span class="res">95×</span></div>
+    </div>
+    <div class="tstep">
+      <b>Что это меняет в дне работы.</b>
+      <div class="calc"><span class="lbl">за рабочий день (6 часов чистого времени):</span>
+  CatBoost с подбором:  21 600 / 3 200 = <span class="hl">6.75 гипотез</span>
+  TabPFN:               21 600 / 33.6  = <span class="res">642 гипотезы</span>
+
+<span class="dim">Разумеется, вы не проверите 642 гипотезы — узким местом
+станет человек. Но переход от «6 проверок в день» к
+«ограничен только тем, как быстро придумываю» —
+качественный, а не количественный.</span>
+
+<span class="lbl">Правильное применение:</span> <span class="res">TabPFN как инструмент разведки,</span>
+<span class="dim">финальная модель — по обстоятельствам (секции 10 и 12).</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Что именно выучила сеть: апостериорное предсказательное распределение</h2></div>
+  <p class="slead">Обучение на синтетике с кросс-энтропией имеет ровно один оптимум, и этот оптимум — байесовское апостериорное предсказательное распределение по приору, из которого генерировали данные. Это не метафора, это следствие из вида функции потерь.</p>
+
+  <div class="def">
+    <div class="def-t">Апостериорное предсказательное распределение (PPD)</div>
+    <p>Пусть приор задаёт распределение p(φ) над «механизмами», порождающими датасеты. Наблюдав контекст D, мы получаем апостериор над механизмами p(φ|D) ∝ p(D|φ)·p(φ). Предсказание для нового x — это усреднение по всем механизмам, взвешенное апостериором:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:14.5px;text-align:center;color:var(--ac-d)">p(y | x, D) = ∫ p(y | x, φ) · p(φ | D) dφ</p>
+    <p>Это оптимальное предсказание, если приор верен. Проблема в том, что интеграл почти никогда не считается аналитически, а MCMC на каждый датасет непрактичен.</p>
+    <p><b>Идея PFN:</b> не считать интеграл, а научить сеть выдавать его результат сразу. Обучение по сэмплам из приора делает это автоматически, потому что минимум ожидаемой кросс-энтропии достигается ровно на условном распределении — то есть на PPD.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · PPD целиком вручную на приоре из трёх гипотез</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Приор. Один признак x ∈ {0, 1, 2}, бинарная метка. Три возможных механизма.
+      <div class="calc"><span class="lbl">механизм    p(y=1 | x=0)  p(y=1 | x=1)  p(y=1 | x=2)   приор p(φ)</span>
+  φ₁            0.1           0.5           0.9          <span class="hl">0.5</span>
+  φ₂            0.3           0.5           0.7          <span class="hl">0.3</span>
+  φ₃            0.7           0.5           0.3          <span class="hl">0.2</span>
+
+<span class="dim">φ₁ — сильная растущая зависимость
+φ₂ — слабая растущая
+φ₃ — убывающая</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Контекст: три размеченные строки. D = {(0,0), (2,1), (2,1)}.
+      <div class="calc"><span class="lbl">правдоподобие p(D|φ) = произведение по трём строкам</span>
+
+φ₁:  (1−0.1) × 0.9 × 0.9 = 0.9 × 0.9 × 0.9 = <span class="hl">0.729000</span>
+φ₂:  (1−0.3) × 0.7 × 0.7 = 0.7 × 0.7 × 0.7 = <span class="hl">0.343000</span>
+φ₃:  (1−0.7) × 0.3 × 0.3 = 0.3 × 0.3 × 0.3 = <span class="hl">0.027000</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Апостериор p(φ|D) ∝ p(D|φ)·p(φ).
+      <div class="calc">φ₁:  0.5 × 0.729000 = <span class="hl">0.364500</span>
+φ₂:  0.3 × 0.343000 = <span class="hl">0.102900</span>
+φ₃:  0.2 × 0.027000 = <span class="hl">0.005400</span>
+<span class="dim">─────────────────────────────</span>
+сумма                <span class="hl">0.472800</span>
+
+φ₁:  0.364500 / 0.472800 = <span class="res">0.770939</span>
+φ₂:  0.102900 / 0.472800 = <span class="res">0.217639</span>
+φ₃:  0.005400 / 0.472800 = <span class="res">0.011421</span>
+<span class="dim">проверка: 0.770939 + 0.217639 + 0.011421 = 0.999999 ✓</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> PPD для запроса x = 0.
+      <div class="calc">p(y=1 | x=0, D)
+  = 0.770939 × 0.1 + 0.217639 × 0.3 + 0.011421 × 0.7
+  = 0.0770939 + 0.0652917 + 0.0079947
+  = <span class="res">0.1503803</span>
+
+<span class="lbl">сравним с «выбрать лучшую гипотезу и использовать её»:</span>
+  максимум апостериора — φ₁, она даёт <span class="hl">0.100000</span>
+
+<span class="bad">Разница 0.0504 — это цена отказа от усреднения.
+PPD на 50.4% выше, потому что учитывает,
+что φ₂ и φ₃ ещё не исключены тремя строками.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Теперь проверим, что обучение по кросс-энтропии сходится именно к 0.15038, а не к чему-то ещё.
+      <div class="calc"><span class="lbl">ожидаемая потеря сети, выдающей значение q:</span>
+  L(q) = −[ P·ln q + (1−P)·ln(1−q) ],  где P = 0.1503803
+
+q = 0.10:  −[0.1503803×(−2.302585) + 0.8496197×(−0.105361)]
+         = −[−0.346262 − 0.089517] = <span class="hl">0.435779</span>
+q = 0.20:  −[0.1503803×(−1.609438) + 0.8496197×(−0.223144)]
+         = −[−0.242026 − 0.189588] = <span class="hl">0.431614</span>
+q = 0.1504: −[0.1503803×(−1.894330) + 0.8496197×(−0.162989)]
+         = −[−0.284869 − 0.138476] = <span class="res">0.423345</span>
+
+<span class="res">Минимум ровно в PPD. Сеть не «делает байесовский вывод»
+во время предсказания — она заранее выучила таблицу
+соответствий «контекст → PPD» и просто читает из неё.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Что это объясняет.</b>
+      <div class="calc"><span class="lbl">1. Почему нет переобучения на ваших данных.</span>
+<span class="dim">   Сеть не подгоняет параметры под вашу выборку —
+   параметры зафиксированы. Переобучиться не на чем.</span>
+
+<span class="lbl">2. Почему предсказания хорошо откалиброваны.</span>
+<span class="dim">   PPD — это распределение, а не точечная оценка.
+   Калибровка встроена в целевую функцию (секция 9).</span>
+
+<span class="lbl">3. Почему всё держится на качестве приора.</span>
+<span class="bad">   Если ваша задача не похожа ни на что в приоре,
+   результат не гарантирован ничем (секция 10).</span>
+
+<span class="lbl">4. Почему нет гиперпараметров.</span>
+<span class="dim">   Регуляризация, сложность модели, ранняя остановка —
+   всё это способы приблизить усреднение по апостериору.
+   PFN усредняет напрямую.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Апостериор по гипотезам и итоговое предсказание</div>
+    <div class="chsub">Три строки контекста почти обнулили убывающую гипотезу (0.011), но оставили заметный вес слабой (0.218). Поэтому усреднённое предсказание 0.150, а не 0.100</div>
+    <canvas id="c_ppd"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ожидаемая кросс-энтропия как функция выхода сети</div>
+    <div class="chsub">Минимум достигается точно на PPD = 0.1504. Обучение на сэмплах из приора не может сойтись к «лучшей гипотезе» 0.100 — там потеря выше на 0.0124</div>
+    <canvas id="c_loss"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Аналогия, которая помогает.</b> Представьте, что кто-то решил миллиард задач по физике и записал, какой ответ следует из какого условия. Он не «понимает» физику при решении вашей задачи — он узнаёт условие и вспоминает форму ответа. Это работает ровно настолько, насколько ваша задача похожа на что-то из миллиарда. TabPFN устроен так же, только «условие» — это ваша таблица целиком, а «миллиард задач» — синтетический приор.
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Приор: откуда берутся 130 миллионов датасетов</h2></div>
+  <p class="slead">Приор — это генератор синтетических таблиц. Он и есть настоящее содержание модели: всё, что TabPFN умеет, — следствие того, какие датасеты в нём встречались и с какой частотой.</p>
+
+  <p>Датасеты порождаются структурными причинными моделями и байесовскими нейросетями со случайной структурой. Схема одна и та же: строится случайный вычислительный граф, через него прогоняется случайный шум, часть узлов объявляется признаками, один узел — целевой переменной.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · один синтетический датасет от графа до таблицы</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Случайный граф. Три узла, две нелинейности, шум на каждом рёбре.
+      <div class="calc"><span class="lbl">z₁ ~ N(0, 1)</span>
+<span class="lbl">z₂ = tanh(1.4·z₁) + 0.3·ε₂</span>
+<span class="lbl">z₃ = z₁·z₂ − 0.5 + 0.2·ε₃</span>
+
+<span class="lbl">признаки: (z₁, z₃)     метка: y = 1[z₂ &gt; 0.2]</span>
+
+<span class="bad">Обратите внимание: метка зависит от z₂,
+которого НЕТ среди признаков.</span>
+<span class="dim">Это не ошибка генератора, а намеренное свойство:
+в реальных данных решающая переменная почти всегда
+наблюдается лишь косвенно.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Прогоняем четыре сэмпла шума.
+      <div class="calc"><span class="lbl">строка 1:  z₁ = 0.80,  ε₂ = 0.5,  ε₃ = −1.0</span>
+  tanh(1.4 × 0.80) = tanh(1.12) = <span class="hl">0.807572</span>
+  z₂ = 0.807572 + 0.3×0.5 = 0.807572 + 0.15 = <span class="hl">0.957572</span>
+  z₃ = 0.80 × 0.957572 − 0.5 + 0.2×(−1.0)
+     = 0.766058 − 0.5 − 0.2 = <span class="hl">0.066058</span>
+  y = 1[0.957572 &gt; 0.2] = <span class="res">1</span>
+
+<span class="lbl">строка 2:  z₁ = −1.20,  ε₂ = −0.4,  ε₃ = 0.5</span>
+  tanh(−1.68) = <span class="hl">−0.932857</span>
+  z₂ = −0.932857 − 0.12 = <span class="hl">−1.052857</span>
+  z₃ = (−1.20)×(−1.052857) − 0.5 + 0.1
+     = 1.263428 − 0.4 = <span class="hl">0.863428</span>
+  y = 1[−1.052857 &gt; 0.2] = <span class="res">0</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Ещё две строки.
+      <div class="calc"><span class="lbl">строка 3:  z₁ = 0.10,  ε₂ = 1.2,  ε₃ = 0.0</span>
+  tanh(0.14) = <span class="hl">0.139089</span>
+  z₂ = 0.139089 + 0.36 = <span class="hl">0.499089</span>
+  z₃ = 0.10 × 0.499089 − 0.5 = <span class="hl">−0.450091</span>
+  y = <span class="res">1</span>
+
+<span class="lbl">строка 4:  z₁ = −0.30,  ε₂ = 0.1,  ε₃ = 1.5</span>
+  tanh(−0.42) = <span class="hl">−0.396930</span>
+  z₂ = −0.396930 + 0.03 = <span class="hl">−0.366930</span>
+  z₃ = (−0.30)×(−0.366930) − 0.5 + 0.3
+     = 0.110079 − 0.2 = <span class="hl">−0.089921</span>
+  y = <span class="res">0</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Готовая таблица, которую увидит сеть.
+      <div class="calc"><span class="lbl">  z₁         z₃         y</span>
+  0.800     0.066      1
+ −1.200     0.863      0
+  0.100    −0.450      1
+ −0.300    −0.090      0
+
+<span class="dim">Ни имён колонок, ни единиц измерения, ни смысла.
+Сеть видит только числа и должна вывести
+закономерность из самих значений.</span>
+
+<span class="lbl">Именно поэтому TabPFN не использует названия колонок:
+приор их не содержит. Модели, которые их используют
+(ContextTab, TabSTAR), обучаются на реальных таблицах.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Смещение к простым структурам — не деталь, а главный рычаг.
+      <div class="calc"><span class="lbl">генератор чаще выбирает малые графы и слабые нелинейности:</span>
+
+  узлов в графе      доля датасетов
+     2–4                  <span class="hl">41%</span>
+     5–8                  <span class="hl">33%</span>
+     9–16                 <span class="hl">18%</span>
+     17–32                <span class="hl"> 6%</span>
+     33+                  <span class="hl"> 2%</span>
+
+<span class="res">Это и есть «бритва Оккама», зашитая в веса.
+Сеть, обученная на таком приоре, при неоднозначном
+контексте предпочтёт простое объяснение — потому что
+в её обучении простые встречались вчетверо чаще.</span>
+
+<span class="dim">Меняя это распределение, вы меняете индуктивное
+смещение модели, не трогая ни архитектуру,
+ни функцию потерь. Так работают доменные варианты.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Смещение приора к простым причинным структурам</div>
+    <div class="chsub">Иллюстративное распределение сложности графов в синтетическом приоре. Именно эта форма определяет, что модель считает «правдоподобным объяснением» ваших данных</div>
+    <canvas id="c_prior"></canvas>
+  </div>
+
+  <p>Кроме структуры графа приор моделирует и то, что делает реальные таблицы неудобными: пропуски, выбросы, категориальные переменные, дисбаланс классов, дублирующие и бесполезные признаки, шум в метках. Каждый такой эффект появляется в синтетике с некоторой вероятностью, и сеть учится с ним справляться так же, как учится восстанавливать зависимость.</p>
+
+  <table class="ct">
+    <thead><tr><th>Эффект в приоре</th><th>Что даёт на практике</th><th>Чем это заменяется в обычном пайплайне</th></tr></thead>
+    <tbody>
+      <tr><td>Пропуски по случайным маскам</td><td class="note">пропуски обрабатываются нативно, без импутации</td><td class="note">SimpleImputer, отдельный индикатор пропуска</td></tr>
+      <tr><td>Выбросы и тяжёлые хвосты</td><td class="note">устойчивость без винзоризации</td><td class="note">обрезка квантилей, RobustScaler</td></tr>
+      <tr><td>Категориальные с разной кардинальностью</td><td class="note">кодирование не требуется</td><td class="note">target encoding, см. <a href="block1_14_feature_engineering.html">1.14</a></td></tr>
+      <tr><td>Дисбаланс классов</td><td class="note">разумные вероятности на редком классе</td><td class="note">веса классов, SMOTE</td></tr>
+      <tr><td>Дубликаты и мусорные колонки</td><td class="note">устойчивость к неотобранным признакам</td><td class="note">отбор признаков</td></tr>
+      <tr><td>Шум в метках</td><td class="note">не переобучается на выбросы метки</td><td class="note">ранняя остановка, регуляризация</td></tr>
+      <tr><td class="a">Временной дрейф</td><td class="r">в приоре отсутствует — модель его не ожидает</td><td class="a">схема валидации, см. <a href="block1_15_validation_schemes.html">1.15</a></td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка — самая важная. Всё, чего нет в приоре, модель не умеет. Приор порождает обменные (exchangeable) строки, то есть предполагает, что порядок строк не значим. Для данных с осью времени это предположение ложно, и никакая мощность модели этого не исправляет.</p>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Архитектура: внимание по строкам и по столбцам</h2></div>
+  <p class="slead">Таблица — не последовательность. Строки образуют множество, столбцы — тоже множество, но другого сорта. Архитектура должна отражать обе симметрии, и это достигается снятием позиционного кодирования и чередованием двух видов внимания.</p>
+
+  <div class="def">
+    <div class="def-t">Две симметрии таблицы</div>
+    <p><b>Инвариантность к порядку строк.</b> Если переставить строки обучающей выборки, предсказание не должно измениться. Строки — множество наблюдений, а не последовательность.</p>
+    <p><b>Эквивариантность к порядку столбцов.</b> Если переставить столбцы, предсказание тоже не должно измениться (метка не привязана к позиции признака). Обычная нейросеть этим свойством не обладает: у неё первый вход и третий вход — разные веса.</p>
+    <p>В трансформере первая симметрия достигается <b>удалением позиционного кодирования</b> в измерении строк. Вторая — тем, что каждая ячейка кодируется отдельным токеном, и внимание идёт по столбцам тоже. TabPFN v2 и далее чередуют внимание по строкам и по столбцам в каждом блоке.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · позиционное кодирование ломает инвариантность (проверка вручную)</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Три контекстные строки, один запрос. Скалярные произведения запроса с ключами:
+      <div class="calc"><span class="lbl">строка:      A      B      C</span>
+q·k:        1.0    0.0    2.0
+метка v:      1      0      1
+
+<span class="lbl">softmax без позиционного кодирования:</span>
+  e^1.0 = 2.718282
+  e^0.0 = 1.000000
+  e^2.0 = 7.389056
+  сумма = <span class="hl">11.107338</span>
+
+  w_A = 2.718282 / 11.107338 = <span class="hl">0.244728</span>
+  w_B = 1.000000 / 11.107338 = <span class="hl">0.090031</span>
+  w_C = 7.389056 / 11.107338 = <span class="hl">0.665241</span>
+  <span class="dim">проверка: 0.244728 + 0.090031 + 0.665241 = 1.000000 ✓</span>
+
+  выход = 0.244728×1 + 0.090031×0 + 0.665241×1 = <span class="res">0.909969</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Переставляем строки в порядок C, A, B. Скалярные произведения те же — они не зависят от позиции.
+      <div class="calc"><span class="lbl">строка:      C      A      B</span>
+q·k:        2.0    1.0    0.0
+метка v:      1      1      0
+
+  w_C = 7.389056 / 11.107338 = <span class="hl">0.665241</span>
+  w_A = 2.718282 / 11.107338 = <span class="hl">0.244728</span>
+  w_B = 1.000000 / 11.107338 = <span class="hl">0.090031</span>
+
+  выход = 0.665241×1 + 0.244728×1 + 0.090031×0 = <span class="res">0.909969</span>
+
+<span class="res">Точно то же число. Инвариантность выполнена.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Теперь добавим позиционное смещение +0.5 за каждую позицию — как в обычном языковом трансформере.
+      <div class="calc"><span class="lbl">исходный порядок A, B, C → смещения 0, +0.5, +1.0</span>
+  скорректированные скоры: 1.0, 0.5, 3.0
+  e^1.0 = 2.718282, e^0.5 = 1.648721, e^3.0 = 20.085537
+  сумма = <span class="hl">24.452540</span>
+  веса: 0.111165, 0.067424, 0.821411
+  выход = 0.111165×1 + 0.067424×0 + 0.821411×1 = <span class="hl">0.932576</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Тот же расчёт для порядка C, A, B.
+      <div class="calc"><span class="lbl">порядок C, A, B → смещения 0, +0.5, +1.0</span>
+  скорректированные скоры: 2.0, 1.5, 1.0
+  e^2.0 = 7.389056, e^1.5 = 4.481689, e^1.0 = 2.718282
+  сумма = <span class="hl">14.589027</span>
+  веса: 0.506479, 0.307192, 0.186329
+  выход = 0.506479×1 + 0.307192×1 + 0.186329×0 = <span class="hl">0.813671</span>
+
+<span class="bad">0.932576 против 0.813671 — разница 0.118905.
+Одна и та же выборка, только строки в другом порядке.</span>
+
+<span class="res">Вывод: снятие позиционного кодирования — не
+косметика, а условие корректности. С ним модель
+выдавала бы разные ответы на одни и те же данные.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Три перестановки одной и той же выборки</div>
+    <div class="chsub">Без позиционного кодирования выход постоянен. С позиционным кодированием он гуляет в диапазоне 0.119 — это чистый артефакт порядка строк в файле</div>
+    <canvas id="c_perm"></canvas>
+  </div>
+
+  <p>Второе измерение внимания — по столбцам — решает задачу, которую в обычной архитектуре решить нечем: <b>число признаков у разных датасетов разное</b>. Полносвязный слой с фиксированным входом на 40 признаков не примет датасет с 12. Внимание по столбцам работает с любым их числом, потому что рассматривает признаки как множество токенов, а не как позиции вектора.</p>
+
+  <table class="ct">
+    <thead><tr><th>Что делает внимание</th><th>По строкам</th><th>По столбцам</th></tr></thead>
+    <tbody>
+      <tr><td>Что сравнивается</td><td class="note">объекты между собой</td><td class="note">признаки внутри объекта</td></tr>
+      <tr><td>Смысл операции</td><td class="note">«найти похожие размеченные примеры»</td><td class="note">«понять структуру признакового пространства»</td></tr>
+      <tr><td>Ближайший аналог</td><td class="note">метод ближайших соседей с обучаемой метрикой</td><td class="note">построение взаимодействий признаков</td></tr>
+      <tr><td>Позиционное кодирование</td><td class="g">отсутствует (нужна инвариантность)</td><td class="g">отсутствует (нужна эквивариантность)</td></tr>
+      <tr><td>Сложность</td><td class="r">O(n²) по числу строк</td><td class="a">O(d²) по числу признаков</td></tr>
+      <tr><td>Что упирается в потолок</td><td class="note">размер выборки — отсюда лимиты версий</td><td class="note">число признаков — отсюда TabPFN-Wide</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Два квадратичных члена — источник обоих ограничений TabPFN. Все инженерные улучшения версий 2.5 и 3 бьют именно в них: сжатие строк, урезанный KV-кэш, разбиение на чанки.</p>
+
+  <div class="intuition">
+    <b>Как это связано с блоком 8.</b> Механика внимания разобрана в <a href="block8_04_attention.html">8.4</a>, вопросы позиционного кодирования — в <a href="block8_07_rope_positions.html">8.7</a>, а KV-кэш и стоимость инференса — в <a href="block8_08_attention_inference.html">8.8</a>. TabPFN — редкий случай, когда отсутствие позиционного кодирования является требованием, а не упрощением: в языковой модели порядок токенов несёт смысл, в таблице порядок строк смысла не несёт и должен быть стёрт.
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Что происходит при одном прямом проходе</h2></div>
+  <p class="slead">От <code>predict()</code> до вероятности — семь шагов, ни на одном из которых не считается градиент. Отдельно разбираем регрессию: на выходе не число, а распределение, и это меняет способ принимать решения.</p>
+
+  <table class="ct">
+    <thead><tr><th>#</th><th>Шаг</th><th>Что происходит</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1</td><td>Нормализация признаков</td><td class="note">квантильное или степенное преобразование каждого столбца, обрезка экстремумов. Приор порождал данные в определённом масштабе — вход надо привести к нему</td></tr>
+      <tr><td class="k">2</td><td>Обработка категориальных и пропусков</td><td class="note">пропуск кодируется явным значением, категории — порядковыми кодами; приор содержал и то, и другое</td></tr>
+      <tr><td class="k">3</td><td>Токенизация ячеек</td><td class="note">каждая ячейка проецируется в вектор размерности модели. Таблица n×d становится сеткой n×d токенов</td></tr>
+      <tr><td class="k">4</td><td>Кодирование меток</td><td class="note">у контекстных строк метка добавляется как ещё один токен; у запросов на её месте — обучаемый placeholder</td></tr>
+      <tr><td class="k">5</td><td>L блоков трансформера</td><td class="note">чередование внимания по строкам и по столбцам, FFN, нормализация</td></tr>
+      <tr><td class="k">6</td><td>Чтение выхода</td><td class="note">из позиции метки запроса берётся вектор и проецируется в логиты классов</td></tr>
+      <tr><td class="k">7</td><td>Softmax</td><td class="g">готовые вероятности. Ни одного градиентного шага по вашим данным</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Обучающие строки и тестовые обрабатываются одним и тем же стеком. Разница только в том, что у первых метка известна и подана на вход, а у вторых её место занимает заглушка, из которой потом читается ответ.</p>
+
+  <div class="def">
+    <div class="def-t">Регрессия: на выходе распределение, а не число</div>
+    <p>Для регрессии выход дискретизируется: диапазон целевой переменной разбивается на бины, и сеть выдаёт вероятность попадания в каждый. Получается кусочно-постоянная плотность — так называемое риманово распределение.</p>
+    <p>Это выглядит как техническая деталь, но меняет способ принимать решения. Обычная регрессия на MSE даёт условное среднее и больше ничего. Из распределения можно получить <b>любой квантиль, любую вероятность превышения и оптимальную точку при асимметричной стоимости ошибки</b> — без переобучения модели.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · что даёт предсказательное распределение сверх среднего</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Выход модели для одного запроса: пять бинов спроса.
+      <div class="calc"><span class="lbl">бин        границы     вероятность    накопленная</span>
+  1        0 –  10        0.05           0.05
+  2       10 –  20        0.15           0.20
+  3       20 –  30        0.42           0.62
+  4       30 –  40        0.28           0.90
+  5       40 –  50        0.10           1.00
+<span class="dim">─────────────────────────────────────────────────</span>
+                          <span class="res">1.00</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Среднее — то, что дала бы обычная регрессия на MSE.
+      <div class="calc"><span class="lbl">середины бинов: 5, 15, 25, 35, 45</span>
+
+  0.05×5  = 0.25
+  0.15×15 = 2.25
+  0.42×25 = 10.50
+  0.28×35 = 9.80
+  0.10×45 = 4.50
+<span class="dim">──────────────────</span>
+  среднее = <span class="hl">27.30</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Медиана — линейная интерполяция внутри бина.
+      <div class="calc"><span class="lbl">0.50 попадает в бин 3 (накопленная 0.20 → 0.62)</span>
+
+  нужная доля бина: (0.50 − 0.20) / 0.42 = 0.30 / 0.42 = <span class="hl">0.714286</span>
+  медиана = 20 + 0.714286 × 10 = <span class="res">27.142857</span>
+
+<span class="dim">почти совпала со средним — распределение
+почти симметрично, но не совсем</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Теперь то, чего среднее дать не может. Стоимость дефицита втрое выше стоимости излишка.
+      <div class="calc"><span class="lbl">оптимальный уровень запаса — квантиль газетчика:</span>
+  q* = C_дефицит / (C_дефицит + C_излишек) = 3 / (3 + 1) = <span class="hl">0.75</span>
+
+<span class="lbl">0.75 попадает в бин 4 (накопленная 0.62 → 0.90)</span>
+  доля бина: (0.75 − 0.62) / 0.28 = 0.13 / 0.28 = <span class="hl">0.464286</span>
+  q* = 30 + 0.464286 × 10 = <span class="res">34.642857</span>
+
+<span class="bad">Заказ по среднему: 27.30
+Заказ по правильному квантилю: 34.64
+Разница 7.34 единицы — на 26.9% больше.</span>
+
+<span class="dim">Модель на MSE дала бы 27.30 и никакого способа
+узнать, что правильный ответ 34.64.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> И третий вопрос, доступный только из распределения.
+      <div class="calc"><span class="lbl">«какова вероятность, что спрос превысит 40?»</span>
+  = вероятность бина 5 = <span class="res">0.10</span>
+
+<span class="lbl">«какой запас покроет спрос в 90% случаев?»</span>
+  накопленная достигает 0.90 ровно на границе бина 4
+  = <span class="res">40.0</span>
+
+<span class="dim">Точечная оценка 27.30 не отвечает ни на один
+из этих вопросов. Оба — обычные вопросы бизнеса.</span>
+
+<span class="lbl">Связь с 1.12: правильный порог решения зависит
+от стоимостей ошибок, а не от метрики модели.
+Распределение на выходе делает этот расчёт
+арифметикой, а не отдельным проектом.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Предсказательное распределение против точечной оценки</div>
+    <div class="chsub">Столбцы — вероятности бинов, линии — три разных «правильных ответа»: среднее 27.30, медиана 27.14, квантиль при асимметричной стоимости 34.64</div>
+    <canvas id="c_reg"></canvas>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Ансамблирование по перестановкам</h2></div>
+  <p class="slead">Эквивариантность к порядку столбцов выполняется приближённо, а не точно. Стандартный приём — усреднить предсказания по нескольким случайным перестановкам признаков и классов. Это единственный «гиперпараметр», который реально приходится выбирать.</p>
+
+  <p>Логика простая: если модель была бы точно эквивариантна, все перестановки дали бы один ответ и усреднять было бы нечего. На практике они дают слегка разные ответы, и разброс между ними — чистый шум, который усредняется.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · сколько перестановок брать</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Замер: качество и разброс по числу перестановок K.
+      <div class="calc"><span class="lbl">K      AUC      прирост к K=1    время, с</span>
+ 1     0.8612          —            0.42
+ 4     0.8698       +0.0086         1.68
+ 8     0.8721       +0.0109         3.36
+16     0.8733       +0.0121         6.72
+32     0.8738       +0.0126        13.44
+
+<span class="dim">время строго линейно по K: 0.42 × K</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Разброс между отдельными перестановками и его усреднение.
+      <div class="calc"><span class="lbl">sd AUC по 32 одиночным перестановкам: </span><span class="hl">0.0063</span>
+
+<span class="lbl">ожидаемое sd среднего по K:  0.0063 / √K</span>
+K = 4:   0.0063 / 2.000000 = <span class="hl">0.003150</span>
+K = 8:   0.0063 / 2.828427 = <span class="hl">0.002227</span>
+K = 16:  0.0063 / 4.000000 = <span class="hl">0.001575</span>
+K = 32:  0.0063 / 5.656854 = <span class="hl">0.001114</span>
+
+<span class="dim">Здесь усреднение работает честно по √K, в отличие
+от повторной кросс-валидации из 1.15: там повторы
+переиспользуют одни данные, здесь перестановки
+действительно независимы.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Где точка убывающей отдачи.
+      <div class="calc"><span class="lbl">доля полного прироста, полученная при K:</span>
+K = 4:   0.0086 / 0.0126 = <span class="hl">68.3%</span>  за 12.5% стоимости K=32
+K = 8:   0.0109 / 0.0126 = <span class="res">86.5%</span>  за 25.0% стоимости
+K = 16:  0.0121 / 0.0126 = <span class="hl">96.0%</span>  за 50.0% стоимости
+
+<span class="res">K = 8 — разумная точка по умолчанию.
+Переход с 8 на 32 стоит вчетверо дороже
+и даёт оставшиеся 13.5% прироста (0.0017 AUC).</span>
+
+<span class="lbl">Исключение: если модель сравнивается с другой
+и разница между ними порядка 0.002, нужно K = 32,
+иначе шум перестановок съест сравнение.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ансамбль по перестановкам: качество и разброс</div>
+    <div class="chsub">Столбцы — AUC, линия — стандартное отклонение оценки, падающее ровно как 1/√K. Полный прирост 0.0126, из них 86.5% получены уже на восьми перестановках</div>
+    <canvas id="c_ens"></canvas>
+  </div>
+
+  <div class="intuition">
+    <b>Почему это не «настоящий» гиперпараметр.</b> У бустинга подбор глубины дерева меняет то, какую функцию модель может выразить, — ошибка в выборе стоит качества. Здесь K меняет только точность усреднения: больше всегда не хуже, просто дороже. Это параметр бюджета, а не моделирования. Именно поэтому утверждение «у TabPFN нет гиперпараметров» практически верно, хотя формально у него есть настройки.
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Стоимость: два квадратичных члена и как их обходят</h2></div>
+  <p class="slead">Внимание по строкам стоит O(n²), внимание по столбцам — O(d²). Отсюда все ограничения версий, и отсюда же понятно, какими приёмами эти ограничения снимаются.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · почему миллион строк — это граница, а не произвольное число</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Квадратичный рост числа пар «строка–строка».
+      <div class="calc"><span class="lbl">строк n        пар n²          относительно 10 тыс.</span>
+  10 000        1.0 × 10⁸              1×
+ 100 000        1.0 × 10¹⁰           100×
+1 000 000       1.0 × 10¹²        10 000×
+10 000 000      1.0 × 10¹⁴     1 000 000×
+
+<span class="dim">если 10 тыс. строк обрабатываются за 0.1 с,
+то 1 млн — за 1 000 с, а 10 млн — за 100 000 с ≈ 28 часов</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем FLOPs явно. Модель: L = 24 слоя, d_model = 512.
+      <div class="calc"><span class="lbl">на слой: QKᵀ даёт n² скалярных произведений длины d,
+затем AV — столько же. Итого 2 умножения-сложения:</span>
+
+  FLOPs = 4 · L · n² · d
+
+n = 10⁶:  4 × 24 × 10¹² × 512
+        = 96 × 512 × 10¹²
+        = <span class="hl">4.9152 × 10¹⁶ FLOPs</span>
+
+<span class="lbl">при эффективных 5 × 10¹⁴ FLOP/с на H100:</span>
+  4.9152×10¹⁶ / 5×10¹⁴ = <span class="hl">98.3 с</span>
+
+n = 10⁷:  в 100 раз больше = <span class="bad">9 830 с ≈ 2.7 часа</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сжатие строк. Вместо внимания «каждый с каждым» контекст сжимается в m опорных представлений.
+      <div class="calc"><span class="lbl">было:  O(n²)      стало:  O(n · m)</span>
+
+n = 10⁶, m = 10⁴:
+  было:  10¹² пар
+  стало: 10⁶ × 10⁴ = <span class="res">10¹⁰ пар</span>
+  ускорение: 10¹² / 10¹⁰ = <span class="res">100×</span>
+
+<span class="dim">98.3 с → 0.98 с</span>
+
+<span class="lbl">цена: сжатие теряет информацию. Насколько —
+зависит от того, сколько «разных режимов» есть
+в данных. При m = 10 000 опорных точек на 1 млн
+строк это обычно приемлемо, при m = 100 — нет.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> KV-кэш: контекст кодируется один раз, тестовые строки идут чанками.
+      <div class="calc"><span class="lbl">размер кэша = 2 (K и V) × L × d × n × байт</span>
+
+L = 24, d = 512, n = 10⁶, bf16 (2 байта):
+  2 × 24 × 512 × 10⁶ × 2
+  = 48 × 512 × 2 × 10⁶
+  = <span class="hl">49.152 × 10⁹ байт = 49.2 ГБ</span>
+
+<span class="res">Помещается в 80 ГБ H100. Едва.</span>
+
+<span class="lbl">если d = 1024:</span>
+  98.3 ГБ — <span class="bad">не помещается</span>
+
+<span class="res">Вот почему «урезанный KV-кэш» в TabPFN-3 —
+не оптимизация, а условие существования режима
+на миллион строк. Тот же приём, что GQA в 8.8.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 5.</b> Что даёт кэш при большом тестовом наборе.
+      <div class="calc"><span class="lbl">200 000 тестовых строк, чанки по 10 000 → 20 чанков</span>
+
+<span class="lbl">без кэша:</span> контекст кодируется заново для каждого чанка
+  20 × 98.3 с = <span class="bad">1 966 с</span>
+
+<span class="lbl">с кэшем:</span> контекст кодируется один раз,
+дальше только внимание чанка к кэшу
+  98.3 + 20 × (4 × 24 × 10⁴ × 10⁶ × 512 / 5×10¹⁴)
+  = 98.3 + 20 × (4.9152×10¹⁴ / 5×10¹⁴)
+  = 98.3 + 20 × 0.983
+  = 98.3 + 19.7 = <span class="res">118.0 с</span>
+
+<span class="res">ускорение 1 966 / 118 = 16.7×</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Квадратичный рост и эффект сжатия строк</div>
+    <div class="chsub">Логарифмические оси. Синяя линия — полное внимание O(n²), оранжевая — сжатие до 10 000 опорных точек O(n·m). Расхождение начинается ровно там, где n превышает m</div>
+    <canvas id="c_cost"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Размер KV-кэша против памяти ускорителя</div>
+    <div class="chsub">При d_model = 512 и 24 слоях миллион строк даёт 49.2 ГБ. Удвоение размерности модели выбрасывает за пределы 80 ГБ — отсюда работа над урезанным кэшем</div>
+    <canvas id="c_kv"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Посчитайте бюджет для своей конфигурации</h4>
+    <div class="prow">
+      <label>Строк контекста (степень десяти)</label>
+      <input type="range" id="sl_n" min="30" max="70" step="1" value="60">
+      <output id="out_n">1.0e6</output>
+    </div>
+    <div class="prow">
+      <label>Размерность модели d_model</label>
+      <input type="range" id="sl_d" min="256" max="2048" step="128" value="512">
+      <output id="out_d">512</output>
+    </div>
+    <div class="prow">
+      <label>Число слоёв L</label>
+      <input type="range" id="sl_l" min="8" max="48" step="4" value="24">
+      <output id="out_l">24</output>
+    </div>
+    <div class="pout" id="out_cost"></div>
+  </div>
+
+  <p>Второй квадратичный член — по числу признаков — упирается в другой потолок. Он менее заметен, потому что таблицы редко имеют тысячи колонок, но в биомедицине это норма: транскриптом даёт 20 000 признаков при 200 пациентах. Отсюда отдельная линия работ (TabPFN-Wide и подобные), где дообучение расширяет допустимое число признаков за десятки тысяч ценой других ограничений.</p>
+
+  <table class="ct">
+    <thead><tr><th>Узкое место</th><th>Проявление</th><th>Приём</th><th>Цена</th></tr></thead>
+    <tbody>
+      <tr><td>O(n²) по строкам</td><td class="note">выборка больше сотен тысяч</td><td class="note">сжатие строк, подвыборка контекста</td><td class="a">потеря информации о редких режимах</td></tr>
+      <tr><td>Память под KV</td><td class="note">кэш не влезает в ускоритель</td><td class="note">урезанный кэш, разделение голов</td><td class="a">небольшая потеря качества</td></tr>
+      <tr><td>Много тестовых строк</td><td class="note">инференс дольше, чем ожидалось</td><td class="g">чанкование с переиспользованием кэша</td><td class="g">почти бесплатно</td></tr>
+      <tr><td>O(d²) по признакам</td><td class="note">тысячи колонок</td><td class="note">отбор признаков, специализированные веса</td><td class="a">теряется главное преимущество — работа без отбора</td></tr>
+      <tr><td>Латентность на запрос</td><td class="note">весь контекст нужен при каждом predict</td><td class="g">дистилляция в компактную модель (секция 12)</td><td class="a">часть качества</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Обратите внимание, что три из пяти приёмов возвращают в пайплайн ровно ту работу, от которой foundation-модель обещала избавить: отбор признаков, подвыборку, отдельную модель для прода.</p>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Версии и границы применимости</h2></div>
+  <p class="slead">За четыре года лимит по строкам вырос с тысячи до миллиона, а по признакам — с сотни до двух тысяч. Знать текущие границы важнее, чем знать архитектуру: за них модель просто не запускается или деградирует.</p>
+
+  <table class="ct">
+    <thead><tr><th>Версия</th><th>Дата</th><th>Строк</th><th>Признаков</th><th>Что добавилось</th></tr></thead>
+    <tbody>
+      <tr><td>TabPFN v1</td><td class="k">2022, ICLR 2023</td><td class="k">1 000</td><td class="k">100</td><td class="note">доказательство концепции: только классификация, только числовые признаки, до 10 классов</td></tr>
+      <tr><td>TabPFN v2</td><td class="k">янв 2025, Nature</td><td class="k">10 000</td><td class="k">500</td><td class="note">категориальные, пропуски, выбросы, регрессия, генерация данных; ~130 млн синтетических датасетов в предобучении</td></tr>
+      <tr><td>TabPFN-2.5</td><td class="k">6 ноя 2025</td><td class="k">50 000</td><td class="k">2 000</td><td class="note">×20 ячеек данных к v2; движок дистилляции в компактную MLP или ансамбль деревьев</td></tr>
+      <tr><td>Scaling Mode</td><td class="k">дек 2025</td><td class="a">10 000 000</td><td class="k">2 000</td><td class="note">режим для очень больших выборок; архитектура та же, ограничение — доступная память и вычисления</td></tr>
+      <tr class="best"><td>TabPFN-3</td><td class="k">12 мая 2026</td><td class="g">1 000 000</td><td class="k">200</td><td class="note">сжатие строк, декодер на внимании для многих классов, нативные пропуски, чанкование строк, урезанный KV-кэш; до 20× быстрее 2.5</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">У TabPFN-3 границы заданы не одним числом, а тремя режимами: 1 млн строк при 200 признаках, либо 100 тыс. строк при 2 000 признаках, либо 1 тыс. строк при 20 000 признаках. Произведение «строки × признаки» — вот что ограничено на самом деле.</p>
+
+  <div class="chb">
+    <div class="cht">Рост допустимого размера данных по версиям</div>
+    <div class="chsub">Логарифмическая ось. За три с половиной года лимит по строкам вырос в тысячу раз — но каждый шаг покупался инженерными приёмами, а не увеличением модели</div>
+    <canvas id="c_timeline"></canvas>
+  </div>
+
+  <div class="def">
+    <div class="def-t">Что заявлено про качество на август 2026</div>
+    <p><b>TabPFN-2.5</b> сообщал 100% побед над XGBoost с настройками по умолчанию на датасетах до 10 тыс. строк и 500 признаков и 87% на выборках до 100 тыс. строк и 2 тыс. признаков, а также лидерство на TabArena при сопоставимости с четырёхчасовым ансамблем AutoGluon 1.4.</p>
+    <p><b>TabPFN-3</b> заявляет, что один прямой проход обгоняет все прочие модели на TabArena, включая настроенные и ансамблированные, и превосходит бустинги, настраивавшиеся восемь часов, на выборках до 1 млн строк.</p>
+    <p><b>Режим «размышления»</b> (TabPFN-3-Plus, доступен по API) масштабирует вычисления во время предсказания: заявлен отрыв более 200 Elo от лучших не-TabPFN моделей на TabArena и до 420 Elo на самой крупной подвыборке, при вдесятеро меньшем времени, чем у AutoGluon 1.5 extreme.</p>
+    <p><b>Оговорка о бенчмарках.</b> В создании TabArena участвуют исследователи из той же лаборатории, что публикует TabPFN. Это не повод не доверять цифрам, но повод смотреть и на независимые наборы — TALENT и подобные — прежде чем делать выводы для своей задачи.</p>
+  </div>
+
+  <div class="intuition">
+    <b>Лицензии — практический вопрос, а не формальность.</b> Веса TabPFN-3 выпущены под лицензией, разрешающей исследования и внутреннюю оценку, но <b>не коммерческое или продуктовое использование</b>. Коммерческое применение идёт через API и корпоративное лицензирование. Похожая история у Real-TabPFN. Из полностью открытых альтернатив на середину 2026 года выделяется линия TabICL. Если вы строите продукт, вопрос лицензии нужно закрыть до того, как модель окажется в архитектуре, а не после.
+  </div>
+
+  <p>Отдельно стоит отметить контекст рынка: в мае 2026 года SAP объявила о приобретении Prior Labs с планом инвестиций более миллиарда евро за четыре года. Табличные foundation-модели за полтора года превратились из академической идеи в направление, вокруг которого выстроились компании — Prior Labs в Германии, NeuralkAI и The Forecasting Company во Франции, Layer6 и Kumo в Северной Америке, Lexsi Labs, а также команды внутри Microsoft, Amazon и SAP.</p>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Калибровка: главное недооценённое преимущество</h2></div>
+  <p class="slead">Про TabPFN обычно говорят «точнее на малых данных». Но точность ранжирования часто не самое ценное. Гораздо реже упоминают, что вероятности на выходе честные — а именно на них строятся решения о деньгах.</p>
+
+  <p>Причина калибровки прямо следует из секции 2: сеть обучалась предсказывать <b>распределение</b>, минимизируя кросс-энтропию по сэмплам из приора. Минимум этой потери достигается на истинном условном распределении. Бустинг оптимизирует ту же потерю, но на одной выборке и с ранней остановкой, регуляризацией и подбором глубины — все они смещают вероятности.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · калибровка и что она стоит в деньгах</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Надёжность по бинам, 50 000 объектов. Слева TabPFN, справа настроенный бустинг.
+      <div class="calc"><span class="lbl">TabPFN</span>
+<span class="lbl">прогноз   объектов   факт     |отклонение|</span>
+  0.05      12 000    0.054      <span class="hl">0.004</span>
+  0.12       8 400    0.124      <span class="hl">0.004</span>
+  0.20       9 600    0.207      <span class="hl">0.007</span>
+  0.45       7 200    0.441      <span class="hl">0.009</span>
+  0.70       8 000    0.712      <span class="hl">0.012</span>
+  0.92       4 800    0.916      <span class="hl">0.004</span>
+
+<span class="lbl">Бустинг</span>
+<span class="lbl">прогноз   объектов   факт     |отклонение|</span>
+  0.05      14 200    0.106      <span class="bad">0.056</span>
+  0.12       8 400    0.185      <span class="bad">0.065</span>
+  0.20       9 100    0.263      <span class="bad">0.063</span>
+  0.45       7 000    0.472      <span class="hl">0.022</span>
+  0.70       7 400    0.661      <span class="hl">0.039</span>
+  0.92       3 900    0.845      <span class="bad">0.075</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем ECE — средневзвешенное отклонение.
+      <div class="calc"><span class="lbl">TabPFN:</span>
+  (12000×0.004 + 8400×0.004 + 9600×0.007
+   + 7200×0.009 + 8000×0.012 + 4800×0.004) / 50000
+  = (48.0 + 33.6 + 67.2 + 64.8 + 96.0 + 19.2) / 50000
+  = 328.8 / 50000 = <span class="res">0.006576</span>
+
+<span class="lbl">Бустинг:</span>
+  (14200×0.056 + 8400×0.065 + 9100×0.063
+   + 7000×0.022 + 7400×0.039 + 3900×0.075) / 50000
+  = (795.2 + 546.0 + 573.3 + 154.0 + 288.6 + 292.5) / 50000
+  = 2649.6 / 50000 = <span class="bad">0.052992</span>
+
+<span class="lbl">отношение:</span> 0.052992 / 0.006576 = <span class="res">8.06×</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Следствие для агрегатов: сумма вероятностей как прогноз числа событий.
+      <div class="calc"><span class="lbl">истинное число событий в популяции: </span><span class="hl">16 945</span>
+
+<span class="lbl">TabPFN, сумма прогнозов:</span>
+  600 + 1 008 + 1 920 + 3 240 + 5 600 + 4 416 = <span class="hl">16 784</span>
+  ошибка: (16 945 − 16 784) / 16 945 = <span class="res">0.95%</span>
+
+<span class="lbl">Бустинг, сумма прогнозов:</span>
+  710 + 1 008 + 1 820 + 3 150 + 5 180 + 3 588 = <span class="hl">15 456</span>
+  ошибка: (16 945 − 15 456) / 16 945 = <span class="bad">8.79%</span>
+
+<span class="dim">Оба ранжируют почти одинаково. Но если ваш вопрос —
+«сколько клиентов уйдёт в следующем месяце», а не
+«кто уйдёт первым», разница между 0.95% и 8.79%
+и есть весь результат.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Следствие для решений: один бин переворачивает решение.
+      <div class="calc"><span class="lbl">правило: отправляем предложение, если ожидаемая
+прибыль положительна: p × 2 000 − 300 &gt; 0, то есть p &gt; 0.15</span>
+
+<span class="lbl">бин «0.12», 8 400 человек:</span>
+  бустинг говорит 0.12 &lt; 0.15  →  <span class="bad">не отправляем</span>
+  факт в этом бине 0.185
+  упущенная прибыль на человека:
+    0.185 × 2 000 − 300 = 370 − 300 = <span class="bad">70 руб.</span>
+  всего: 70 × 8 400 = <span class="bad">588 000 руб.</span>
+
+  TabPFN говорит 0.12, факт 0.124
+    0.124 × 2 000 − 300 = 248 − 300 = <span class="res">−52 руб.</span>
+  <span class="res">решение «не отправлять» правильное</span>
+
+<span class="dim">Обе модели вывели одинаковое число 0.12.
+Одно из них было правдой, другое — нет.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Честная оговорка.</b> Бустинг тоже калибруется — вопрос в цене.
+      <div class="calc"><span class="lbl">калибровка Платта или изотоническая на отложенной части:</span>
+  бустинг ECE после калибровки: 0.052992 → <span class="hl">0.011400</span>
+  TabPFN без калибровки:                    <span class="res">0.006576</span>
+
+<span class="lbl">цена калибровки:</span>
+  — отложенная выборка 10–15%, которую нельзя
+    использовать для обучения
+  — она же не может использоваться для оценки (см. 1.15)
+  — при малой выборке изотоническая калибровка
+    сама переобучается
+
+<span class="res">На 50 000 строк калибровка бустинга — рутина.
+На 500 строк она отнимает 75 объектов и работает плохо.
+Именно там преимущество TabPFN максимально.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Диаграмма надёжности: прогноз против факта</div>
+    <div class="chsub">Пунктир — идеальная калибровка. Бустинг систематически занижает на низких вероятностях и завышает на высоких; TabPFN держится у диагонали</div>
+    <canvas id="c_calib"></canvas>
+  </div>
+
+  <p>Практический вывод: если модель нужна для ранжирования (кому позвонить первым, какие сто заявок проверить), калибровка не важна и разница между подходами меньше. Если модель нужна для арифметики — ожидаемая прибыль, порог из стоимостей ошибок, прогноз числа событий, резервирование под риск — калибровка и есть половина задачи, и здесь foundation-модель даёт больше, чем показывает AUC. Тема разобрана подробнее в <a href="block1_07_calibration.html">1.7</a> и <a href="block1_12_metrics_framing.html">1.12</a>.</p>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Где TabPFN проигрывает</h2></div>
+  <p class="slead">Список ограничений важнее списка достижений, потому что достижения вы увидите на первом же прогоне, а ограничения — на третьем месяце эксплуатации.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · самая дорогая слепая зона: время</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Приор порождает <b>обменяемые</b> строки: порядок не значим. Это встроенное предположение, а не настройка.
+      <div class="calc"><span class="lbl">данные: 365 дней, 180 000 строк, есть дрейф</span>
+
+<span class="lbl">схема валидации          TabPFN     CatBoost настроенный</span>
+случайное разбиение       <span class="hl">0.891</span>          <span class="hl">0.874</span>
+временное разбиение       <span class="hl">0.782</span>          <span class="hl">0.786</span>
+в проде                   <span class="hl">0.779</span>          <span class="hl">0.781</span>
+
+<span class="bad">Преимущество +0.017 на случайном разбиении
+превратилось в −0.004 на временном.</span>
+
+<span class="dim">Причина: обе модели не знают про время, но у бустинга
+есть веса объектов и признак «сколько дней назад».
+У TabPFN весов объектов нет — все строки контекста
+равноправны по построению.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Приём, который это чинит: отбор контекста вместо весов.
+      <div class="calc"><span class="lbl">контекст = последние N дней</span>
+
+<span class="lbl">N дней    строк контекста    AUC на будущем периоде</span>
+  365         180 000              0.782
+  180          88 800              0.787
+   90          44 100              <span class="res">0.791</span>
+   45          22 300              0.788
+   30          14 800              0.784
+   14           6 900              0.771
+
+<span class="res">Оптимум на 90 днях: 0.791 против 0.782
+при вчетверо меньшем контексте.</span>
+
+<span class="bad">Это редкий случай, когда меньше данных лучше.
+Механизм понятен: старые строки не вредны сами по себе,
+но модель обязана взвешивать их наравне со свежими,
+и единственный доступный способ снизить их вес —
+выбросить их из контекста.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Проверка, что дело именно в дрейфе, а не в объёме.
+      <div class="calc"><span class="lbl">контроль: берём 44 100 СЛУЧАЙНЫХ строк из всех 365 дней
+(тот же объём, что у окна в 90 дней)</span>
+
+  случайные 44 100 строк:  <span class="hl">0.776</span>
+  последние 44 100 строк:  <span class="res">0.791</span>
+
+<span class="res">Разница 0.015 при одинаковом объёме.
+Дело в свежести, а не в размере контекста.</span>
+
+<span class="lbl">Отсюда практическое правило: длину окна контекста
+подбирать так же, как гиперпараметр — на временной
+схеме валидации из 1.15.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Качество в зависимости от длины окна контекста</div>
+    <div class="chsub">Серая точка — контрольный замер: столько же строк, но выбранных случайно за весь год. Она на 0.015 ниже окна той же величины — значит, работает именно свежесть</div>
+    <canvas id="c_ctx"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Ограничение</th><th>Насколько серьёзно</th><th>Что делать</th></tr></thead>
+    <tbody>
+      <tr class="worst"><td>Обменяемость строк: нет понятия времени</td><td class="r">критично для большинства продуктовых задач</td><td class="note">окно контекста, признаки давности, валидация по 1.15</td></tr>
+      <tr class="worst"><td>Нет весов объектов</td><td class="r">нельзя взвесить по свежести, по стоимости, по adversarial-весам</td><td class="note">отбор контекста, передискретизация</td></tr>
+      <tr><td>Нет понятия групп</td><td class="a">строки одного клиента в контексте — та же утечка, что в 1.15</td><td class="note">групповое разбиение контроллируется вами, не моделью</td></tr>
+      <tr><td>Латентность на запрос</td><td class="a">весь контекст нужен при каждом predict; десятки мс на GPU против долей мс у бустинга</td><td class="g">дистилляция (секция 12)</td></tr>
+      <tr><td>Требуется GPU</td><td class="a">на CPU работает, но медленно</td><td class="note">API, дистилляция, либо небольшие выборки</td></tr>
+      <tr><td>Преимущество тает с ростом n</td><td class="note">на миллионе строк качество сравнивается с бустингом</td><td class="note">остаётся выигрыш во времени подготовки, не в качестве</td></tr>
+      <tr><td>Потолок по признакам</td><td class="a">сотни–тысячи; геномика упирается сразу</td><td class="note">отбор признаков либо специализированные веса</td></tr>
+      <tr><td>Экстраполяция</td><td class="a">за пределами диапазона обучающих значений ведёт себя как ближайшая граница</td><td class="note">то же верно для деревьев; линейная модель экстраполирует лучше обеих</td></tr>
+      <tr><td>Лицензия</td><td class="r">свежие веса не разрешены для коммерческого использования</td><td class="g">API, корпоративная лицензия либо открытые альтернативы</td></tr>
+      <tr><td>Интерпретируемость</td><td class="note">нет встроенной важности признаков</td><td class="note">SHAP через внешние библиотеки; с KV-кэшированием заметно быстрее</td></tr>
+      <tr><td>Зависимость от приора</td><td class="a">на задаче, не похожей ни на что в приоре, гарантий нет</td><td class="note">проверять на своей задаче, а не верить бенчмаркам</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первые две строки — одна и та же проблема с двух сторон, и она объясняет, почему в продуктовой аналитике TabPFN пока чаще инструмент разведки, чем финальная модель. В научных задачах, где строки действительно обменяемы (пациенты, образцы, измерения), этой проблемы нет — и там он уверенно выигрывает.</p>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Экосистема: не одна модель, а направление</h2></div>
+  <p class="slead">С 2024 года вышло больше десятка табличных foundation-моделей с разными архитектурами, приорами и лицензиями. Лидер на бенчмарках меняется раз в несколько месяцев, поэтому полезнее понимать оси различий, чем запоминать названия.</p>
+
+  <table class="ct">
+    <thead><tr><th>Модель</th><th>Год</th><th>Ключевая идея</th></tr></thead>
+    <tbody>
+      <tr><td>PFN</td><td class="k">2021</td><td class="note">исходная работа: трансформер приближает апостериорное предсказательное распределение</td></tr>
+      <tr><td>TabPFN v1</td><td class="k">2022</td><td class="note">первый ICL-трансформер для малой табличной классификации</td></tr>
+      <tr><td>MotherNet</td><td class="k">2023</td><td class="note">гиперсеть: трансформер выдаёт веса маленькой сети вместо предсказаний — инференс потом дешёвый</td></tr>
+      <tr><td>TabForestPFN</td><td class="k">2024</td><td class="note">генератор датасетов на основе лесов — более сложные границы решений в приоре</td></tr>
+      <tr><td>TabDPT</td><td class="k">2024</td><td class="note">ICL плюс самообучение на реальных датасетах; показан степенной закон масштабирования</td></tr>
+      <tr><td>TabPFN v2</td><td class="k">2025</td><td class="note">внимание по строкам и столбцам, категориальные, пропуски, регрессия</td></tr>
+      <tr><td>TabICL</td><td class="k">2025</td><td class="note">сначала внимание по столбцам, потом по строкам; масштабируется на сотни тысяч строк</td></tr>
+      <tr><td>TabFlex</td><td class="k">2025</td><td class="note">линейное внимание вместо квадратичного — снимает главное ограничение ценой выразительности</td></tr>
+      <tr><td>ContextTab</td><td class="k">2025</td><td class="note">использует семантику: имена колонок и значения как текст, обучение на реальных таблицах</td></tr>
+      <tr><td>Real-TabPFN / TabPFN-2.5</td><td class="k">2025</td><td class="note">продолженное предобучение на отобранных реальных датасетах поверх синтетики</td></tr>
+      <tr><td>LimiX</td><td class="k">2025</td><td class="note">моделирует совместное распределение переменных и пропусков</td></tr>
+      <tr><td>Mitra</td><td class="k">2025</td><td class="note">смеси синтетических приоров плюс дообучение</td></tr>
+      <tr><td>TabPFN-Wide</td><td class="k">2025</td><td class="note">продолженное предобучение под экстремальное число признаков — биомедицинские задачи</td></tr>
+      <tr><td>Orion-MSP / Orion-BiX</td><td class="k">2025</td><td class="note">разреженное многомасштабное и биаксиальное внимание</td></tr>
+      <tr class="best"><td>TabICL v2</td><td class="k">2026</td><td class="note">быстрее и точнее первой версии, поддержка регрессии, полностью открытый код</td></tr>
+      <tr class="best"><td>TabPFN-3</td><td class="k">2026</td><td class="note">миллион строк, режим масштабирования вычислений при предсказании, реляционные и текстово-табличные данные</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Список неполный и устаревает быстро. Полезнее осей, чем имён: чем отличаются приоры, используется ли семантика колонок, какое внимание, какая лицензия.</p>
+
+  <div class="def">
+    <div class="def-t">Четыре оси, по которым модели различаются</div>
+    <p><b>1. Источник знания.</b> Чистая синтетика (TabPFN, TabICL) против дообучения на реальных таблицах (Real-TabPFN, TabDPT, ContextTab). Синтетика гарантирует отсутствие загрязнения бенчмарков; реальные данные дают преимущество на похожих задачах.</p>
+    <p><b>2. Использование семантики.</b> Большинство моделей игнорируют имена колонок и работают с чистыми числами. ContextTab и родственные читают названия как текст — это помогает, когда таблица осмысленная, и мешает, когда колонки называются <code>f1…f40</code>.</p>
+    <p><b>3. Вид внимания.</b> Полное квадратичное, разреженное, линейное, со сжатием строк. Прямой обмен выразительности на масштаб.</p>
+    <p><b>4. Лицензия.</b> Практически самая важная ось для продуктовой команды и единственная, которая не улучшается со временем сама собой.</p>
+  </div>
+
+  <div class="intuition">
+    <b>Как выбирать в 2026 году.</b> Если задача исследовательская и данных мало — берите самый сильный по последним бенчмаркам, лицензия для исследований обычно разрешает. Если строите продукт — начинайте с открытых вариантов (линия TabICL), потому что смена модели позже дороже, чем небольшая разница в качестве сейчас. Если данных больше сотен тысяч строк и они с осью времени — сначала честно сравните с CatBoost на временной схеме валидации, а не на случайной: разрыв может оказаться отрицательным.
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Дистилляция и вывод в прод</h2></div>
+  <p class="slead">Foundation-модель в проде требует держать весь обучающий контекст в памяти ускорителя при каждом запросе. Дистилляция переносит её знание в компактную модель, которая работает на CPU за доли миллисекунды.</p>
+
+  <p>Идея простая: учитель размечает много точек мягкими вероятностями, студент учится их воспроизводить. Ключевое отличие от обычного обучения — <b>студенту доступно неограниченно много размеченных точек</b>, потому что метки ставит учитель, а не человек.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · дистилляция: что сохраняется, что теряется</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Базовая расстановка на выборке 5 000 строк.
+      <div class="calc"><span class="lbl">модель                     AUC     латентность   размер   где</span>
+TabPFN-3 (учитель)        <span class="hl">0.874</span>      41 мс      49 ГБ    GPU
+Дистиллят — MLP           <span class="hl">0.869</span>     0.31 мс      12 МБ    CPU
+Дистиллят — деревья       <span class="hl">0.866</span>     0.18 мс       8 МБ    CPU
+CatBoost с подбором       <span class="hl">0.858</span>     0.21 мс       9 МБ    CPU
+
+<span class="dim">латентность учителя указана при уже прогретом
+KV-кэше; первый запрос дороже на порядок</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Какая доля преимущества переживает дистилляцию.
+      <div class="calc"><span class="lbl">преимущество учителя над CatBoost:</span>
+  0.874 − 0.858 = <span class="hl">0.016</span>
+
+<span class="lbl">преимущество дистиллята-MLP:</span>
+  0.869 − 0.858 = <span class="hl">0.011</span>
+  доля: 0.011 / 0.016 = <span class="res">68.8%</span>
+
+<span class="lbl">преимущество дистиллята-деревьев:</span>
+  0.866 − 0.858 = <span class="hl">0.008</span>
+  доля: 0.008 / 0.016 = <span class="res">50.0%</span>
+
+<span class="lbl">выигрыш по латентности:</span>
+  41 / 0.31 = <span class="res">132×</span>
+
+<span class="dim">Две трети преимущества за 1/132 времени отклика
+и без GPU в проде — обычно это правильная сделка.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сколько точек нужно студенту. Здесь и появляется главный рычаг.
+      <div class="calc"><span class="lbl">точек для дистилляции          AUC студента</span>
+  5 000 (только обучающие)         0.861
+ 50 000 (+ неразмеченные)          0.867
+500 000 (+ синтетические)          <span class="res">0.869</span>
+
+<span class="res">Прирост 0.008 получен без единой новой настоящей метки.</span>
+
+<span class="dim">Учитель — это функция, которую можно вычислить в любой
+точке признакового пространства. Неразмеченные данные,
+которые в обычном обучении бесполезны, здесь становятся
+обучающей выборкой для студента.</span>
+
+<span class="lbl">Правило: если у вас 5 тыс. размеченных строк
+и 500 тыс. неразмеченных, дистилляция — это способ
+использовать вторые.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что теряется и о чём легко забыть.
+      <div class="calc"><span class="bad">1. Калибровка частично теряется.</span>
+  ECE учителя:            0.0066
+  ECE дистиллята-MLP:     <span class="hl">0.0121</span>
+  ECE дистиллята-деревьев:<span class="hl">0.0184</span>
+  <span class="dim">если брали TabPFN ради честных вероятностей (секция 9),
+  дистилляция съедает половину этого преимущества</span>
+
+<span class="bad">2. Студент наследует ошибки учителя молча.</span>
+  <span class="dim">если учитель систематически ошибается на сегменте,
+  студент воспроизведёт это без всяких сигналов</span>
+
+<span class="bad">3. Обновление данных требует повторной дистилляции.</span>
+  <span class="dim">у учителя достаточно дописать строки в контекст;
+  студента нужно переобучать целиком</span>
+
+<span class="res">Дистиллят — снимок, а не модель.
+Планируйте регламент его пересборки заранее.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Дистилляция: качество против латентности</div>
+    <div class="chsub">Логарифмическая ось времени. Учитель на два с половиной порядка медленнее; дистиллят-MLP сохраняет 68.8% преимущества над настроенным CatBoost при сопоставимой с ним латентности</div>
+    <canvas id="c_distill"></canvas>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Сценарий вывода в прод</th><th>Когда подходит</th><th>Что учесть</th></tr></thead>
+    <tbody>
+      <tr><td>Пакетный расчёт раз в сутки</td><td class="g">скоринг базы, отчётность, планирование</td><td class="note">латентность неважна, можно использовать модель напрямую</td></tr>
+      <tr><td>Дистиллят на CPU</td><td class="g">онлайн-запросы, высокая нагрузка</td><td class="note">регламент пересборки, контроль калибровки</td></tr>
+      <tr><td>Вызов по API</td><td class="note">низкая нагрузка, нет своей инфраструктуры</td><td class="a">данные уходят наружу; для персональных и медицинских данных обычно неприемлемо</td></tr>
+      <tr><td>Свой ускоритель с прогретым кэшем</td><td class="note">нужен именно учитель, включая распределения</td><td class="a">GPU занят постоянно; кэш надо пересобирать при обновлении данных</td></tr>
+      <tr><td>Признаки для бустинга</td><td class="g">когда нужен и учитель, и привычный пайплайн</td><td class="note">вероятности TabPFN как дополнительный признак — приём, встречавшийся у победителей соревнований</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка часто оказывается практичнее прочих: она не требует менять инфраструктуру и даёт часть выигрыша. Но помните про схему валидации — признак, посчитанный учителем на всей выборке, это утечка ровно того же сорта, что разобрана в <a href="block1_14_feature_engineering.html">1.14</a>. Считать его нужно строго по фолдам.</p>
+</section>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Как встроить в работу — и 15 подводных камней</h2></div>
+  <p class="slead">Правильное место табличной foundation-модели в 2026 году — не «замена бустингу», а второй инструмент с другим профилем сильных сторон. Ниже рабочий порядок и ошибки, которые дороже всего обходятся.</p>
+
+  <div class="def">
+    <div class="def-t">Рабочий порядок</div>
+    <p><b>1. Разведка.</b> Первым делом прогнать TabPFN на честной схеме валидации из <a href="block1_15_validation_schemes.html">1.15</a>. Это занимает секунды и даёт оценку «сколько сигнала вообще есть в этих признаках» до того, как вы потратите день на пайплайн.</p>
+    <p><b>2. Сравнение.</b> Сравнить с CatBoost по умолчанию — не с настроенным. Если foundation-модель не выигрывает у бустинга <i>по умолчанию</i>, дальше можно не идти: либо данных слишком много, либо задача не в её области.</p>
+    <p><b>3. Проверка на временной схеме.</b> Обязательный шаг для любых данных с датой. Разрыв, измеренный на случайном разбиении, к проду отношения не имеет.</p>
+    <p><b>4. Подбор окна контекста.</b> Единственный существенный «гиперпараметр» при наличии дрейфа (секция 10).</p>
+    <p><b>5. Решение о проде.</b> Пакетный расчёт — использовать напрямую. Онлайн — дистилляция либо признак для бустинга.</p>
+  </div>
+
+  <table class="ct">
+    <thead><tr><th>Ваша ситуация</th><th>Ожидаемая отдача</th></tr></thead>
+    <tbody>
+      <tr class="best"><td>Меньше 10 тыс. строк, строки обменяемы, нужны вероятности</td><td class="g">максимальная: заметный прирост качества, честная калибровка, ноль настройки</td></tr>
+      <tr class="best"><td>Мало данных, много неразмеченных</td><td class="g">высокая: учитель плюс дистилляция на неразмеченных</td></tr>
+      <tr><td>Разведка новых источников данных</td><td class="g">высокая независимо от финальной модели: скорость проверки гипотез</td></tr>
+      <tr><td>100 тыс.–1 млн строк без выраженного дрейфа</td><td class="a">умеренная: небольшой прирост, экономия времени на настройке</td></tr>
+      <tr class="worst"><td>Данные с сильным временным дрейфом</td><td class="r">низкая или отрицательная без отбора контекста</td></tr>
+      <tr class="worst"><td>Онлайн с жёсткой латентностью и без GPU</td><td class="r">только через дистилляцию</td></tr>
+      <tr class="worst"><td>Десятки тысяч признаков</td><td class="r">за границей стандартных версий</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Первые три строки покрывают большую часть научных и аналитических задач. Последние три — большую часть продуктовых. Отсюда расхождение между восторгами в статьях и сдержанностью в командах: они говорят про разные строки таблицы.</p>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Оценка на случайном разбиении</b><span>Самая частая и самая дорогая ошибка именно здесь. Преимущество +0.017 на случайном разбиении превратилось в −0.004 на временном. Модель, не имеющая понятия времени, выглядит особенно хорошо на схеме, которая тоже его не имеет.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>«Обучения нет, значит утечки нет»</b><span>Утечка живёт в данных, а не в алгоритме. Строка того же клиента в контексте и в тесте — ровно та же утечка через группу, что в <a href="block1_15_validation_schemes.html">1.15</a>. Контекст надо чистить так же тщательно, как обучающую выборку.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>Весь исторический контекст «потому что можем»</b><span>При дрейфе больше контекста хуже: 365 дней дали 0.782, последние 90 — 0.791. Модель обязана взвешивать старые строки наравне со свежими, и единственный рычаг — что вы в контекст положили.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Одна перестановка вместо ансамбля</b><span>Разброс между одиночными перестановками sd = 0.0063 — больше, чем типичная разница между двумя приличными моделями. Сравнивать модели по одному прогону бессмысленно; для сравнений нужно K = 32.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Сравнение с настроенным бустингом как единственный тест</b><span>Правильных сравнений два: с бустингом по умолчанию (честно ли преимущество при равном бюджете времени) и с настроенным (стоит ли оно того при равном бюджете качества). Одно без другого вводит в заблуждение в любую сторону.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Вероятности учителя как признак, посчитанный на всей выборке</b><span>Классическая утечка из <a href="block1_14_feature_engineering.html">1.14</a>, только в новой обёртке. Признак должен считаться внутри фолда, иначе офлайн-метрика взлетит, а прод не изменится.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Забыть про лицензию до архитектурного решения</b><span>Свежие веса разрешены для исследований и внутренней оценки, но не для продукта. Обнаружить это после того, как модель встроена в пайплайн, — дорого. Вопрос закрывается за десять минут в начале.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Отправка персональных данных в чужой API</b><span>Контекст — это вся ваша обучающая выборка целиком, а не агрегаты. Для медицинских, финансовых и персональных данных внешний API обычно исключён. Локальный запуск или корпоративная лицензия.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Ожидание, что дистиллят сохранит калибровку</b><span>ECE учителя 0.0066, дистиллята-MLP 0.0121, дистиллята-деревьев 0.0184. Если модель брали ради честных вероятностей, дистилляция съедает половину смысла. Проверять ECE студента отдельно.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Дистиллят без регламента пересборки</b><span>Учителю достаточно дописать строки в контекст; студента нужно переобучать целиком. Снимок, который никто не обновляет, устаревает по кривой деградации из <a href="block1_15_validation_schemes.html">1.15</a>.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Замер латентности на прогретом кэше</b><span>Первый запрос с холодным KV-кэшем дороже установившегося на порядок. Если сервис перезапускается или контекст меняется, «41 мс» в отчёте не имеет отношения к тому, что увидит пользователь.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Вера в бенчмарки вместо проверки на своей задаче</b><span>Публичные лидерборды меряют средний ранг по десяткам разнородных наборов. Ваша задача — один набор, и её положение относительно приора неизвестно. Прогон занимает минуту, а вывод из него — единственный, который к вам относится.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Игнорирование того, что бенчмарк ведёт заинтересованная сторона</b><span>В TabArena участвуют исследователи из лаборатории, публикующей TabPFN. Это не обвинение — так устроено большинство бенчмарков. Но независимые наборы стоит смотреть тоже, особенно перед крупным решением.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Отбор признаков «на всякий случай»</b><span>Устойчивость к мусорным колонкам — одно из встроенных свойств: приор содержал бесполезные признаки. Предварительный отбор чаще вредит, чем помогает, и лишает вас главного удобства. Исключение — когда упираетесь в потолок по числу признаков.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Позиционирование как «замены всему»</b><span>На миллионе строк с дрейфом настроенный CatBoost остаётся сильнее и дешевле. Foundation-модель — второй инструмент с другим профилем, а не следующее поколение первого. Команда, которая объявила замену, через полгода объясняет, почему вернулась.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где выбор между foundation-моделью и бустингом определяет архитектуру, а не только качество.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Диагностическая модель на 340 пациентах и 180 биомаркерах</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Клиническое исследование, 340 образцов, 180 измеренных величин, бинарный исход. Требуется откалиброванная вероятность и объяснимость для регулятора. Новых данных не будет ещё год.</p>
+      <p><b>Почему это идеальный случай.</b> Строки действительно обменяемы: пациенты независимы, оси времени нет. Данных мало настолько, что подбор гиперпараметров бустинга сам по себе становится источником завышения — по формуле из <a href="block1_15_validation_schemes.html">1.15</a> при 200 конфигурациях и σ = 0.006 завышение только от шума составит около 0.020 AUC.</p>
+      <p><b>Схема.</b> Вложенная кросс-валидация 10×10 — здесь она оправдана, потому что отложить 15% от 340 образцов слишком дорого. Ансамбль из 32 перестановок: разброс 0.0063 сопоставим с измеряемыми различиями, экономить нельзя.</p>
+      <p><b>Калибровка как требование, а не бонус.</b> Клиническое решение принимается по порогу вероятности, и порог согласовывается с врачами в терминах «риск выше 15%». Модель, дающая 0.12 там, где факт 0.185, непригодна независимо от AUC.</p>
+      <p><b>Объяснимость.</b> Встроенной важности признаков нет; SHAP считается внешними средствами, причём с кэшированием заметно быстрее. Планировать этот расчёт нужно заранее — регулятор спросит.</p>
+      <p><b>Риск.</b> 180 признаков при 340 образцах — область, где любая модель найдёт закономерность в шуме. Adversarial-проверки между центрами набора образцов обязательны: «отпечаток» лаборатории здесь опаснее самой болезни.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Скоринг заявок: 2 млн строк, дрейф, требование 30 мс</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Онлайн-решение по заявке за 30 мс на CPU, 2 млн исторических заявок за 4 года, выраженный дрейф состава заявителей, горизонт метки 12 месяцев.</p>
+      <p><b>Прямое применение не проходит по трём причинам.</b> Объём за границей стандартных режимов; латентность требует GPU с прогретым кэшем, а холодный старт даёт на порядок больше 30 мс; дрейф — слепая зона модели.</p>
+      <p><b>Что всё-таки имеет смысл.</b> Использовать foundation-модель на этапе разработки: разведка новых источников данных за секунды вместо часов, и как учителя для дистилляции. Финальная модель в проде — дистиллят или бустинг.</p>
+      <p><b>Где выигрыш реален.</b> Заявки редких сегментов — новые регионы, нестандартные продукты, — где размеченных примеров сотни, а не миллионы. Отдельная модель на таком сегменте — ровно тот случай малых данных, где преимущество максимально. Архитектура: бустинг на основном потоке плюс foundation-модель на сегментах с малой историей.</p>
+      <p><b>Схема валидации.</b> Из <a href="block1_15_validation_schemes.html">1.15</a>: временной разрез с зазором 12 месяцев, групповое разбиение по заявителю. Контекст foundation-модели ограничить свежим окном и подобрать его длину на той же схеме.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Прогноз спроса: тысячи SKU, у большинства короткая история</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> 8 000 SKU, у 40% из них история меньше 90 дней. Прогноз на 14 дней. Нужны не точки, а квантили: решение о закупке принимается по асимметричной стоимости.</p>
+      <p><b>Почему предсказательное распределение решает.</b> Как показано в секции 5, при стоимости дефицита втрое выше стоимости излишка правильный заказ — квантиль 0.75, а не среднее. В нашем примере это 34.64 против 27.30, разница 26.9%. Модель на MSE даёт только вторую цифру и никакого способа получить первую без переобучения на pinball loss отдельно для каждого квантиля.</p>
+      <p><b>Разделение по длине истории.</b> Для SKU со зрелой историей — обычный пайплайн с признаками давности и сезонности. Для холодных SKU — foundation-модель на срезе похожих товаров: это задача малых данных внутри большой системы.</p>
+      <p><b>Оговорка про время.</b> Спрос — временной ряд, а обменяемость строк здесь ложна вдвойне. Есть специализированные варианты для рядов, и относиться к ним нужно как к отдельным моделям, а не как к «TabPFN, применённому к рядам».</p>
+      <p><b>Метрика.</b> Не одна WAPE, а три — по зрелым, холодным и общая, — иначе 4% оборота холодных SKU растворятся в средневзвешенном и никто не заметит, что там 31% всей ошибки.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Промышленный контроль качества: 900 размеченных партий, 400 тыс. неразмеченных</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Разметка требует лабораторного анализа партии и стоит дорого — отсюда 900 размеченных. Телеметрия линии пишется по всем 400 тыс. партий. Решение принимается в реальном времени на промышленном контроллере без GPU.</p>
+      <p><b>Схема, которая использует оба ресурса.</b> Foundation-модель как учитель на 900 размеченных, затем дистилляция на всех 400 тыс. неразмеченных. Как показано в секции 12, увеличение числа точек для дистилляции с 5 тыс. до 500 тыс. дало +0.008 без единой новой настоящей метки.</p>
+      <p><b>Почему это работает именно здесь.</b> Учитель — функция, которую можно вычислить в любой точке. Неразмеченная телеметрия, бесполезная для обычного обучения, становится обучающей выборкой для студента. Это не полу-обучение с псевдометками, где риск усилить собственные ошибки: учитель обучен независимо и на другом принципе.</p>
+      <p><b>Что проверить.</b> Область применимости. Если телеметрия неразмеченных партий систематически отличается от размеченных — а она отличается, потому что на анализ отправляли подозрительные, — учитель экстраполирует. Adversarial-проверка между размеченной и неразмеченной частью обязательна до дистилляции.</p>
+      <p><b>Регламент.</b> Дистиллят пересобирается при каждом накоплении новой разметки. Учитель при этом не переобучается — ему достаточно расширить контекст.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Аналитическая платформа: сотни разных мелких задач</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Внутренняя платформа, где аналитики без ML-подготовки строят предсказательные модели по своим выгрузкам. Типичный размер — от 500 до 50 тыс. строк, десятки задач в неделю, никакого сопровождения после запуска.</p>
+      <p><b>Почему это сильнейший аргумент за foundation-модели.</b> Отсутствие гиперпараметров — не удобство, а требование безопасности. Аналитик, подбирающий глубину дерева по валидационной метрике, воспроизводит завышение из <a href="block1_15_validation_schemes.html">1.15</a> без всякого понимания, что делает. Модель без настроек убирает этот класс ошибок целиком.</p>
+      <p><b>Что платформа обязана делать за пользователя.</b> Определять наличие оси времени и молча включать временной разрез. Определять повторяющиеся идентификаторы и включать групповое разбиение. Считать adversarial AUC и предупреждать при значении выше 0.9. Показывать диаграмму надёжности рядом с AUC.</p>
+      <p><b>Экономика.</b> Единый пул GPU обслуживает все задачи. При среднем прогоне в 3 секунды и 200 задачах в неделю это десять минут работы ускорителя — стоимость незначительна по сравнению с временем аналитиков.</p>
+      <p><b>Главный риск платформы.</b> Не качество моделей, а иллюзия простоты. Модель, которая обучается за секунду и не требует настройки, создаёт впечатление, что и думать не надо. Схема валидации, определение метки и стоимость ошибок остаются полностью на человеке — и именно там теперь сосредоточены все ошибки.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что такое prior-data fitted network?</b><span>Трансформер, предобученный на датасетах, сэмплированных из вероятностного приора. Он учится не решать одну задачу, а выводить предсказание из набора размеченных примеров, поданных во вход. После предобучения применение к новой задаче — один прямой проход без градиентных шагов.</span></div>
+
+  <div class="qa"><b>2. Почему обучение на синтетике даёт байесовский вывод?</b><span>Минимум ожидаемой кросс-энтропии достигается на истинном условном распределении. Если датасеты сэмплируются из приора p(φ), то это условное распределение и есть апостериорное предсказательное p(y|x,D) = ∫p(y|x,φ)p(φ|D)dφ. Сеть не считает интеграл при предсказании — она выучила его результат заранее.</span></div>
+
+  <div class="qa"><b>3. Чем PPD отличается от «выбрать лучшую модель»?</b><span>Усреднением по неисключённым гипотезам. В разобранном примере апостериор дал φ₁ вес 0.771, но φ₂ сохранила 0.218. Лучшая гипотеза предсказывает 0.100, PPD — 0.150. Разница 50% и есть цена отказа от усреднения при малых данных.</span></div>
+
+  <div class="qa"><b>4. Что такое приор в TabPFN?</b><span>Генератор синтетических таблиц: случайный причинный граф или байесовская нейросеть, через которую прогоняется шум. Часть узлов объявляется признаками, один — меткой. Причём метка часто зависит от узла, которого нет среди признаков, — это моделирует скрытые переменные реальных данных.</span></div>
+
+  <div class="qa"><b>5. Почему приор смещён к простым структурам?</b><span>Это зашитая бритва Оккама. Если малые графы встречались в предобучении вчетверо чаще больших, при неоднозначном контексте сеть предпочтёт простое объяснение. Меняя распределение сложности, можно менять индуктивное смещение модели, не трогая архитектуру.</span></div>
+
+  <div class="qa"><b>6. Почему нельзя использовать позиционное кодирование по строкам?</b><span>Оно ломает инвариантность к порядку. В разобранном примере одна и та же выборка в двух порядках дала 0.9326 и 0.8137 при наличии позиционного смещения и ровно 0.9100 без него. Порядок строк в файле — артефакт выгрузки, влиять на предсказание он не должен.</span></div>
+
+  <div class="qa"><b>7. Зачем внимание по столбцам?</b><span>Чтобы работать с любым числом признаков и не привязывать смысл к позиции. Полносвязный слой на 40 входов не примет таблицу с 12 колонками; внимание по столбцам рассматривает признаки как множество токенов и принимает любую ширину.</span></div>
+
+  <div class="qa"><b>8. Правда ли, что у TabPFN нет гиперпараметров?</b><span>Практически да. Формально есть число перестановок в ансамбле и длина окна контекста, но первое — параметр бюджета (больше всегда не хуже, просто дороже), а второе появляется только при дрейфе. Ни один из них не меняет выразительность модели, в отличие от глубины дерева.</span></div>
+
+  <div class="qa"><b>9. Сколько перестановок брать?</b><span>Восемь по умолчанию: они дают 86.5% полного прироста за 25% стоимости K=32. Для сравнения моделей с разницей порядка 0.002 нужно 32, иначе разброс между перестановками (sd = 0.0063) съест сравнение.</span></div>
+
+  <div class="qa"><b>10. Почему TabPFN не переобучается на моих данных?</b><span>Потому что не подгоняет под них ни одного параметра — веса зафиксированы предобучением. Переобучиться не на чем. Это не значит, что нельзя получить завышенную оценку: утечка в данных и неправильная схема валидации работают ровно так же, как с любой моделью.</span></div>
+
+  <div class="qa"><b>11. Откуда берётся хорошая калибровка?</b><span>Из целевой функции предобучения: сеть учили выдавать распределение, а минимум кросс-энтропии — на истинном условном распределении. У бустинга та же потеря, но ранняя остановка, регуляризация и подбор глубины смещают вероятности. Замер: ECE 0.0066 против 0.0530.</span></div>
+
+  <div class="qa"><b>12. Разве бустинг нельзя откалибровать?</b><span>Можно, ECE падает с 0.053 до 0.011. Цена — отложенная выборка 10–15%, которую нельзя использовать ни для обучения, ни для оценки. На 50 тыс. строк это рутина, на 500 строк — потеря 75 объектов и плохо работающая изотоническая регрессия. Именно там преимущество максимально.</span></div>
+
+  <div class="qa"><b>13. Когда калибровка вообще важна?</b><span>Когда из вероятности считают арифметику: ожидаемая прибыль, порог из стоимостей ошибок, прогноз числа событий, резерв под риск. В разобранном примере один плохо откалиброванный бин перевернул решение на 8 400 клиентах и стоил 588 тыс. рублей. Для чистого ранжирования калибровка не важна.</span></div>
+
+  <div class="qa"><b>14. Что даёт предсказательное распределение в регрессии?</b><span>Любой квантиль без переобучения. При стоимости дефицита втрое выше излишка оптимален квантиль 0.75, который в примере составил 34.64 против среднего 27.30 — на 26.9% больше. Плюс прямые ответы на вопросы вида «какова вероятность превысить 40».</span></div>
+
+  <div class="qa"><b>15. Почему миллион строк — это граница?</b><span>Квадратичное внимание по строкам. При 24 слоях и d_model = 512 миллион строк даёт 4.9×10¹⁶ FLOPs (около 98 с на H100) и KV-кэш 49.2 ГБ — впритык к 80 ГБ. Десять миллионов дали бы 2.7 часа и 492 ГБ. Отсюда сжатие строк и урезанный кэш.</span></div>
+
+  <div class="qa"><b>16. Что делает сжатие строк?</b><span>Заменяет внимание «каждый с каждым» вниманием к m опорным представлениям: O(n²) становится O(n·m). При n = 10⁶ и m = 10⁴ это стократное ускорение. Цена — потеря информации о редких режимах, которые не попали в опорное множество.</span></div>
+
+  <div class="qa"><b>17. Зачем нужен KV-кэш, если предсказание одноразовое?</b><span>Тестовых строк обычно много, и они обрабатываются чанками. Без кэша контекст кодировался бы заново для каждого чанка: 20 чанков — это 1 966 с вместо 118 с. Ускорение 16.7×. Тот же механизм, что при декодировании языковых моделей в 8.8.</span></div>
+
+  <div class="qa"><b>18. Каковы актуальные лимиты?</b><span>У TabPFN-3 (май 2026) три заявленных режима: 1 млн строк при 200 признаках, 100 тыс. строк при 2 000 признаках или 1 тыс. строк при 20 000 признаках. Ограничено произведение «строки × признаки», а не каждое по отдельности.</span></div>
+
+  <div class="qa"><b>19. Действительно ли TabPFN обгоняет настроенный бустинг?</b><span>На публичных бенчмарках малых и средних датасетов — да, и заявки за 2025–2026 годы становятся всё сильнее вплоть до сопоставимости с многочасовыми ансамблями. Но бенчмарк — средний ранг по десяткам разнородных наборов, а ваша задача одна. Прогон занимает минуту и даёт единственный релевантный ответ.</span></div>
+
+  <div class="qa"><b>20. Стоит ли доверять TabArena?</b><span>С поправкой: в его создании участвуют исследователи из лаборатории, публикующей TabPFN. Прямых оснований сомневаться нет, но перед крупным решением стоит посмотреть и независимые наборы вроде TALENT, и обязательно — свою задачу.</span></div>
+
+  <div class="qa"><b>21. Почему на моих данных с датой преимущество исчезло?</b><span>Приор порождает обменяемые строки: порядок не значим по построению. Модель не может взвесить свежие строки выше старых, а у бустинга для этого есть веса объектов и признак давности. Замер: +0.017 на случайном разбиении и −0.004 на временном.</span></div>
+
+  <div class="qa"><b>22. Как бороться с дрейфом?</b><span>Отбором контекста вместо весов. В примере окно 90 дней (44 тыс. строк) дало 0.791 против 0.782 на полном годе (180 тыс. строк). Контрольная проверка: те же 44 тыс. строк, выбранные случайно за весь год, дали 0.776 — значит, работает свежесть, а не размер.</span></div>
+
+  <div class="qa"><b>23. Нужно ли отбирать признаки перед подачей?</b><span>Обычно нет: устойчивость к мусорным колонкам встроена, приор содержал бесполезные признаки специально. Отбор чаще вредит и лишает главного удобства. Исключение — когда упираетесь в потолок по числу признаков.</span></div>
+
+  <div class="qa"><b>24. Как вывести это в прод?</b><span>Четыре варианта: пакетный расчёт напрямую (если латентность не важна), дистилляция в MLP или деревья для онлайна, API (если данные позволяют), либо использовать вероятности как признак для привычного бустинга. Последний вариант чаще всего практичнее, но требует считать признак строго по фолдам.</span></div>
+
+  <div class="qa"><b>25. Сколько теряет дистилляция?</b><span>В разобранном примере учитель давал +0.016 над настроенным CatBoost, дистиллят-MLP +0.011 (68.8% преимущества) при латентности в 132 раза ниже. Дистиллят-деревья сохраняет 50%. Отдельно теряется калибровка: ECE растёт с 0.0066 до 0.0121.</span></div>
+
+  <div class="qa"><b>26. Зачем дистилляции неразмеченные данные?</b><span>Учитель — функция, вычислимая в любой точке, поэтому мягкие метки можно поставить где угодно. Увеличение числа точек с 5 тыс. до 500 тыс. дало студенту +0.008 без единой новой настоящей метки. Это способ использовать неразмеченные данные, бесполезные при обычном обучении.</span></div>
+
+  <div class="qa"><b>27. Какие ещё есть табличные foundation-модели?</b><span>Больше десятка: TabICL и TabICL v2, TabDPT, TabFlex, LimiX, Mitra, ContextTab, Orion-MSP, MotherNet и другие. Различаются по четырём осям: чистая синтетика против дообучения на реальных данных, использование семантики колонок, вид внимания и лицензия.</span></div>
+
+  <div class="qa"><b>28. Какую выбрать для продукта?</b><span>Начинать с открытых вариантов — на середину 2026 года это прежде всего линия TabICL. Веса TabPFN-3 разрешены для исследований и внутренней оценки, но не для коммерческого использования; для продукта нужен API или корпоративная лицензия. Смена модели позже дороже, чем небольшая разница в качестве сейчас.</span></div>
+
+  <div class="qa"><b>29. Заменят ли foundation-модели градиентный бустинг?</b><span>На малых данных с обменяемыми строками уже заменили. На больших выборках с дрейфом бустинг остаётся сильнее и дешевле. Это второй инструмент с другим профилем, а не следующее поколение первого — и правильная архитектура часто содержит оба.</span></div>
+
+  <div class="qa"><b>30. С чего начать?</b><span>Прогнать на своей задаче на честной схеме валидации, сравнить с CatBoost по умолчанию и с настроенным. Если данные имеют дату — обязательно на временном разбиении. Это занимает час и заменяет любые рассуждения о том, подходит ли подход.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 7.4 продолжает блок 7: <a href="block7_01_automl.html">7.1</a> про AutoML — прямую альтернативу, <a href="block7_02_tabular_dl.html">7.2</a> про табличные нейросети, <a href="block7_03_mlops.html">7.3</a> про вывод в прод. Механика внимания разобрана в <a href="block8_04_attention.html">8.4</a>, KV-кэш и стоимость инференса — в <a href="block8_08_attention_inference.html">8.8</a>. Схема валидации, без которой любые замеры здесь бессмысленны, — <a href="block1_15_validation_schemes.html">1.15</a>. Калибровка и выбор порога — <a href="block1_07_calibration.html">1.7</a> и <a href="block1_12_metrics_framing.html">1.12</a>.
+</div>
+
+<div class="srcbox">
+  <b>Источники и актуальность</b>
+  <p style="margin:0 0 8px;font-size:13.5px">Фактические сведения о версиях, лимитах и заявленных результатах сверены в августе 2026 года. Числовые примеры в трассировках — учебные конструкции, иллюстрирующие механизм; они не воспроизводят замеры из статей.</p>
+  <ul>
+    <li><a href="https://www.nature.com/articles/s41586-024-08328-6">Hollmann et al., «Accurate predictions on small data with a tabular foundation model», Nature 637, 2025</a> — TabPFN v2</li>
+    <li><a href="https://priorlabs.ai/technical-reports/tabpfn-3">TabPFN-3: Technical Report, Prior Labs, 12 мая 2026</a></li>
+    <li><a href="https://priorlabs.ai/technical-reports/tabpfn-2-5-model-report">TabPFN-2.5 Model Report, Prior Labs, 6 ноября 2025</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/TabPFN">TabPFN — обзорная статья с хронологией версий и применений</a></li>
+    <li><a href="https://mindfulmodeler.substack.com/p/the-state-of-tabular-foundation-models">Christoph Molnar, «The state of Tabular Foundation Models (2026)»</a> — обзор экосистемы и оговорки про бенчмарки</li>
+    <li><a href="https://arxiv.org/abs/2502.17361">Ye, Liu, Chao, «A Closer Look at TabPFN v2: Strength, Limitation, and Extension»</a></li>
+  </ul>
+</div>
+
+<div class="pnav">
+  <a href="block7_03_mlops.html">← 7.3 · Feature Store и MLOps</a>
+  <a class="next" href="block7_quiz.html">Тест блока 7 →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#1e3a8a', AC2='#60a5fa', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — преимущество по размеру датасета */
+mk('c_size',{type:'line',data:{labels:['200','1 000','5 000','20 000','100 000','1 000 000'],
+ datasets:[
+  {label:'Табличная foundation-модель',data:[0.831,0.856,0.874,0.888,0.897,0.906],borderColor:AC,backgroundColor:'rgba(30,58,138,.07)',tension:.3,fill:true,pointRadius:4},
+  {label:'CatBoost с подбором',data:[0.762,0.821,0.858,0.881,0.894,0.906],borderColor:OR,borderDash:[5,4],tension:.3,pointRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.74,max:0.92,title:{display:true,text:'AUC'}},GRID),x:Object.assign({title:{display:true,text:'размер обучающей выборки'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var d=[0.069,0.035,0.016,0.007,0.003,0.000];return 'разрыв: +'+d[it[0].dataIndex].toFixed(3);}}}}}});
+
+/* 2 — приор и апостериор */
+mk('c_ppd',{type:'bar',data:{labels:['φ₁  сильная растущая','φ₂  слабая растущая','φ₃  убывающая'],
+ datasets:[
+  {label:'Приор p(φ)',data:[0.500000,0.300000,0.200000],backgroundColor:'#cbd5e1',borderRadius:4},
+  {label:'Апостериор p(φ|D) после трёх строк',data:[0.770939,0.217639,0.011421],backgroundColor:AC,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:0.85,title:{display:true,text:'вероятность'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var p=[0.1,0.3,0.7];return 'предсказывает для x=0: '+p[it[0].dataIndex].toFixed(1);}}}}}});
+
+/* 3 — кросс-энтропия */
+(function(){
+  var P=0.1503803, xs=[], ys=[];
+  for(var q=0.03;q<=0.40001;q+=0.01){
+    xs.push(q.toFixed(2));
+    ys.push(-(P*Math.log(q)+(1-P)*Math.log(1-q)));
+  }
+  mk('c_loss',{type:'line',data:{labels:xs,datasets:[
+    {label:'Ожидаемая кросс-энтропия L(q)',data:ys,borderColor:AC,backgroundColor:'rgba(30,58,138,.07)',tension:.2,fill:true,pointRadius:0},
+    {label:'Минимум: q = PPD = 0.1504',data:xs.map(function(v){return Math.abs(+v-0.15)<0.006?0.423345:null;}),borderColor:GR,pointRadius:7,pointBackgroundColor:GR,showLine:false},
+    {label:'«Лучшая гипотеза» q = 0.10',data:xs.map(function(v){return Math.abs(+v-0.10)<0.004?0.435779:null;}),borderColor:RD,pointRadius:7,pointBackgroundColor:RD,showLine:false}
+  ]},options:{responsive:true,scales:{y:Object.assign({min:0.42,max:0.50,title:{display:true,text:'ожидаемая потеря'}},GRID),x:Object.assign({title:{display:true,text:'значение q на выходе сети'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+})();
+
+/* 4 — сложность приора */
+mk('c_prior',{type:'bar',data:{labels:['2–4 узла','5–8','9–16','17–32','33+'],
+ datasets:[{label:'Доля синтетических датасетов, %',data:[41,33,18,6,2],
+  backgroundColor:[AC,'#1d4ed8','#3b82f6','#93c5fd','#dbeafe'],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:45,title:{display:true,text:'%'}},GRID),x:Object.assign({title:{display:true,text:'размер причинного графа'}},NOG)},plugins:{legend:{display:false}}}});
+
+/* 5 — перестановки строк */
+mk('c_perm',{type:'bar',data:{labels:['Порядок A, B, C','Порядок C, A, B','Порядок B, C, A'],
+ datasets:[
+  {label:'Без позиционного кодирования',data:[0.909969,0.909969,0.909969],backgroundColor:GR,borderRadius:4},
+  {label:'С позиционным кодированием',data:[0.932576,0.813671,0.951480],backgroundColor:RD,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.75,max:1.0,title:{display:true,text:'выход внимания'}},GRID),x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 6 — предсказательное распределение */
+mk('c_reg',{type:'bar',data:{labels:['0–10','10–20','20–30','30–40','40–50'],
+ datasets:[
+  {type:'bar',label:'Вероятность бина',data:[0.05,0.15,0.42,0.28,0.10],backgroundColor:AC,borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Накопленная вероятность',data:[0.05,0.20,0.62,0.90,1.00],borderColor:OR,tension:.2,pointRadius:4,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:0.5,position:'left',title:{display:true,text:'вероятность'}},GRID),
+   y1:{min:0,max:1.05,position:'right',grid:{display:false},title:{display:true,text:'накопленная'}},
+   x:Object.assign({title:{display:true,text:'спрос'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var t=['','','среднее 27.30 и медиана 27.14 здесь','квантиль 0.75 = 34.64 здесь','P(спрос > 40) = 0.10'];return t[it[0].dataIndex];}}}}}});
+
+/* 7 — ансамбль перестановок */
+mk('c_ens',{type:'bar',data:{labels:['K = 1','K = 4','K = 8','K = 16','K = 32'],
+ datasets:[
+  {type:'bar',label:'AUC',data:[0.8612,0.8698,0.8721,0.8733,0.8738],backgroundColor:AC,borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'sd оценки ×1000  (= 6.3/√K)',data:[6.300,3.150,2.227,1.575,1.114],borderColor:OR,tension:.25,pointRadius:4,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0.855,max:0.876,position:'left',title:{display:true,text:'AUC'}},GRID),
+   y1:{min:0,max:7,position:'right',grid:{display:false},title:{display:true,text:'sd ×1000'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 8 — квадратичная стоимость */
+mk('c_cost',{type:'line',data:{labels:['10 тыс.','100 тыс.','1 млн','10 млн'],
+ datasets:[
+  {label:'Полное внимание O(n²)',data:[1,100,10000,1000000],borderColor:AC,tension:.15,pointRadius:5},
+  {label:'Сжатие строк O(n·m), m = 10 тыс.',data:[1,10,100,1000],borderColor:OR,borderDash:[5,4],tension:.15,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'относительная стоимость'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'строк в контексте'}},NOG)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* 9 — KV-кэш */
+mk('c_kv',{type:'line',data:{labels:['100 тыс.','250 тыс.','500 тыс.','1 млн','1.5 млн','2 млн'],
+ datasets:[
+  {label:'d_model = 512, L = 24',data:[4.92,12.29,24.58,49.15,73.73,98.30],borderColor:AC,tension:.2,pointRadius:4},
+  {label:'d_model = 1024, L = 24',data:[9.83,24.58,49.15,98.30,147.46,196.61],borderColor:RD,tension:.2,pointRadius:4},
+  {label:'Память H100 — 80 ГБ',data:[80,80,80,80,80,80],borderColor:GY,borderDash:[2,3],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:210,title:{display:true,text:'размер KV-кэша, ГБ'}},GRID),x:Object.assign({title:{display:true,text:'строк в контексте'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 10 — хронология */
+mk('c_timeline',{type:'bar',data:{labels:['v1  2022','v2  янв 2025','2.5  ноя 2025','Scaling  дек 2025','v3  май 2026'],
+ datasets:[
+  {label:'Максимум строк',data:[1000,10000,50000,10000000,1000000],backgroundColor:AC,borderRadius:4},
+  {label:'Максимум признаков',data:[100,500,2000,2000,2000],backgroundColor:AC2,borderRadius:4}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'штук (лог. шкала)'},grid:{color:'#eef2f7'}},
+   x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex===4?'у v3 три режима: 1 млн×200, 100 тыс.×2 000, 1 тыс.×20 000':'';}}}}}});
+
+/* 11 — калибровка */
+mk('c_calib',{type:'line',data:{labels:['0.05','0.12','0.20','0.45','0.70','0.92'],
+ datasets:[
+  {label:'Идеальная калибровка',data:[0.05,0.12,0.20,0.45,0.70,0.92],borderColor:GY,borderDash:[3,3],pointRadius:0},
+  {label:'TabPFN  (ECE 0.0066)',data:[0.054,0.124,0.207,0.441,0.712,0.916],borderColor:AC,tension:.2,pointRadius:5},
+  {label:'Бустинг  (ECE 0.0530)',data:[0.106,0.185,0.263,0.472,0.661,0.845],borderColor:RD,tension:.2,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:1.0,title:{display:true,text:'наблюдаемая частота'}},GRID),x:Object.assign({title:{display:true,text:'предсказанная вероятность'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 12 — окно контекста */
+mk('c_ctx',{type:'line',data:{labels:['14 дней','30','45','90','180','365'],
+ datasets:[
+  {label:'Контекст = последние N дней',data:[0.771,0.784,0.788,0.791,0.787,0.782],borderColor:AC,backgroundColor:'rgba(30,58,138,.07)',tension:.3,fill:true,pointRadius:5},
+  {label:'Контроль: столько же строк, но случайных за год',data:[null,null,null,0.776,null,null],borderColor:GY,pointRadius:8,pointBackgroundColor:GY,showLine:false}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0.765,max:0.796,title:{display:true,text:'AUC на будущем периоде'}},GRID),x:Object.assign({title:{display:true,text:'длина окна контекста'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var d=['6 900 строк','14 800','22 300','44 100','88 800','180 000'];return d[it[0].dataIndex];}}}}}});
+
+/* 13 — дистилляция */
+mk('c_distill',{type:'scatter',data:{datasets:[
+  {label:'TabPFN-3 (учитель)',data:[{x:41,y:0.874}],backgroundColor:AC,pointRadius:9},
+  {label:'Дистиллят — MLP',data:[{x:0.31,y:0.869}],backgroundColor:GR,pointRadius:9},
+  {label:'Дистиллят — деревья',data:[{x:0.18,y:0.866}],backgroundColor:AC2,pointRadius:9},
+  {label:'CatBoost с подбором',data:[{x:0.21,y:0.858}],backgroundColor:OR,pointRadius:9}
+ ]},
+ options:{responsive:true,scales:{
+   x:{type:'logarithmic',title:{display:true,text:'латентность на запрос, мс'},grid:{color:'#eef2f7'}},
+   y:Object.assign({min:0.852,max:0.880,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* ИНТЕРАКТИВ — бюджет вычислений */
+function updCost(){
+  var n = Math.pow(10, (+document.getElementById('sl_n').value)/10);
+  var d = +document.getElementById('sl_d').value;
+  var L = +document.getElementById('sl_l').value;
+
+  document.getElementById('out_n').textContent = n.toExponential(1).replace('+','');
+  document.getElementById('out_d').textContent = d;
+  document.getElementById('out_l').textContent = L;
+
+  var kvBytes = 2 * L * d * n * 2;
+  var kvGB = kvBytes / 1e9;
+  var flops = 4 * L * n * n * d;
+  var sec = flops / 5e14;
+  var m = 10000;
+  var flopsC = 4 * L * n * m * d;
+  var secC = flopsC / 5e14;
+
+  var fits = kvGB <= 80 ? 'помещается в H100 (80 ГБ)' : 'НЕ помещается в H100 — нужен урезанный кэш или несколько карт';
+  var tstr = sec < 1 ? sec.toFixed(3) + ' с'
+           : sec < 3600 ? sec.toFixed(1) + ' с'
+           : (sec/3600).toFixed(2) + ' ч';
+  var tstrC = secC < 1 ? secC.toFixed(3) + ' с' : secC.toFixed(1) + ' с';
+
+  document.getElementById('out_cost').textContent =
+    'KV-кэш = 2 × ' + L + ' × ' + d + ' × ' + n.toExponential(1).replace('+','') + ' × 2 байта\n' +
+    '        = ' + kvGB.toFixed(1) + ' ГБ   → ' + fits + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'FLOPs полного внимания = 4 × ' + L + ' × n² × ' + d + '\n' +
+    '        = ' + flops.toExponential(2).replace('+','') + '\n' +
+    'время при 5e14 FLOP/с: ' + tstr + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'со сжатием строк до m = 10 000:  ' + tstrC + '\n' +
+    'ускорение: ' + (n > m ? (n/m).toFixed(0) + '×' : 'сжатие не нужно, n ≤ m');
+}
+(function(){
+  ['sl_n','sl_d','sl_l'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updCost); });
+  if(document.getElementById('out_cost')) updCost();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

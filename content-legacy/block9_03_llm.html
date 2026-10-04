@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9.3 · LLM: как устроены, сколько стоят и как выбирать</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#059669;--rf-l:#ecfdf5;--rf-b:#a7f3d0;--rf-d:#064e3b;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#064e3b,#059669 50%,#6ee7b7);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.92;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(5,150,105,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.vi{border-left-color:var(--vi);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.vi .flabel{color:var(--vi);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#064e3b;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#064e3b!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.vi{background:var(--vi);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#6ee7b7;font-style:normal;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rf{border-top:3px solid var(--rf);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.cy{border-top:3px solid var(--cy);} .card.rd{border-top:3px solid var(--red);}
+.card.vi{border-top:3px solid var(--vi);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--rf-l);color:#064e3b;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--rf);margin:26px 0 12px;}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#064e3b;line-height:1.72;}
+/* ---------- Распределение токенов ---------- */
+.dist{margin:14px 0;}
+.drow{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12.5px;}
+.dtok{min-width:96px;font-family:'SF Mono',monospace;font-size:11.5px;}
+.dbar{flex:1;height:17px;background:#f1f5f9;border-radius:4px;position:relative;overflow:hidden;}
+.dfill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .35s ease;}
+.dval{min-width:52px;text-align:right;font-family:'SF Mono',monospace;font-size:11.5px;color:var(--text3);}
+.dcut{opacity:.28;}
+/* ---------- Фазы генерации ---------- */
+.phase{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;}
+.pbox{flex:1;min-width:210px;border-radius:12px;padding:15px 17px;border:1.5px solid;}
+.pbox h5{font-size:14px;font-weight:700;margin-bottom:7px;}
+.pbox p{font-size:12.5px;line-height:1.6;margin-bottom:5px;}
+.ptag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;margin-top:5px;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes typing{0%{opacity:.25;}50%{opacity:1;}100%{opacity:.25;}}
+.typ span{animation:typing 1.6s infinite;}
+.typ span:nth-child(2){animation-delay:.2s;}
+.typ span:nth-child(3){animation-delay:.4s;}
+.typ span:nth-child(4){animation-delay:.6s;}
+.typ span:nth-child(5){animation-delay:.8s;}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--rf-l);border-color:var(--rf-b);color:#064e3b;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--vi-l);border-color:var(--vi-b);color:#4c1d95;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--rf);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .dtok{min-width:70px;font-size:10px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 9 · NLP, поиск и LLM · Тема 3 из 6</div>
+  <h1>LLM: как устроены, сколько стоят и как выбирать</h1>
+  <p class="sub">Внутренности трансформера разобраны в блоке 8. Здесь — прикладная сторона:
+     как работает генерация, откуда берутся галлюцинации, почему температура 0 не даёт
+     детерминизма, как считается стоимость запроса и по каким критериям
+     на самом деле выбирают модель.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Авторегрессия</a>
+  <a href="#s2">2. Семплирование</a>
+  <a href="#s3">3. Prefill и decode</a>
+  <a href="#s4">4. KV-cache и контекст</a>
+  <a href="#s5">5. Эффективная длина</a>
+  <a href="#s6">6. От base к чату</a>
+  <a href="#s7">7. Галлюцинации</a>
+  <a href="#s8">8. Structured output</a>
+  <a href="#s9">9. Экономика запроса</a>
+  <a href="#s10">10. Выбор модели</a>
+  <a href="#s11">11. Serving</a>
+  <a href="#s12">12. Оценка LLM</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Устройство трансформера, attention и KV-cache подробно разобраны в темах 8.4 и 8.5.</strong> Здесь они используются как известное, а фокус — на прикладных следствиях.</li>
+    <li>Секции 1–3 — механика генерации: авторегрессия, семплирование, две фазы инференса с разными узкими местами.</li>
+    <li>Секции 5 и 7 — два главных ограничения на практике: контекст работает хуже заявленного, а галлюцинации структурно неизбежны.</li>
+    <li><strong>Секция 9 — экономика.</strong> Самая недооценённая часть: кэширование промпта и роутинг дают кратную экономию быстрее любой оптимизации промптов.</li>
+    <li>Секции 10–15 — выбор модели, serving, оценка, кейсы и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что LLM реально делает <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Авторегрессивная генерация и что из неё следует</div>
+
+<div class="fbox">
+<div class="flabel">📐 Вся модель в одной формуле</div>
+$$P(x_1, \dots, x_n) = \prod_{t=1}^{n} P(x_t \mid x_{<t})$$
+<p>Модель выдаёт распределение вероятностей над словарём для <em>следующего</em> токена при условии всех предыдущих. Генерация — повторение этого шага: выбрали токен, дописали ко входу, повторили.</p>
+<p class="fnote">Всё остальное — обучение, дообучение, RLHF — меняет только то, <em>какое</em> распределение выдаётся. Механика генерации остаётся этой.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три следствия, объясняющие почти всё поведение LLM</div>
+<p><strong>① Модель не «знает» ответ заранее.</strong> Она строит его по токену, и каждый выбор сужает пространство продолжений. Начав фразу неудачно, модель вынуждена продолжать в этом русле — отсюда работает приём «сначала рассуждение, потом ответ»: он даёт модели возможность выстроить контекст до того, как зафиксировать ответ.</p>
+<p><strong>② Нет отдельного механизма «не знаю».</strong> Модель всегда выдаёт распределение, и всегда есть самый вероятный токен. Отказ отвечать — это тоже выученное поведение (последовательность токенов), а не встроенная проверка.</p>
+<p><strong>③ Стоимость линейна по числу выходных токенов.</strong> Каждый токен — отдельный проход по всей модели. Отсюда: длинный ответ дороже короткого пропорционально, а не «немного дороже».</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что происходит на одном шаге генерации</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Вход:</strong> «Столица Франции —». Токенизировано в 5 токенов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Прямой проход</strong> через все слои → на последней позиции получаем вектор скрытого состояния размерности $d$ (например, 4096).</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Проекция на словарь:</strong> умножение на матрицу $W_{\text{out}} \in \mathbb{R}^{d \times |V|}$ → вектор логитов длины $|V|$ (например, 128 000 чисел).</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Softmax</strong> превращает логиты в вероятности: «Париж» 0.94, «город» 0.021, «это» 0.011, остальные 128 тыс. токенов делят 0.028.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Выбор токена</strong> по стратегии семплирования (секция 2). Выбранный токен дописывается ко входу.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Повтор</strong> для следующей позиции. Благодаря KV-cache пересчитывать предыдущие позиции не нужно — только новую.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Важное наблюдение:</strong> последний шаг (проекция на словарь) стоит $d \times |V| = 4096 \times 128\,000 \approx 524$ млн операций — сопоставимо со стоимостью нескольких слоёв. Именно поэтому размер словаря влияет не только на длину последовательности, но и на стоимость каждого шага генерации.</div></div>
+</div>
+
+<div class="dist" id="dist_demo">
+  <div class="drow"><span class="dtok">«Париж»</span><span class="dbar"><span class="dfill" style="width:94%;background:#059669;"></span></span><span class="dval">0.940</span></div>
+  <div class="drow"><span class="dtok">«город»</span><span class="dbar"><span class="dfill" style="width:2.1%;background:#34d399;"></span></span><span class="dval">0.021</span></div>
+  <div class="drow"><span class="dtok">«это»</span><span class="dbar"><span class="dfill" style="width:1.1%;background:#6ee7b7;"></span></span><span class="dval">0.011</span></div>
+  <div class="drow"><span class="dtok">«крупный»</span><span class="dbar"><span class="dfill" style="width:0.7%;background:#a7f3d0;"></span></span><span class="dval">0.007</span></div>
+  <div class="drow dcut"><span class="dtok">…ещё 128k</span><span class="dbar"><span class="dfill" style="width:2.1%;background:#cbd5e1;"></span></span><span class="dval">0.021</span></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему «подумай пошагово» действительно работает.</strong> Модель не имеет отдельной «памяти для размышлений» — единственное место, где может происходить многошаговое рассуждение, это <em>сгенерированный текст</em>. Заставляя модель выписать промежуточные шаги, мы даём ей больше проходов по сети на одну задачу и место для хранения промежуточных результатов. Это не психологический трюк, а буквальное увеличение вычислительного бюджета на задачу — то же самое, что дать больше времени. Отсюда и обратная сторона: приём стоит денег пропорционально длине рассуждения.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Семплирование: температура, top-k, top-p <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Как из распределения выбирается конкретный токен</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Температура</div>
+$$P(x_i) = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
+<p>$T < 1$ — распределение «заостряется», вероятные токены становятся ещё вероятнее. $T > 1$ — сглаживается, растёт разнообразие. $T \to 0$ — вырождается в argmax (greedy).</p>
+<p class="fnote">Температура не меняет <em>порядок</em> токенов по вероятности — только контраст между ними. Поэтому при $T \to 0$ всегда выбирается тот же токен, что и при greedy.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Стратегия</th><th>Механика</th><th>Плюсы</th><th>Минусы</th></tr></thead>
+<tbody>
+<tr><td><b>Greedy</b> ($T=0$)</td><td>Всегда самый вероятный токен</td><td>Воспроизводимо, предсказуемо</td><td>Повторы, «зацикливание», скучный текст</td></tr>
+<tr><td>Beam search</td><td>Держит $k$ лучших последовательностей</td><td>Хорош для перевода и суммаризации</td><td>Для открытой генерации даёт унылый текст; дорого</td></tr>
+<tr><td>Температурное</td><td>Семплирование из перемасштабированного распределения</td><td>Простой контроль разнообразия</td><td>Хвост из 128k токенов остаётся доступным</td></tr>
+<tr><td><b>Top-k</b></td><td>Оставить $k$ самых вероятных, перенормировать</td><td>Отсекает бессмысленный хвост</td><td>Фиксированное $k$ плохо для разных распределений</td></tr>
+<tr class="trh"><td><b>Top-p (nucleus)</b></td><td>Оставить минимальное множество с суммарной вероятностью $\ge p$</td><td><strong>Адаптивно: узкое множество при уверенности, широкое при неопределённости</strong></td><td>Ещё один параметр</td></tr>
+<tr><td>Min-p</td><td>Порог относительно максимальной вероятности</td><td>Устойчивее top-p на резких распределениях</td><td>Менее распространён</td></tr>
+<tr><td>Repetition / frequency penalty</td><td>Штраф уже использованным токенам</td><td>Борется с повторами</td><td>Может ломать легитимные повторы (списки, код)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему top-p лучше top-k</div>
+<p><strong>Ситуация A — модель уверена.</strong> «Столица Франции —»: «Париж» 0.94, дальше хвост. При top-k=50 в множество попадают 49 бессмысленных токенов, и при высокой температуре один из них может быть выбран.</p>
+<p><strong>Ситуация B — модель не уверена.</strong> «Мне сегодня хочется —»: сотни разумных продолжений с вероятностями по 0.01–0.03. При top-k=50 отсекается множество нормальных вариантов.</p>
+<p><strong>Top-p адаптируется:</strong> при $p = 0.9$ в первом случае берётся один токен (0.94 уже покрывает порог), во втором — несколько десятков. Множество автоматически подстраивается под форму распределения.</p>
+<p><strong>Рабочие значения:</strong> для фактических задач $T = 0$–0.3; для творческих $T = 0.7$–1.0 с $p = 0.9$–0.95. Крутить оба параметра одновременно обычно не нужно — достаточно температуры при фиксированном $p = 0.9$.</p>
+</div>
+
+<div class="play">
+  <label>Поиграй: температура и top-p на распределении</label>
+  <label style="margin-top:2px;">Температура $T$</label>
+  <input type="range" id="sl_T" min="1" max="200" step="1" value="70" oninput="updSamp()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01</span><span class="out" id="out_T">0.70</span><span>2.00</span></div>
+  <label style="margin-top:14px;">Top-p (nucleus)</label>
+  <input type="range" id="sl_p" min="10" max="100" step="1" value="90" oninput="updSamp()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.10</span><span class="out" id="out_p">0.90</span><span>1.00</span></div>
+  <label style="margin-top:14px;">Уверенность модели (форма исходного распределения)</label>
+  <input type="range" id="sl_conf" min="1" max="100" step="1" value="60" oninput="updSamp()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>размытое</span><span class="out" id="out_conf">0.60</span><span>острое</span></div>
+  <div id="samp_dist" class="dist" style="margin-top:14px;"></div>
+  <div class="res" id="out_samp"></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Температура 0 не даёт полного детерминизма на GPU.</strong> Причина не в семплировании, а в <em>недетерминированности редукций с плавающей точкой</em>: сложение чисел в разном порядке даёт слегка разные результаты, а порядок зависит от размера батча, распределения по потокам и версии ядер. Когда два токена имеют почти равные логиты, различие в последнем разряде меняет выбор — и дальше расхождение нарастает. <strong>Практическое следствие:</strong> не полагайся на побитовую воспроизводимость ответов LLM даже при $T=0$; для тестов сравнивай по смыслу или используй допуски, а не точное совпадение строк.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Repetition penalty — обоюдоострый инструмент.</strong> Он снижает вероятность уже встречавшихся токенов, что помогает против зацикливания. Но в задачах, где повторы <em>легитимны</em> — генерация JSON (повторяющиеся ключи, скобки), код (отступы, имена переменных), таблицы, списки — штраф ломает вывод. Симптом: модель начинает «избегать» нужных символов и выдаёт синтаксически неверный результат. <strong>Для structured output штраф надо отключать</strong> и бороться с повторами через constrained decoding (секция 8).</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Prefill и decode: две фазы с разными узкими местами <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Понимание этого различия объясняет всю экономику инференса</div>
+
+<div class="phase">
+  <div class="pbox" style="background:#ecfdf5;border-color:#a7f3d0;">
+    <h5 style="color:#064e3b;">⚡ Prefill — обработка промпта</h5>
+    <p style="color:#065f46;">Все токены промпта обрабатываются <strong>параллельно</strong> за один проход. Матричные умножения большие и плотные.</p>
+    <p style="color:#065f46;">GPU загружена вычислениями почти полностью.</p>
+    <span class="ptag" style="background:#059669;color:#fff;">упирается в COMPUTE</span>
+  </div>
+  <div class="pbox" style="background:#fff7ed;border-color:#fed7aa;">
+    <h5 style="color:#7c2d12;">🐌 Decode — генерация ответа</h5>
+    <p style="color:#7c2d12;">Токены генерируются <strong>по одному</strong>. На каждом шаге читаются <em>все</em> веса модели ради одного токена.</p>
+    <p style="color:#7c2d12;">GPU простаивает, ожидая память.</p>
+    <span class="ptag" style="background:#ea580c;color:#fff;">упирается в MEMORY BANDWIDTH</span>
+  </div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему decode такой медленный</div>
+<p>Чтобы сгенерировать <em>один</em> токен, нужно прогнать его через всю модель — то есть прочитать из памяти все веса. Для модели на 70 млрд параметров в bf16 это <strong>140 ГБ чтений</strong>.</p>
+<p>При пропускной способности памяти ~2 ТБ/с (H100) это 70 мс на токен, если генерировать по одному. Вычислений при этом — крохи: один токен, а не тысячи.</p>
+<p><strong>Арифметическая интенсивность decode катастрофически низка:</strong> много чтений, мало операций. GPU, способная на 1000 TFLOPS, используется на единицы процентов.</p>
+<p><strong>Отсюда главный приём — батчинг.</strong> Если обрабатывать 64 запроса одновременно, веса читаются <em>один раз</em> на все 64 токена. Стоимость чтения делится, и пропускная способность растёт почти линейно по размеру батча — до тех пор, пока хватает памяти под KV-cache.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Разбор времени запроса по фазам</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Запрос:</strong> промпт 3 000 токенов, ответ 400 токенов. Модель 70B в bf16 на одной H100 (2 ТБ/с, ~990 TFLOPS bf16).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Prefill.</strong> FLOPs $\approx 2 \times N_{\text{params}} \times N_{\text{tokens}} = 2\times70\text{e}9\times3000 = 4.2\times10^{14}$.<br>При 40% MFU: $\frac{4.2\times10^{14}}{0.4\times990\times10^{12}} = \mathbf{1.06}$ с.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Decode, батч 1.</strong> На каждый токен читается 140 ГБ весов: $\frac{140}{2000} = 70$ мс/токен.<br>400 токенов → $\mathbf{28}$ с.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Итого 29 с</strong>, из которых <strong>96% — decode</strong>, хотя вычислений там в 7.5 раз меньше, чем в prefill.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Decode, батч 32.</strong> Веса читаются один раз на 32 токена: $\frac{70}{32} \approx 2.2$ мс на токен на запрос.<br>400 токенов → <strong>0.88 с</strong> при той же задержке для каждого пользователя.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Батчинг ускорил decode в 32 раза</strong> без изменения модели. Именно поэтому LLM-сервинг весь построен вокруг того, как набрать батч побольше: continuous batching, PagedAttention, приоритезация. Одиночный запрос на выделенной GPU — самый дорогой способ использовать LLM.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Пропускная способность и задержка от размера батча</div>
+<div class="chsub">Токенов в секунду растёт почти линейно, пока хватает памяти под KV-cache</div>
+<div style="position:relative;height:310px;"><canvas id="c_batch"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Две разные метрики задержки, которые часто путают.</strong> <strong>TTFT</strong> (time to first token) определяется prefill и растёт с длиной промпта. <strong>TPOT</strong> (time per output token) определяется decode и почти не зависит от длины промпта. Для чата важен TTFT — пользователь ждёт начала ответа; для батчевой обработки важна суммарная пропускная способность. <strong>Оптимизации у них разные:</strong> TTFT улучшается кэшированием промпта и сокращением его длины, TPOT — батчингом, квантованием и speculative decoding. Оптимизировать «задержку вообще» бессмысленно — надо знать, какая половина критична.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. KV-cache и контекстное окно <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Почему длинный контекст стоит памяти, а не только денег</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Размер KV-cache</div>
+$$\text{KV} = 2 \cdot L \cdot n_{\text{kv}} \cdot d_{\text{head}} \cdot b \cdot n_{\text{tokens}} \cdot \text{bytes}$$
+<p>Множитель 2 — ключи и значения; $L$ — число слоёв; $n_{\text{kv}}$ — число KV-голов (при GQA меньше числа голов внимания); $b$ — размер батча.</p>
+<p class="fnote">Ключевое: KV-cache растёт <strong>линейно по длине контекста и по размеру батча</strong>. Именно он, а не веса модели, ограничивает, сколько запросов можно обслуживать одновременно. Механика KV-cache, MQA и GQA подробно разобрана в теме 8.4.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько памяти съедает контекст</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Модель 70B:</strong> $L = 80$ слоёв, 64 головы внимания, $d_{\text{head}} = 128$. Без GQA ($n_{\text{kv}} = 64$), bf16 (2 байта).</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>На один токен:</strong> $2\times80\times64\times128\times2 = 2\,621\,440$ байт ≈ <strong>2.6 МБ/токен</strong>.<br>Контекст 32k токенов на один запрос: <strong>84 ГБ</strong> — больше, чем сама модель (140 ГБ) плюс это, не помещается на одну H100 (80 ГБ).</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>С GQA</strong> ($n_{\text{kv}} = 8$ вместо 64): $2\times80\times8\times128\times2 = 327\,680$ байт ≈ <strong>0.33 МБ/токен</strong>. Контекст 32k → <strong>10.5 ГБ</strong>. Сокращение в 8 раз.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Бюджет памяти на H100 80 ГБ.</strong> Веса 70B в 4-битном квантовании ≈ 35 ГБ. Остаётся ~40 ГБ под KV-cache и активации.<br>При 0.33 МБ/токен это ≈ <strong>120 тыс. токенов суммарно</strong> по всем одновременным запросам.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Компромисс наглядно виден:</strong> либо 4 запроса по 30k контекста, либо 60 запросов по 2k. <strong>Длина контекста и параллелизм — прямые конкуренты за одну и ту же память.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Отсюда экономическое следствие:</strong> провайдеры берут за длинный контекст не только пропорционально токенам, но иногда с наценкой — длинный запрос занимает память, вытесняя несколько коротких. Сокращение промпта на 40% может снизить итоговую стоимость больше чем на 40% за счёт лучшей утилизации.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Память под KV-cache: сколько запросов помещается одновременно</div>
+<div class="chsub">Длина контекста и число параллельных запросов конкурируют за одну память</div>
+<div style="position:relative;height:300px;"><canvas id="c_kv"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Наивное хранение KV-cache теряет до 60–80% памяти на фрагментацию.</strong> Если под каждый запрос выделять непрерывный блок на максимальную длину, а реальные ответы короче, память простаивает. <strong>PagedAttention</strong> (vLLM) решает это как виртуальная память в ОС: cache хранится страницами фиксированного размера, физически несмежными. Утилизация вырастает до 90%+, что напрямую переводится в большее число одновременных запросов на той же карте — типично прирост пропускной способности в 2–4 раза без изменения модели.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Эффективная длина контекста <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Заявленное окно и реально работающее — разные величины</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>«Контекст 128k» не означает, что модель одинаково хорошо использует все 128k.</strong> Это означает, что она <em>технически принимает</em> такой вход, не падая. Качество извлечения информации из середины длинного контекста систематически ниже, чем из начала и конца — эффект известен как «потерянное в середине» (lost in the middle). Разрыв может достигать 20–40 п.п. точности на задачах поиска факта в контексте.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: откуда берётся U-образная кривая</div>
+<p>Точность извлечения факта в зависимости от его позиции в контексте имеет характерную <strong>U-образную форму</strong>: высокая в начале, падающая к середине, снова растущая к концу.</p>
+<p><strong>Начало помнится</strong>, потому что там обычно системный промпт и инструкции — модель обучена уделять им внимание. <strong>Конец помнится</strong>, потому что он ближе всего к позиции генерации, и позиционные механизмы (RoPE, ALiBi) естественно дают больший вес близким токенам.</p>
+<p><strong>Середина проваливается</strong>: она далеко от точки генерации и не выделена структурно.</p>
+<p><strong>Практические следствия три:</strong> ① важное клади в начало или конец промпта; ② в RAG порядок чанков имеет значение — самые релевантные не в середину; ③ длинный контекст не заменяет хороший retrieval, он лишь снижает требования к нему.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Точность извлечения факта в зависимости от его позиции в контексте</div>
+<div class="chsub">U-образная кривая: середина длинного контекста используется хуже всего</div>
+<div style="position:relative;height:310px;"><canvas id="c_lost"></canvas></div>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Длинный контекст против RAG: честное сравнение</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> ответить на вопрос по корпусу из 400 документов общим объёмом 900k токенов.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Вариант A — всё в контекст.</strong> Не помещается (окно 128k). Даже если бы помещалось: стоимость $128\,000\times0.15/1000 = 19.2$ ₽ за запрос, TTFT ≈ 8–15 с.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Вариант B — RAG.</strong> Retrieval отбирает 8 чанков по 500 токенов = 4 000 токенов контекста.<br>Стоимость: $4\,600\times0.15/1000 = \mathbf{0.69}$ ₽. TTFT ≈ 0.4 с.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Качество.</strong> Если recall@8 у retrieval равен 0.91, то потолок точности RAG — 0.91. Фактическая точность 0.84.<br>Гипотетический «весь корпус в контексте» дал бы 0.79 из-за потерянного в середине.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>RAG выигрывает по всем трём измерениям:</strong> дешевле в 28 раз, быстрее в 25 раз и точнее на 5 п.п.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Когда длинный контекст всё же лучше.</strong> ① Документ цельный и нужен целиком (анализ договора, разбор кода). ② Вопрос требует агрегации по всему тексту («сколько раз упоминается X»), где retrieval по определению не справится. ③ Мало запросов и дорого строить инфраструктуру RAG. <strong>Правило:</strong> длинный контекст — для глубокой работы с одним документом, RAG — для поиска по многим.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как проверить эффективную длину контекста конкретной модели за час.</strong> Тест «иголка в стоге сена»: возьми длинный нерелевантный текст, вставь в него уникальный факт на разных позициях (5%, 25%, 50%, 75%, 95% длины), спроси модель об этом факте. Повтори для разных длин контекста (4k, 16k, 64k, 128k). Получишь карту точности по (длина × позиция) — это и есть реальная, а не заявленная характеристика. <strong>Усложнённая версия</strong>, которая честнее: не один факт, а несколько, с необходимостью их сопоставить — модели, отлично находящие одну иголку, часто проваливаются на двух.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. От base-модели к чат-модели <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Instruction tuning, RLHF и DPO — что каждый этап меняет</div>
+
+<div class="flow">
+  <div class="fn a"><strong>Pretrain</strong>предсказание<br>следующего токена</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>SFT</strong>инструкция →<br>хороший ответ</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>RLHF / DPO</strong>предпочтения<br>людей</div>
+  <div class="farr">→</div>
+  <div class="fn d"><strong>Чат-модель</strong>следует инструкциям,<br>отказывается, форматирует</div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Этап</th><th>Данные</th><th>Что меняет</th><th>Объём</th></tr></thead>
+<tbody>
+<tr><td><b>Pretraining</b></td><td>Триллионы токенов текста</td><td>Знания о мире и языке</td><td>Месяцы, тысячи GPU</td></tr>
+<tr class="trh"><td><b>SFT</b></td><td>Пары «инструкция → ответ»</td><td><strong>Формат: модель начинает отвечать, а не продолжать текст</strong></td><td>10k–1M примеров</td></tr>
+<tr class="trh"><td><b>RLHF / DPO</b></td><td>Пары ответов с указанием лучшего</td><td><strong>Тонкая настройка: полезность, безопасность, стиль</strong></td><td>10k–500k сравнений</td></tr>
+<tr><td>Constitutional / RLAIF</td><td>Предпочтения, сгенерированные моделью по принципам</td><td>Масштабирование alignment без людей</td><td>Зависит</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что именно делает SFT</div>
+<p>Base-модель обучена <em>продолжать текст</em>. На вход «Как приготовить омлет?» она может ответить «Как приготовить блины? Как приготовить суп?» — это правдоподобное продолжение списка вопросов.</p>
+<p><strong>SFT учит формату диалога:</strong> после инструкции идёт ответ, а не продолжение. Модель не получает новых знаний — она учится их <em>доставать в нужной форме</em>.</p>
+<p>Это объясняет распространённое наблюдение: SFT на нескольких тысячах <em>качественных</em> примеров работает лучше, чем на сотнях тысяч посредственных. Задача — не вложить знание, а показать формат.</p>
+<p><strong>RLHF/DPO настраивает более тонкие вещи:</strong> насколько подробно отвечать, когда отказаться, как форматировать, признавать ли неуверенность. Эти свойства трудно задать примерами, но легко выразить как «этот ответ лучше того».</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 DPO: почему он проще RLHF</div>
+$$\mathcal{L}_{\text{DPO}} = -\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta\log\frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}\right)$$
+<p>$y_w$ — предпочтённый ответ, $y_l$ — отвергнутый, $\pi_{\text{ref}}$ — исходная модель, $\beta$ — сила отклонения от неё.</p>
+<p class="fnote"><strong>Ключевая идея:</strong> RLHF требует обучить отдельную reward-модель, а затем оптимизировать политику через PPO — три модели в памяти, нестабильное обучение, много гиперпараметров. DPO показывает, что оптимальная политика выражается через reward аналитически, и потому reward-модель можно <em>исключить</em>: обучение сводится к обычному градиентному спуску на парах. Проще, стабильнее, дешевле — при сопоставимом качестве на большинстве задач.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Alignment имеет цену — «налог на выравнивание».</strong> Модель после RLHF часто хуже base-модели на «сырых» задачах: генерация разнообразного текста, следование необычному формату, работа вне типичных сценариев. Причина в том, что оптимизация под предпочтения людей сужает распределение выходов — модель становится более предсказуемой и менее гибкой. <strong>Практическое следствие:</strong> если задача узкая и нетипичная (генерация синтетических данных, стилизация, творческие форматы), стоит проверить base-модель или слабее выровненную — иногда она заметно лучше.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Галлюцинации: почему они структурно неизбежны <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">И что реально снижает их частоту</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три причины, каждая фундаментальная</div>
+<p><strong>① Модель оптимизирована на правдоподобие, а не на истинность.</strong> Обучение максимизирует $P(\text{текст})$. Правдоподобный вымысел и правдивый факт для лосса неразличимы, если оба выглядят как естественный текст.</p>
+<p><strong>② Нет механизма «не знаю».</strong> На каждом шаге есть распределение и есть самый вероятный токен. Если знания нет, распределение просто более размытое — но выбор всё равно произойдёт, и модель продолжит уверенно.</p>
+<p><strong>③ Авторегрессия не позволяет откатиться.</strong> Сгенерировав первый токен неверного факта, модель обязана продолжать связно. Правдоподобное продолжение неверного начала — это ещё более неверный, но связный текст.</p>
+<p><strong>Вывод, который важно принять:</strong> галлюцинации не «баг, который починят». Они следствие постановки задачи. Снижать их частоту можно, гарантированно устранить — нет.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Приём</th><th>Механизм</th><th>Эффективность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>RAG с обязательной цитатой</b></td><td>Модель отвечает только по предоставленному контексту и указывает источник</td><td><strong>Высокая — главный рабочий приём</strong></td></tr>
+<tr class="trh"><td><b>Структурированный вывод</b></td><td>Схема ограничивает пространство ответов; нет места для свободного вымысла</td><td><strong>Высокая для извлечения данных</strong></td></tr>
+<tr><td>Инструменты вместо знаний</td><td>Калькулятор, SQL, поиск — факты берутся из системы, а не из весов</td><td>Высокая в своей области</td></tr>
+<tr><td>Явное разрешение «не знаю»</td><td>Промпт, где отказ — валидный и поощряемый ответ</td><td>Средняя; помогает, но не устраняет</td></tr>
+<tr><td>Самопроверка / критика</td><td>Второй проход с проверкой утверждений</td><td>Средняя; дороже вдвое, ловит часть ошибок</td></tr>
+<tr><td>Понижение температуры</td><td>Меньше случайности в выборе токенов</td><td><strong>Низкая — уверенная галлюцинация останется</strong></td></tr>
+<tr><td>Ансамбль / self-consistency</td><td>Несколько генераций, выбор согласованного ответа</td><td>Средняя; хорошо для задач с проверяемым ответом</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Понижение температуры не лечит галлюцинации — распространённое заблуждение.</strong> Температура влияет на <em>случайность</em> выбора, а не на <em>правильность</em> распределения. Если модель уверенно приписывает несуществующую статью закона, при $T=0$ она сделает это <strong>каждый раз</strong> и одинаково. Низкая температура даже усугубляет ситуацию психологически: ответ становится стабильным, что читается как признак надёжности. <strong>Настоящее лечение — дать модели факты (RAG) или инструменты, а не крутить семплирование.</strong></div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что реально снижает частоту галлюцинаций</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> ответы на вопросы по внутренней базе знаний. Оценка на 500 вопросах с проверкой фактов асессорами.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Базовый вариант</strong> — вопрос напрямую модели без контекста: доля ответов с хотя бы одной фактической ошибкой <strong>38%</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>+ понижение температуры</strong> с 0.7 до 0.1: <strong>36%</strong> (−2 п.п., в пределах шума).</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>+ инструкция «если не знаешь — скажи»:</strong> <strong>29%</strong> (−7 п.п.). Часть галлюцинаций заменилась отказами, но появились и лишние отказы на вопросы, где модель знала ответ.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>+ RAG с релевантными чанками:</strong> <strong>11%</strong> (−18 п.п. — крупнейший вклад).</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>+ требование цитаты с проверкой её наличия в контексте:</strong> <strong>4.5%</strong> (−6.5 п.п.). Ответы без подтверждающей цитаты отклоняются автоматически.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>С 38% до 4.5%</strong>, причём 92% улучшения дали RAG и проверка цитат, а не работа с промптом и семплированием. <strong>Оставшиеся 4.5% никуда не денутся</strong> — часть из них ошибки retrieval, часть неверная интерпретация верного контекста. Систему надо проектировать с расчётом на этот остаток, а не на его исчезновение.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Вклад приёмов в снижение частоты галлюцинаций</div>
+<div class="chsub">RAG и проверка цитат дают 92% эффекта</div>
+<div style="position:relative;height:300px;"><canvas id="c_halluc"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Калибровка уверенности LLM — открытая проблема.</strong> Хотелось бы, чтобы модель говорила «уверен на 60%», и это соответствовало реальности. На практике: вероятности токенов слабо связаны с фактической правильностью (модель может уверенно генерировать вымысел), а вербализованная уверенность («я уверен на 90%») выучена как стиль и откалибрована ещё хуже. <strong>Что работает лучше:</strong> согласованность нескольких независимых генераций (если 5 из 5 сэмплов дают один ответ — он надёжнее) и проверяемость через внешний источник. Использовать logprobs как меру уверенности можно, но требуется калибровка на своей задаче, а не вера в их прямой смысл.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Structured output и вызов инструментов <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как заставить модель выдавать то, что можно распарсить</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Механизм</th><th>Надёжность</th><th>Ограничения</th></tr></thead>
+<tbody>
+<tr><td>Промпт «отвечай JSON»</td><td>Инструкция в тексте</td><td><strong>Низкая: 85–97%</strong></td><td>Ломается на редких случаях, добавляет пояснения вокруг</td></tr>
+<tr><td>Few-shot примеры формата</td><td>Показать 2–3 правильных вывода</td><td>Средняя: 95–99%</td><td>Расходует контекст</td></tr>
+<tr class="trh"><td><b>Constrained decoding</b></td><td>На каждом шаге маскируются токены, нарушающие грамматику</td><td><strong>100% по построению</strong></td><td>Нужен доступ к логитам (свой сервинг или поддержка API)</td></tr>
+<tr class="trh"><td><b>Function calling / tool use</b></td><td>Модель обучена выдавать вызовы по схеме</td><td><strong>Высокая</strong></td><td>Зависит от поддержки модели</td></tr>
+<tr><td>Повтор при ошибке парсинга</td><td>Retry с сообщением об ошибке</td><td>Высокая, но дорогая</td><td>Удваивает стоимость на части запросов</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: constrained decoding даёт гарантию, а не вероятность</div>
+<p>Обычный промпт «верни JSON» — это <em>просьба</em>. Модель обычно слушается, но иногда добавит «Вот результат:» перед объектом, забудет закрывающую скобку или выдумает поле.</p>
+<p><strong>Constrained decoding работает иначе:</strong> на каждом шаге генерации строится маска допустимых токенов. Если по грамматике сейчас может идти только <code>"</code> или <code>}</code>, все остальные 128 тыс. токенов получают вероятность ноль <em>до</em> семплирования.</p>
+<p>Невалидный вывод становится <strong>невозможным по построению</strong>, а не маловероятным.</p>
+<p><strong>Цена:</strong> нужен доступ к логитам на каждом шаге — то есть свой сервинг (Outlines, LMQL, guidance, встроенные средства vLLM) либо API с поддержкой строгих схем. Плюс небольшое замедление на построение маски.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Цена ненадёжного парсинга на масштабе</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> извлечение 12 полей из документов. 800 тыс. документов в месяц. Стоимость запроса 0.9 ₽.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Промпт «верни JSON».</strong> Доля невалидных ответов: 4.2%. Из них половина чинится retry, половина требует ручной обработки.<br>Retry: $800\,000\times0.042\times0.9 = \mathbf{30.2}$ тыс ₽/мес.<br>Ручная обработка 16 800 документов по 12 ₽ = <strong>202 тыс ₽/мес.</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Few-shot с тремя примерами.</strong> Невалидных 0.9%, но промпт вырос на 400 токенов.<br>Доп. стоимость промпта: $800\,000\times400\times0.15/1000 = 48$ тыс ₽/мес.<br>Ручная обработка: 43 тыс ₽/мес. <strong>Итого 91 тыс ₽/мес.</strong></div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Constrained decoding.</strong> Невалидных <strong>0%</strong> по построению, промпт не растёт.<br>Дополнительные затраты: только замедление на 6–10% из-за построения масок ≈ 5 тыс ₽/мес.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>232 тыс ₽ → 91 тыс ₽ → 5 тыс ₽ в месяц.</strong> При этом важнее денег другое: <em>исчезает целый класс инцидентов</em>. Пайплайн, где 4% документов уходят в ручную обработку, требует очереди, мониторинга и людей; пайплайн с гарантированно валидным выводом их не требует вовсе.</div></div>
+</div>
+
+<pre><code># Constrained decoding: гарантированно валидный JSON
+from pydantic import BaseModel, Field
+from typing import Literal, Optional
+
+class Extraction(BaseModel):
+    counterparty: str = Field(description="Наименование контрагента")
+    amount: float
+    currency: Literal["RUB", "USD", "EUR"]
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    doc_type: Literal["invoice", "act", "contract", "other"]
+    confidence: Optional[float] = None
+
+# Вариант A: свой сервинг (vLLM) — маска логитов по JSON-схеме
+from vllm import LLM, SamplingParams
+from vllm.sampling_params import GuidedDecodingParams
+
+llm = LLM(model=MODEL_PATH)
+guided = GuidedDecodingParams(json=Extraction.model_json_schema())
+params = SamplingParams(temperature=0.0, max_tokens=512, guided_decoding=guided)
+out = llm.generate([prompt], params)
+data = Extraction.model_validate_json(out[0].outputs[0].text)   # не может упасть
+
+# Вариант B: API со строгой схемой
+resp = client.responses.parse(model=MODEL, input=prompt, text_format=Extraction)
+data = resp.output_parsed
+
+# ВАЖНО: repetition_penalty при structured output ОТКЛЮЧАТЬ —
+# он штрафует повторяющиеся скобки и кавычки и ломает синтаксис
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Схема — это не только валидация, но и подсказка модели.</strong> Хорошо описанные поля (<code>description</code>, ограниченные <code>Literal</code>, паттерны) улучшают <em>содержательное</em> качество извлечения, а не только формальную корректность. Модель, видящая, что <code>currency</code> может быть только из трёх значений, реже выдумывает четвёртое даже семантически. <strong>Обратная сторона:</strong> слишком жёсткая схема заставляет модель втискивать ответ в неподходящие рамки. Для полей, где возможно «не найдено», обязательно предусматривай <code>Optional</code> или явное значение «отсутствует» — иначе модель заполнит поле выдумкой, потому что схема требует значение.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Экономика запроса <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Где на самом деле уходят деньги и как их вернуть</div>
+
+<div class="fbox org">
+<div class="flabel">📐 Стоимость одного запроса</div>
+$$C = \underbrace{\frac{n_{\text{in}}^{\text{new}}}{1000}\,p_{\text{in}}}_{\text{новые входные}} + \underbrace{\frac{n_{\text{in}}^{\text{cached}}}{1000}\,p_{\text{cache}}}_{\text{кэшированные}} + \underbrace{\frac{n_{\text{out}}}{1000}\,p_{\text{out}}}_{\text{выходные}}$$
+<p class="fnote">Обычно $p_{\text{out}} \approx 3\text{–}5 \times p_{\text{in}}$, а $p_{\text{cache}} \approx 0.1\text{–}0.25 \times p_{\text{in}}$. Отсюда два рычага: сокращать выходные токены (они дороже всего) и максимизировать долю кэшированного промпта.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему кэширование промпта настолько выгодно</div>
+<p>В типичном приложении промпт состоит из большой стабильной части (системная инструкция, примеры, описание инструментов, схемы) и маленькой переменной (запрос пользователя).</p>
+<p><strong>Стабильная часть одинакова для всех запросов</strong> — а значит, её KV-cache можно вычислить один раз и переиспользовать. Технически это работает, потому что внимание причинное: представления первых токенов не зависят от последующих.</p>
+<p><strong>Условие:</strong> кэшируется только <em>префикс</em>. Стабильная часть обязана быть в начале, до переменной. Один динамический элемент в начале промпта (например, текущая дата или id пользователя) обнуляет кэш целиком.</p>
+<p><strong>Экономия:</strong> при промпте 3 000 токенов, из которых 2 800 стабильны, и цене кэша в 10% от обычной, входная стоимость падает примерно в 4 раза.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Оптимизация стоимости по шагам</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Исходно.</strong> Промпт 3 200 токенов (системная часть 2 800 + запрос 400), ответ 600 токенов. Цены: вход 0.15 ₽/1k, выход 0.60 ₽/1k, кэш 0.015 ₽/1k. Объём: 4 млн запросов/мес.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Без оптимизаций:</strong> $(3.2\times0.15 + 0.6\times0.60) = 0.48 + 0.36 = 0.84$ ₽/запрос → <strong>3.36 млн ₽/мес.</strong></div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>+ кэширование префикса</strong> (2 800 токенов стабильны): $(2.8\times0.015 + 0.4\times0.15 + 0.36) = 0.042 + 0.06 + 0.36 = 0.462$ ₽ → <strong>1.85 млн ₽/мес</strong> (−45%).</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>+ сокращение ответа</strong> (структурированный вывод вместо развёрнутого текста: 600 → 180 токенов): $0.102 + 0.108 = 0.21$ ₽ → <strong>0.84 млн ₽/мес</strong> (ещё −55%).</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>+ роутинг</strong>: 72% запросов простые и уходят на модель в 6 раз дешевле.<br>$0.28\times0.21 + 0.72\times0.035 = 0.059 + 0.025 = 0.084$ ₽ → <strong>0.34 млн ₽/мес.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>3.36 → 0.34 млн ₽/мес, экономия в 10 раз</strong> — без ухудшения качества и без единой правки самой модели. Порядок по отдаче: сокращение выходных токенов → кэш префикса → роутинг. Оптимизация формулировок промпта, которой обычно занимаются в первую очередь, даёт единицы процентов.</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор стоимости LLM-приложения</label>
+  <label style="margin-top:2px;">Стабильная часть промпта, токенов</label>
+  <input type="range" id="sl_sys" min="0" max="20000" step="100" value="2800" oninput="updCost()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0</span><span class="out" id="out_sys">2 800</span><span>20 000</span></div>
+  <label style="margin-top:14px;">Переменная часть (запрос), токенов</label>
+  <input type="range" id="sl_var" min="20" max="8000" step="20" value="400" oninput="updCost()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>20</span><span class="out" id="out_var">400</span><span>8 000</span></div>
+  <label style="margin-top:14px;">Длина ответа, токенов</label>
+  <input type="range" id="sl_outt" min="20" max="4000" step="20" value="600" oninput="updCost()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>20</span><span class="out" id="out_outt">600</span><span>4 000</span></div>
+  <label style="margin-top:14px;">Запросов в месяц, тыс.</label>
+  <input type="range" id="sl_vol" min="1" max="20000" step="1" value="4000" oninput="updCost()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1 тыс</span><span class="out" id="out_vol">4 млн</span><span>20 млн</span></div>
+  <div class="res" id="out_cost"></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Роутинг между моделями — самый недооценённый рычаг.</strong> Большинство запросов в реальном приложении простые: классификация, короткий ответ, извлечение поля. Их прекрасно решает модель в 5–10 раз дешевле. <strong>Схема:</strong> лёгкий классификатор сложности (или сама дешёвая модель с самооценкой) направляет запрос; при низкой уверенности — эскалация на дорогую. <strong>Ключевая деталь настройки:</strong> порог эскалации подбирается по <em>экономике</em>, а не по уверенности — сравнивается стоимость эскалации со стоимостью ошибки. Это тот же расчёт порога $c/(e\cdot\text{ущерб})$, что в темах 2.2 и 9.1.</div></div>
+
+<div class="chb">
+<div class="cht">Структура стоимости до и после оптимизаций</div>
+<div class="chsub">Выходные токены дороже входных в 4 раза — сокращать надо в первую очередь их</div>
+<div style="position:relative;height:300px;"><canvas id="c_cost"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Выбор модели <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Критерии, которые действительно влияют на решение</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Критерий</th><th>API закрытой модели</th><th>Открытая модель on-prem</th></tr></thead>
+<tbody>
+<tr><td><b>Время до первой версии</b></td><td><strong>Часы</strong></td><td>Недели</td></tr>
+<tr><td><b>Стоимость при малом объёме</b></td><td><strong>Ниже</strong></td><td>Выше (простой GPU)</td></tr>
+<tr class="trh"><td><b>Стоимость при большом объёме</b></td><td>Выше</td><td><strong>Существенно ниже</strong></td></tr>
+<tr class="trh"><td><b>Данные не покидают периметр</b></td><td>Нет</td><td><strong>Да</strong></td></tr>
+<tr><td>Контроль версий модели</td><td>Провайдер может обновить</td><td><strong>Полный</strong></td></tr>
+<tr><td>Дообучение</td><td>Ограниченное</td><td><strong>Любое (LoRA, полный FT)</strong></td></tr>
+<tr><td>Constrained decoding</td><td>Зависит от API</td><td><strong>Полный доступ к логитам</strong></td></tr>
+<tr><td>Пиковая нагрузка</td><td><strong>Эластично</strong></td><td>Ограничено железом</td></tr>
+<tr><td>Качество на сложных задачах</td><td><strong>Обычно выше</strong></td><td>Догоняет, разрыв сокращается</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Точка безубыточности on-prem против API</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Сценарий:</strong> модель класса 70B. Средний запрос — 1 500 входных и 400 выходных токенов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>API:</strong> $(1.5\times0.15 + 0.4\times0.60) = 0.225 + 0.24 = \mathbf{0.465}$ ₽/запрос.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>On-prem:</strong> сервер с 2× H100 ≈ 420 тыс ₽/мес (аренда, электричество, обслуживание). При батчинге и 4-битном квантовании реалистичная пропускная способность ≈ 1 800 токенов/с генерации.<br>За месяц: $1800\times2.6\text{e}6 \approx 4.7$ млрд выходных токенов теоретически, но при типичной утилизации 35% — <strong>1.6 млрд.</strong><br>Это $1.6\text{e}9 / 400 = \mathbf{4}$ млн запросов/мес.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Точка безубыточности:</strong> $\frac{420\,000}{0.465} \approx \mathbf{900}$ тыс. запросов/мес.<br>Ниже — дешевле API; выше — дешевле on-prem, вплоть до потолка в 4 млн, после чего нужен второй сервер.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>При 4 млн запросов/мес:</strong> API — 1.86 млн ₽, on-prem — 420 тыс ₽. <strong>Экономия в 4.4 раза.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Но в расчёт не входит стоимость команды.</strong> Эксплуатация LLM-сервинга — это отдельная инженерная компетенция: обновления, мониторинг, дежурства, оптимизация. Один инженер обходится дороже разницы при объёмах до 3–4 млн запросов. <strong>Реалистичный порог перехода — 3–5 млн запросов/мес или требование не выпускать данные из периметра.</strong></div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Стоимость от объёма: API против on-prem</div>
+<div class="chsub">Точка безубыточности сдвигается вправо, если учесть стоимость эксплуатации</div>
+<div style="position:relative;height:310px;"><canvas id="c_onprem"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Выбор модели по публичному рейтингу — типичная и дорогая ошибка.</strong> Причины: ① бенчмарки могли попасть в обучающие данные (контаминация), и результат завышен; ② усреднённая оценка по всем задачам почти не связана с качеством на <em>твоей</em>; ③ рейтинг не учитывает токенизацию твоего языка, стоимость и задержку. <strong>Единственный надёжный способ</strong> — собрать 100–300 репрезентативных примеров своей задачи с эталонными ответами и прогнать кандидатов на них. Это занимает 2–3 дня и регулярно меняет выбор относительно того, что подсказывал рейтинг.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Квантование почти всегда стоит применять.</strong> Переход с bf16 на 8-битное квантование сокращает память вдвое при потере качества в пределах шума. 4-битное (GPTQ, AWQ, NF4) — вчетверо, при потере обычно 1–3% на бенчмарках. <strong>Практический эффект больше, чем кажется:</strong> освободившаяся память идёт под KV-cache, что увеличивает размер батча, что увеличивает пропускную способность. Часто 4-битная модель на одной карте обслуживает больше запросов с лучшей суммарной задержкой, чем bf16-модель на двух. Проверять надо на своей задаче — деградация неравномерна и сильнее бьёт по редким языкам и точным вычислениям.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Serving: как обслуживают LLM <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре техники, дающие кратный прирост</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Техника</th><th>Что делает</th><th>Типичный эффект</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Continuous batching</b></td><td>Запросы входят и выходят из батча независимо, не дожидаясь друг друга</td><td><strong>×2–4 пропускной способности</strong></td></tr>
+<tr class="trh"><td><b>PagedAttention</b></td><td>KV-cache страницами, без фрагментации</td><td><strong>×2–4 числа одновременных запросов</strong></td></tr>
+<tr><td>Speculative decoding</td><td>Маленькая модель предлагает несколько токенов, большая проверяет за один проход</td><td>×1.5–3 скорости генерации</td></tr>
+<tr><td>Prefix caching</td><td>Переиспользование KV общего префикса между запросами</td><td>Сокращение prefill в разы</td></tr>
+<tr><td>Chunked prefill</td><td>Длинный prefill режется и перемежается с decode</td><td>Сглаживает задержку, убирает «затыки»</td></tr>
+<tr><td>Квантование</td><td>4/8 бит вместо 16</td><td>×2–4 памяти → больше батч</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: continuous batching</div>
+<p><strong>Статический батчинг:</strong> собрали 32 запроса, обработали, отдали все вместе. Проблема — запросы имеют разную длину ответа. Один пишет 800 токенов, остальные закончили на 50 и <em>ждут</em>. GPU обрабатывает почти пустой батч, а новые запросы стоят в очереди.</p>
+<p><strong>Continuous batching:</strong> как только запрос закончил генерацию, его место в батче <em>немедленно</em> занимает следующий из очереди. Батч всегда полон.</p>
+<p><strong>Выигрыш тем больше, чем сильнее разброс длин ответов.</strong> При однородных ответах прирост невелик; при разбросе от 20 до 2 000 токенов (типично для чата) пропускная способность растёт в 2–4 раза.</p>
+<p>Это одна из тех оптимизаций, которая ничего не меняет в модели и качестве, а просто перестаёт тратить ресурсы впустую — потому и стала стандартом.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Speculative decoding: почему это работает</div>
+<p>Маленькая «черновая» модель генерирует $k$ токенов подряд (быстро). Большая модель проверяет их <strong>одним проходом</strong> — она может обработать $k$ позиций параллельно, как в prefill.</p>
+<p>Если черновик совпал с тем, что выбрала бы большая модель, все $k$ токенов принимаются. При расхождении на позиции $j$ принимаются первые $j$, остальные отбрасываются.</p>
+$$\text{ускорение} \approx \frac{1 + \alpha + \alpha^2 + \dots + \alpha^{k}}{1 + c_{\text{draft}}\,k}, \quad \alpha - \text{доля принятия}$$
+<p class="fnote">Ключевое свойство: <strong>распределение выходов остаётся в точности тем же</strong>, что у большой модели — это доказано и обеспечивается схемой принятия. Speculative decoding не ухудшает качество, а только ускоряет. Работает потому, что decode упирается в память, а не в вычисления: проверить 5 токенов почти так же дёшево, как один.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Speculative decoding: реальное ускорение</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Основная модель 70B</strong> (70 мс/токен при батче 1), <strong>черновая 1B</strong> (2 мс/токен). Спекулируем $k = 5$ токенов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Стоимость цикла:</strong> черновик $5\times2 = 10$ мс + проверка большой моделью ≈ 78 мс (немного дороже одного токена) = <strong>88 мс.</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>При доле принятия $\alpha = 0.75$</strong> среднее число принятых токенов за цикл: $\frac{1-\alpha^{k+1}}{1-\alpha} = \frac{1-0.178}{0.25} = \mathbf{3.29}$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Эффективная скорость:</strong> $88 / 3.29 = \mathbf{26.7}$ мс/токен против 70 мс без спекуляции. <strong>Ускорение в 2.6 раза.</strong></div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>Но при $\alpha = 0.45$</strong> (черновая модель плохо согласована): принятых $\frac{1-0.018}{0.55} = 1.79$; скорость $88/1.79 = 49$ мс — ускорение всего 1.4 раза.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Всё решает доля принятия.</strong> Она высока, когда черновая модель обучена на тех же данных и того же семейства. Отсюда практика: черновую модель либо берут из того же релиза, либо дистиллируют из основной. <strong>Дополнительно $\alpha$ зависит от задачи:</strong> на предсказуемом тексте (код, структурированный вывод) она достигает 0.85+, на творческой генерации падает до 0.5.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Ускорение от speculative decoding в зависимости от доли принятия</div>
+<div class="chsub">Ниже 0.5 приём почти не окупает накладные расходы</div>
+<div style="position:relative;height:300px;"><canvas id="c_spec"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Оценка LLM <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Самая недоделанная часть большинства LLM-проектов</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Оценка «на глаз по нескольким примерам» — самая частая ошибка при выборе и внедрении LLM.</strong> Разброс качества между запросами огромен, и 5 удачных примеров ничего не говорят о поведении на 100 000. Классический сценарий: модель выбрана по демонстрации, выкачена, и через неделю выясняется, что на 15% реального трафика она работает плохо — но заметить это некому, потому что метрики не заведены.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод оценки</th><th>Когда применим</th><th>Плюсы</th><th>Минусы</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Детерминированные проверки</b></td><td>Есть точный ответ: извлечение, классификация, код</td><td><strong>Дёшево, объективно, автоматизируемо</strong></td><td>Применимо не везде</td></tr>
+<tr><td>Метрики совпадения (ROUGE, BLEU, BERTScore)</td><td>Суммаризация, перевод</td><td>Автоматически</td><td>Слабо коррелируют с человеческой оценкой</td></tr>
+<tr class="trh"><td><b>LLM-as-judge</b></td><td>Открытые ответы, качество текста</td><td><strong>Масштабируется, коррелирует с людьми 0.7–0.85</strong></td><td>Свои смещения (см. ниже)</td></tr>
+<tr><td>Попарное сравнение людьми</td><td>Финальная валидация</td><td>Золотой стандарт</td><td>Дорого, медленно</td></tr>
+<tr><td>Онлайн-метрики</td><td>Продакшен</td><td><strong>Единственная истина</strong></td><td>Медленно, нужен трафик</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Смещения LLM-as-judge, которые надо контролировать.</strong> ① <strong>Позиционное</strong> — при попарном сравнении судья систематически предпочитает первый (или второй) вариант; лечится усреднением по обоим порядкам. ② <strong>Длина</strong> — длинные ответы оцениваются выше при равном содержании; лечится явной инструкцией и контролем корреляции оценки с длиной. ③ <strong>Самопредпочтение</strong> — модель выше оценивает тексты, похожие на собственные; лечится использованием другого семейства в роли судьи. ④ <strong>Формат</strong> — красивое форматирование повышает оценку. <strong>Минимальная гигиена:</strong> усреднять по порядкам, проверять корреляцию оценки с длиной, калибровать судью на 100–200 примерах с человеческой разметкой.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как позиционное смещение искажает сравнение моделей</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Сравниваем модели A и B</strong> на 1 000 запросов через LLM-as-judge, попарно.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивно</strong> — A всегда первым в промпте: A побеждает в <strong>61%</strong> случаев. Вывод: «A заметно лучше».</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Проверка</strong> — B всегда первым: B побеждает в <strong>57%</strong>. Противоположный вывод на тех же данных.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Усреднение по обоим порядкам:</strong> A побеждает в $\frac{61 + 43}{2} = \mathbf{52\%}$ случаев. Разница в пределах доверительного интервала (±3.1 п.п.).</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Настоящий вывод:</strong> модели неразличимы по качеству, и выбирать надо по стоимости и задержке.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Позиционное смещение составило 9 п.п.</strong> — больше, чем предполагаемая разница между моделями. Без усреднения по порядкам любое попарное сравнение через судью недостоверно, а стоимость этой проверки — просто удвоение числа вызовов судьи.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Что должно быть в оценке любого LLM-проекта — минимальный набор.</strong> ① <strong>Golden set</strong> из 100–300 репрезентативных примеров с эталонными ответами, собранный из <em>реального</em> трафика, а не придуманный. ② <strong>Детерминированные проверки</strong> всего, что можно проверить формально: валидность схемы, наличие обязательных полей, соответствие форматам, отсутствие запрещённых утверждений. ③ <strong>LLM-as-judge</strong> с усреднением по порядкам для остального. ④ <strong>Регрессионный прогон</strong> перед каждым изменением промпта или модели — промпт меняется чаще, чем код, а тестируется реже. ⑤ <strong>Логирование продакшен-примеров</strong> с периодическим пополнением golden set — иначе оценка устареет вслед за распределением запросов.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Двенадцать ошибок при работе с LLM</div>
+
+<div class="cl danger"><span class="cli">1️⃣</span><div><strong>Ожидание детерминизма при $T=0$.</strong> Недетерминированность редукций с плавающей точкой на GPU меняет выбор при близких логитах. Тесты на точное совпадение строк будут «мигать».</div></div>
+
+<div class="cl danger"><span class="cli">2️⃣</span><div><strong>Понижение температуры как средство от галлюцинаций.</strong> Уверенная галлюцинация при $T=0$ повторится каждый раз и станет выглядеть надёжнее. Лечит RAG и инструменты, а не семплирование.</div></div>
+
+<div class="cl danger"><span class="cli">3️⃣</span><div><strong>Repetition penalty при structured output.</strong> Штрафует повторяющиеся скобки и кавычки, ломая синтаксис JSON и кода.</div></div>
+
+<div class="cl danger"><span class="cli">4️⃣</span><div><strong>Динамический элемент в начале промпта.</strong> Текущая дата или id пользователя в первой строке обнуляет кэш префикса целиком — минус кратная экономия.</div></div>
+
+<div class="cl danger"><span class="cli">5️⃣</span><div><strong>Вера в заявленную длину контекста.</strong> Точность извлечения из середины падает на 20–40 п.п. Важное — в начало или конец промпта.</div></div>
+
+<div class="cl danger"><span class="cli">6️⃣</span><div><strong>Наивное складывание истории диалога в каждый запрос.</strong> Стоимость растёт квадратично по числу реплик. Нужна суммаризация старой части или окно.</div></div>
+
+<div class="cl danger"><span class="cli">7️⃣</span><div><strong>Подстановка пользовательского текста в системный промпт без изоляции.</strong> Прямая дорога к промпт-инъекции: пользователь пишет «игнорируй предыдущие инструкции».</div></div>
+
+<div class="cl danger"><span class="cli">8️⃣</span><div><strong>Выбор модели по публичному рейтингу.</strong> Контаминация бенчмарков, усреднение по чужим задачам, игнорирование токенизации своего языка. Нужен свой golden set.</div></div>
+
+<div class="cl danger"><span class="cli">9️⃣</span><div><strong>Оценка «на глаз» по нескольким примерам.</strong> Разброс качества между запросами огромен; 5 удачных демонстраций ничего не говорят о 100 000 реальных.</div></div>
+
+<div class="cl danger"><span class="cli">🔟</span><div><strong>LLM-as-judge без усреднения по порядкам.</strong> В расчёте секции 12 позиционное смещение дало 9 п.п. — больше предполагаемой разницы между моделями.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣1️⃣</span><div><strong>Оптимизация формулировок промпта вместо структуры затрат.</strong> Кэш префикса, сокращение выходных токенов и роутинг дали в разборе секции 9 экономию в 10 раз; правки формулировок — единицы процентов.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣2️⃣</span><div><strong>Отсутствие регрессионного прогона при изменении промпта.</strong> Промпт меняется чаще кода и тестируется реже; «мелкая правка» может обрушить качество на целом классе запросов.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Метавывод.</strong> Работа с LLM в продакшене — это на 20% про модель и на 80% про <em>обвязку</em>: что попадает в контекст, как гарантируется формат, как считаются деньги, как измеряется качество и что происходит при сбое. Команда с посредственной моделью, но с golden set, constrained decoding, кэшем префикса и роутингом обгонит команду с лучшей моделью и «просто промптом» — по стоимости в разы, по надёжности качественно. <strong>Порядок внедрения по отдаче:</strong> golden set и метрики → structured output → RAG (тема 9.4) → кэш префикса → роутинг → и только потом подбор модели и промптов.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре кейса промышленного применения LLM</div>
+
+<div class="sysbox">
+<h4>🎫 Ассистент поддержки — каскад с эскалацией на человека</h4>
+<p><strong>Задача.</strong> Отвечать на обращения клиентов, эскалируя сложные оператору. 2 млн обращений в месяц.</p>
+<p><strong>Архитектура.</strong> Классификатор намерения (лёгкая модель, 5 мс) → для типовых сценариев детерминированный ответ из шаблонов → для остального RAG по базе знаний с дешёвой моделью → при низкой уверенности эскалация на дорогую модель → при её неуверенности передача оператору.</p>
+<p><strong>Ключевое решение — где ставить пороги.</strong> Они считаются из экономики: стоимость эскалации против стоимости неверного ответа (повторное обращение, недовольство, отток). Тот же расчёт $c/(e\cdot\text{ущерб})$, что в теме 2.2.</p>
+<p><strong>Обязательные ограничения на ответ.</strong> Модель не имеет права выдумывать: обещать сроки, называть суммы, ссылаться на несуществующие правила. Реализуется через RAG с обязательной цитатой плюс детерминированную постпроверку: если в ответе есть число или дата, их наличие в контексте проверяется автоматически.</p>
+<p><strong>Нюанс валидации.</strong> Метрика — не «качество ответа», а <em>доля обращений, закрытых без повторного</em>. Ответ, который выглядит хорошо для асессора, но приводит к повторному обращению, — плохой ответ. Плюс обязательный holdout: часть обращений идёт напрямую оператору для сравнения.</p>
+</div>
+
+<div class="sysbox">
+<h4>📄 Извлечение данных из документов — constrained decoding в основе</h4>
+<p><strong>Задача.</strong> Извлечь структурированные поля из счетов, актов, договоров. 800 тыс. документов в месяц, требование к точности высокое.</p>
+<p><strong>Почему LLM, а не классический NER.</strong> Форматов документов сотни, шаблоны меняются, разметка под каждый нереалистична. LLM обобщает на невиданные форматы — это её основное преимущество здесь.</p>
+<p><strong>Constrained decoding обязателен.</strong> Не «попросить JSON», а гарантировать его схемой. В разборе секции 8 это убрало 4.2% невалидных ответов, требовавших ручной обработки, — 202 тыс ₽/мес и целый операционный процесс.</p>
+<p><strong>Гибрид с правилами.</strong> Форматные поля (ИНН, БИК, счета) извлекаются регулярками с проверкой контрольных сумм — там детерминированная проверка сильнее вероятностной модели. LLM работает по «мягким» полям: наименования, назначение, роли сторон.</p>
+<p><strong>Нюанс валидации.</strong> Оценка по каждому полю отдельно, а не усреднённая: критичные поля (сумма, реквизиты) требуют точности 0.99+, второстепенные — 0.9. Усреднённая метрика 0.95 скрывает, что сумма извлекается с точностью 0.93, а это недопустимо. Плюс разбиение выборки <em>по контрагенту</em>, чтобы тест содержал невиданные шаблоны.</p>
+</div>
+
+<div class="sysbox">
+<h4>💻 Ассистент разработчика — оптимизация под задержку</h4>
+<p><strong>Задача.</strong> Автодополнение кода в редакторе. Требование: TTFT под 200 мс, иначе подсказка не успевает быть полезной.</p>
+<p><strong>Почему всё определяется задержкой.</strong> Ответ короткий (десятки токенов), промпт большой (контекст файла и проекта). Значит, доминирует prefill, а не decode — оптимизации те же, что для TTFT: сокращение промпта и кэширование.</p>
+<p><strong>Кэш префикса критичен.</strong> Контекст проекта меняется медленно, курсор двигается быстро. Стабильная часть (импорты, соседние файлы, сигнатуры) кэшируется; переменная (текущая строка) — нет. Это сокращает prefill в разы.</p>
+<p><strong>Speculative decoding эффективен именно здесь.</strong> Код предсказуем, доля принятия черновых токенов достигает 0.85+, ускорение генерации в 2.5–3 раза — заметно выше, чем на творческих текстах.</p>
+<p><strong>Отмена запросов.</strong> Пользователь печатает дальше, и предыдущая подсказка становится неактуальной. Без агрессивной отмены незавершённых генераций GPU тратится на ответы, которые никто не увидит — типично 40–60% запросов в такой системе.</p>
+<p><strong>Нюанс валидации.</strong> Офлайн-метрики (совпадение с реальным кодом) слабо коррелируют с полезностью. Основная метрика — <em>доля принятых подсказок</em> и доля принятых, оставшихся в коде через час: подсказка, принятая и тут же переписанная, полезной не была.</p>
+</div>
+
+<div class="sysbox">
+<h4>🏢 Внутренний LLM-шлюз в крупной компании</h4>
+<p><strong>Задача.</strong> Единая точка доступа к LLM для десятков продуктовых команд с контролем затрат, безопасности и качества.</p>
+<p><strong>Зачем шлюз, а не прямой доступ к API.</strong> ① Централизованный учёт затрат по командам — без него бюджет утекает незаметно. ② Единая политика безопасности: фильтрация персональных данных на входе, проверка выходов. ③ Роутинг между моделями и провайдерами с переключением при сбое. ④ Общий кэш — одинаковые запросы от разных команд обслуживаются один раз.</p>
+<p><strong>Абстракция от провайдера.</strong> Единый интерфейс поверх нескольких моделей позволяет менять провайдера без правок в продуктах и мгновенно переключаться при деградации или инциденте.</p>
+<p><strong>Наблюдаемость — главная ценность.</strong> Логирование промпта, ответа, стоимости, задержки, версии модели по каждому вызову. Это единственный способ ответить на вопросы «почему счёт вырос втрое» и «когда качество упало».</p>
+<p><strong>Нюанс валидации.</strong> Провайдеры молча обновляют модели за тем же именем. Без <em>регулярного автоматического прогона golden set</em> деградация обнаруживается по жалобам пользователей через недели. Шлюз должен гонять эталонный набор по расписанию и алертить при отклонении — это дешёвая страховка от изменения, которое ты не контролируешь.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Что общего у четырёх кейсов.</strong> ① <strong>LLM почти нигде не работает в одиночку</strong> — вокруг неё каскад из правил, лёгких моделей, retrieval и постпроверок. ② <strong>Оптимизируется та половина задержки, которая критична</strong>: TTFT для интерактивных сценариев, пропускная способность для батчевых. ③ <strong>Детерминированные проверки применяются везде, где возможно</strong> — контрольные суммы, схемы, наличие цитаты; вероятностной модели не поручают то, что можно проверить точно. ④ <strong>Метрика измеряет исход, а не текст</strong>: закрыто ли обращение, принята ли подсказка, верно ли извлечено критичное поле.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">От авторегрессии до экономики</div>
+
+<div class="qah">Часть 1. Генерация и семплирование</div>
+
+<details class="qi"><summary><span class="qch">▶</span>1. Какие три следствия вытекают из авторегрессивности?</summary><div class="qa"><p><strong>① Модель не знает ответ заранее</strong> — строит его по токену, и каждый выбор сужает пространство продолжений. Отсюда работает «сначала рассуждение, потом ответ».</p><p><strong>② Нет механизма «не знаю»</strong> — всегда есть распределение и самый вероятный токен. Отказ отвечать — выученное поведение, а не встроенная проверка.</p><p><strong>③ Стоимость линейна по выходным токенам</strong> — каждый токен это отдельный проход по всей модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>2. Почему «подумай пошагово» действительно работает?</summary><div class="qa"><p>У модели нет отдельной «памяти для размышлений» — единственное место многошагового рассуждения это <em>сгенерированный текст</em>.</p><p>Заставляя выписать промежуточные шаги, мы даём больше проходов по сети на одну задачу и место для хранения промежуточных результатов. Это буквальное увеличение вычислительного бюджета, а не психологический трюк.</p><p><strong>Обратная сторона:</strong> приём стоит денег пропорционально длине рассуждения — выходные токены самые дорогие.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>3. Что делает температура и чего она не делает?</summary><div class="qa"><p>$P(x_i) = \frac{\exp(z_i/T)}{\sum_j \exp(z_j/T)}$. При $T<1$ распределение заостряется, при $T>1$ сглаживается.</p><p><strong>Не меняет порядок токенов по вероятности</strong> — только контраст между ними. Поэтому при $T\to0$ всегда выбирается тот же токен, что и при greedy.</p><p><strong>Не влияет на правильность:</strong> уверенная галлюцинация при низкой температуре повторится каждый раз.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>4. Почему top-p лучше top-k?</summary><div class="qa"><p><strong>Top-k фиксирован</strong> и плохо адаптируется. Когда модель уверена («Столица Франции —»), в множество из 50 токенов попадают 49 бессмысленных. Когда не уверена, 50 отсекает множество нормальных вариантов.</p><p><strong>Top-p адаптивен:</strong> берёт минимальное множество с суммарной вероятностью ≥ p. При уверенности — один-два токена, при неопределённости — десятки.</p><p><strong>Рабочие значения:</strong> фактические задачи $T$ = 0–0.3; творческие $T$ = 0.7–1.0 при $p$ = 0.9–0.95.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>5. Почему температура 0 не даёт полного детерминизма?</summary><div class="qa"><p>Причина не в семплировании, а в <strong>недетерминированности редукций с плавающей точкой</strong>: сложение в разном порядке даёт слегка разные результаты, а порядок зависит от размера батча, распределения по потокам и версии ядер.</p><p>Когда два токена имеют почти равные логиты, различие в последнем разряде меняет выбор, и дальше расхождение нарастает.</p><p><strong>Следствие:</strong> не полагайся на побитовую воспроизводимость; в тестах сравнивай по смыслу, а не точным совпадением строк.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>6. Когда repetition penalty вреден?</summary><div class="qa"><p>Когда повторы <em>легитимны</em>: JSON (повторяющиеся кавычки, скобки, ключи), код (отступы, имена), таблицы, списки.</p><p>Штраф заставляет модель «избегать» нужных символов, и вывод становится синтаксически неверным.</p><p><strong>Для structured output штраф надо отключать</strong> и бороться с повторами через constrained decoding.</p></div></details>
+
+<div class="qah">Часть 2. Инференс и контекст</div>
+
+<details class="qi"><summary><span class="qch">▶</span>7. Чем prefill отличается от decode?</summary><div class="qa"><p><strong>Prefill</strong> обрабатывает все токены промпта параллельно за один проход — большие плотные матричные умножения, GPU загружена вычислениями. <strong>Упирается в compute.</strong></p><p><strong>Decode</strong> генерирует по одному токену; на каждом шаге читаются все веса модели ради одного токена. GPU простаивает, ожидая память. <strong>Упирается в пропускную способность памяти.</strong></p><p>В расчёте секции 3: prefill 1.06 с, decode при батче 1 — 28 с, то есть 96% времени при в 7.5 раз меньших вычислениях.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>8. Почему батчинг ускоряет decode так сильно?</summary><div class="qa"><p>Для одного токена нужно прочитать все веса — для 70B в bf16 это 140 ГБ. При батче 32 те же веса читаются <em>один раз на 32 токена</em>, и стоимость чтения делится.</p><p>В расчёте секции 3: 70 мс/токен при батче 1 против 2.2 мс при батче 32 — ускорение в 32 раза без изменения модели.</p><p>Отсюда весь LLM-сервинг построен вокруг того, как набрать батч побольше. Одиночный запрос на выделенной GPU — самый дорогой способ использования.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>9. Чем TTFT отличается от TPOT и зачем это различать?</summary><div class="qa"><p><strong>TTFT</strong> (time to first token) определяется prefill и растёт с длиной промпта. <strong>TPOT</strong> (time per output token) определяется decode и почти не зависит от промпта.</p><p><strong>Оптимизации разные:</strong> TTFT улучшается кэшированием префикса и сокращением промпта; TPOT — батчингом, квантованием и speculative decoding.</p><p>Для чата критичен TTFT, для батчевой обработки — суммарная пропускная способность. «Оптимизировать задержку вообще» бессмысленно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>10. Почему KV-cache ограничивает число одновременных запросов?</summary><div class="qa"><p>Он растёт <strong>линейно по длине контекста и размеру батча</strong>. Для 70B без GQA это 2.6 МБ на токен: контекст 32k занимает 84 ГБ — больше, чем помещается на карту вместе с моделью.</p><p>С GQA (8 KV-голов вместо 64) — 0.33 МБ/токен, 10.5 ГБ на 32k.</p><p><strong>Длина контекста и параллелизм — прямые конкуренты за одну память:</strong> либо 4 запроса по 30k, либо 60 запросов по 2k.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>11. Что даёт PagedAttention?</summary><div class="qa"><p>Наивное выделение непрерывного блока под каждый запрос на максимальную длину теряет 60–80% памяти на фрагментацию, потому что реальные ответы короче.</p><p>PagedAttention хранит KV-cache <strong>страницами фиксированного размера</strong>, физически несмежными — как виртуальная память в ОС.</p><p>Утилизация растёт до 90%+, что напрямую даёт больше одновременных запросов: прирост пропускной способности в 2–4 раза без изменения модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>12. Что такое «потерянное в середине»?</summary><div class="qa"><p>Точность извлечения факта имеет <strong>U-образную зависимость от его позиции</strong> в контексте: высокая в начале и конце, падающая к середине. Разрыв достигает 20–40 п.п.</p><p><strong>Причины:</strong> начало занято инструкциями, которым модель обучена уделять внимание; конец близок к позиции генерации и получает больший вес позиционными механизмами; середина далеко и структурно не выделена.</p><p><strong>Следствия:</strong> важное — в начало или конец; в RAG порядок чанков имеет значение; длинный контекст не заменяет хороший retrieval.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>13. Длинный контекст или RAG?</summary><div class="qa"><p>В сравнении секции 5 RAG выиграл по всем трём измерениям: дешевле в 28 раз (0.69 ₽ против 19.2), быстрее в 25 раз, точнее на 5 п.п. (0.84 против 0.79 из-за потерянного в середине).</p><p><strong>Длинный контекст лучше, когда:</strong> ① документ цельный и нужен целиком (договор, код); ② вопрос требует агрегации по всему тексту, где retrieval не справится; ③ мало запросов и дорого строить RAG.</p><p><strong>Правило:</strong> длинный контекст — для глубокой работы с одним документом, RAG — для поиска по многим.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>14. Как проверить эффективную длину контекста модели?</summary><div class="qa"><p>Тест «иголка в стоге сена»: вставить уникальный факт в длинный нерелевантный текст на разных позициях (5%, 25%, 50%, 75%, 95%) и спросить о нём. Повторить для разных длин (4k, 16k, 64k, 128k).</p><p>Получится карта точности по (длина × позиция) — реальная, а не заявленная характеристика.</p><p><strong>Усложнённая версия честнее:</strong> несколько фактов с необходимостью их сопоставить. Модели, отлично находящие одну иголку, часто проваливаются на двух.</p></div></details>
+
+<div class="qah">Часть 3. Alignment и галлюцинации</div>
+
+<details class="qi"><summary><span class="qch">▶</span>15. Что именно делает SFT?</summary><div class="qa"><p>Учит <strong>формату диалога</strong>. Base-модель обучена продолжать текст: на «Как приготовить омлет?» она может ответить «Как приготовить блины?» — правдоподобное продолжение списка вопросов.</p><p>SFT не даёт новых знаний — учит доставать их в нужной форме.</p><p>Отсюда наблюдение: несколько тысяч <em>качественных</em> примеров работают лучше сотен тысяч посредственных. Задача — показать формат, а не вложить знание.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>16. Чем DPO проще RLHF?</summary><div class="qa"><p>RLHF требует обучить отдельную reward-модель, затем оптимизировать политику через PPO — три модели в памяти, нестабильное обучение, много гиперпараметров.</p><p><strong>DPO показывает, что оптимальная политика выражается через reward аналитически</strong>, поэтому reward-модель исключается: обучение сводится к обычному градиентному спуску на парах предпочтений.</p><p>Проще, стабильнее, дешевле при сопоставимом качестве на большинстве задач.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>17. Что такое «налог на выравнивание»?</summary><div class="qa"><p>Модель после RLHF часто хуже base-модели на «сырых» задачах: генерация разнообразного текста, следование необычному формату, работа вне типичных сценариев.</p><p>Причина: оптимизация под предпочтения людей сужает распределение выходов — модель становится предсказуемее и менее гибкой.</p><p><strong>Следствие:</strong> для узких нетипичных задач (синтетические данные, стилизация, творческие форматы) стоит проверить base-модель — иногда она заметно лучше.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>18. Почему галлюцинации структурно неизбежны?</summary><div class="qa"><p><strong>① Оптимизация на правдоподобие, а не истинность</strong> — для лосса правдоподобный вымысел и правдивый факт неразличимы.<br><strong>② Нет механизма «не знаю»</strong> — при отсутствии знания распределение просто размытее, но выбор всё равно произойдёт.<br><strong>③ Авторегрессия не позволяет откатиться</strong> — начав неверный факт, модель обязана продолжать связно.</p><p><strong>Это следствие постановки задачи, а не баг.</strong> Частоту можно снижать, гарантированно устранить — нет.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>19. Что реально снижает частоту галлюцинаций?</summary><div class="qa"><p>В разборе секции 7: базово 38% ответов с ошибкой → температура 0.1 даёт 36% (в пределах шума) → инструкция «скажи, если не знаешь» 29% → <strong>RAG 11%</strong> → <strong>требование цитаты с автопроверкой 4.5%</strong>.</p><p><strong>92% улучшения дали RAG и проверка цитат</strong>, а не промпт и семплирование.</p><p>Оставшиеся 4.5% никуда не денутся — систему надо проектировать с расчётом на этот остаток.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>20. Можно ли доверять уверенности LLM?</summary><div class="qa"><p>Плохо. Вероятности токенов слабо связаны с фактической правильностью (модель может уверенно генерировать вымысел), а вербализованная уверенность («уверен на 90%») выучена как стиль и откалибрована ещё хуже.</p><p><strong>Что работает лучше:</strong> согласованность нескольких независимых генераций (5 из 5 одинаковых ответов надёжнее) и проверяемость через внешний источник.</p><p>Logprobs использовать можно, но с калибровкой на своей задаче, а не как готовую вероятность.</p></div></details>
+
+<div class="qah">Часть 4. Формат, экономика, выбор</div>
+
+<details class="qi"><summary><span class="qch">▶</span>21. Чем constrained decoding отличается от промпта «верни JSON»?</summary><div class="qa"><p>Промпт — это <em>просьба</em>: модель обычно слушается, но иногда добавит пояснение, забудет скобку, выдумает поле. Надёжность 85–97%.</p><p><strong>Constrained decoding строит маску допустимых токенов на каждом шаге:</strong> нарушающие грамматику токены получают вероятность ноль <em>до</em> семплирования. Невалидный вывод невозможен по построению — 100%.</p><p><strong>Цена:</strong> нужен доступ к логитам (свой сервинг или API со строгими схемами) плюс замедление на 6–10%.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>22. Схема — это только валидация?</summary><div class="qa"><p>Нет, ещё и подсказка модели. Хорошо описанные поля (<code>description</code>, ограниченные <code>Literal</code>, паттерны) улучшают <em>содержательное</em> качество, а не только формальную корректность.</p><p><strong>Обратная сторона:</strong> слишком жёсткая схема заставляет втискивать ответ в неподходящие рамки. Для полей, где возможно «не найдено», обязателен <code>Optional</code> — иначе модель заполнит поле выдумкой, потому что схема требует значение.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>23. Почему кэширование префикса так выгодно и что его ломает?</summary><div class="qa"><p>Стабильная часть промпта (инструкции, примеры, схемы) одинакова для всех запросов, и её KV-cache можно вычислить один раз. Работает потому, что внимание причинное: представления первых токенов не зависят от последующих.</p><p><strong>Условие: кэшируется только префикс.</strong> Один динамический элемент в начале — текущая дата, id пользователя — обнуляет кэш целиком.</p><p>При 2 800 стабильных токенах из 3 200 и цене кэша 10% входная стоимость падает примерно вчетверо.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>24. В каком порядке оптимизировать стоимость?</summary><div class="qa"><p>По разбору секции 9 (3.36 → 0.34 млн ₽/мес, экономия в 10 раз):</p><p><strong>① Сокращение выходных токенов</strong> — они дороже входных в 3–5 раз; структурированный вывод вместо развёрнутого текста.<br><strong>② Кэш префикса</strong> — −45% входной стоимости.<br><strong>③ Роутинг</strong> на дешёвую модель для простых запросов.</p><p><strong>Оптимизация формулировок промпта, которой обычно занимаются первой, даёт единицы процентов.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>25. Как настраивать роутинг между моделями?</summary><div class="qa"><p>Лёгкий классификатор сложности (или сама дешёвая модель с самооценкой) направляет запрос; при низкой уверенности — эскалация на дорогую.</p><p><strong>Ключевая деталь:</strong> порог эскалации подбирается по <em>экономике</em>, а не по уверенности — сравнивается стоимость эскалации со стоимостью ошибки. Это тот же расчёт $c/(e\cdot\text{ущерб})$, что в темах 2.2 и 9.1.</p><p>В типичном приложении 70%+ запросов простые и уходят на модель в 5–10 раз дешевле.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>26. Где точка перехода на on-prem?</summary><div class="qa"><p>Чистая арифметика в расчёте секции 10 даёт ~900 тыс. запросов/мес: сервер 420 тыс ₽/мес против 0.465 ₽ за запрос через API.</p><p><strong>Но в расчёт не входит команда.</strong> Эксплуатация LLM-сервинга — отдельная компетенция: обновления, мониторинг, дежурства. Один инженер дороже разницы при объёмах до 3–4 млн запросов.</p><p><strong>Реалистичный порог — 3–5 млн запросов/мес</strong> или требование не выпускать данные из периметра.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>27. Почему нельзя выбирать модель по публичному рейтингу?</summary><div class="qa"><p><strong>①</strong> Контаминация: бенчмарки могли попасть в обучающие данные, результат завышен. <strong>②</strong> Усреднение по чужим задачам почти не связано с качеством на твоей. <strong>③</strong> Не учитывается токенизация твоего языка, стоимость и задержка.</p><p><strong>Надёжный способ:</strong> 100–300 репрезентативных примеров своей задачи с эталонными ответами, прогон кандидатов. 2–3 дня работы, и выбор регулярно меняется относительно рейтинга.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>28. Что даёт continuous batching?</summary><div class="qa"><p>При статическом батчинге запросы с коротким ответом ждут самый длинный — GPU обрабатывает почти пустой батч, а новые запросы стоят в очереди.</p><p><strong>Continuous batching:</strong> освободившееся место немедленно занимает следующий запрос из очереди, батч всегда полон.</p><p>Выигрыш тем больше, чем сильнее разброс длин ответов: при типичном для чата разбросе (20–2 000 токенов) пропускная способность растёт в 2–4 раза.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>29. Почему speculative decoding не ухудшает качество?</summary><div class="qa"><p>Схема принятия построена так, что <strong>распределение выходов остаётся в точности тем же</strong>, что у большой модели — это доказано формально. Черновик только предлагает, решение принимает основная модель.</p><p>Работает потому, что decode упирается в память: проверить 5 токенов за один проход почти так же дёшево, как один.</p><p><strong>Всё решает доля принятия:</strong> при $\alpha = 0.75$ ускорение 2.6×, при $\alpha = 0.45$ — только 1.4×. На коде и структурированном выводе $\alpha$ достигает 0.85+, на творческой генерации падает до 0.5.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>30. Какие смещения у LLM-as-judge и что должно быть в оценке?</summary><div class="qa"><p><strong>Смещения:</strong> позиционное (предпочтение первого варианта — в расчёте секции 12 дало 9 п.п., больше реальной разницы между моделями), длина, самопредпочтение, форматирование.</p><p><strong>Минимальная гигиена:</strong> усреднять по обоим порядкам, проверять корреляцию оценки с длиной, калибровать судью на 100–200 примерах с человеческой разметкой, использовать другое семейство моделей в роли судьи.</p><p><strong>Минимальный набор оценки проекта:</strong> golden set из реального трафика → детерминированные проверки всего проверяемого → LLM-as-judge для остального → регрессионный прогон перед каждым изменением промпта → пополнение golden set из продакшена.</p></div></details>
+</div>
+
+<div class="pnav">
+  <a href="block9_02_search_ranking.html" class="prev">← 9.2 Поиск и ранжирование</a>
+  <a href="block9_04_rag.html" class="next">9.4 RAG →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+const GRID = { grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} };
+function mk(id, cfg){ const el = document.getElementById(id); if (el && el.getContext) { try { new Chart(el.getContext('2d'), cfg); } catch(e){} } }
+
+// S3 — батч
+mk('c_batch', { type:'line', data:{
+  labels:['1','2','4','8','16','32','64','128'],
+  datasets:[
+    {label:'Пропускная способность, токенов/с', data:[14,28,55,108,205,380,640,890],
+     borderColor:'#059669', backgroundColor:'rgba(5,150,105,.09)', fill:true, borderWidth:2.8, tension:.3, pointRadius:4, yAxisID:'y'},
+    {label:'Задержка на запрос, мс/токен', data:[70,71,73,74,78,84,100,144],
+     borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:4, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Размер батча',font:{size:11}}},
+             y:{...GRID, position:'left', title:{display:true,text:'токенов/с',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'мс/токен',font:{size:10}}}}}});
+
+// S4 — KV-cache
+mk('c_kv', { type:'bar', data:{
+  labels:['2k','4k','8k','16k','32k','64k','128k'],
+  datasets:[
+    {label:'Без GQA: одновременных запросов', data:[15,7,3,1,0,0,0], backgroundColor:'#fca5a5', borderRadius:5},
+    {label:'С GQA (8 KV-голов)', data:[121,60,30,15,7,3,1], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Длина контекста на запрос',font:{size:11}}},
+             y:{...GRID, title:{display:true,text:'Запросов в памяти (40 ГБ)',font:{size:11}}}}}});
+
+// S5 — lost in the middle
+mk('c_lost', { type:'line', data:{
+  labels:['5%','15%','30%','45%','55%','70%','85%','95%'],
+  datasets:[
+    {label:'Контекст 4k', data:[0.96,0.94,0.93,0.92,0.92,0.93,0.95,0.97],
+     borderColor:'#a7f3d0', backgroundColor:'transparent', borderWidth:2.2, tension:.35, pointRadius:3},
+    {label:'Контекст 32k', data:[0.93,0.85,0.76,0.71,0.70,0.75,0.84,0.92],
+     borderColor:'#34d399', backgroundColor:'transparent', borderWidth:2.5, tension:.35, pointRadius:3},
+    {label:'Контекст 128k', data:[0.89,0.74,0.61,0.53,0.51,0.58,0.72,0.87],
+     borderColor:'#059669', backgroundColor:'rgba(5,150,105,.07)', fill:true, borderWidth:2.9, tension:.35, pointRadius:4}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Позиция факта в контексте',font:{size:11}}},
+             y:{...GRID, min:0.45, max:1, title:{display:true,text:'Точность извлечения',font:{size:11}}}}}});
+
+// S7 — галлюцинации
+mk('c_halluc', { type:'bar', data:{
+  labels:['База','+ T=0.1','+ «скажи\nне знаю»','+ RAG','+ проверка\nцитат'],
+  datasets:[{label:'Доля ответов с фактической ошибкой, %', data:[38,36,29,11,4.5],
+    backgroundColor:['#dc2626','#f87171','#f59e0b','#34d399','#059669'], borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:GRID, y:{...GRID, title:{display:true,text:'Ошибок, %',font:{size:11}}}}}});
+
+// S9 — структура стоимости
+mk('c_cost', { type:'bar', data:{
+  labels:['Исходно','+ кэш\nпрефикса','+ короткий\nответ','+ роутинг'],
+  datasets:[
+    {label:'Входные токены, млн ₽/мес', data:[1.92,0.41,0.41,0.16], backgroundColor:'#a7f3d0', borderRadius:5},
+    {label:'Выходные токены, млн ₽/мес', data:[1.44,1.44,0.43,0.18], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, stacked:true}, y:{...GRID, stacked:true, title:{display:true,text:'млн ₽/мес',font:{size:11}}}}}});
+
+// S10 — on-prem
+(function(){
+  const vols = [100, 300, 600, 900, 1500, 3000, 5000, 8000];   // тыс. запросов
+  const api = vols.map(v => +(v * 1000 * 0.465 / 1e6).toFixed(2));
+  const onp = vols.map(() => 0.42);
+  const onpTotal = vols.map(() => 0.42 + 0.55);   // + стоимость инженера
+  mk('c_onprem', { type:'line', data:{ labels: vols.map(v => v >= 1000 ? (v/1000)+' млн' : v+' тыс'),
+    datasets:[
+      {label:'API', data:api, borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.8, tension:.2, pointRadius:4},
+      {label:'On-prem (только железо)', data:onp, borderColor:'#a7f3d0', backgroundColor:'transparent', borderWidth:2.2, borderDash:[5,4], pointRadius:0},
+      {label:'On-prem с учётом эксплуатации', data:onpTotal, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.8, pointRadius:0}]},
+    options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+      scales:{ x:{...GRID, title:{display:true,text:'Запросов в месяц',font:{size:11}}},
+               y:{...GRID, title:{display:true,text:'млн ₽/мес',font:{size:11}}}}}});
+})();
+
+// S11 — speculative
+(function(){
+  const alphas = [0.3,0.4,0.5,0.6,0.7,0.8,0.9];
+  const k = 5, tBig = 70, tDraft = 2;
+  const sp = alphas.map(a => {
+    const accepted = (1 - Math.pow(a, k+1)) / (1 - a);
+    const cycle = k * tDraft + tBig * 1.12;
+    return +(tBig / (cycle / accepted)).toFixed(2);
+  });
+  mk('c_spec', { type:'line', data:{ labels: alphas.map(a=>a.toFixed(1)),
+    datasets:[
+      {label:'Ускорение генерации, раз', data:sp,
+       borderColor:'#059669', backgroundColor:'rgba(5,150,105,.09)', fill:true, borderWidth:2.9, tension:.3, pointRadius:4},
+      {label:'Без ускорения (=1)', data:alphas.map(()=>1),
+       borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:1.6, borderDash:[5,4], pointRadius:0}]},
+    options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+      scales:{ x:{...GRID, title:{display:true,text:'Доля принятия черновых токенов α',font:{size:11}}},
+               y:{...GRID, min:0.8, title:{display:true,text:'Ускорение, раз',font:{size:11}}}}}});
+})();
+
+// ============ ИНТЕРАКТИВ: семплирование ============
+function updSamp(){
+  const T    = +document.getElementById('sl_T').value / 100;
+  const P    = +document.getElementById('sl_p').value / 100;
+  const conf = +document.getElementById('sl_conf').value / 100;
+  document.getElementById('out_T').textContent    = T.toFixed(2);
+  document.getElementById('out_p').textContent    = P.toFixed(2);
+  document.getElementById('out_conf').textContent = conf.toFixed(2);
+
+  const names = ['«Париж»','«город»','«это»','«крупный»','«столица»','«один»','«красивый»','…хвост'];
+  // логиты: чем выше conf, тем больше разрыв
+  const base = [1, 0.62, 0.50, 0.42, 0.36, 0.31, 0.27, 0.20];
+  const logits = base.map((b,i) => b * (2 + 12 * conf) - i * 0.05);
+
+  const exps = logits.map(z => Math.exp(z / Math.max(T, 0.01)));
+  const sum = exps.reduce((a,b)=>a+b, 0);
+  let probs = exps.map(e => e / sum);
+
+  // top-p отсечение
+  const order = probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0]);
+  let cum = 0, keep = new Set();
+  for (const [p,i] of order){ keep.add(i); cum += p; if (cum >= P) break; }
+  const kept = probs.map((p,i) => keep.has(i) ? p : 0);
+  const ksum = kept.reduce((a,b)=>a+b,0);
+  const finals = kept.map(p => p / ksum);
+
+  const maxp = Math.max(...probs);
+  let html = '';
+  probs.forEach((p,i) => {
+    const inSet = keep.has(i);
+    html += '<div class="drow' + (inSet ? '' : ' dcut') + '">' +
+      '<span class="dtok">' + names[i] + '</span>' +
+      '<span class="dbar"><span class="dfill" style="width:' + (p/maxp*100).toFixed(1) + '%;background:' +
+        (inSet ? (i===0 ? '#059669' : '#34d399') : '#cbd5e1') + ';"></span></span>' +
+      '<span class="dval">' + (inSet ? finals[i].toFixed(3) : '—') + '</span></div>';
+  });
+  document.getElementById('samp_dist').innerHTML = html;
+
+  const entropy = -finals.filter(p=>p>0).reduce((a,p)=>a + p*Math.log2(p), 0);
+  let note;
+  if (T < 0.15)      note = 'Почти greedy: практически всегда выбирается топ-1. Годится для фактических задач и извлечения данных, но текст будет монотонным и склонным к повторам.';
+  else if (T < 0.5)  note = 'Низкая температура: разнообразие есть, но контролируемое. Рабочий диапазон для большинства прикладных задач.';
+  else if (T < 1.1)  note = 'Средняя температура: заметное разнообразие. Подходит для диалога и творческих задач; для фактов рискованно.';
+  else               note = 'Высокая температура: распределение сильно сглажено, растёт риск бессмысленных продолжений. Спасает только жёсткий top-p.';
+
+  document.getElementById('out_samp').innerHTML =
+    'В nucleus попало <b>' + keep.size + '</b> из 8 токенов · вероятность топ-1 после отсечения: <b>' +
+      finals[0].toFixed(3) + '</b> · энтропия <b>' + entropy.toFixed(2) + '</b> бит<br>' +
+    '<span style="font-size:12.5px;">' + note + '</span>';
+}
+updSamp();
+
+// ============ ИНТЕРАКТИВ: стоимость ============
+function updCost(){
+  const sys  = +document.getElementById('sl_sys').value;
+  const vari = +document.getElementById('sl_var').value;
+  const out  = +document.getElementById('sl_outt').value;
+  const vol  = +document.getElementById('sl_vol').value * 1000;
+  document.getElementById('out_sys').textContent  = sys.toLocaleString('ru-RU');
+  document.getElementById('out_var').textContent  = vari.toLocaleString('ru-RU');
+  document.getElementById('out_outt').textContent = out.toLocaleString('ru-RU');
+  document.getElementById('out_vol').textContent  = vol >= 1e6 ? (vol/1e6).toFixed(1) + ' млн' : (vol/1000) + ' тыс';
+
+  const P_IN = 0.15, P_OUT = 0.60, P_CACHE = 0.015;
+  const naive  = ((sys + vari) * P_IN + out * P_OUT) / 1000;
+  const cached = (sys * P_CACHE + vari * P_IN + out * P_OUT) / 1000;
+  const routed = 0.28 * cached + 0.72 * cached / 6;
+
+  const mNaive = naive * vol / 1e6, mCached = cached * vol / 1e6, mRouted = routed * vol / 1e6;
+  const shareOut = (out * P_OUT) / ((sys + vari) * P_IN + out * P_OUT) * 100;
+
+  document.getElementById('out_cost').innerHTML =
+    'Без оптимизаций: <b>' + naive.toFixed(3) + ' ₽/запрос</b> → <b>' + mNaive.toFixed(2) + ' млн ₽/мес</b><br>' +
+    'С кэшем префикса: <b>' + cached.toFixed(3) + ' ₽</b> → <b>' + mCached.toFixed(2) + ' млн ₽/мес</b> ' +
+      '<span style="color:#15803d;">(−' + ((1 - cached/naive)*100).toFixed(0) + '%)</span><br>' +
+    'С кэшем и роутингом: <span style="font-size:19px;font-weight:800;color:#047857">' +
+      mRouted.toFixed(2) + ' млн ₽/мес</span> <span style="color:#15803d;">(−' +
+      ((1 - routed/naive)*100).toFixed(0) + '% от исходного)</span><br>' +
+    '<span style="font-size:12.5px;">Доля выходных токенов в стоимости: <b>' + shareOut.toFixed(0) + '%</b>. ' +
+      (shareOut > 55
+        ? 'Выход доминирует — сокращение длины ответа даст больше всего.'
+        : 'Вход доминирует — начинай с кэша префикса и сокращения промпта.') + '</span>';
+}
+updCost();
+
+// активная секция в навигации
+(function(){
+  const links = Array.from(document.querySelectorAll('.snav a'));
+  const secs  = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function onScroll(){
+    let cur = 0;
+    secs.forEach((s,i)=>{ if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a,i)=> a.classList.toggle('act', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

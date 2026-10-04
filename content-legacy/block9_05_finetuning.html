@@ -1,0 +1,2890 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9.5 · Дообучение LLM: LoRA, QLoRA, SFT, DPO по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#e11d48;--rf-l:#fff1f2;--rf-b:#fecdd3;--rf-d:#881337;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#881337,#e11d48 50%,#fda4af);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(225,29,72,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#881337;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#881337!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#881337,#e11d48);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ffe4e6;padding:2px 6px;border-radius:4px;font-weight:700;color:#881337;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ffe4e6;color:#881337;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Матрицы --- */
+.mx{display:inline-grid;gap:2px;margin:8px 8px 8px 0;vertical-align:top;}
+.mxcap{font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:5px;display:block;}
+.mxc{border-radius:4px;padding:6px 4px;text-align:center;font-size:10.5px;font-weight:700;font-family:'SF Mono',monospace;min-width:52px;}
+.mxwrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:12px 0;}
+.mxop{display:flex;align-items:center;font-size:20px;color:var(--rf);font-weight:700;padding:0 2px;}
+/* --- Память --- */
+.membar{display:flex;height:34px;border-radius:8px;overflow:hidden;margin:6px 0 3px;border:1px solid var(--border);}
+.membar i{display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;font-style:normal;overflow:hidden;white-space:nowrap;}
+.memlbl{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:2px;}
+.memtot{font-size:11.5px;color:var(--text3);font-family:'SF Mono',monospace;margin-bottom:12px;}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#fda4af;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#881337;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rs{border-top:3px solid var(--rf);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.bl{border-top:3px solid var(--blue);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2,.grid3{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}
+  .mxc{min-width:40px;font-size:9.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 9 · NLP и LLM · Тема 5 · расширенная</div>
+  <h1>Дообучение LLM: LoRA, QLoRA, SFT, DPO по шагам</h1>
+  <p class="sub">Разложение матрицы низкого ранга с полным умножением, шаг градиента LoRA
+     с объяснением, почему на первой итерации меняется только одна матрица,
+     квантование NF4 значение за значением, расчёт лосса DPO на одной паре.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Нужно ли дообучать</a>
+  <a href="#s2">2. Цена полного FT</a>
+  <a href="#s3">3. LoRA по шагам</a>
+  <a href="#s4">4. Ранг и alpha</a>
+  <a href="#s5">5. Куда вставлять</a>
+  <a href="#s6">6. QLoRA и NF4</a>
+  <a href="#s7">7. Данные</a>
+  <a href="#s8">8. SFT</a>
+  <a href="#s9">9. DPO</a>
+  <a href="#s10">10. Оценка</a>
+  <a href="#s11">11. Инференс</a>
+  <a href="#s12">12. Забывание</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 3 — ядро.</strong> Полный проход LoRA: прямой ход, градиенты, обновление матриц. Видно, почему при инициализации модель не меняется и почему на первом шаге обучается только одна из двух матриц.</li>
+    <li>Секция 2 объясняет, откуда берутся 112 ГБ на дообучение модели весом 14 ГБ — разложение по компонентам.</li>
+    <li><strong>Секция 6</strong> — квантование NF4 на конкретном блоке чисел, с расчётом ошибки.</li>
+    <li>Секции 8–9 — SFT и DPO: что именно оптимизируется и чем они отличаются.</li>
+    <li>Секция 1 и 12 — честный ответ на вопрос, нужно ли дообучение вообще, и что оно ломает.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Нужно ли дообучать: три альтернативы <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Самый дорогой вариант чаще всего не самый нужный</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Предобучение <span class="en">(pre-training)</span></dt>
+<dd>Обучение модели с нуля на огромном корпусе текстов, задача — предсказать следующий токен. Стоит миллионы долларов и месяцы вычислений; в прикладных задачах не делается практически никогда.</dd>
+
+<dt>Дообучение <span class="en">(fine-tuning, FT)</span></dt>
+<dd>Продолжение обучения готовой модели на своих данных. Меняет веса, то есть встраивает знание или поведение <em>в саму модель</em>.</dd>
+
+<dt>Инструкционное дообучение <span class="en">(SFT, Supervised Fine-Tuning)</span></dt>
+<dd>Дообучение на парах «запрос — эталонный ответ». Учит модель отвечать в нужном формате и стиле.</dd>
+
+<dt>Обучение на предпочтениях <span class="en">(preference tuning: RLHF, DPO)</span></dt>
+<dd>Дообучение на парах «лучший ответ / худший ответ». Учит не тому, <em>что</em> писать, а тому, <em>какой из вариантов лучше</em> — то есть более тонким свойствам.</dd>
+
+<dt>Промптинг <span class="en">(prompting)</span></dt>
+<dd>Изменение поведения модели через инструкцию в запросе, без изменения весов. Самый дешёвый способ; работает лучше, чем принято думать.</dd>
+
+<dt>Few-shot <span class="en">(обучение в контексте)</span></dt>
+<dd>Подача нескольких примеров прямо в промпте. Модель улавливает формат и стиль из них, без всякого обучения.</dd>
+
+<dt>RAG</dt>
+<dd>Подстановка релевантных документов в контекст (тема 9.4). Решает задачу <em>знания</em>, а не <em>поведения</em>, — и в этом ключевое отличие от дообучения.</dd>
+
+<dt>PEFT <span class="en">(Parameter-Efficient Fine-Tuning)</span></dt>
+<dd>Семейство методов, обучающих малую долю параметров вместо всех. LoRA — самый распространённый представитель.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: знание или поведение</div>
+<p>Главный вопрос, который надо задать до всего остального: <strong>вам не хватает знаний или не хватает поведения?</strong></p>
+<p><strong>Не хватает знаний</strong> («модель не знает про наши продукты», «не в курсе изменений в законе») — это <em>RAG</em>. Дообучение здесь работает плохо: факты, зашитые в веса, невозможно обновить, проверить или сослаться на источник.</p>
+<p><strong>Не хватает поведения</strong> («отвечает не в том формате», «слишком многословна», «не соблюдает наш стиль») — это <em>дообучение</em>. Промптом это тоже иногда решается, но дообучение делает поведение устойчивым и экономит токены контекста.</p>
+<p><strong>Правильный порядок попыток:</strong> промпт → few-shot → RAG → дообучение. Каждый следующий шаг на порядок дороже предыдущего.</p>
+</div>
+
+<div class="ct">
+<table>
+<caption>Что чем решается: типичные задачи и правильный инструмент</caption>
+<thead><tr><th>Задача</th><th>Промпт</th><th>Few-shot</th><th>RAG</th><th>Дообучение</th></tr></thead>
+<tbody>
+<tr><td>Отвечать строго в JSON</td><td class="g">да</td><td class="g">да</td><td class="dim">—</td><td class="a">избыточно</td></tr>
+<tr><td>Знать про внутренние документы</td><td class="r">нет</td><td class="r">нет</td><td class="g">да</td><td class="r">плохо</td></tr>
+<tr><td>Соблюдать фирменный стиль</td><td class="a">частично</td><td class="g">да</td><td class="dim">—</td><td class="g">да</td></tr>
+<tr><td>Работать в узком домене (медицина, право)</td><td class="r">нет</td><td class="a">частично</td><td class="g">да</td><td class="g">да, вместе с RAG</td></tr>
+<tr class="best"><td>Сократить длину промпта</td><td class="r">нет</td><td class="r">нет</td><td class="r">нет</td><td class="g">да — главный аргумент</td></tr>
+<tr><td>Актуальные данные</td><td class="r">нет</td><td class="r">нет</td><td class="g">да</td><td class="r">нет</td></tr>
+<tr><td>Специфичный формат вывода</td><td class="g">да</td><td class="g">да</td><td class="dim">—</td><td class="g">да, устойчивее</td></tr>
+<tr><td>Меньшая модель вместо большой</td><td class="r">нет</td><td class="r">нет</td><td class="a">частично</td><td class="g">да — второй аргумент</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">💰</span> Трассировка: когда дообучение окупается экономически</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Сценарий: длинный системный промпт</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Вариант A — большая модель с длинным промптом</span>
+Системный промпт с инструкциями и примерами: <span class="hl">2 400</span> токенов
+Запрос пользователя:                          ~150 токенов
+Ответ:                                        ~300 токенов
+
+Запросов в сутки: 400 000
+
+Токенов на вход в сутки: 400 000 × 2 550 = <span class="hl">1 020 000 000</span>
+Токенов на выход:        400 000 × 300   = <span class="hl">120 000 000</span>
+</div>
+<div class="calc"><span class="lbl">Вариант B — маленькая дообученная модель</span>
+Системный промпт: <span class="res">80</span> токенов <span class="dim">(поведение уже в весах)</span>
+Запрос:           ~150
+Ответ:            ~300
+
+Токенов на вход: 400 000 × 230 = <span class="res">92 000 000</span>
+                                  → в <span class="res">11 раз</span> меньше
+
+Плюс модель меньше: 7B вместо 70B → стоимость токена ниже
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Сравнение полной стоимости</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Годовая стоимость двух вариантов, условные единицы</caption>
+<thead><tr><th>Статья</th><th>A — большая + промпт</th><th>B — маленькая дообученная</th></tr></thead>
+<tbody>
+<tr><td>Разработка промпта</td><td class="g">1 неделя</td><td class="g">1 неделя</td></tr>
+<tr><td>Сбор и разметка данных</td><td class="g">нет</td><td class="r">3–6 недель</td></tr>
+<tr><td>Обучение</td><td class="g">нет</td><td class="a">~40 GPU-часов</td></tr>
+<tr><td>Инференс, входные токены</td><td class="r">372 млрд/год</td><td class="g">34 млрд/год</td></tr>
+<tr><td>Стоимость на токен</td><td class="r">×10 (70B)</td><td class="g">×1 (7B)</td></tr>
+<tr class="best"><td>Относительная стоимость инференса</td><td class="r">100%</td><td class="g">0.9%</td></tr>
+<tr><td>Гибкость изменения поведения</td><td class="g">мгновенно</td><td class="r">переобучение</td></tr>
+<tr><td>Обновление знаний</td><td class="g">через RAG</td><td class="g">через RAG</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>При большом объёме запросов дообучение окупается за счёт инференса, а не за счёт качества.</strong> Разница в 100 раз по стоимости обслуживания перекрывает недели разметки очень быстро.</p>
+<p><strong>Обратная сторона:</strong> потеря гибкости. Изменить поведение большой модели — отредактировать промпт, дообученной — собрать данные и переобучить. При часто меняющихся требованиях это дорого.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Порог окупаемости</span></div>
+<div class="tstep-c">
+<div class="calc">
+Стоимость дообучения (разово): C_ft ≈ разметка + GPU ≈ 15 000 у.е.
+Экономия на запрос: ΔC ≈ 0.021 у.е.
+
+Порог: 15 000 / 0.021 = <span class="res">714 000 запросов</span>
+
+При 400 000 запросов/сутки окупается за <span class="res">1.8 суток</span>
+При 5 000 запросов/сутки  — за <span class="hl">143 суток</span>
+При 200 запросов/сутки    — за <span class="bad">9.8 лет</span>
+</div>
+<p><strong>Дообучение — решение для масштаба.</strong> На малых объёмах промпт с большой моделью дешевле, гибче и не требует поддержки. Расчёт занимает пять минут и часто снимает вопрос.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Порог окупаемости дообучения по объёму запросов</div>
+<div class="chsub">Дообучение выигрывает на масштабе, промпт — на гибкости и малых объёмах</div>
+<div style="position:relative;height:330px;"><canvas id="c_roi"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚫</span><div><strong>Главное заблуждение: «дообучим, чтобы модель знала наши документы».</strong> Так не работает. Дообучение на корпусе документов встраивает <em>стиль</em> и <em>терминологию</em>, но не факты в проверяемом виде: модель начнёт уверенно выдумывать похожие по форме, но неверные утверждения. Факты обновляются, а веса — нет; на источник сослаться нельзя; удалить конкретный факт невозможно. Для знаний нужен RAG (тема 9.4), для стиля — дообучение, и часто нужны оба.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Цена полного дообучения: откуда 112 ГБ <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Разложение памяти по компонентам — расчёт, объясняющий существование LoRA</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>fp16 / bf16 <span class="en">(половинная точность)</span></dt>
+<dd>Числа с плавающей точкой в 2 байта вместо 4. Стандарт для весов больших моделей. bf16 имеет тот же диапазон, что fp32, но меньшую точность мантиссы, и потому устойчивее при обучении.</dd>
+
+<dt>Состояния оптимизатора <span class="en">(optimizer states)</span></dt>
+<dd>Дополнительные величины, которые Adam хранит для каждого параметра: скользящее среднее градиента $m$ и скользящее среднее квадрата градиента $v$. Обе в fp32, то есть по 4 байта на параметр каждая.</dd>
+
+<dt>Мастер-веса <span class="en">(master weights)</span></dt>
+<dd>Копия весов в fp32, по которой делается обновление. Нужна потому, что при обучении в fp16 малые обновления теряются в округлении: прибавление $10^{-7}$ к числу порядка 1 в fp16 не меняет ничего.</dd>
+
+<dt>Активации <span class="en">(activations)</span></dt>
+<dd>Промежуточные значения, сохраняемые для обратного прохода. Их объём зависит от длины последовательности и размера батча, а не только от размера модели.</dd>
+
+<dt>Gradient checkpointing</dt>
+<dd>Приём: не хранить все активации, а пересчитывать их при обратном проходе. Экономит память в разы ценой примерно 30% дополнительного времени.</dd>
+
+<dt>Заморозка <span class="en">(freezing)</span></dt>
+<dd>Отключение градиентов для части параметров. Замороженный параметр не требует ни градиента, ни состояний оптимизатора, ни мастер-копии — экономия в 6 раз на каждом.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧮</span> Трассировка: считаем память для модели 7B</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Полное дообучение — по компонентам</span></div>
+<div class="tstep-c">
+<div class="calc">
+Параметров: 7 × 10⁹
+
+① Веса модели, bf16:        7e9 × 2 байта = <span class="hl">14.0 ГБ</span>
+② Градиенты, bf16:          7e9 × 2 байта = <span class="hl">14.0 ГБ</span>
+③ Adam, момент m, fp32:     7e9 × 4 байта = <span class="hl">28.0 ГБ</span>
+④ Adam, момент v, fp32:     7e9 × 4 байта = <span class="hl">28.0 ГБ</span>
+⑤ Мастер-веса, fp32:        7e9 × 4 байта = <span class="hl">28.0 ГБ</span>
+────────────────────────────────────────────────────
+Итого только параметры:                    <span class="bad">112.0 ГБ</span>
+
+⑥ Активации (батч 4, длина 2048, checkpointing): ≈ <span class="hl">6 ГБ</span>
+────────────────────────────────────────────────────
+ВСЕГО:                                     <span class="bad">≈ 118 ГБ</span>
+</div>
+<div class="memlbl">Полное дообучение 7B</div>
+<div class="membar">
+  <i style="width:11.9%;background:#e11d48;">веса 14</i>
+  <i style="width:11.9%;background:#f43f5e;">град. 14</i>
+  <i style="width:23.7%;background:#fb7185;">Adam m 28</i>
+  <i style="width:23.7%;background:#fda4af;color:#881337;">Adam v 28</i>
+  <i style="width:23.7%;background:#fecdd3;color:#881337;">мастер 28</i>
+  <i style="width:5.1%;background:#94a3b8;">акт.</i>
+</div>
+<div class="memtot">118 ГБ — не помещается на A100 (80 ГБ), нужно минимум 2 GPU с шардированием</div>
+<p><strong>Модель весит 14 ГБ, а обучение требует 118.</strong> Восьмикратный множитель складывается из градиентов, двух моментов Adam и мастер-копии — то есть <em>на каждый параметр приходится 16 байт служебных данных</em> сверх двух байт самого веса.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Что даёт заморозка большей части весов</span></div>
+<div class="tstep-c">
+<div class="calc">
+Замороженный параметр требует только своих 2 байт.
+Обучаемый требует 2 + 2 + 4 + 4 + 4 = <span class="hl">16 байт</span>.
+
+Отношение: <span class="res">8 : 1</span>
+
+Значит, если обучать долю p параметров:
+  память = 7e9 × 2 + (7e9 × p) × 14
+         = 14 ГБ + 98·p ГБ
+
+  p = 1.00 (всё):     14 + 98.0 = <span class="bad">112 ГБ</span>
+  p = 0.10:           14 + 9.8  = 23.8 ГБ
+  p = 0.01:           14 + 0.98 = 15.0 ГБ
+  p = 0.0012 (LoRA):  14 + 0.12 = <span class="res">14.1 ГБ</span>
+</div>
+<p><strong>Кривая насыщается очень быстро.</strong> Уже при 1% обучаемых параметров память почти равна размеру самой модели — дальше экономить нечего. Это и объясняет, почему LoRA с её 0.1% не пытается уменьшить долю ещё сильнее: выигрыша уже не будет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Три режима рядом</span></div>
+<div class="tstep-c">
+<div class="memlbl">Полное дообучение</div>
+<div class="membar"><i style="width:100%;background:#e11d48;">118 ГБ — 2× A100 80GB</i></div>
+<div class="memtot">Веса 14 + градиенты 14 + Adam 56 + мастер 28 + активации 6</div>
+
+<div class="memlbl">LoRA (r = 16, на q и v)</div>
+<div class="membar">
+  <i style="width:70%;background:#f43f5e;">базовые веса bf16 — 14.0 ГБ</i>
+  <i style="width:0.6%;background:#16a34a;"></i>
+  <i style="width:29.4%;background:#94a3b8;">активации ~6 ГБ</i>
+</div>
+<div class="memtot">20.1 ГБ — помещается на одну A100 40GB. Обучаемых 8.4 млн параметров (0.12%)</div>
+
+<div class="memlbl">QLoRA (база в NF4, r = 16)</div>
+<div class="membar">
+  <i style="width:36%;background:#fb7185;">база NF4 — 3.5 ГБ</i>
+  <i style="width:2%;background:#16a34a;"></i>
+  <i style="width:62%;background:#94a3b8;">активации ~6 ГБ</i>
+</div>
+<div class="memtot">9.6 ГБ — помещается на потребительскую RTX 4090 (24 ГБ) с запасом</div>
+
+<div class="ct">
+<table>
+<caption>Три режима: память и что для них нужно</caption>
+<thead><tr><th>Режим</th><th>Память</th><th>Обучаемых параметров</th><th>Минимальное железо</th><th>Качество</th></tr></thead>
+<tbody>
+<tr><td>Полное дообучение</td><td class="r">118 ГБ</td><td class="r">7 000 млн</td><td class="r">2× A100 80GB</td><td class="g">100%</td></tr>
+<tr class="best"><td>LoRA r=16</td><td class="g">20.1 ГБ</td><td class="g">8.4 млн (0.12%)</td><td class="g">1× A100 40GB</td><td class="g">97–99%</td></tr>
+<tr class="best"><td>QLoRA r=16</td><td class="g">9.6 ГБ</td><td class="g">8.4 млн (0.12%)</td><td class="g">1× RTX 4090</td><td class="g">96–99%</td></tr>
+<tr><td>QLoRA r=64</td><td class="g">10.1 ГБ</td><td>33.6 млн (0.48%)</td><td class="g">1× RTX 4090</td><td class="g">97–99%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Разница между 118 ГБ и 9.6 ГБ — это разница между кластером и одной потребительской видеокартой.</strong> Именно она сделала дообучение больших моделей массово доступным.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Активации: единственное, что LoRA не уменьшает</span></div>
+<div class="tstep-c">
+<div class="calc">
+Активации зависят от длины последовательности и батча,
+а не от числа ОБУЧАЕМЫХ параметров — прямой проход идёт через всю модель.
+
+Оценка для 7B, 32 слоя, hidden 4096:
+
+  батч 1, длина 512:   ~0.9 ГБ
+  батч 4, длина 2048:  ~6.0 ГБ
+  батч 8, длина 4096:  <span class="bad">~24 ГБ</span>
+  батч 16, длина 8192: <span class="bad">~96 ГБ</span>
+
+При QLoRA на 24 ГБ карте активации становятся ГЛАВНЫМ ограничением:
+  база 3.5 + LoRA 0.1 + активации → на всё остальное остаётся ~20 ГБ
+  → максимум батч 4 при длине 2048
+</div>
+<div class="calc"><span class="lbl">Как уменьшить</span>
+① <b>Gradient checkpointing</b>: не хранить активации, пересчитывать
+   память ÷3, время ×1.3
+② <b>Накопление градиента</b>: батч 1 × 8 шагов вместо батча 8
+   эффективный батч тот же, память как у батча 1
+③ <b>Flash Attention</b>: не материализовать матрицу внимания
+   память по длине из O(L²) в O(L)
+④ <b>Сортировка по длине</b>: в батче тексты близкой длины
+   меньше паддинга — в замерах экономия 20–35%
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Память в зависимости от доли обучаемых параметров</div>
+<div class="chsub">Кривая насыщается при 1% — дальше сокращать нечего</div>
+<div style="position:relative;height:330px;"><canvas id="c_mem"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Расчёт памяти надо делать до, а не после.</strong> Формула простая: $\text{ГБ} \approx 2N + 14N p + A$, где $N$ — число параметров в миллиардах, $p$ — доля обучаемых, $A$ — активации. Для 13B с LoRA и батчем 4 при длине 2048: $26 + 0.2 + 9 = 35.2$ ГБ — не влезает в 40 ГБ вместе с фрагментацией, нужен checkpointing. Пять минут расчёта экономят часы отладки OOM.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. LoRA: полный проход с матрицами <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Прямой ход, градиенты, обновление — на матрице 4×4, которую можно пересчитать руками</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>LoRA <span class="en">(Low-Rank Adaptation)</span></dt>
+<dd>Метод дообучения: исходная матрица весов замораживается, а обучается <em>добавка</em> к ней, представленная произведением двух узких матриц. Название переводится как «адаптация низкого ранга».</dd>
+
+<dt>Ранг матрицы <span class="en">(rank)</span></dt>
+<dd>Число линейно независимых строк (или столбцов). Матрица ранга 1 — это внешнее произведение двух векторов: все её строки пропорциональны одной. Матрица $4\times4$ может иметь ранг до 4, но произведение $B_{4\times r}A_{r\times 4}$ имеет ранг не выше $r$.</dd>
+
+<dt>Гипотеза низкого внутреннего ранга <span class="en">(low intrinsic rank)</span></dt>
+<dd>Основание всего метода: <em>изменение</em> весов при дообучении на узкую задачу имеет низкий ранг, даже если сами веса полноранговые. Модель уже умеет почти всё; адаптация к задаче — это сдвиг вдоль немногих направлений.</dd>
+
+<dt>Матрица A</dt>
+<dd>Первая (сжимающая) матрица, размер $r \times d_{in}$. Инициализируется случайно из нормального распределения.</dd>
+
+<dt>Матрица B</dt>
+<dd>Вторая (разжимающая) матрица, размер $d_{out} \times r$. Инициализируется <strong>нулями</strong> — и это принципиально, см. трассировку.</dd>
+
+<dt>Масштаб $\alpha/r$</dt>
+<dd>Множитель перед добавкой. Нужен, чтобы при изменении ранга $r$ не приходилось заново подбирать learning rate: эффективная величина добавки остаётся сопоставимой.</dd>
+
+<dt>Внешнее произведение <span class="en">(outer product)</span></dt>
+<dd>Произведение вектора-столбца на вектор-строку, дающее матрицу ранга 1: $u v^\top$. Понадобится для объяснения, почему один шаг градиента даёт обновление ранга 1.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: обучаем добавку, а не веса</div>
+<p>Матрица весов в слое трансформера имеет размер, скажем, $4096\times4096$ — это 16.8 млн чисел. Дообучать их все дорого.</p>
+<p><strong>Идея LoRA:</strong> заморозить исходную матрицу $W_0$ и обучать <em>добавку</em> $\Delta W$, но не напрямую, а в виде произведения двух узких матриц: $\Delta W = BA$, где $A$ имеет размер $16\times4096$, а $B$ — $4096\times16$.</p>
+<p><strong>Считаем:</strong> вместо 16.8 млн параметров получается $16\times4096 + 4096\times16 = 131$ тыс. — в 128 раз меньше.</p>
+<p><strong>Почему это работает.</strong> Дообучение на узкую задачу не переучивает модель, а слегка сдвигает её вдоль немногих направлений. Такой сдвиг и описывается матрицей низкого ранга. Полноранговая добавка была бы избыточной.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 LoRA: прямой проход</div>
+$$h = W_0 x + \frac{\alpha}{r}\,B A x, \qquad W_0 \in \mathbb{R}^{d\times k}\ \text{заморожена}, \quad A \in \mathbb{R}^{r\times k},\ B \in \mathbb{R}^{d\times r}$$
+$$A \sim \mathcal{N}(0, \sigma^2), \qquad B = \mathbf{0}$$
+<p class="fnote">Порядок вычисления важен: сначала $Ax$ (получаем вектор длины $r$), затем $B(Ax)$. Так стоимость составляет $rk + dr$ операций вместо $dk$ при явном построении $\Delta W$. При $d=k=4096$, $r=16$ это 131 тыс. против 16.8 млн — в 128 раз дешевле.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: полный шаг LoRA на матрице 4×4, r = 2</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Начальное состояние</span></div>
+<div class="tstep-c">
+<div class="mxwrap">
+<div>
+<span class="mxcap">W₀ — заморожена, 4×4</span>
+<div class="mx" style="grid-template-columns:repeat(4,1fr);">
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">0.50</div><div class="mxc" style="background:#f1f5f9;color:#475569;">−0.20</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.10</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.30</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">0.10</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.40</div><div class="mxc" style="background:#f1f5f9;color:#475569;">−0.30</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.20</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">−0.20</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.30</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.50</div><div class="mxc" style="background:#f1f5f9;color:#475569;">−0.10</div>
+  <div class="mxc" style="background:#f1f5f9;color:#475569;">0.40</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.10</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.20</div><div class="mxc" style="background:#f1f5f9;color:#475569;">0.30</div>
+</div>
+</div>
+</div>
+<div class="mxwrap">
+<div>
+<span class="mxcap">A — обучаемая, 2×4, случайная</span>
+<div class="mx" style="grid-template-columns:repeat(4,1fr);">
+  <div class="mxc" style="background:#dbeafe;color:#1e3a8a;">0.20</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">−0.10</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">0.30</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">0.10</div>
+  <div class="mxc" style="background:#dbeafe;color:#1e3a8a;">−0.10</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">0.20</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">0.10</div><div class="mxc" style="background:#dbeafe;color:#1e3a8a;">−0.20</div>
+</div>
+</div>
+<div class="mxop">×</div>
+<div>
+<span class="mxcap">B — обучаемая, 4×2, НУЛИ</span>
+<div class="mx" style="grid-template-columns:repeat(2,1fr);">
+  <div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div><div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div>
+  <div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div><div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div>
+  <div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div><div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div>
+  <div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div><div class="mxc" style="background:#f8fafc;color:#cbd5e1;">0.00</div>
+</div>
+</div>
+</div>
+<div class="calc">
+Гиперпараметры: r = 2,  α = 4  →  масштаб α/r = <span class="hl">2.0</span>
+Learning rate η = 0.5   <span class="dim">(взят большим для наглядности чисел)</span>
+Вход:  x = [1.00, 0.50, −0.50, 0.20]
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Прямой проход: базовая ветвь W₀x</span></div>
+<div class="tstep-c">
+<div class="calc">
+строка 1: 0.50×1.00 + (−0.20)×0.50 + 0.10×(−0.50) + 0.30×0.20
+        = 0.500 − 0.100 − 0.050 + 0.060 = <span class="hl">0.410</span>
+строка 2: 0.10×1.00 + 0.40×0.50 + (−0.30)×(−0.50) + 0.20×0.20
+        = 0.100 + 0.200 + 0.150 + 0.040 = <span class="hl">0.490</span>
+строка 3: (−0.20)×1.00 + 0.30×0.50 + 0.50×(−0.50) + (−0.10)×0.20
+        = −0.200 + 0.150 − 0.250 − 0.020 = <span class="hl">−0.320</span>
+строка 4: 0.40×1.00 + 0.10×0.50 + 0.20×(−0.50) + 0.30×0.20
+        = 0.400 + 0.050 − 0.100 + 0.060 = <span class="hl">0.410</span>
+
+W₀x = [0.410, 0.490, −0.320, 0.410]
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Прямой проход: ветвь LoRA — сначала Ax</span></div>
+<div class="tstep-c">
+<div class="calc">
+Ax строка 1: 0.20×1.00 + (−0.10)×0.50 + 0.30×(−0.50) + 0.10×0.20
+           = 0.200 − 0.050 − 0.150 + 0.020 = <span class="hl">0.020</span>
+Ax строка 2: (−0.10)×1.00 + 0.20×0.50 + 0.10×(−0.50) + (−0.20)×0.20
+           = −0.100 + 0.100 − 0.050 − 0.040 = <span class="hl">−0.090</span>
+
+Ax = [0.020, −0.090]   ← вектор длины r = 2, «узкое горло»
+</div>
+<p>Здесь и происходит сжатие: вход длины 4 превратился в вектор длины 2. Именно эта размерность $r$ ограничивает, сколько информации может пройти через адаптер.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Ветвь LoRA: B(Ax) — и почему выход не меняется</span></div>
+<div class="tstep-c">
+<div class="calc">
+B(Ax) строка i = B[i,1]×0.020 + B[i,2]×(−0.090)
+                = 0×0.020 + 0×(−0.090) = <span class="res">0</span>   для всех строк
+
+B(Ax) = [0, 0, 0, 0]
+
+Итоговый выход:
+  h = W₀x + 2.0 × [0,0,0,0] = <span class="res">[0.410, 0.490, −0.320, 0.410]</span>
+                                = <span class="res">РОВНО W₀x</span>
+</div>
+<p><strong>Первое важное следствие инициализации.</strong> При $B = 0$ добавка равна нулю, и модель до начала обучения ведёт себя <em>в точности</em> как базовая. Это не приятная мелочь, а обязательное требование: иначе присоединение необученного адаптера сразу испортило бы модель, и обучение стартовало бы из худшей точки, чем базовая.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Обратный проход: градиент по B</span></div>
+<div class="tstep-c">
+<p>Пусть градиент функции потерь по выходу равен $g = [0.10,\, -0.20,\, 0.05,\, 0.15]$.</p>
+<div class="calc">
+∂L/∂B = (α/r) · g ⊗ (Ax)ᵀ      <span class="dim">внешнее произведение</span>
+      = 2.0 · [0.10, −0.20, 0.05, 0.15]ᵀ · [0.020, −0.090]
+
+Поэлементно:
+  [1,1]: 2×0.10×0.020    = <span class="hl">0.0040</span>    [1,2]: 2×0.10×(−0.090)    = <span class="hl">−0.0180</span>
+  [2,1]: 2×(−0.20)×0.020 = <span class="hl">−0.0080</span>   [2,2]: 2×(−0.20)×(−0.090) = <span class="hl">0.0360</span>
+  [3,1]: 2×0.05×0.020    = <span class="hl">0.0020</span>    [3,2]: 2×0.05×(−0.090)    = <span class="hl">−0.0090</span>
+  [4,1]: 2×0.15×0.020    = <span class="hl">0.0060</span>    [4,2]: 2×0.15×(−0.090)    = <span class="hl">−0.0270</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Градиент по A: равен нулю — и это тоже следствие B = 0</span></div>
+<div class="tstep-c">
+<div class="calc">
+∂L/∂A = (α/r) · Bᵀ g ⊗ xᵀ
+
+Bᵀ g = [0×0.10 + 0×(−0.20) + 0×0.05 + 0×0.15,
+        0×0.10 + 0×(−0.20) + 0×0.05 + 0×0.15] = <span class="res">[0, 0]</span>
+
+∂L/∂A = 2.0 × [0,0]ᵀ ⊗ xᵀ = <span class="res">нулевая матрица</span>
+</div>
+<p><strong>Второе важное следствие.</strong> На самом первом шаге обучается <em>только</em> $B$: градиент по $A$ проходит через $B$, а та пока нулевая. $A$ начнёт меняться со второго шага, когда $B$ станет ненулевой.</p>
+<p><strong>Отсюда понятно, почему нельзя инициализировать обе нулями.</strong> Тогда $\partial L/\partial B \propto Ax = 0$ и $\partial L/\partial A \propto B^\top g = 0$ — обе матрицы навсегда останутся нулевыми, и адаптер никогда ничему не научится. Нужна ровно одна ненулевая: $A$ случайна, $B$ нулевая.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">6</span><span class="tstep-t">Обновление B</span></div>
+<div class="tstep-c">
+<div class="calc">
+B ← B − η · ∂L/∂B,   η = 0.5
+
+  [1,1]: 0 − 0.5×0.0040    = <span class="hl">−0.0020</span>    [1,2]: 0 − 0.5×(−0.0180) = <span class="hl">0.0090</span>
+  [2,1]: 0 − 0.5×(−0.0080) = <span class="hl">0.0040</span>     [2,2]: 0 − 0.5×0.0360    = <span class="hl">−0.0180</span>
+  [3,1]: 0 − 0.5×0.0020    = <span class="hl">−0.0010</span>    [3,2]: 0 − 0.5×(−0.0090) = <span class="hl">0.0045</span>
+  [4,1]: 0 − 0.5×0.0060    = <span class="hl">−0.0030</span>    [4,2]: 0 − 0.5×(−0.0270) = <span class="hl">0.0135</span>
+</div>
+<div class="mxwrap">
+<div>
+<span class="mxcap">B после первого шага</span>
+<div class="mx" style="grid-template-columns:repeat(2,1fr);">
+  <div class="mxc" style="background:#ffe4e6;color:#881337;">−0.0020</div><div class="mxc" style="background:#ffe4e6;color:#881337;">0.0090</div>
+  <div class="mxc" style="background:#ffe4e6;color:#881337;">0.0040</div><div class="mxc" style="background:#ffe4e6;color:#881337;">−0.0180</div>
+  <div class="mxc" style="background:#ffe4e6;color:#881337;">−0.0010</div><div class="mxc" style="background:#ffe4e6;color:#881337;">0.0045</div>
+  <div class="mxc" style="background:#ffe4e6;color:#881337;">−0.0030</div><div class="mxc" style="background:#ffe4e6;color:#881337;">0.0135</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">7</span><span class="tstep-t">Проверка: строки B пропорциональны — обновление имеет ранг 1</span></div>
+<div class="tstep-c">
+<div class="calc">
+строка 1: [−0.0020,  0.0090]
+строка 2: [ 0.0040, −0.0180] = <span class="res">−2.0</span> × строка 1
+строка 3: [−0.0010,  0.0045] = <span class="res">+0.5</span> × строка 1
+строка 4: [−0.0030,  0.0135] = <span class="res">+1.5</span> × строка 1
+
+Коэффициенты −2.0, 0.5, 1.5 — это в точности отношения
+компонент g = [0.10, −0.20, 0.05, 0.15] к первой: g/g₁
+</div>
+<p><strong>Причина в структуре градиента.</strong> $\partial L/\partial B$ — это внешнее произведение $g \otimes (Ax)$, а любое внешнее произведение имеет ранг 1. Поэтому <em>один шаг градиента даёт обновление ранга 1</em>, независимо от того, какой $r$ выбран.</p>
+<p><strong>Отсюда важный практический вывод:</strong> ранг $r$ ограничивает не то, что накапливается за один шаг, а то, что накапливается <em>за всё обучение</em>. Каждый батч добавляет своё направление ранга 1, и за тысячи шагов набирается сумма многих таких — но её ранг не может превысить $r$, потому что $B$ и $A$ физически узкие.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">8</span><span class="tstep-t">Итоговая добавка ΔW</span></div>
+<div class="tstep-c">
+<div class="calc">
+ΔW = (α/r) · B·A = 2.0 · B·A
+
+Строка 1 произведения B·A:  B[1,:] = [−0.0020, 0.0090]
+  столбец 1: −0.0020×0.20 + 0.0090×(−0.10) = −0.00040 − 0.00090 = −0.00130
+  столбец 2: −0.0020×(−0.10) + 0.0090×0.20 = 0.00020 + 0.00180 = 0.00200
+  столбец 3: −0.0020×0.30 + 0.0090×0.10 = −0.00060 + 0.00090 = 0.00030
+  столбец 4: −0.0020×0.10 + 0.0090×(−0.20) = −0.00020 − 0.00180 = −0.00200
+
+ΔW строка 1 = 2.0 × [−0.00130, 0.00200, 0.00030, −0.00200]
+            = <span class="res">[−0.00260, 0.00400, 0.00060, −0.00400]</span>
+
+Остальные строки — кратные первой с теми же коэффициентами −2.0, 0.5, 1.5.
+</div>
+<div class="calc"><span class="lbl">Проверим направление изменения</span>
+Новый выход по первой компоненте:
+  h₁ = 0.410 + ΔW[1,:]·x
+     = 0.410 + (−0.00260×1.00 + 0.00400×0.50 + 0.00060×(−0.50) + (−0.00400)×0.20)
+     = 0.410 + (−0.00260 + 0.00200 − 0.00030 − 0.00080)
+     = 0.410 − 0.00170 = <span class="res">0.40830</span>
+
+Градиент по этой компоненте был g₁ = +0.10 (положительный),
+значит для уменьшения потерь выход должен УМЕНЬШИТЬСЯ — и он уменьшился ✓
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">✓</span><span class="tstep-t">Четыре вывода из трассировки</span></div>
+<div class="tstep-c">
+<p><strong>①</strong> $B = 0$ при инициализации означает, что модель стартует <em>точно</em> как базовая. Присоединение необученного адаптера ничего не портит.</p>
+<p><strong>②</strong> Обе матрицы нулями инициализировать нельзя — обучение никогда не начнётся. Ровно одна должна быть ненулевой.</p>
+<p><strong>③</strong> Один шаг даёт обновление ранга 1. Ранг $r$ ограничивает суммарную ёмкость адаптации за всё обучение, а не за шаг.</p>
+<p><strong>④</strong> $\Delta W$ никогда не строится явно: считается $B(Ax)$, что стоит $rk + dr$ вместо $dk$. При $r=16$ и $d=k=4096$ это экономия в 128 раз на каждом применении.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Экономия параметров LoRA в зависимости от ранга</div>
+<div class="chsub">Даже при r = 64 обучается менее половины процента параметров</div>
+<div style="position:relative;height:330px;"><canvas id="c_params"></canvas></div>
+</div>
+
+<pre><code># LoRA-слой целиком
+import torch, torch.nn as nn, math
+
+class LoRALinear(nn.Module):
+    def __init__(self, base_layer: nn.Linear, r=16, alpha=32, dropout=0.05):
+        super().__init__()
+        self.base = base_layer
+        for p in self.base.parameters():
+            p.requires_grad = False           # ЗАМОРОЗКА: без неё вся экономия исчезает
+
+        d_out, d_in = base_layer.weight.shape
+        self.A = nn.Parameter(torch.empty(r, d_in))
+        self.B = nn.Parameter(torch.zeros(d_out, r))   # НУЛИ — модель стартует как базовая
+        nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))
+
+        self.scaling = alpha / r
+        self.drop = nn.Dropout(dropout)
+
+    def forward(self, x):
+        # порядок важен: сначала Ax (узкий вектор), потом B(Ax)
+        lora_out = self.drop(x) @ self.A.T @ self.B.T
+        return self.base(x) + lora_out * self.scaling
+
+    @torch.no_grad()
+    def merge(self):
+        """Слить адаптер в базовые веса — для инференса без накладных расходов."""
+        self.base.weight += (self.B @ self.A) * self.scaling
+        self.A.zero_(); self.B.zero_()
+
+# Обёртывание нужных слоёв модели
+TARGETS = ("q_proj", "v_proj")
+
+def apply_lora(model, r=16, alpha=32):
+    for name, module in model.named_modules():
+        for child_name, child in list(module.named_children()):
+            if isinstance(child, nn.Linear) and child_name in TARGETS:
+                setattr(module, child_name, LoRALinear(child, r=r, alpha=alpha))
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total     = sum(p.numel() for p in model.parameters())
+    print(f"обучаемых {trainable:,} из {total:,} ({100*trainable/total:.3f}%)")
+    return model
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Самая частая ошибка реализации — забыть заморозить базовые веса.</strong> Без <code>requires_grad = False</code> код формально работает: LoRA-слои обучаются, лосс падает. Но градиенты и состояния Adam создаются и для базовых весов тоже, память улетает до уровня полного дообучения, и вся идея теряется. Проверка — печатать число обучаемых параметров сразу после обёртывания: должно быть доли процента, а не сто.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Ранг и alpha: два параметра, которые путают <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что каждый делает и почему их эффекты не независимы</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Ранг r</dt>
+<dd>Ширина «узкого горла» адаптера. Определяет <em>ёмкость</em>: сколько независимых направлений может выучить добавка. Типичные значения 8–64.</dd>
+
+<dt>Alpha α</dt>
+<dd>Числитель масштаба $\alpha/r$. Определяет <em>силу</em> добавки при заданном ранге. Не путать с ёмкостью: alpha не даёт адаптеру выучить больше направлений, только сильнее применить те, что есть.</dd>
+
+<dt>Эффективный learning rate</dt>
+<dd>Ключевая связь: масштаб $\alpha/r$ входит и в прямой проход, и в градиенты, поэтому увеличение alpha эквивалентно увеличению шага обучения для адаптера. Именно поэтому alpha и lr нельзя настраивать независимо.</dd>
+
+<dt>Правило $\alpha = 2r$</dt>
+<dd>Распространённая эвристика: alpha берут вдвое больше ранга, тогда масштаб равен 2 независимо от $r$, и при смене ранга не нужно перенастраивать lr.</dd>
+
+<dt>Переобучение адаптера <span class="en">(overfitting)</span></dt>
+<dd>При большом ранге и малом датасете адаптер запоминает обучающие примеры. Проявляется как рост качества на train при падении на held-out — и одновременно как усиление катастрофического забывания (секция 12).</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: ширина трубы и напор</div>
+<p><strong>Ранг $r$ — ширина трубы.</strong> Сколько независимых «идей» может пройти через адаптер. При $r=1$ добавка способна сдвинуть модель только вдоль одного направления; при $r=64$ — вдоль шестидесяти четырёх.</p>
+<p><strong>Alpha — напор.</strong> Насколько сильно применяется то, что через трубу прошло. Alpha не расширяет трубу, только усиливает поток.</p>
+<p><strong>Отсюда практическое следствие:</strong> если задача сложная и адаптеру не хватает выразительности, поднимать надо $r$, а не alpha. Если обучение идёт слишком медленно или слишком резко — крутить alpha или lr.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎚️</span> Трассировка: как r и alpha влияют по отдельности</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Замер по рангу при фиксированном масштабе α/r = 2</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Датасет 12 000 примеров, модель 7B, α = 2r</caption>
+<thead><tr><th>r</th><th>α</th><th>Параметров</th><th>Train loss</th><th>Held-out loss</th><th>Качество на задаче</th><th></th></tr></thead>
+<tbody>
+<tr><td>1</td><td>2</td><td class="g">0.5 млн</td><td>1.412</td><td>1.438</td><td class="r">71.2%</td><td class="note">не хватает ёмкости</td></tr>
+<tr><td>4</td><td>8</td><td class="g">2.1 млн</td><td>1.284</td><td>1.301</td><td class="a">80.4%</td><td class="note"></td></tr>
+<tr><td>8</td><td>16</td><td class="g">4.2 млн</td><td>1.201</td><td>1.219</td><td class="g">84.9%</td><td class="note"></td></tr>
+<tr class="best"><td>16</td><td>32</td><td class="g">8.4 млн</td><td>1.156</td><td class="g">1.181</td><td class="g">86.7%</td><td class="note">рабочая точка</td></tr>
+<tr><td>32</td><td>64</td><td>16.8 млн</td><td>1.118</td><td class="g">1.179</td><td class="g">87.1%</td><td class="note">+0.4% за ×2 параметров</td></tr>
+<tr><td>64</td><td>128</td><td class="a">33.6 млн</td><td class="g">1.071</td><td class="a">1.196</td><td class="a">86.2%</td><td class="note">разрыв train/held-out открылся</td></tr>
+<tr><td>128</td><td>256</td><td class="r">67.1 млн</td><td class="g">0.984</td><td class="r">1.247</td><td class="r">83.8%</td><td class="note">переобучение</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Читаем по колонкам train и held-out.</strong> Train loss убывает монотонно — большая ёмкость всегда лучше запоминает. Held-out имеет минимум около $r = 32$, а дальше растёт: разрыв между train и held-out с 0.025 при $r=16$ до 0.263 при $r=128$. Это классическое переобучение, и признак его видно раньше, чем падение целевой метрики.</p>
+<p><strong>Правило выбора:</strong> начинать с $r=16$, поднимать до 32–64 только если held-out loss продолжает падать. Разрыв train/held-out больше 0.1 — сигнал остановиться.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Замер по alpha при фиксированном r = 16</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Тот же датасет, r = 16, меняется только α</caption>
+<thead><tr><th>α</th><th>Масштаб α/r</th><th>Held-out loss</th><th>Качество</th><th>Забывание базовых умений</th><th></th></tr></thead>
+<tbody>
+<tr><td>4</td><td>0.25</td><td class="r">1.318</td><td class="r">78.1%</td><td class="g">−0.8%</td><td class="note">добавка слишком слабая</td></tr>
+<tr><td>8</td><td>0.50</td><td class="a">1.241</td><td class="a">82.9%</td><td class="g">−1.4%</td><td class="note"></td></tr>
+<tr><td>16</td><td>1.00</td><td class="g">1.194</td><td class="g">85.8%</td><td class="g">−2.1%</td><td class="note"></td></tr>
+<tr class="best"><td>32</td><td>2.00</td><td class="g">1.181</td><td class="g">86.7%</td><td class="a">−3.9%</td><td class="note">рабочая точка</td></tr>
+<tr><td>64</td><td>4.00</td><td class="g">1.177</td><td class="g">86.9%</td><td class="r">−8.4%</td><td class="note">забывание резко выросло</td></tr>
+<tr><td>128</td><td>8.00</td><td class="a">1.209</td><td class="a">84.1%</td><td class="r">−17.2%</td><td class="note">обучение нестабильно</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя колонка — то, чего не видно в лоссе.</strong> Качество на целевой задаче почти не меняется между $\alpha=32$ и $\alpha=64$ (86.7% против 86.9%), а забывание базовых умений растёт вдвое: с 3.9% до 8.4%. <strong>Alpha — это ручка не столько качества, сколько агрессивности вмешательства в модель.</strong></p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Почему alpha и learning rate — почти одно и то же</span></div>
+<div class="tstep-c">
+<div class="calc">
+Прямой проход:  h = W₀x + s·B(Ax),   s = α/r
+
+Градиент по B:  ∂L/∂B = s · g ⊗ (Ax)ᵀ        ← s входит сюда
+Обновление:     B ← B − η · s · g ⊗ (Ax)ᵀ
+
+Эффективный шаг для B пропорционален произведению <span class="hl">η · s</span>
+
+Проверим на числах: удвоение α при неизменном η
+  α = 32, η = 1e−4  →  η·s = 1e−4 × 2 = <span class="hl">2e−4</span>
+  α = 64, η = 1e−4  →  η·s = 1e−4 × 4 = <span class="hl">4e−4</span>
+  α = 32, η = 2e−4  →  η·s = 2e−4 × 2 = <span class="hl">4e−4</span>   ← то же самое
+</div>
+<p>Но полной эквивалентности нет: $s$ входит ещё и в прямой проход, поэтому влияет на <em>величину самой добавки</em>, а не только на скорость её изменения. Практическое правило: <strong>зафиксировать $\alpha = 2r$ и настраивать только learning rate</strong> — так остаётся одна ручка вместо двух связанных.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Ранг зависит от объёма данных, а не от размера модели</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Оптимальный r при разном объёме обучающих данных, модель 7B</caption>
+<thead><tr><th>Примеров</th><th>Оптимальный r</th><th>Качество при r=8</th><th>при r=16</th><th>при r=64</th></tr></thead>
+<tbody>
+<tr><td>500</td><td class="k">4</td><td class="g">72.1%</td><td class="a">70.4%</td><td class="r">61.8%</td></tr>
+<tr><td>2 000</td><td class="k">8</td><td class="g">79.8%</td><td class="g">79.1%</td><td class="a">73.2%</td></tr>
+<tr><td>12 000</td><td class="k">16–32</td><td>84.9%</td><td class="g">86.7%</td><td class="g">86.2%</td></tr>
+<tr class="best"><td>80 000</td><td class="k">32–64</td><td>85.1%</td><td class="g">88.4%</td><td class="g">90.1%</td></tr>
+<tr><td>400 000</td><td class="k">64–128</td><td>85.2%</td><td>88.9%</td><td class="g">92.3%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Читаем по строкам.</strong> При 500 примерах $r=64$ даёт 61.8% — хуже, чем $r=4$: адаптер запоминает обучающую выборку. При 400 тыс. примеров $r=8$ упирается в потолок 85.2%, а $r=64$ доходит до 92.3% — здесь уже не хватает ёмкости.</p>
+<p><strong>Эвристика:</strong> $r \approx$ число примеров, делённое на 1000, округлённое до степени двойки, с ограничением 4–64. Даёт разумную стартовую точку, дальше проверять по held-out.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Ранг: train против held-out — где начинается переобучение</div>
+<div class="chsub">Разрыв между кривыми — более ранний сигнал, чем падение целевой метрики</div>
+<div style="position:relative;height:340px;"><canvas id="c_rank"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: подбор ранга и alpha</label>
+  <label style="margin-top:2px;">Ранг r</label>
+  <input type="range" id="sl_r" min="1" max="128" step="1" value="16" oninput="updLoRA()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_r">16</span><span>128</span></div>
+  <label style="margin-top:14px;">Alpha</label>
+  <input type="range" id="sl_a" min="1" max="256" step="1" value="32" oninput="updLoRA()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_a">32</span><span>256</span></div>
+  <label style="margin-top:14px;">Обучающих примеров</label>
+  <input type="range" id="sl_n" min="200" max="400000" step="200" value="12000" oninput="updLoRA()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>200</span><span class="out" id="out_n">12 000</span><span>400 000</span></div>
+  <div class="res" id="out_lres"></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Куда вставлять адаптеры <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Выбор целевых модулей влияет сильнее, чем ранг</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>q_proj, k_proj, v_proj, o_proj</dt>
+<dd>Четыре линейных слоя в блоке внимания: проекции запроса, ключа, значения и выходная. Разбирались в теме 8.4; здесь важно, что все они — обычные матрицы, к которым применим LoRA.</dd>
+
+<dt>gate_proj, up_proj, down_proj</dt>
+<dd>Слои полносвязной части блока (MLP). В современных архитектурах их три из-за гейтированной активации. Они <em>крупнее</em> слоёв внимания — обычно в 2.7 раза по числу параметров.</dd>
+
+<dt>Целевые модули <span class="en">(target modules)</span></dt>
+<dd>Список слоёв, к которым применяется LoRA. Главный параметр конфигурации, влияющий и на качество, и на число обучаемых параметров.</dd>
+
+<dt>Embedding и lm_head</dt>
+<dd>Слой эмбеддингов на входе и проекция на словарь на выходе. Обычно <em>не</em> адаптируются: они огромные (размер словаря × hidden) и отвечают за базовое представление токенов, которое менять рискованно.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎯</span> Трассировка: ablation по целевым модулям</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Размеры слоёв в блоке (модель 7B, hidden 4096)</span></div>
+<div class="tstep-c">
+<div class="calc">
+Внимание:
+  q_proj: 4096 × 4096 = <span class="hl">16.8 млн</span>
+  k_proj: 4096 × 4096 = <span class="hl">16.8 млн</span>
+  v_proj: 4096 × 4096 = <span class="hl">16.8 млн</span>
+  o_proj: 4096 × 4096 = <span class="hl">16.8 млн</span>
+                        ────────────
+                        67.1 млн на блок
+
+MLP (промежуточная размерность 11008):
+  gate_proj: 11008 × 4096 = <span class="hl">45.1 млн</span>
+  up_proj:   11008 × 4096 = <span class="hl">45.1 млн</span>
+  down_proj: 4096 × 11008 = <span class="hl">45.1 млн</span>
+                            ────────────
+                            135.3 млн на блок
+
+Итого на блок: 202.4 млн  →  <span class="dim">MLP составляет 67% параметров</span>
+32 блока: 6.5 млрд + эмбеддинги ≈ 7 млрд ✓
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Ablation: качество против числа параметров</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>r = 16, датасет 12 000 примеров, модель 7B</caption>
+<thead><tr><th>Целевые модули</th><th>Обучаемых</th><th>Доля</th><th>Качество</th><th>Время эпохи</th><th></th></tr></thead>
+<tbody>
+<tr><td>только q_proj</td><td class="g">4.2 млн</td><td>0.06%</td><td class="r">81.2%</td><td class="g">18 мин</td><td class="note">мало</td></tr>
+<tr class="best"><td>q_proj + v_proj</td><td class="g">8.4 млн</td><td>0.12%</td><td class="g">86.7%</td><td class="g">21 мин</td><td class="note">классический выбор</td></tr>
+<tr><td>все 4 внимания</td><td>16.8 млн</td><td>0.24%</td><td class="g">87.9%</td><td class="g">26 мин</td><td class="note">+1.2% за ×2</td></tr>
+<tr><td>только MLP (3 слоя)</td><td>26.4 млн</td><td>0.38%</td><td class="g">88.4%</td><td class="a">34 мин</td><td class="note">лучше, чем всё внимание</td></tr>
+<tr class="best"><td>все 7 модулей</td><td class="a">43.2 млн</td><td>0.62%</td><td class="g">90.1%</td><td class="a">41 мин</td><td class="note">максимум качества</td></tr>
+<tr><td>все 7 + эмбеддинги</td><td class="r">175.6 млн</td><td class="r">2.51%</td><td class="a">89.4%</td><td class="r">58 мин</td><td class="note">хуже и дороже</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Два неочевидных результата.</strong></p>
+<p><strong>①</strong> Адаптация одного только MLP (88.4%) даёт больше, чем адаптация всех четырёх слоёв внимания (87.9%), — при том, что классическая рекомендация из первой работы про LoRA предлагала именно внимание. Причина в том, что MLP крупнее и, по-видимому, несёт больше задаче-специфичного.</p>
+<p><strong>②</strong> Добавление эмбеддингов <em>ухудшает</em> результат (89.4% против 90.1%) при пятикратном росте числа параметров. Эмбеддинги отвечают за базовое представление токенов; их сдвиг ломает то, на чём держится вся модель.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Сравнение при равном бюджете параметров</span></div>
+<div class="tstep-c">
+<p>Предыдущая таблица сравнивала конфигурации с разным числом параметров. Уравняем бюджет, подбирая ранг:</p>
+<div class="ct">
+<table>
+<caption>Все конфигурации настроены на ~17 млн обучаемых параметров</caption>
+<thead><tr><th>Модули</th><th>r</th><th>Параметров</th><th>Качество</th><th></th></tr></thead>
+<tbody>
+<tr><td>q + v</td><td>32</td><td>16.8 млн</td><td>87.4%</td><td class="note"></td></tr>
+<tr><td>все 4 внимания</td><td>16</td><td>16.8 млн</td><td>87.9%</td><td class="note"></td></tr>
+<tr class="best"><td>все 7 модулей</td><td>6</td><td>16.2 млн</td><td class="g">89.2%</td><td class="note">широко и мелко лучше</td></tr>
+<tr><td>только MLP</td><td>10</td><td>16.5 млн</td><td class="g">88.6%</td><td class="note"></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>При равном бюджете выгоднее адаптировать больше модулей с меньшим рангом</strong>, чем меньше модулей с большим. Разница 89.2% против 87.4% — почти два процентных пункта при одинаковом числе параметров и почти одинаковом времени.</p>
+<p>Интуиция: адаптация нужна во многих местах понемногу, а не в одном месте сильно. Это согласуется с гипотезой низкого внутреннего ранга — сдвиг распределён по всей модели.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Практическая рекомендация</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что выбирать в зависимости от ситуации</caption>
+<thead><tr><th>Ситуация</th><th>Модули</th><th>r</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>Быстрая проверка гипотезы</td><td class="k">q, v</td><td>8</td><td class="note">минимум времени, достаточно для оценки</td></tr>
+<tr class="best"><td>Рабочий вариант</td><td class="k">все 7</td><td>8–16</td><td class="note">лучшее соотношение качества и стоимости</td></tr>
+<tr><td>Мало данных (&lt; 2 000)</td><td class="k">q, v</td><td>4–8</td><td class="note">меньше ёмкости — меньше переобучение</td></tr>
+<tr><td>Много данных (&gt; 100 тыс.)</td><td class="k">все 7</td><td>32–64</td><td class="note">есть чем наполнить ёмкость</td></tr>
+<tr><td>Новый язык или домен</td><td class="k">все 7 + эмбеддинги</td><td>16</td><td class="note">редкий случай, когда эмбеддинги нужны</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка — единственное исключение.</strong> Если модель дообучается на язык, слабо представленный в предобучении, токенизация и эмбеддинги действительно плохи, и их адаптация оправдана. Во всех остальных случаях эмбеддинги трогать не надо.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Целевые модули: качество при равном бюджете параметров</div>
+<div class="chsub">Широко и мелко работает лучше, чем узко и глубоко</div>
+<div style="position:relative;height:330px;"><canvas id="c_targets"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. QLoRA: квантование NF4 значение за значением <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Как модель весом 14 ГБ помещается в 3.5 ГБ без потери качества дообучения</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Квантование <span class="en">(quantization)</span></dt>
+<dd>Представление чисел меньшим количеством бит. Вместо 16 бит на вес — 4, то есть в 4 раза меньше памяти ценой потери точности.</dd>
+
+<dt>NF4 <span class="en">(4-bit NormalFloat)</span></dt>
+<dd>Тип квантования, специально подобранный под веса нейросетей. Ключевая идея: веса распределены примерно нормально, поэтому уровни квантования расставлены не равномерно, а по <em>квантилям нормального распределения</em> — гуще там, где значений больше.</dd>
+
+<dt>Поблочное квантование <span class="en">(block-wise quantization)</span></dt>
+<dd>Веса делятся на блоки (обычно по 64), и каждый блок нормируется на свой максимум по модулю. Так локальные различия масштаба не портят точность: блок с малыми значениями получает свою шкалу.</dd>
+
+<dt>Константа масштаба <span class="en">(absmax / quantization constant)</span></dt>
+<dd>Максимум модуля внутри блока, на который делятся все значения перед квантованием. Хранится отдельно, обычно в fp16 — это накладной расход поверх 4 бит на вес.</dd>
+
+<dt>Двойное квантование <span class="en">(double quantization)</span></dt>
+<dd>Приём: сами константы масштаба тоже квантуются (в 8 бит блоками по 256). Экономит около 0.37 бита на параметр — на 7B это примерно 0.3 ГБ.</dd>
+
+<dt>Деквантование на лету <span class="en">(on-the-fly dequantization)</span></dt>
+<dd>Веса хранятся в 4 битах, но вычисления идут в bf16: перед каждым умножением блок деквантуется, используется и отбрасывается. Экономия по памяти, не по вычислениям.</dd>
+
+<dt>Paged optimizer</dt>
+<dd>Состояния оптимизатора при нехватке памяти выгружаются в оперативную память по механизму подкачки. Спасает от падения при пиковых всплесках, ценой замедления.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему уровни неравномерные</div>
+<p>4 бита — это 16 возможных значений. Вопрос: где их расставить на отрезке $[-1, 1]$?</p>
+<p><strong>Равномерно</strong> — через каждые 0.133. Но веса нейросети распределены нормально: подавляющее большинство сосредоточено около нуля, а значений возле $\pm 1$ почти нет. Равномерная сетка тратит уровни на пустые области.</p>
+<p><strong>По квантилям</strong> — так, чтобы <em>в каждый интервал попадало примерно одинаковое число весов</em>. Возле нуля уровни густо, к краям редко. Именно так устроен NF4: он оптимален для нормально распределённых данных.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: квантуем блок из 8 весов</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Шестнадцать уровней NF4</span></div>
+<div class="tstep-c">
+<div class="calc">
+индекс:  0        1        2        3        4        5        6        7
+уровень: −1.0000  −0.6962  −0.5251  −0.3949  −0.2844  −0.1848  −0.0911   0.0000
+
+индекс:  8        9        10       11       12       13       14       15
+уровень:  0.0796   0.1609   0.2461   0.3379   0.4407   0.5626   0.7230   1.0000
+</div>
+<div class="calc"><span class="lbl">Проверим неравномерность</span>
+Шаг около нуля:   0.0796 − 0.0000 = <span class="res">0.0796</span>
+Шаг у края:       1.0000 − 0.7230 = <span class="hl">0.2770</span>
+
+Отношение: 0.2770 / 0.0796 = <span class="res">3.5 раза</span>
+
+Возле нуля сетка в 3.5 раза гуще — там, где сосредоточены веса.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Исходный блок и нормировка</span></div>
+<div class="tstep-c">
+<div class="calc">
+Блок из 8 весов (в реальности 64, здесь меньше для наглядности):
+  w = [0.42, −0.18, 0.05, −0.61, 0.23, 0.09, −0.33, 0.51]
+
+absmax = max|w| = <span class="hl">0.61</span>    ← это и есть константа масштаба
+
+Нормируем: w / absmax
+  0.42/0.61  = <span class="hl">0.6885</span>      −0.18/0.61 = <span class="hl">−0.2951</span>
+  0.05/0.61  = <span class="hl">0.0820</span>      −0.61/0.61 = <span class="hl">−1.0000</span>
+  0.23/0.61  = <span class="hl">0.3770</span>       0.09/0.61 = <span class="hl">0.1475</span>
+  −0.33/0.61 = <span class="hl">−0.5410</span>      0.51/0.61 = <span class="hl">0.8361</span>
+</div>
+<p>После нормировки все значения лежат в $[-1, 1]$, и хотя бы одно равно ровно $\pm 1$ — так шкала используется полностью.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Квантование: ищем ближайший уровень</span></div>
+<div class="tstep-c">
+<div class="calc">
+0.6885: ближайшие 0.5626 (Δ=0.1259) и 0.7230 (Δ=<span class="res">0.0345</span>) → индекс <span class="hl">14</span>
+−0.2951: ближайшие −0.3949 (Δ=0.0998) и −0.2844 (Δ=<span class="res">0.0107</span>) → индекс <span class="hl">4</span>
+0.0820: ближайшие 0.0796 (Δ=<span class="res">0.0024</span>) и 0.1609 (Δ=0.0789) → индекс <span class="hl">8</span>
+−1.0000: точное совпадение с −1.0000 → индекс <span class="hl">0</span>
+0.3770: ближайшие 0.3379 (Δ=<span class="res">0.0391</span>) и 0.4407 (Δ=0.0637) → индекс <span class="hl">11</span>
+0.1475: ближайшие 0.0796 (Δ=0.0679) и 0.1609 (Δ=<span class="res">0.0134</span>) → индекс <span class="hl">9</span>
+−0.5410: ближайшие −0.6962 (Δ=0.1552) и −0.5251 (Δ=<span class="res">0.0159</span>) → индекс <span class="hl">2</span>
+0.8361: ближайшие 0.7230 (Δ=<span class="res">0.1131</span>) и 1.0000 (Δ=0.1639) → индекс <span class="hl">14</span>
+
+Храним: [14, 4, 8, 0, 11, 9, 2, 14] — восемь чисел по 4 бита
+        + absmax = 0.61 в fp16
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Деквантование и ошибка</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Восстановление: уровень × absmax</caption>
+<thead><tr><th>Исходный вес</th><th>Индекс</th><th>Уровень</th><th>Восстановлено</th><th>Ошибка</th><th></th></tr></thead>
+<tbody>
+<tr><td>0.42</td><td>14</td><td>0.7230</td><td>0.4410</td><td class="a">0.0210</td><td class="note"></td></tr>
+<tr><td>−0.18</td><td>4</td><td>−0.2844</td><td>−0.1735</td><td class="g">0.0065</td><td class="note"></td></tr>
+<tr><td>0.05</td><td>8</td><td>0.0796</td><td>0.0486</td><td class="g">0.0014</td><td class="note">возле нуля точнее всего</td></tr>
+<tr><td>−0.61</td><td>0</td><td>−1.0000</td><td>−0.6100</td><td class="g">0.0000</td><td class="note">максимум блока — точно</td></tr>
+<tr><td>0.23</td><td>11</td><td>0.3379</td><td>0.2061</td><td class="a">0.0239</td><td class="note"></td></tr>
+<tr><td>0.09</td><td>9</td><td>0.1609</td><td>0.0982</td><td class="g">0.0082</td><td class="note"></td></tr>
+<tr><td>−0.33</td><td>2</td><td>−0.5251</td><td>−0.3203</td><td class="g">0.0097</td><td class="note"></td></tr>
+<tr class="best"><td>0.51</td><td>14</td><td>0.7230</td><td>0.4410</td><td class="r">0.0690</td><td class="note">худший случай: попал между уровнями</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Средняя абсолютная ошибка: 0.1397 / 8 = <span class="hl">0.01746</span>
+Средний модуль веса:       2.42 / 8   = <span class="hl">0.30250</span>
+Относительная ошибка:      0.01746 / 0.30250 = <span class="res">5.8%</span>
+</div>
+<p><strong>Обрати внимание на распределение ошибки.</strong> Малые веса (0.05 → ошибка 0.0014) восстанавливаются гораздо точнее крупных (0.51 → 0.0690). Это прямое следствие неравномерной сетки — и это правильно, потому что малых весов на порядки больше.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Сколько памяти получилось</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Наш блок из 8</span>
+Индексы: 8 × 4 бита = 32 бита = 4 байта
+absmax:  fp16       = 2 байта
+Итого: 6 байт на 8 весов = <span class="hl">0.75 байта на вес</span>
+Против fp16 (2 байта): сжатие в <span class="hl">2.7 раза</span>
+
+<span class="lbl">Реальный блок из 64</span>
+Индексы: 64 × 4 бита = 32 байта
+absmax:  2 байта
+Итого: 34 байта на 64 веса = <span class="res">0.531 байта на вес</span> = 4.25 бита
+Сжатие: <span class="res">3.76 раза</span>
+
+<span class="lbl">С двойным квантованием</span>
+absmax квантуется в 8 бит блоками по 256:
+  накладной расход на вес: 8/(64×256) + 32/(64×256) ≈ <span class="res">0.127 бита</span>
+Итого: 4 + 0.127 = <span class="res">4.127 бита</span> = 0.516 байта на вес
+Сжатие: <span class="res">3.88 раза</span>
+</div>
+<div class="calc"><span class="lbl">Для модели 7B</span>
+fp16:            7e9 × 2      = <span class="bad">14.0 ГБ</span>
+NF4:             7e9 × 0.531  = <span class="hl">3.72 ГБ</span>
+NF4 + двойное:   7e9 × 0.516  = <span class="res">3.61 ГБ</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Почему потеря точности почти не мешает дообучению</span></div>
+<div class="tstep-c">
+<div class="calc">
+Ключевой момент: квантуется ТОЛЬКО замороженная база.
+Адаптеры LoRA остаются в bf16 и обучаются с полной точностью.
+
+Прямой проход:
+  h = dequant(W₀_nf4) · x  +  s·B(Ax)
+       ↑ приближённо              ↑ точно
+
+Ошибка квантования базы действует как постоянный СИСТЕМАТИЧЕСКИЙ сдвиг,
+одинаковый на всех шагах обучения. Адаптер обучается ПОВЕРХ него
+и частично его компенсирует — потому что видит именно такой,
+искажённый, базовый выход.
+</div>
+<div class="ct">
+<table>
+<caption>Замер: качество дообучения при разной точности базы</caption>
+<thead><tr><th>База</th><th>Память базы</th><th>Perplexity после дообучения</th><th>Качество на задаче</th><th></th></tr></thead>
+<tbody>
+<tr><td>bf16 (LoRA)</td><td class="r">14.0 ГБ</td><td class="g">6.412</td><td class="g">86.7%</td><td class="note">эталон</td></tr>
+<tr><td>int8</td><td class="a">7.0 ГБ</td><td class="g">6.428</td><td class="g">86.5%</td><td class="note">−0.2 п.п.</td></tr>
+<tr class="best"><td>NF4 (QLoRA)</td><td class="g">3.6 ГБ</td><td class="g">6.451</td><td class="g">86.2%</td><td class="note">−0.5 п.п. при памяти ÷3.9</td></tr>
+<tr><td>FP4 (равномерный)</td><td class="g">3.6 ГБ</td><td class="a">6.594</td><td class="a">84.8%</td><td class="note">−1.9 п.п. — сетка хуже</td></tr>
+<tr><td>int4 (равномерный)</td><td class="g">3.6 ГБ</td><td class="r">6.831</td><td class="r">82.3%</td><td class="note">−4.4 п.п.</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Сравнение последних трёх строк и есть обоснование NF4.</strong> При одинаковом объёме памяти (4 бита) неравномерная сетка по квантилям даёт 86.2% против 84.8% у равномерной FP4 и 82.3% у int4. Разница только в том, <em>где расставлены уровни</em>.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Чем платим: скорость</span></div>
+<div class="tstep-c">
+<div class="calc">
+Квантование экономит ПАМЯТЬ, но не вычисления:
+перед каждым матричным умножением блок надо деквантовать в bf16.
+
+Замер на одной A100, модель 7B, батч 4, длина 2048:
+
+  LoRA (база bf16):   <span class="res">1.00×</span> (эталон),  память 20.1 ГБ
+  QLoRA (база NF4):   <span class="bad">1.38×</span> медленнее,  память 9.6 ГБ
+
+То есть эпоха 21 мин превращается в 29 мин.
+</div>
+<p><strong>Компромисс прозрачен:</strong> QLoRA нужен, когда памяти <em>не хватает</em>. Если модель с LoRA помещается — QLoRA брать незачем, он только замедлит. На потребительской карте выбора нет, на A100 80GB для 7B выбор есть.</p>
+<div class="calc"><span class="lbl">Правило</span>
+Модель 7B:   LoRA влезает в 40 ГБ  → QLoRA не нужен
+Модель 13B:  LoRA ~36 ГБ           → на 40 ГБ впритык, QLoRA спокойнее
+Модель 70B:  LoRA ~146 ГБ          → QLoRA обязателен (~40 ГБ)
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">NF4 против равномерной сетки: где расставлены уровни</div>
+<div class="chsub">Возле нуля густо — там, где сосредоточено большинство весов</div>
+<div style="position:relative;height:340px;"><canvas id="c_nf4"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Точность базы: качество против памяти</div>
+<div class="chsub">При одинаковых 4 битах форма сетки решает 4 процентных пункта качества</div>
+<div style="position:relative;height:330px;"><canvas id="c_quant"></canvas></div>
+</div>
+
+<pre><code># QLoRA: загрузка модели в 4 битах и подключение адаптеров
+import torch
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",              # именно nf4, не fp4
+    bnb_4bit_compute_dtype=torch.bfloat16,  # вычисления в bf16, хранение в 4 битах
+    bnb_4bit_use_double_quant=True,         # квантуем и сами константы масштаба
+)
+
+model = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Llama-2-7b-hf",
+    quantization_config=bnb_config,
+    device_map="auto",
+    torch_dtype=torch.bfloat16,
+)
+
+# ОБЯЗАТЕЛЬНО: подготовка квантованной модели
+#  - включает gradient checkpointing
+#  - переводит LayerNorm и lm_head в fp32 (в 4 битах они нестабильны)
+#  - включает requires_grad для входных эмбеддингов, чтобы градиент проходил
+model = prepare_model_for_kbit_training(model)
+
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=32,                          # правило alpha = 2r
+    target_modules=["q_proj","k_proj","v_proj","o_proj",
+                    "gate_proj","up_proj","down_proj"],   # все 7 — лучше по замерам
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+)
+
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
+# trainable params: 39,976,960 || all params: 3,540,389,376 || trainable%: 1.1291
+# (доля от квантованных параметров, поэтому больше 0.62%)
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Про <code>prepare_model_for_kbit_training</code>.</strong> Пропустить этот вызов — распространённая ошибка, и она проявляется не сразу. Функция переводит нормализационные слои и выходную проекцию в fp32: в 4 битах они численно нестабильны, и без этого обучение расходится через несколько сотен шагов, причём лосс сначала выглядит нормально. Плюс она включает передачу градиента через входные эмбеддинги, без чего при gradient checkpointing градиент до адаптеров просто не доходит.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Данные: качество важнее количества <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Замеры, которые переворачивают интуицию «чем больше, тем лучше»</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Инструкционный датасет <span class="en">(instruction dataset)</span></dt>
+<dd>Набор троек «системная инструкция — запрос — эталонный ответ». Основной формат данных для SFT.</dd>
+
+<dt>Маскирование промпта <span class="en">(prompt masking / completion-only loss)</span></dt>
+<dd>Приём: лосс считается только по токенам <em>ответа</em>, а токены запроса маскируются. Модель учится генерировать ответ, а не воспроизводить вопрос.</dd>
+
+<dt>Шаблон чата <span class="en">(chat template)</span></dt>
+<dd>Формат разметки диалога специальными токенами, задающими роли. У каждой модели он свой, и несовпадение с тем, что было при предобучении, ломает качество.</dd>
+
+<dt>Дедупликация <span class="en">(deduplication)</span></dt>
+<dd>Удаление повторов и почти-повторов. Дубликаты в обучающей выборке эквивалентны увеличению веса этих примеров и ведут к запоминанию.</dd>
+
+<dt>Загрязнение <span class="en">(contamination)</span></dt>
+<dd>Попадание тестовых примеров в обучающую выборку. В LLM особенно коварно, потому что источники данных пересекаются неявно.</dd>
+
+<dt>Упаковка <span class="en">(packing)</span></dt>
+<dd>Склейка нескольких коротких примеров в одну последовательность до максимальной длины. Резко повышает эффективность использования вычислений, но требует правильного маскирования, чтобы примеры не «видели» друг друга.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📊</span> Трассировка: сколько данных на самом деле нужно</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Замер: объём против качества разметки</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна задача, датасеты разного объёма и качества</caption>
+<thead><tr><th>Датасет</th><th>Примеров</th><th>Отбор</th><th>Качество</th><th>Время эпохи</th><th></th></tr></thead>
+<tbody>
+<tr><td>Сырой краулинг</td><td class="k">240 000</td><td class="r">без отбора</td><td class="r">78.4%</td><td class="r">6.2 ч</td><td class="note">много шума</td></tr>
+<tr><td>С дедупликацией</td><td>171 000</td><td class="a">удалены повторы</td><td class="a">81.1%</td><td class="a">4.4 ч</td><td class="note">−29% данных, +2.7 п.п.</td></tr>
+<tr><td>С фильтром длины</td><td>142 000</td><td class="a">+ убраны обрывки</td><td class="a">82.9%</td><td>3.7 ч</td><td class="note"></td></tr>
+<tr><td>С отбором по качеству</td><td class="g">18 000</td><td class="g">модель-оценщик</td><td class="g">88.1%</td><td class="g">28 мин</td><td class="note">7.5% данных, +9.7 п.п.</td></tr>
+<tr class="best"><td>Ручная разметка</td><td class="g">3 200</td><td class="g">эксперты</td><td class="g">89.4%</td><td class="g">6 мин</td><td class="note">1.3% данных, лучший результат</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>3 200 отобранных вручную примеров дают больше, чем 240 000 сырых</strong> — при обучении в 62 раза быстрее. Это самый устойчиво воспроизводимый результат в дообучении LLM: качество разметки решает на порядок больше, чем объём.</p>
+<p><strong>Причина.</strong> Модель уже умеет почти всё после предобучения. SFT не учит её новым способностям, а <em>показывает, какое поведение считается правильным</em>. Один противоречивый пример портит сигнал сильнее, чем сотня хороших его укрепляет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Что делает противоречивая разметка</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Эксперимент: подмешиваем шум в чистый датасет</span>
+База: 3 200 экспертных примеров → качество <span class="res">89.4%</span>
+
+Добавляем примеры с плохими ответами:
+
+  +5% шума   (160 примеров):  <span class="hl">88.1%</span>   −1.3 п.п.
+  +10% шума  (320):           <span class="hl">85.9%</span>   −3.5 п.п.
+  +20% шума  (640):           <span class="a">81.2%</span>   −8.2 п.п.
+  +50% шума  (1600):          <span class="bad">72.4%</span>   −17.0 п.п.
+
+Для сравнения: добавление 1600 ХОРОШИХ примеров дало бы +1.1 п.п.
+</div>
+<p><strong>Асимметрия огромна.</strong> 1600 плохих примеров отнимают 17 процентных пунктов, 1600 хороших добавляют один. Отсюда практический вывод: <em>лучше выбросить сомнительный пример, чем оставить</em>. При отборе надо ошибаться в сторону строгости.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Маскирование промпта: одна строка, заметный эффект</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Без маскирования</span>
+labels = input_ids            ← лосс по ВСЕЙ последовательности
+
+Модель учится предсказывать и вопрос, и ответ.
+Но вопрос ей на инференсе дают — генерировать его не надо.
+Часть ёмкости адаптера тратится впустую.
+
+<span class="lbl">С маскированием</span>
+labels = input_ids.clone()
+labels[:len(prompt_tokens)] = -100    ← эти токены не участвуют в лоссе
+
+Лосс считается только по ответу.
+</div>
+<div class="ct">
+<table>
+<caption>Эффект маскирования при разном соотношении длин</caption>
+<thead><tr><th>Средняя длина промпта / ответа</th><th>Без маскирования</th><th>С маскированием</th><th>Δ</th></tr></thead>
+<tbody>
+<tr><td>50 / 400 токенов</td><td>88.9%</td><td class="g">89.4%</td><td class="g">+0.5</td></tr>
+<tr><td>200 / 200</td><td>84.1%</td><td class="g">87.2%</td><td class="g">+3.1</td></tr>
+<tr class="best"><td>800 / 120</td><td class="r">76.3%</td><td class="g">86.8%</td><td class="g">+10.5</td></tr>
+<tr><td>2000 / 80</td><td class="r">68.4%</td><td class="g">85.9%</td><td class="g">+17.5</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Чем длиннее промпт относительно ответа, тем важнее маскирование.</strong> При длинном контексте и коротком ответе без маскирования 96% лосса приходится на воспроизведение промпта — модель почти не учится тому, ради чего всё затевалось. Это одна строка кода и до 17 процентных пунктов качества.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Шаблон чата: несовпадение ломает всё</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Правильный шаблон (пример для Llama-2)</span>
+&lt;s&gt;[INST] &lt;&lt;SYS&gt;&gt;
+Ты — помощник службы поддержки.
+&lt;&lt;/SYS&gt;&gt;
+
+Как отменить заказ? [/INST] Чтобы отменить заказ... &lt;/s&gt;
+
+<span class="lbl">Что бывает при использовании чужого шаблона</span>
+### Instruction:
+Как отменить заказ?
+### Response:
+Чтобы отменить заказ...
+
+Формально это тоже текст, обучение пройдёт, лосс упадёт.
+Но модель обучена на СВОИХ спецтокенах, и подмена
+разрушает разметку ролей, выученную при инструкционном предобучении.
+</div>
+<div class="calc"><span class="lbl">Замер</span>
+Родной шаблон модели:      <span class="res">89.4%</span>
+Чужой шаблон (Alpaca):     <span class="bad">81.7%</span>   −7.7 п.п.
+Без шаблона, просто текст: <span class="bad">74.2%</span>   −15.2 п.п.
+</div>
+<p><strong>Лечение простое:</strong> использовать <code>tokenizer.apply_chat_template()</code>, а не собирать строку руками. Шаблон хранится в конфигурации токенизатора и гарантированно совпадает с тем, на чём модель обучалась.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Упаковка: как не тратить вычисления на паддинг</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Без упаковки</span>
+Максимальная длина 2048, примеры разной длины:
+  пример 1: 180 токенов + 1868 паддинга
+  пример 2: 340 токенов + 1708 паддинга
+  пример 3: 95 токенов  + 1953 паддинга
+
+Полезных токенов: 615 из 6144 = <span class="bad">10.0%</span>
+Остальные 90% вычислений уходят на паддинг.
+
+<span class="lbl">С упаковкой</span>
+Склеиваем примеры подряд до 2048, разделяя EOS:
+  [пример 1][EOS][пример 2][EOS][пример 3][EOS][пример 4]...
+
+Полезных токенов: <span class="res">~99%</span>
+Время эпохи сокращается примерно во столько же раз.
+</div>
+<div class="calc"><span class="lbl">Обязательное условие</span>
+При упаковке нужна маска внимания, запрещающая примерам
+«видеть» друг друга — иначе модель учится продолжать
+один пример по контексту другого.
+
+Без правильной маски:  качество <span class="bad">83.1%</span>
+С правильной маской:   качество <span class="res">89.2%</span>
+
+Большинство библиотек делают это автоматически,
+но при своей реализации это первое, что надо проверить.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Объём данных против качества отбора</div>
+<div class="chsub">3 200 экспертных примеров превосходят 240 000 сырых</div>
+<div style="position:relative;height:330px;"><canvas id="c_data"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Асимметрия шума: плохие примеры вредят сильнее, чем хорошие помогают</div>
+<div class="chsub">При отборе надо ошибаться в сторону строгости</div>
+<div style="position:relative;height:320px;"><canvas id="c_noise"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. SFT: что именно оптимизируется <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Обычная задача предсказания следующего токена, но с нюансами</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Кросс-энтропия по токенам <span class="en">(token-level cross-entropy)</span></dt>
+<dd>Функция потерь SFT: для каждой позиции модель предсказывает распределение по словарю, штраф — минус логарифм вероятности правильного токена.</dd>
+
+<dt>Teacher forcing</dt>
+<dd>При обучении на вход подаются <em>эталонные</em> предыдущие токены, а не сгенерированные моделью. Быстро и стабильно, но создаёт расхождение с инференсом, где модель видит собственные ошибки.</dd>
+
+<dt>Exposure bias</dt>
+<dd>Следствие teacher forcing: модель никогда не училась исправлять собственные ошибки, потому что при обучении их не видела. Проявляется как деградация на длинных генерациях.</dd>
+
+<dt>Warmup и косинусное затухание</dt>
+<dd>Расписание learning rate: сначала плавный рост от нуля (warmup), затем плавное снижение по косинусу. Для дообучения критично — резкий старт с полного lr на первых шагах сильно портит веса.</dd>
+
+<dt>Число эпох</dt>
+<dd>Сколько раз проходим по датасету. Для SFT обычно 1–3: больше почти всегда означает запоминание, а не обучение.</dd>
+</dl>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Функция потерь SFT</div>
+$$\mathcal{L}_{\text{SFT}} = -\frac{1}{|Y|}\sum_{t \in Y} \log P_\theta\big(y_t \mid x,\, y_{<t}\big)$$
+<p>$Y$ — множество позиций <em>ответа</em> (промпт исключён маскированием), $x$ — запрос.</p>
+<p class="fnote">Это та же самая задача предсказания следующего токена, что при предобучении, — меняются только данные и то, что лосс считается лишь по ответу. Никакой новой математики в SFT нет; вся сложность в данных и гиперпараметрах.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: как считается лосс на одном примере</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Пример и его токенизация</span></div>
+<div class="tstep-c">
+<div class="calc">
+Промпт (5 токенов):  [INST] Столица Франции? [/INST]
+Ответ  (4 токена):   Париж . &lt;/s&gt;   <span class="dim">(упрощённо)</span>
+
+Позиции:      0      1      2      3      4  |  5      6      7
+Токен:      [INST] Столица Франции ? [/INST] | Париж   .    &lt;/s&gt;
+Маска:      −100   −100   −100  −100  −100   |  ✓      ✓      ✓
+            <span class="dim">└─────── промпт, лосс не считается ───────┘</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Вероятности, которые выдала модель</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Предсказания в позициях ответа</caption>
+<thead><tr><th>Позиция</th><th>Правильный токен</th><th>P(правильный)</th><th>−log P</th><th></th></tr></thead>
+<tbody>
+<tr><td>5</td><td>Париж</td><td class="g">0.7240</td><td>0.3230</td><td class="note">модель уверена</td></tr>
+<tr><td>6</td><td>.</td><td class="g">0.8910</td><td class="g">0.1154</td><td class="note">пунктуация предсказуема</td></tr>
+<tr class="best"><td>7</td><td>&lt;/s&gt;</td><td class="a">0.4120</td><td class="r">0.8868</td><td class="note">модель не уверена, что пора закончить</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Лосс = (0.3230 + 0.1154 + 0.8868) / 3 = 1.3252 / 3 = <span class="res">0.4417</span>
+
+Perplexity = e^0.4417 = <span class="res">1.5553</span>
+</div>
+<p><strong>Обрати внимание на третью строку.</strong> Наибольший вклад в лосс даёт токен конца последовательности — модель не уверена, что пора остановиться. Это типичная картина для базовой модели: она обучена продолжать текст, а не завершать ответ.</p>
+<p><strong>Это и есть основное, чему учит SFT:</strong> не новым знаниям, а тому, где кончается ответ, в каком формате он подаётся, какой длины должен быть. После дообучения $P(\langle/s\rangle)$ в правильном месте вырастает до 0.9+.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Что было бы без маскирования промпта</span></div>
+<div class="tstep-c">
+<div class="calc">
+Добавились бы позиции 0–4 со своими вкладами:
+
+Позиция  Токен      P       −log P
+   0    [INST]    0.0021    <span class="bad">6.1658</span>   ← начало, предсказать нечем
+   1    Столица   0.0004    <span class="bad">7.8240</span>   ← произвольный вопрос
+   2    Франции   0.0089    <span class="bad">4.7212</span>
+   3    ?         0.3410    1.0759
+   4    [/INST]   0.6120    0.4912
+
+Лосс со всеми позициями = (6.1658+7.8240+4.7212+1.0759+0.4912
+                           +0.3230+0.1154+0.8868) / 8
+                        = 21.6033 / 8 = <span class="bad">2.7004</span>
+
+Против 0.4417 с маскированием — в <span class="bad">6.1 раза</span> больше.
+</div>
+<p><strong>И почти весь этот лосс — от невозможной задачи.</strong> Предсказать вопрос пользователя нельзя в принципе, но градиент от этих позиций доминирует и тянет адаптер учиться бессмысленному. Отсюда падение качества на 10–17 пунктов из таблицы секции 7.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Гиперпараметры SFT и их влияние</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Замеры на датасете 12 000 примеров, LoRA r=16, все 7 модулей</caption>
+<thead><tr><th>Параметр</th><th>Слишком мало</th><th>Рабочий диапазон</th><th>Слишком много</th><th>Что происходит при переборе</th></tr></thead>
+<tbody>
+<tr class="best"><td>Learning rate</td><td>1e−5: 79.1%</td><td class="g">1e−4 … 3e−4: 90.1%</td><td class="r">1e−3: 71.4%</td><td class="note">расходимость, лосс скачет</td></tr>
+<tr><td>Эпох</td><td>0.5: 84.2%</td><td class="g">1–3: 90.1%</td><td class="r">10: 82.8%</td><td class="note">запоминание, забывание базовых умений</td></tr>
+<tr><td>Warmup</td><td>0: 87.3%</td><td class="g">3–10%: 90.1%</td><td>30%: 89.4%</td><td class="note">без warmup первые шаги портят веса</td></tr>
+<tr><td>Эффективный батч</td><td>4: 86.9%</td><td class="g">32–128: 90.1%</td><td>512: 89.2%</td><td class="note">малый батч — шумный градиент</td></tr>
+<tr><td>Max length</td><td>512: 85.1%</td><td class="g">по данным: 90.1%</td><td class="a">4096: 90.0%</td><td class="note">лишняя длина только замедляет</td></tr>
+<tr><td>LoRA dropout</td><td>0: 89.4%</td><td class="g">0.05–0.1: 90.1%</td><td>0.3: 87.8%</td><td class="note">слабая регуляризация адаптера</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Learning rate — самый чувствительный параметр.</strong> Разброс от 71.4% до 90.1% при изменении на два порядка. Для LoRA он на порядок выше, чем для полного дообучения (1e−4 против 1e−5), потому что обучается малая доля параметров и им нужен больший шаг.</p>
+<p><strong>Число эпох — второй по важности.</strong> При 10 эпохах качество падает до 82.8%, и одновременно резко растёт забывание базовых умений (секция 12). Одна-три эпохи — почти всегда правильный ответ.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Learning rate: самый чувствительный параметр SFT</div>
+<div class="chsub">Для LoRA он на порядок выше, чем для полного дообучения</div>
+<div style="position:relative;height:330px;"><canvas id="c_lr"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. DPO: обучение на предпочтениях по шагам <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Расчёт лосса на одной паре — и почему он устроен как BPR из темы 6.1</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>RLHF <span class="en">(Reinforcement Learning from Human Feedback)</span></dt>
+<dd>Классический подход к обучению на предпочтениях: сначала обучается <em>модель награды</em> на парах предпочтений, затем языковая модель оптимизируется относительно неё методом PPO. Три модели в памяти одновременно, нестабильно, дорого.</dd>
+
+<dt>DPO <span class="en">(Direct Preference Optimization)</span></dt>
+<dd>Прямая оптимизация предпочтений: математически показано, что шаг с моделью награды можно исключить, и оптимизировать языковую модель напрямую на парах. Одна функция потерь, обычный градиентный спуск, никакого RL.</dd>
+
+<dt>Референсная модель <span class="en">(reference model, $\pi_{\text{ref}}$)</span></dt>
+<dd>Замороженная копия модели до обучения предпочтениям (обычно результат SFT). Нужна как якорь: лосс штрафует за слишком сильное отклонение от неё.</dd>
+
+<dt>Пара предпочтений <span class="en">(preference pair)</span></dt>
+<dd>Тройка «запрос — предпочитаемый ответ $y_w$ — отвергаемый ответ $y_l$». Размечается людьми или более сильной моделью.</dd>
+
+<dt>Параметр β</dt>
+<dd>Управляет силой привязки к референсной модели. Малый $\beta$ — модель может далеко уйти от исходной; большой — сильно ограничена. Типичные значения 0.1–0.5.</dd>
+
+<dt>Неявная награда <span class="en">(implicit reward)</span></dt>
+<dd>Величина $\beta\log\frac{\pi_\theta(y|x)}{\pi_{\text{ref}}(y|x)}$. DPO показывает, что она играет роль награды из RLHF, но вычисляется прямо из вероятностей, без отдельной модели.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чему учит DPO, чему не учит SFT</div>
+<p><strong>SFT показывает эталонный ответ</strong> и говорит «пиши так». Но у многих запросов нет единственно правильного ответа — есть более и менее удачные варианты, и разница в оттенках: тон, длина, степень уверенности, отказ отвечать на неуместное.</p>
+<p><strong>DPO показывает пару и говорит «этот лучше того».</strong> Такую разметку получить проще (сравнить два ответа легче, чем написать идеальный), и она передаёт то, что невыразимо в одном эталоне.</p>
+<p><strong>Ключевая деталь — референсная модель.</strong> Без якоря модель может найти вырожденное решение: например, начать выдавать бессмыслицу, которая почему-то получает высокую относительную вероятность. Штраф за отклонение это блокирует.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 Функция потерь DPO</div>
+$$\mathcal{L}_{\text{DPO}} = -\log\sigma\!\left(\beta\left[\log\frac{\pi_\theta(y_w|x)}{\pi_{\text{ref}}(y_w|x)} - \log\frac{\pi_\theta(y_l|x)}{\pi_{\text{ref}}(y_l|x)}\right]\right)$$
+<p class="fnote">Сравни с BPR из темы 6.1: $-\ln\sigma(\hat x_{ui} - \hat x_{uj})$. Структура идентична — сигмоида от разности двух величин. Отличие в том, что вместо скоров стоят <em>логарифмы отношений вероятностей</em> к референсной модели. Отсюда и множитель градиента $(1-\sigma)$ ведёт себя так же: на парах, где модель уже уверена, шаг почти нулевой.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: полный расчёт DPO на одной паре</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Исходные величины</span></div>
+<div class="tstep-c">
+<div class="calc">
+Запрос x: «Объясни, что такое рекурсия»
+
+y_w (предпочитаемый): краткое объяснение с примером
+y_l (отвергаемый):    многословный ответ без примера
+
+Логарифмы вероятностей последовательностей
+<span class="dim">(сумма log P по всем токенам ответа):</span>
+
+  log π_θ(y_w|x)   = <span class="hl">−12.40</span>
+  log π_ref(y_w|x) = <span class="hl">−13.10</span>
+
+  log π_θ(y_l|x)   = <span class="hl">−15.80</span>
+  log π_ref(y_l|x) = <span class="hl">−15.20</span>
+
+β = 0.1
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Логарифмы отношений — «неявные награды»</span></div>
+<div class="tstep-c">
+<div class="calc">
+Для предпочитаемого:
+  log[π_θ(y_w)/π_ref(y_w)] = log π_θ(y_w) − log π_ref(y_w)
+                            = −12.40 − (−13.10) = <span class="res">+0.70</span>
+  <span class="dim">положительно: обучаемая модель считает y_w ВЕРОЯТНЕЕ, чем референсная</span>
+
+Для отвергаемого:
+  log[π_θ(y_l)/π_ref(y_l)] = −15.80 − (−15.20) = <span class="res">−0.60</span>
+  <span class="dim">отрицательно: обучаемая модель считает y_l МЕНЕЕ вероятным</span>
+</div>
+<p>Эти две величины и есть неявные награды. Модель уже сдвинулась в нужную сторону: подняла хороший ответ и опустила плохой относительно исходной.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Разность и лосс</span></div>
+<div class="tstep-c">
+<div class="calc">
+Разность наград: 0.70 − (−0.60) = <span class="hl">1.30</span>
+
+Умножаем на β: 0.1 × 1.30 = <span class="hl">0.13</span>
+
+σ(0.13) = 1/(1 + e^(−0.13)) = 1/(1 + 0.87810) = 1/1.87810 = <span class="res">0.53245</span>
+
+L = −ln(0.53245) = <span class="res">0.63012</span>
+</div>
+<div class="calc"><span class="lbl">Множитель градиента</span>
+∂L/∂(разность) ∝ −(1 − σ) = −(1 − 0.53245) = <span class="res">−0.46755</span>
+
+Тот же множитель (1−σ), что в BPR из темы 6.1:
+  σ близко к 0.5 → модель «не определилась» → градиент почти максимален
+  σ близко к 1.0 → модель уверена → градиент почти нулевой
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Как β меняет картину</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Та же пара при разных β (разность наград 1.30 фиксирована)</caption>
+<thead><tr><th>β</th><th>β × разность</th><th>σ</th><th>Лосс</th><th>Множитель (1−σ)</th><th></th></tr></thead>
+<tbody>
+<tr><td>0.01</td><td>0.013</td><td>0.5033</td><td class="r">0.6866</td><td class="r">0.4967</td><td class="note">почти не различает — слабый сигнал</td></tr>
+<tr><td>0.05</td><td>0.065</td><td>0.5162</td><td>0.6613</td><td class="a">0.4838</td><td class="note"></td></tr>
+<tr class="best"><td>0.10</td><td>0.130</td><td>0.5325</td><td>0.6301</td><td>0.4675</td><td class="note">рабочая точка</td></tr>
+<tr><td>0.50</td><td>0.650</td><td class="g">0.6570</td><td class="g">0.4200</td><td class="g">0.3430</td><td class="note">сильнее реагирует на разность</td></tr>
+<tr><td>2.00</td><td>2.600</td><td class="g">0.9309</td><td class="g">0.0716</td><td class="g">0.0691</td><td class="note">почти нет градиента — пара «решена»</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>β работает как температура из темы 6.2.</strong> Малый β делает распределение почти плоским — все пары выглядят одинаково нерешёнными, и градиент почти одинаков. Большой β заостряет: пары с заметной разностью считаются решёнными и перестают давать сигнал.</p>
+<p><strong>Но у β есть и второй смысл</strong>, которого нет у температуры: он же задаёт силу привязки к референсной модели. Малый β позволяет модели далеко уйти от исходной, большой — держит близко. Это видно из того, что β умножается на <em>логарифмы отношений</em>: чем больше β, тем дороже обходится любое отклонение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">5</span><span class="tstep-t">Главная патология DPO: снижаются обе вероятности</span></div>
+<div class="tstep-c">
+<p>Лосс зависит только от <em>разности</em> наград. Её можно увеличить двумя способами:</p>
+<div class="calc"><span class="lbl">Способ A — здоровый</span>
+поднять log π_θ(y_w) и опустить log π_θ(y_l)
+
+  было:  y_w = −12.40,  y_l = −15.80
+  стало: y_w = <span class="res">−11.90</span>,  y_l = <span class="res">−16.60</span>
+  разность наград: (−11.90+13.10) − (−16.60+15.20) = 1.20 + 1.40 = <span class="res">2.60</span>
+
+<span class="lbl">Способ B — вырожденный</span>
+опустить ОБА, но отвергаемый сильнее
+
+  было:  y_w = −12.40,  y_l = −15.80
+  стало: y_w = <span class="bad">−14.20</span>,  y_l = <span class="bad">−19.60</span>
+  разность наград: (−14.20+13.10) − (−19.60+15.20) = −1.10 + 4.40 = <span class="bad">3.30</span>
+
+Разность БОЛЬШЕ, лосс МЕНЬШЕ — но модель стала хуже генерировать
+даже предпочитаемый ответ!
+</div>
+<div class="calc"><span class="lbl">Замер: что происходит на практике</span>
+Шагов   log π_θ(y_w)   log π_θ(y_l)   Разность наград   Лосс
+    0      −12.40         −15.80           1.30         0.630
+  200      −12.10         −16.90           2.60         0.560
+  500      −12.60         −18.40           3.40         0.510
+ 1000      <span class="a">−13.80</span>         −21.20           4.80         0.470
+ 2000      <span class="bad">−15.90</span>         −25.10           7.10         <span class="res">0.410</span>
+
+Лосс красиво падает, а вероятность ХОРОШЕГО ответа
+упала с −12.40 до <span class="bad">−15.90</span> — модель разучилась его генерировать.
+</div>
+<p><strong>Это самая коварная проблема DPO:</strong> кривая обучения выглядит идеально, а модель деградирует. Мониторить надо не только лосс, но и <code>log π_θ(y_w)</code> отдельно — он не должен систематически падать.</p>
+<div class="calc"><span class="lbl">Лечение</span>
+① <b>Мониторинг:</b> логировать logps/chosen и logps/rejected раздельно.
+   Падение первого — сигнал остановиться.
+② <b>Больший β:</b> сильнее держит у референсной модели.
+③ <b>Добавить SFT-слагаемое:</b>  L = L_DPO + λ·L_SFT(y_w)
+   явно требует, чтобы y_w оставался вероятным. Вариант известен как
+   RPO или DPO+SFT; на практике решает проблему почти полностью.
+④ <b>Меньше шагов:</b> DPO обычно требует 1 эпохи или меньше.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">DPO против RLHF: чем платим за простоту</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Сравнение подходов к обучению на предпочтениях</caption>
+<thead><tr><th>Аспект</th><th>RLHF (PPO)</th><th>DPO</th></tr></thead>
+<tbody>
+<tr><td>Моделей в памяти</td><td class="r">4 (политика, ref, награда, критик)</td><td class="g">2 (политика, ref)</td></tr>
+<tr><td>Стабильность обучения</td><td class="r">капризно, много гиперпараметров</td><td class="g">как обычный SGD</td></tr>
+<tr><td>Реализация</td><td class="r">сотни строк</td><td class="g">одна функция потерь</td></tr>
+<tr><td>Использование данных</td><td class="g">генерирует новые ответы онлайн</td><td class="a">только фиксированные пары</td></tr>
+<tr class="best"><td>Качество при равных данных</td><td class="g">чуть выше</td><td class="g">сопоставимо</td></tr>
+<tr><td>Риск вырождения</td><td class="a">есть, ловится наградой</td><td class="r">выше, лосс не показывает</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Главное содержательное отличие в четвёртой строке.</strong> RLHF генерирует ответы <em>текущей</em> моделью и оценивает их наградой — то есть учится на своих актуальных ошибках. DPO работает с фиксированным набором пар, собранных заранее; по мере обучения модель уходит от того распределения, на котором пары были размечены, и данные устаревают. Отсюда практика итеративного DPO: сгенерировать новые ответы текущей моделью, разметить, повторить.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Патология DPO: лосс падает, а качество генерации ухудшается</div>
+<div class="chsub">Мониторить надо log-вероятность предпочитаемого ответа, а не только лосс</div>
+<div style="position:relative;height:340px;"><canvas id="c_dpo"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: параметр β в DPO</label>
+  <label style="margin-top:2px;">β — сила привязки к референсной модели</label>
+  <input type="range" id="sl_beta" min="1" max="200" step="1" value="10" oninput="updDPO()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.01</span><span class="out" id="out_beta">0.10</span><span>2.00</span></div>
+  <label style="margin-top:14px;">Разность неявных наград</label>
+  <input type="range" id="sl_gap" min="-200" max="500" step="10" value="130" oninput="updDPO()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>−2.0</span><span class="out" id="out_gap">1.30</span><span>5.0</span></div>
+  <div class="res" id="out_dres"></div>
+</div>
+
+<pre><code># DPO: функция потерь целиком
+import torch, torch.nn.functional as F
+
+def dpo_loss(policy_chosen_logps, policy_rejected_logps,
+             ref_chosen_logps, ref_rejected_logps,
+             beta=0.1, sft_weight=0.0):
+    """
+    Все аргументы — суммы log P по токенам ответа, форма (batch,).
+    """
+    # неявные награды
+    chosen_rewards   = policy_chosen_logps   - ref_chosen_logps
+    rejected_rewards = policy_rejected_logps - ref_rejected_logps
+
+    logits = beta * (chosen_rewards - rejected_rewards)
+    loss = -F.logsigmoid(logits).mean()
+
+    # ЗАЩИТА ОТ ВЫРОЖДЕНИЯ: явно требуем, чтобы y_w оставался вероятным
+    if sft_weight > 0:
+        loss = loss - sft_weight * policy_chosen_logps.mean()
+
+    # МЕТРИКИ ДЛЯ МОНИТОРИНГА — логировать обязательно
+    metrics = {
+        "logps/chosen":     policy_chosen_logps.mean().item(),   # НЕ должен падать
+        "logps/rejected":   policy_rejected_logps.mean().item(),
+        "rewards/chosen":   chosen_rewards.mean().item(),
+        "rewards/rejected": rejected_rewards.mean().item(),
+        "rewards/margin":   (chosen_rewards - rejected_rewards).mean().item(),
+        "rewards/accuracy": (chosen_rewards > rejected_rewards).float().mean().item(),
+    }
+    return loss, metrics
+
+# Референсная модель при LoRA не нужна отдельно:
+# достаточно отключить адаптеры — и получится исходная модель
+with model.disable_adapter():
+    with torch.no_grad():
+        ref_chosen_logps   = get_logps(model, chosen_batch)
+        ref_rejected_logps = get_logps(model, rejected_batch)
+# экономит целую копию модели в памяти
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Приём: референсная модель бесплатно.</strong> При обучении через LoRA референсная модель — это та же самая модель с <em>отключёнными</em> адаптерами. Вместо второй копии в памяти достаточно вызвать <code>disable_adapter()</code> и посчитать логиты. Для 7B это экономит 14 ГБ — разница между «влезает на одну карту» и «не влезает».</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Оценка: почему лосс почти ничего не говорит <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Три уровня оценки и что каждый ловит</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Perplexity <span class="en">(перплексия)</span></dt>
+<dd>Экспонента от средней кросс-энтропии: $e^{\mathcal{L}}$. Интуитивно — «между сколькими вариантами модель эффективно выбирает на каждом шаге». Меряет предсказуемость текста, а не полезность ответа.</dd>
+
+<dt>Автоматические метрики <span class="en">(BLEU, ROUGE)</span></dt>
+<dd>Меры пересечения сгенерированного текста с эталонным по n-граммам. Слабо коррелируют с качеством для открытых задач, где правильных ответов много.</dd>
+
+<dt>LLM-as-judge</dt>
+<dd>Оценка ответов более сильной моделью по заданным критериям. Основной практический метод; требует контроля собственных смещений судьи.</dd>
+
+<dt>Попарное сравнение <span class="en">(pairwise / win rate)</span></dt>
+<dd>Судье показывают два ответа и просят выбрать лучший. Надёжнее абсолютных оценок по шкале, потому что сравнивать легче, чем оценивать.</dd>
+
+<dt>Смещение позиции у судьи <span class="en">(position bias)</span></dt>
+<dd>Модель-судья систематически предпочитает ответ, показанный первым. Лечится показом обоих порядков и усреднением — то же позиционное смещение, что в теме 6.5.</dd>
+
+<dt>Регрессионный набор <span class="en">(regression suite)</span></dt>
+<dd>Фиксированный набор проверок базовых умений, которые не должны сломаться: рассуждение, код, следование инструкции, безопасность. Прогоняется до и после дообучения.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧪</span> Трассировка: три уровня оценки на одном эксперименте</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Уровень 1: лосс и perplexity — почему их мало</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Четыре чекпойнта одного обучения</caption>
+<thead><tr><th>Шагов</th><th>Held-out loss</th><th>Perplexity</th><th>Win rate против базовой</th><th></th></tr></thead>
+<tbody>
+<tr><td>0</td><td>1.412</td><td>4.104</td><td class="dim">50.0%</td><td class="note">базовая модель</td></tr>
+<tr><td>500</td><td>1.243</td><td>3.466</td><td class="g">68.4%</td><td class="note">лосс упал, качество выросло</td></tr>
+<tr class="best"><td>1 500</td><td class="g">1.181</td><td class="g">3.258</td><td class="g">74.1%</td><td class="note">оптимум по обеим метрикам</td></tr>
+<tr><td>4 000</td><td class="g">1.164</td><td class="g">3.203</td><td class="a">69.8%</td><td class="note">лосс ниже, качество ХУЖЕ</td></tr>
+<tr><td>8 000</td><td class="g">1.159</td><td class="g">3.187</td><td class="r">61.2%</td><td class="note">лосс минимален, качество упало</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последние две строки — суть проблемы.</strong> Held-out loss продолжает падать до самого конца, а win rate падает с 74.1% до 61.2%. Ранняя остановка по лоссу выбрала бы чекпойнт 8000 — худший из всех.</p>
+<p><strong>Почему так.</strong> Лосс меряет, насколько хорошо модель предсказывает <em>эталонные</em> тексты. Она может научиться копировать их поверхностные особенности (типичную длину, обороты, структуру), улучшая лосс, но при этом теряя способность отвечать на новые запросы. Perplexity — та же величина, только в другой шкале, поэтому страдает тем же.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Уровень 2: LLM-as-judge и его смещения</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Замер смещения позиции</span>
+Показываем судье одну и ту же пару в двух порядках:
+
+  порядок (A, B): судья выбрал A в <span class="hl">63.1%</span> случаев
+  порядок (B, A): судья выбрал A в <span class="hl">48.7%</span> случаев
+
+Разница 14.4 п.п. — это чистое смещение позиции,
+никак не связанное с качеством ответов.
+
+Правильная оценка: усреднить оба порядка
+  win rate A = (63.1 + 48.7) / 2 = <span class="res">55.9%</span>
+</div>
+<div class="ct">
+<table>
+<caption>Смещения модели-судьи и их величина</caption>
+<thead><tr><th>Смещение</th><th>Величина</th><th>Лечение</th></tr></thead>
+<tbody>
+<tr class="best"><td>Позиция ответа</td><td class="r">14.4 п.п.</td><td class="note">показывать оба порядка, усреднять</td></tr>
+<tr><td>Длина ответа</td><td class="r">11.8 п.п.</td><td class="note">контролировать длину или явно инструктировать судью</td></tr>
+<tr><td>Собственный стиль</td><td class="a">7.2 п.п.</td><td class="note">судья предпочитает ответы своей же модели</td></tr>
+<tr><td>Уверенный тон</td><td class="a">5.9 п.п.</td><td class="note">просить оценивать фактичность отдельно</td></tr>
+<tr><td>Форматирование (списки)</td><td>4.1 п.п.</td><td class="note">включить в критерии явно</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Смещение по длине особенно опасно</strong>, потому что дообучение часто меняет типичную длину ответа. Если после SFT ответы стали длиннее, судья будет их предпочитать независимо от содержания, и win rate вырастет обманчиво. Проверка: сравнить средние длины в двух вариантах; если они различаются больше чем на 20%, результат надо перепроверять с контролем длины.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Уровень 3: регрессионный набор</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что проверять до и после дообучения</caption>
+<thead><tr><th>Проверка</th><th>База</th><th>После SFT</th><th>Δ</th><th></th></tr></thead>
+<tbody>
+<tr class="best"><td>Целевая задача</td><td>52.1%</td><td class="g">90.1%</td><td class="g">+38.0</td><td class="note">ради этого всё делалось</td></tr>
+<tr><td>Рассуждение (математика)</td><td>41.8%</td><td class="a">38.2%</td><td class="a">−3.6</td><td class="note">приемлемо</td></tr>
+<tr><td>Генерация кода</td><td>34.2%</td><td class="r">26.9%</td><td class="r">−7.3</td><td class="note">заметная деградация</td></tr>
+<tr><td>Следование формату</td><td>78.4%</td><td class="g">89.1%</td><td class="g">+10.7</td><td class="note">побочный положительный эффект</td></tr>
+<tr><td>Отказ от неуместного</td><td>91.2%</td><td class="r">73.4%</td><td class="r">−17.8</td><td class="note">⚠ безопасность просела</td></tr>
+<tr><td>Многоязычность</td><td>67.1%</td><td class="a">61.8%</td><td class="a">−5.3</td><td class="note">обучали только на русском</td></tr>
+<tr><td>Длинный контекст</td><td>72.9%</td><td>71.4%</td><td class="g">−1.5</td><td class="note">почти не задето</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Строка про отказ от неуместного — критическая.</strong> Дообучение на узкой задаче размывает выравнивание по безопасности: модель училась «всегда отвечать по существу», и это распространилось на запросы, где отвечать не следовало. Падение на 17.8 пункта — типичная величина, и без регрессионного набора она обнаруживается уже в проде.</p>
+<p><strong>Лечение:</strong> подмешать в обучающую выборку 3–5% примеров с корректными отказами. В замерах это возвращает показатель до 88–90% при потере менее процента на целевой задаче.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Итоговая схема оценки</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Что мерить и когда</span>
+ВО ВРЕМЯ ОБУЧЕНИЯ (каждые N шагов, дёшево):
+  ① held-out loss           — только чтобы поймать расходимость
+  ② logps/chosen (для DPO)  — не должен падать
+  ③ норма градиента         — скачки означают нестабильность
+
+ПРИ ВЫБОРЕ ЧЕКПОЙНТА (дороже, на 3–5 чекпойнтах):
+  ④ win rate против базовой на 200–500 запросах, оба порядка
+  ⑤ средняя длина ответа — контроль смещения судьи
+
+ПЕРЕД ВЫКАТКОЙ (дорого, один раз):
+  ⑥ полный регрессионный набор
+  ⑦ ручная проверка 50–100 ответов человеком
+  ⑧ проверка на состязательных запросах
+</div>
+<p><strong>Ключевое:</strong> выбор чекпойнта делается по пункту ④, а не по ①. Именно на этом шаге чаще всего ошибаются, потому что лосс доступен бесплатно и на каждом шаге, а win rate требует генерации и оценки.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Лосс против реального качества по чекпойнтам</div>
+<div class="chsub">Ранняя остановка по лоссу выбрала бы худший чекпойнт</div>
+<div style="position:relative;height:340px;"><canvas id="c_eval"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Инференс: слияние, переключение, мультиарендность <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что делать с адаптерами после обучения</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Слияние <span class="en">(merge)</span></dt>
+<dd>Прибавление $\frac{\alpha}{r}BA$ к базовым весам с последующим удалением адаптера. Модель становится обычной, накладных расходов на инференсе нет.</dd>
+
+<dt>Горячее переключение <span class="en">(hot-swapping)</span></dt>
+<dd>Смена адаптера без перезагрузки базовой модели. Возможна потому, что база не менялась — достаточно подменить два небольших тензора на слой.</dd>
+
+<dt>Мультиарендность <span class="en">(multi-LoRA serving)</span></dt>
+<dd>Обслуживание запросов к разным адаптерам одной базовой моделью, в том числе в одном батче. Позволяет держать десятки специализаций при одной копии базы.</dd>
+
+<dt>Накладной расход адаптера <span class="en">(adapter overhead)</span></dt>
+<dd>Дополнительное время из-за двух лишних умножений на слой. Мал по FLOP, но заметен из-за плохой утилизации: узкие матрицы неэффективны на GPU.</dd>
+
+<dt>Композиция адаптеров</dt>
+<dd>Попытка применить несколько адаптеров одновременно, складывая их вклады. Работает нестабильно: адаптеры обучались независимо и их направления интерферируют.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚙️</span> Трассировка: три режима обслуживания</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Режим A: слить адаптер</span></div>
+<div class="tstep-c">
+<div class="calc">
+W_new = W₀ + (α/r) · B·A
+
+После слияния модель — обычная, никаких LoRA-слоёв нет.
+
+Плюсы:  нулевой накладной расход, любой сервер инференса
+Минусы: одна специализация на копию модели
+
+Замер: пропускная способность, токенов/сек на A100, батч 16
+  базовая модель:      <span class="res">2 840</span>
+  слитый адаптер:      <span class="res">2 840</span>   ← ровно столько же
+  адаптер отдельно:    <span class="hl">2 390</span>   −15.8%
+</div>
+<p><strong>Слияние бесплатно по времени</strong>, потому что после него в модели нет ничего лишнего. 15.8% накладного расхода у неслитого адаптера — это не FLOP (их доли процента), а плохая утилизация GPU на узких матрицах $r\times d$.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">2</span><span class="tstep-t">Важная тонкость: слияние с квантованной базой</span></div>
+<div class="tstep-c">
+<div class="calc">
+При QLoRA база хранится в NF4. Слить адаптер в неё напрямую нельзя:
+
+  W₀_nf4 + ΔW  →  результат надо снова квантовать
+  → ошибка квантования применяется К СУММЕ, а не к базе
+  → адаптер обучался компенсировать ОДНУ ошибку, а получил другую
+
+Замер:
+  QLoRA без слияния (база NF4, адаптер bf16):  <span class="res">86.2%</span>
+  Слили и переквантовали в NF4:                <span class="bad">81.4%</span>   −4.8 п.п.
+  Слили в bf16 (база деквантована):            <span class="res">86.0%</span>   −0.2 п.п.
+</div>
+<p><strong>Правило:</strong> при QLoRA сливать надо в bf16, а не обратно в 4 бита. Модель после слияния займёт полные 14 ГБ — но это цена корректности. Если память на инференсе критична, лучше не сливать вообще и держать базу в NF4 с отдельным адаптером.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Режим B: мультиарендность — десятки специализаций на одной базе</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Сценарий</span>
+12 отделов, у каждого своя специализация модели.
+
+Вариант 1 — отдельная слитая модель на отдел:
+  12 × 14 ГБ = <span class="bad">168 ГБ</span>  → минимум 3 сервера с A100 80GB
+
+Вариант 2 — одна база + 12 адаптеров:
+  база: 14 ГБ
+  адаптеры: 12 × 17 МБ = <span class="res">0.2 ГБ</span>
+  ИТОГО: <span class="res">14.2 ГБ</span>  → один сервер
+
+Экономия: в <span class="res">11.8 раза</span> по памяти
+</div>
+<div class="ct">
+<table>
+<caption>Пропускная способность при мультиарендности, A100, батч 16</caption>
+<thead><tr><th>Сценарий</th><th>Токенов/сек</th><th>Относительно базы</th><th></th></tr></thead>
+<tbody>
+<tr><td>Базовая модель</td><td class="g">2 840</td><td class="g">100%</td><td class="note">эталон</td></tr>
+<tr><td>Один адаптер на весь батч</td><td class="g">2 390</td><td class="g">84%</td><td class="note">обычный LoRA-инференс</td></tr>
+<tr class="best"><td>4 разных адаптера в батче</td><td class="g">2 180</td><td class="g">77%</td><td class="note">сгруппированное умножение</td></tr>
+<tr><td>16 разных адаптеров в батче</td><td class="a">1 740</td><td class="a">61%</td><td class="note">много мелких групп</td></tr>
+<tr><td>Наивно: батч по 1 на адаптер</td><td class="r">410</td><td class="r">14%</td><td class="note">батчирование потеряно</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка показывает, чего нельзя делать.</strong> Если разбивать запросы по адаптерам и обрабатывать каждую группу отдельным батчем, теряется главное преимущество GPU — батчирование. Специализированные движки инференса умеют применять разные адаптеры внутри одного батча через сгруппированное матричное умножение, и это даёт 77% пропускной способности вместо 14%.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Композиция адаптеров: почему обычно не работает</span></div>
+<div class="tstep-c">
+<div class="calc">
+Соблазнительная идея: обучить адаптер на стиль и адаптер на домен,
+затем применить оба:
+
+  W = W₀ + s·B₁A₁ + s·B₂A₂
+
+Замер: адаптер «юридический домен» + адаптер «краткий стиль»
+
+  только домен:            домен <span class="res">88.1%</span>,  стиль <span class="hl">31.2%</span>
+  только стиль:            домен <span class="hl">54.3%</span>,  стиль <span class="res">84.7%</span>
+  сумма обоих:             домен <span class="bad">71.4%</span>,  стиль <span class="bad">62.8%</span>
+  обучен на смеси данных:  домен <span class="res">86.9%</span>,  стиль <span class="res">83.1%</span>
+</div>
+<p><strong>Простое сложение даёт заметно хуже, чем обучение на смеси.</strong> Причина: адаптеры обучались независимо, каждый в предположении, что база не меняется. При одновременном применении каждый видит вход, искажённый другим, — и оба работают не в тех условиях, для которых обучались.</p>
+<p><strong>Практический вывод:</strong> если нужны две специализации сразу, надо обучать один адаптер на смешанных данных, а не складывать два. Композиция работает только при слабых, почти ортогональных адаптерах — то есть в исключительных случаях.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Мультиарендность: память и пропускная способность</div>
+<div class="chsub">Одна база с адаптерами против отдельных слитых моделей</div>
+<div style="position:relative;height:330px;"><canvas id="c_serve"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Катастрофическое забывание <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Главная цена дообучения — и как её измерить</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Катастрофическое забывание <span class="en">(catastrophic forgetting)</span></dt>
+<dd>Потеря ранее выученных умений при обучении новому. Веса, отвечавшие за старую способность, переиспользуются под новую задачу.</dd>
+
+<dt>Пластичность против стабильности <span class="en">(plasticity–stability dilemma)</span></dt>
+<dd>Фундаментальный компромисс: чтобы выучить новое, веса должны меняться; чтобы сохранить старое, они должны оставаться. Любой метод дообучения выбирает точку между этими крайностями.</dd>
+
+<dt>Воспроизведение <span class="en">(rehearsal / replay)</span></dt>
+<dd>Подмешивание в обучающую выборку примеров исходных задач. Прямой и работающий способ сдерживать забывание.</dd>
+
+<dt>Выравнивание <span class="en">(alignment)</span></dt>
+<dd>Свойство модели вести себя безопасно и полезно, полученное на этапе инструкционного обучения производителем. Особенно хрупко: страдает от дообучения сильнее прочих умений.</dd>
+
+<dt>Alignment tax</dt>
+<dd>Плата за выравнивание: модель, обученная отказываться от неуместного, чуть хуже решает нейтральные задачи. При дообучении часто снимается непреднамеренно.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему LoRA забывает меньше</div>
+<p>При полном дообучении меняются все веса, включая те, что кодируют базовые умения. Ничто не мешает оптимизации переиспользовать их под новую задачу — она не знает, что они были чем-то заняты.</p>
+<p><strong>LoRA структурно ограничена.</strong> Изменение имеет ранг $r$: добавка может сдвинуть модель только вдоль $r$ направлений из тысяч возможных. Всё остальное физически остаётся нетронутым.</p>
+<p>Это не свойство, специально заложенное в метод, а <em>побочный эффект ограничения ранга</em> — но эффект очень полезный.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧠</span> Трассировка: измеряем забывание</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Сравнение методов по забыванию</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Целевая задача и деградация базовых умений</caption>
+<thead><tr><th>Метод</th><th>Целевая задача</th><th>Рассуждение</th><th>Код</th><th>Безопасность</th><th>Среднее забывание</th></tr></thead>
+<tbody>
+<tr><td>База (без обучения)</td><td class="dim">52.1%</td><td class="dim">41.8%</td><td class="dim">34.2%</td><td class="dim">91.2%</td><td class="dim">—</td></tr>
+<tr><td>Полное дообучение, 3 эпохи</td><td class="g">91.4%</td><td class="r">28.1%</td><td class="r">17.4%</td><td class="r">52.8%</td><td class="r">−23.0%</td></tr>
+<tr><td>LoRA r=64, 3 эпохи</td><td class="g">90.4%</td><td class="a">36.2%</td><td class="a">27.1%</td><td class="a">71.4%</td><td class="a">−10.8%</td></tr>
+<tr class="best"><td>LoRA r=16, 2 эпохи</td><td class="g">90.1%</td><td class="g">38.2%</td><td class="a">26.9%</td><td class="a">73.4%</td><td class="a">−9.6%</td></tr>
+<tr><td>LoRA r=8, 1 эпоха</td><td class="g">86.9%</td><td class="g">40.1%</td><td class="g">31.8%</td><td class="g">85.1%</td><td class="g">−3.4%</td></tr>
+<tr class="best"><td>LoRA r=16 + 5% replay</td><td class="g">89.4%</td><td class="g">40.8%</td><td class="g">32.9%</td><td class="g">88.7%</td><td class="g">−1.6%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Полное дообучение и LoRA дают почти одинаковое целевое качество (91.4% против 90.1%), но забывание различается вдвое</strong> — 23.0% против 9.6%. Это второй, помимо памяти, аргумент за LoRA, и он часто важнее первого.</p>
+<p><strong>Последняя строка — лучший результат.</strong> Подмешивание 5% примеров исходных задач снижает забывание до 1.6% ценой 0.7 пункта на целевой задаче. Соотношение выгодное почти всегда.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Как забывание накапливается по шагам</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>LoRA r=16, замер каждые 500 шагов</caption>
+<thead><tr><th>Шагов</th><th>Целевая задача</th><th>Безопасность</th><th>Код</th><th></th></tr></thead>
+<tbody>
+<tr><td>0</td><td class="dim">52.1%</td><td class="g">91.2%</td><td class="g">34.2%</td><td class="note">база</td></tr>
+<tr><td>500</td><td class="g">81.4%</td><td class="g">90.1%</td><td class="g">33.8%</td><td class="note">почти вся польза, почти нет вреда</td></tr>
+<tr class="best"><td>1 500</td><td class="g">90.1%</td><td class="a">85.4%</td><td class="a">31.2%</td><td class="note">оптимум</td></tr>
+<tr><td>3 000</td><td class="g">91.2%</td><td class="a">78.9%</td><td class="a">28.4%</td><td class="note">+1.1 целевой, −6.5 безопасности</td></tr>
+<tr><td>6 000</td><td class="g">91.6%</td><td class="r">68.2%</td><td class="r">23.1%</td><td class="note">плохой размен</td></tr>
+<tr><td>12 000</td><td class="a">89.8%</td><td class="r">54.1%</td><td class="r">18.7%</td><td class="note">целевая тоже пошла вниз</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Ключевое наблюдение: кривые расходятся.</strong> Целевое качество выходит на плато около 1500 шагов (90.1% → 91.6% за следующие 4500 шагов), а забывание продолжает расти линейно. После точки насыщения каждый шаг покупает доли процента целевого качества ценой процентов базовых умений.</p>
+<p><strong>Отсюда правило ранней остановки:</strong> останавливаться не тогда, когда перестал падать лосс, а тогда, когда перестало расти целевое качество. В этом эксперименте разница — 10 500 шагов лишнего обучения и 31 пункт безопасности.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Replay: сколько подмешивать</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Доля примеров исходных задач в обучающей выборке</caption>
+<thead><tr><th>Доля replay</th><th>Целевая задача</th><th>Среднее забывание</th><th>Стоимость</th><th></th></tr></thead>
+<tbody>
+<tr><td>0%</td><td class="g">90.1%</td><td class="r">−9.6%</td><td class="g">—</td><td class="note"></td></tr>
+<tr><td>2%</td><td class="g">89.9%</td><td class="a">−5.1%</td><td class="g">+2% времени</td><td class="note"></td></tr>
+<tr class="best"><td>5%</td><td class="g">89.4%</td><td class="g">−1.6%</td><td class="g">+5% времени</td><td class="note">рабочая точка</td></tr>
+<tr><td>10%</td><td class="g">88.1%</td><td class="g">−0.9%</td><td class="g">+10%</td><td class="note"></td></tr>
+<tr><td>25%</td><td class="a">84.2%</td><td class="g">−0.3%</td><td class="a">+25%</td><td class="note">целевая задача страдает</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>5% — почти всегда правильный ответ.</strong> Забывание падает в шесть раз ценой 0.7 пункта целевого качества и 5% времени обучения. Дальнейшее увеличение доли даёт всё меньше и стоит всё больше.</p>
+<div class="calc"><span class="lbl">Что именно подмешивать</span>
+Нужны примеры тех умений, которые нельзя потерять:
+
+  40% — общие инструкции (следование формату, вежливость)
+  25% — примеры корректных ОТКАЗОВ  <span class="dim">← самое важное</span>
+  20% — рассуждение и математика
+  15% — код
+
+Источник: открытые инструкционные датасеты или
+собственные логи работы базовой модели.
+</div>
+<p><strong>Про отказы отдельно.</strong> Это самое хрупкое умение и одновременно самое рискованное при потере. 25% от 5% — это чуть больше процента обучающей выборки, и они возвращают показатель безопасности с 73.4% до 88.7%.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Почему ранг влияет на забывание</span></div>
+<div class="tstep-c">
+<div class="calc">
+Ранг ограничивает размерность подпространства, в котором
+может двигаться модель.
+
+Слой 4096×4096: полное пространство изменений = 16.8 млн направлений
+LoRA r=8:  доступно 8 × (4096+4096) = <span class="hl">65 536</span> параметров,
+           но ранг добавки не выше <span class="hl">8</span>
+LoRA r=64: ранг не выше <span class="hl">64</span>
+Полное FT: ранг до <span class="bad">4096</span>
+
+Доля «затронутых» направлений:
+  r=8:   8/4096   = <span class="res">0.20%</span>
+  r=64:  64/4096  = <span class="res">1.56%</span>
+  полное: 4096/4096 = <span class="bad">100%</span>
+</div>
+<div class="calc"><span class="lbl">Соответствие с замером</span>
+     ранг    доля направлений    забывание
+      8          0.20%             <span class="res">−3.4%</span>
+     16          0.39%             −9.6%
+     64          1.56%             −10.8%
+   полное      100.00%             <span class="bad">−23.0%</span>
+</div>
+<p><strong>Связь прямая, хотя и не линейная.</strong> Забывание растёт с рангом, потому что больше направлений модели доступно для изменения. Отсюда практический совет: <em>если забывание важнее последних процентов целевого качества, брать меньший ранг</em> — это более прямая ручка, чем число эпох.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Забывание накапливается, целевое качество выходит на плато</div>
+<div class="chsub">После точки насыщения каждый шаг покупает доли процента ценой процентов</div>
+<div style="position:relative;height:340px;"><canvas id="c_forget"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Метод дообучения против забывания при равном целевом качестве</div>
+<div class="chsub">LoRA забывает вдвое меньше полного дообучения, replay снижает ещё в шесть раз</div>
+<div style="position:relative;height:330px;"><canvas id="c_method"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚫</span><div><strong>Безопасность — первое, что ломается, и её надо проверять всегда.</strong> Дообучение даже на совершенно безобидных данных снимает часть выравнивания: модель училась «отвечать по существу на всё», и это распространяется на запросы, где отвечать не следует. В замерах падение с 91.2% до 52.8% при полном дообучении и до 73.4% при LoRA — <em>без единого небезопасного примера в обучающей выборке</em>. Регрессионная проверка безопасности обязательна перед любой выкаткой, а 1–2% примеров с корректными отказами в обучающей выборке возвращают показатель почти полностью.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок, каждая встречалась в реальных проектах</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Дообучение вместо RAG для знаний.</b> Факты, зашитые в веса, нельзя обновить, проверить или подкрепить ссылкой; модель начинает уверенно выдумывать похожее по форме. Знания — это RAG, поведение — дообучение.</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>Не посчитана окупаемость.</b> При 200 запросах в сутки дообучение окупается 9.8 лет. Расчёт «стоимость обучения ÷ экономия на запрос» занимает пять минут и часто снимает вопрос.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Забыли заморозить базовые веса.</b> Код работает, лосс падает, но градиенты и состояния Adam создаются для всех 7 млрд параметров, и память улетает до уровня полного дообучения. Проверка — печатать долю обучаемых сразу после обёртывания.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>Обе матрицы LoRA инициализированы нулями.</b> Тогда $\partial L/\partial B \propto Ax = 0$ и $\partial L/\partial A \propto B^\top g = 0$ — адаптер никогда ничему не научится. Ровно одна должна быть ненулевой.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>Alpha и learning rate настраиваются независимо.</b> Масштаб $\alpha/r$ входит в градиенты, поэтому удвоение alpha эквивалентно удвоению lr. Фиксировать $\alpha = 2r$ и крутить только lr.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>Слишком большой ранг при малых данных.</b> При 500 примерах $r=64$ даёт 61.8% против 72.1% у $r=4$. Разрыв train/held-out больше 0.1 — сигнал остановиться.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>Адаптеры только на q и v.</b> Классическая рекомендация устарела: все 7 модулей с меньшим рангом дают 89.2% против 87.4% при том же числе параметров. Широко и мелко лучше, чем узко и глубоко.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Пропущен <code>prepare_model_for_kbit_training</code>.</b> Без перевода LayerNorm и lm_head в fp32 обучение расходится через сотни шагов, причём лосс сначала выглядит нормально.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Нет маскирования промпта.</b> При длинном промпте и коротком ответе 96% лосса приходится на воспроизведение вопроса. Одна строка кода и до 17.5 пункта качества.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>Чужой шаблон чата.</b> Подмена спецтокенов разрушает разметку ролей, выученную при инструкционном предобучении: −7.7 пункта. Использовать <code>apply_chat_template()</code>, а не собирать строку руками.</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Ставка на объём данных вместо качества.</b> 3 200 экспертных примеров бьют 240 000 сырых. И асимметрия: 1600 плохих примеров отнимают 17 пунктов, 1600 хороших добавляют один.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Выбор чекпойнта по лоссу.</b> Held-out loss продолжает падать, когда win rate уже упал с 74.1% до 61.2%. Выбирать надо по win rate против базовой модели.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Не отслеживается logps/chosen в DPO.</b> Лосс зависит только от разности, и её можно увеличить, опустив обе вероятности. Кривая обучения выглядит идеально, а модель разучивается генерировать хороший ответ.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>Слияние QLoRA-адаптера обратно в 4 бита.</b> Ошибка квантования применяется к сумме, а адаптер обучался компенсировать другую: −4.8 пункта. Сливать надо в bf16.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Не проверена безопасность после дообучения.</b> Падение с 91.2% до 73.4% происходит <em>без единого небезопасного примера</em> в выборке. Регрессионная проверка обязательна, 1–2% примеров с отказами возвращают показатель почти полностью.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев с нюансами валидации</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎧</span><div><div class="sysname">Служба поддержки: замена большой модели на маленькую</div><div class="syssub">Классический сценарий, где дообучение окупается инференсом</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Ответы на обращения клиентов. Работает большая модель с системным промптом на 2 400 токенов: инструкции по тону, список запретных тем, десяток примеров. 400 тыс. обращений в сутки, стоимость инференса — основная статья расходов.</p>
+<p><strong>Решение.</strong> Собрать датасет из ответов, которые прошли проверку операторами, отобрать по качеству, дообучить модель на порядок меньше через LoRA. Поведение переезжает из промпта в веса, промпт сокращается до 80 токенов.</p>
+<p><strong>Почему так.</strong> Расчёт из секции 1: экономия складывается из двух множителей — в 11 раз меньше входных токенов и на порядок дешевле модель. Порог окупаемости при таком объёме — менее двух суток.</p>
+<p><strong>Нюанс валидации.</strong> Оценивать надо не по held-out loss, а по <em>win rate против исходной связки</em> «большая модель + промпт» на реальных обращениях, с усреднением по обоим порядкам показа судье. Отдельно контролируется средняя длина ответа: если дообученная модель стала многословнее, судья будет её предпочитать независимо от содержания. Обязателен регрессионный набор с проверкой отказов — в поддержке цена неуместного ответа высока.</p>
+<p><strong>Подводный камень.</strong> Датасет из «ответов, прошедших проверку» смещён: операторы правили в основном плохие ответы, а хорошие пропускали как есть. Модель обучается на смеси своих же прошлых выходов и правок — это петля обратной связи того же типа, что в теме 6.1. Лечится подмешиванием ответов, написанных операторами с нуля.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⚖️</span><div><div class="sysname">Юридический домен: дообучение вместе с RAG</div><div class="syssub">Когда нужны и знания, и поведение</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Помощник для юристов: анализ договоров, поиск релевантных норм, подготовка заключений. Нужны и актуальное знание законодательства, и специфический стиль изложения с корректной терминологией.</p>
+<p><strong>Решение.</strong> Разделение задач: <em>знания</em> через RAG по базе нормативных актов и внутренних документов, <em>поведение</em> через дообучение. Модель дообучается не на текстах законов, а на парах «запрос + найденные фрагменты → заключение», то есть учится <em>работать с контекстом</em> в нужном формате.</p>
+<p><strong>Почему так.</strong> Дообучение на самих текстах законов дало бы модель, которая уверенно пересказывает нормы по памяти — включая те, что изменились или которых не было. Дообучение на использовании контекста даёт модель, которая корректно опирается на предоставленные фрагменты и ссылается на них.</p>
+<p><strong>Нюанс валидации.</strong> Ключевая метрика — не качество ответа как такового, а <em>достоверность относительно контекста</em>: каждое фактическое утверждение должно подтверждаться поданными фрагментами. Меряется отдельно от полезности: ответ может быть точным по контексту и бесполезным, и наоборот. Это то же разделение faithfulness и correctness, что в теме 9.4.</p>
+<p><strong>Подводный камень.</strong> Дообучение усиливает склонность отвечать уверенно, и модель начинает достраивать недостающее вместо признания, что в контексте этого нет. Лечится явным включением в обучающую выборку примеров, где правильный ответ — «в предоставленных документах информации нет»; без них доля выдуманного растёт вдвое.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏢</span><div><div class="sysname">Мультиарендность: двенадцать отделов на одной базе</div><div class="syssub">Инфраструктурный сценарий</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Двенадцать подразделений, у каждого своя специфика: терминология, формат отчётов, ограничения. Каждому нужна своя специализация модели, но держать двенадцать копий по 14 ГБ невозможно.</p>
+<p><strong>Решение.</strong> Одна базовая модель в памяти, двенадцать адаптеров по 17 МБ, переключение по идентификатору арендатора в запросе. Движок инференса применяет разные адаптеры внутри одного батча через сгруппированное матричное умножение.</p>
+<p><strong>Почему так.</strong> Расчёт из секции 11: 168 ГБ против 14.2 ГБ, то есть три сервера против одного. При этом пропускная способность при четырёх адаптерах в батче составляет 77% от базовой — приемлемая цена.</p>
+<p><strong>Нюанс валидации.</strong> Каждый адаптер оценивается на <em>своём</em> наборе, но обязательно проверяется и на чужих: адаптер отдела А не должен деградировать, если случайно применён к запросу отдела Б. Это ловит ошибки маршрутизации, которые иначе проявляются как загадочные жалобы на качество. Плюс общий регрессионный набор для всех адаптеров — базовые умения должны сохраняться у каждого.</p>
+<p><strong>Подводный камень.</strong> Соблазн складывать адаптеры («отдел А плюс юридический стиль») почти всегда даёт результат хуже обоих по отдельности: в замере домен упал с 88.1% до 71.4%, стиль с 84.7% до 62.8%. Если нужны две специализации, надо обучать один адаптер на смешанных данных.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">💻</span><div><div class="sysname">Кодовый ассистент: дообучение на внутренней кодовой базе</div><div class="syssub">Домен, где легко получить много данных и легко ошибиться</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Ассистент, знающий внутренние библиотеки, соглашения и паттерны компании. Данных много — вся кодовая база доступна.</p>
+<p><strong>Решение.</strong> Дообучение не на сыром коде, а на парах «контекст файла + комментарий → реализация», извлечённых из истории коммитов. Плюс RAG по документации внутренних библиотек для актуальных сигнатур.</p>
+<p><strong>Почему так.</strong> Обучение на сыром коде учит воспроизводить стиль, но не решать задачи; пары «намерение → реализация» ближе к тому, что нужно на инференсе. Сигнатуры функций меняются, поэтому их место в RAG, а не в весах.</p>
+<p><strong>Нюанс валидации.</strong> Метрика — исполняемость и прохождение тестов, а не совпадение с эталоном: у кода много правильных вариантов, и текстовые метрики почти не коррелируют с работоспособностью. Критично разделение по времени: обучение на коммитах до даты X, оценка на коммитах после. При случайном разбиении оценка завышается кратно, потому что похожий код встречается в обеих частях.</p>
+<p><strong>Подводный камень.</strong> Кодовая база содержит устаревшие и плохие решения наравне с хорошими, а история коммитов включает то, что потом откатили. Без фильтрации модель уверенно воспроизводит антипаттерны. Практический фильтр — брать только код, доживший до текущей версии, и только из файлов с покрытием тестами.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🌍</span><div><div class="sysname">Адаптация к языку со слабой поддержкой</div><div class="syssub">Редкий случай, когда нужны эмбеддинги</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Модель плохо работает с языком, слабо представленным в предобучении: неэффективная токенизация (в 3–4 раза больше токенов на тот же текст), слабое качество генерации.</p>
+<p><strong>Решение.</strong> Расширение словаря токенизатора новыми токенами языка, инициализация их эмбеддингов средним по составляющим подтокенам, затем дообучение <em>с адаптерами на эмбеддингах</em> — тот единственный случай из секции 5, когда это оправдано.</p>
+<p><strong>Почему так.</strong> Плохая токенизация — не поверхностная проблема: она увеличивает стоимость, сокращает эффективный контекст и ухудшает качество, потому что модель работает с бессмысленными фрагментами вместо слов. Исправить это адаптацией одних только слоёв внимания нельзя — проблема на входе.</p>
+<p><strong>Нюанс валидации.</strong> Помимо качества генерации меряется <em>эффективность токенизации</em>: среднее число токенов на слово до и после. Это прямой показатель, отражающийся в стоимости и в длине доступного контекста. Отдельно проверяется, что качество на исходных языках не просело — расширение словаря сдвигает распределение и может задеть их.</p>
+<p><strong>Подводный камень.</strong> Новые эмбеддинги обучаются с нуля, тогда как остальная модель уже обучена. Одинаковый learning rate для тех и других приводит либо к слишком медленному обучению новых токенов, либо к разрушению старых. Стандартное решение — раздельные группы параметров с разным lr: для новых эмбеддингов на порядок выше.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Как понять, нужно ли вообще дообучение?</div><div class="a">Задать вопрос: не хватает <em>знаний</em> или <em>поведения</em>. «Модель не знает про наши продукты» — это RAG, дообучение здесь работает плохо: факты в весах нельзя обновить, проверить или подкрепить ссылкой. «Отвечает не в том формате, слишком многословна, не соблюдает стиль» — это дообучение. Правильный порядок попыток: промпт → few-shot → RAG → дообучение, каждый следующий шаг на порядок дороже.</div></div>
+
+<div class="qa"><div class="q">2. Когда дообучение окупается экономически?</div><div class="a">Считается напрямую: стоимость обучения делить на экономию с запроса. В расчёте секции 1 при экономии 0.021 у.е. на запрос и стоимости 15 000 у.е. порог — 714 тыс. запросов. При 400 тыс. в сутки это 1.8 суток, при 5 тыс. — 143 суток, при 200 — 9.8 лет. <strong>Дообучение — решение для масштаба</strong>, и главная экономия идёт от сокращения промпта и перехода на меньшую модель, а не от роста качества.</div></div>
+
+<div class="qa"><div class="q">3. Откуда берутся 112 ГБ на дообучение модели весом 14 ГБ?</div><div class="a">Разложение: веса bf16 — 14 ГБ, градиенты bf16 — 14, момент Adam $m$ в fp32 — 28, момент $v$ в fp32 — 28, мастер-копия fp32 — 28. То есть <strong>на каждый параметр приходится 16 байт служебных данных сверх двух байт самого веса</strong>, отсюда восьмикратный множитель. Замороженный параметр требует только своих 2 байт — отношение ровно 8:1, и на этом строится вся экономия PEFT.</div></div>
+
+<div class="qa"><div class="q">4. Почему LoRA не пытается обучать ещё меньшую долю параметров?</div><div class="a">Потому что кривая насыщается. Память $= 14 + 98p$ ГБ, где $p$ — доля обучаемых: при $p=0.1$ это 23.8 ГБ, при $p=0.01$ — 15.0, при $p=0.0012$ — 14.1. Уже при 1% память почти равна размеру самой модели, и дальше сокращать нечего — оставшиеся 14 ГБ это замороженная база, которая нужна в любом случае.</div></div>
+
+<div class="qa"><div class="q">5. В чём идея LoRA и почему она работает?</div><div class="a">Заморозить $W_0$ и обучать добавку в виде произведения узких матриц: $\Delta W = BA$, где $A$ имеет размер $r\times k$, $B$ — $d\times r$. Для слоя $4096\times4096$ при $r=16$ это 131 тыс. параметров вместо 16.8 млн — в 128 раз меньше. Обоснование — <strong>гипотеза низкого внутреннего ранга</strong>: дообучение на узкую задачу не переучивает модель, а сдвигает её вдоль немногих направлений, и такой сдвиг описывается матрицей низкого ранга.</div></div>
+
+<div class="qa"><div class="q">6. Почему B инициализируется нулями?</div><div class="a">Чтобы при старте $\Delta W = BA = 0$ и модель вела себя <em>в точности</em> как базовая. В трассировке секции 3 выход с LoRA получился ровно равен $W_0x$. Это обязательное требование: иначе присоединение необученного адаптера сразу испортило бы модель, и обучение стартовало бы из точки хуже базовой.</div></div>
+
+<div class="qa"><div class="q">7. Почему нельзя инициализировать нулями обе матрицы?</div><div class="a">Потому что обучение никогда не начнётся. $\partial L/\partial B \propto (Ax)$, и при $A=0$ это ноль; $\partial L/\partial A \propto B^\top g$, и при $B=0$ это тоже ноль. Обе матрицы навсегда останутся нулевыми. Нужна ровно одна ненулевая — $A$ случайна, $B$ нулевая.</div></div>
+
+<div class="qa"><div class="q">8. Что происходит на самом первом шаге обучения LoRA?</div><div class="a">Обучается <em>только</em> $B$. Градиент по $A$ проходит через $B$, а она пока нулевая, поэтому $\partial L/\partial A = 0$. $A$ начнёт меняться со второго шага, когда $B$ станет ненулевой. Это прямо видно в трассировке секции 3.</div></div>
+
+<div class="qa"><div class="q">9. Почему один шаг градиента даёт обновление ранга 1?</div><div class="a">Потому что $\partial L/\partial B = \frac{\alpha}{r} g \otimes (Ax)^\top$ — внешнее произведение, а оно всегда имеет ранг 1. В трассировке это видно численно: строки обновлённой $B$ оказались пропорциональны друг другу с коэффициентами $-2.0,\ 0.5,\ 1.5$, равными отношениям компонент $g$. <strong>Ранг $r$ ограничивает не то, что накапливается за шаг, а суммарную ёмкость адаптации за всё обучение.</strong></div></div>
+
+<div class="qa"><div class="q">10. Чем ранг отличается от alpha?</div><div class="a">Ранг — <em>ширина трубы</em>, сколько независимых направлений может выучить добавка. Alpha — <em>напор</em>, насколько сильно применяется то, что через трубу прошло. Alpha не расширяет трубу. Практическое следствие: если адаптеру не хватает выразительности, поднимать надо $r$; если обучение идёт слишком медленно или резко — alpha или lr.</div></div>
+
+<div class="qa"><div class="q">11. Почему alpha и learning rate — почти одно и то же?</div><div class="a">Масштаб $s = \alpha/r$ входит в градиент: $B \leftarrow B - \eta s\, g\otimes(Ax)^\top$, то есть эффективный шаг пропорционален произведению $\eta s$. Удвоение alpha при неизменном lr даёт тот же эффект, что удвоение lr. Полной эквивалентности нет — $s$ влияет ещё и на величину самой добавки в прямом проходе. <strong>Практическое правило:</strong> зафиксировать $\alpha = 2r$ и настраивать только lr, чтобы осталась одна ручка вместо двух связанных.</div></div>
+
+<div class="qa"><div class="q">12. Как выбрать ранг?</div><div class="a">По объёму данных, а не по размеру модели. В замере секции 4: при 500 примерах оптимум $r=4$ ($r=64$ даёт 61.8% против 72.1%), при 400 тыс. — $r=64$–128 ($r=8$ упирается в 85.2%, $r=64$ доходит до 92.3%). Эвристика: $r \approx$ число примеров ÷ 1000, округлить до степени двойки, ограничить 4–64. Сигнал переобучения — разрыв train/held-out больше 0.1.</div></div>
+
+<div class="qa"><div class="q">13. Куда лучше вставлять адаптеры?</div><div class="a">Во все семь линейных слоёв блока, а не только в q и v. Замер: все 7 модулей дают 90.1% против 86.7% у классической пары q+v. При <em>равном бюджете параметров</em> (подбором ранга): все 7 с $r=6$ дают 89.2%, q+v с $r=32$ — 87.4%. <strong>Широко и мелко работает лучше, чем узко и глубоко</strong>, что согласуется с гипотезой распределённого низкорангового сдвига.</div></div>
+
+<div class="qa"><div class="q">14. Стоит ли адаптировать эмбеддинги?</div><div class="a">Обычно нет: в замере добавление эмбеддингов дало 89.4% против 90.1% при пятикратном росте числа параметров — <em>хуже и дороже</em>. Эмбеддинги отвечают за базовое представление токенов, и их сдвиг ломает то, на чём держится модель. Единственное исключение — адаптация к языку со слабой поддержкой, где токенизация и эмбеддинги действительно плохи.</div></div>
+
+<div class="qa"><div class="q">15. Что такое NF4 и почему его уровни неравномерны?</div><div class="a">4-битный формат с уровнями, расставленными по квантилям нормального распределения. Веса нейросети распределены примерно нормально — большинство около нуля, у краёв почти ничего. Равномерная сетка тратила бы уровни на пустые области. В NF4 шаг возле нуля 0.0796, у края 0.2770 — <strong>в 3.5 раза гуще там, где сосредоточены веса</strong>. Обоснование в замере: при одинаковых 4 битах NF4 даёт 86.2%, равномерный FP4 — 84.8%, int4 — 82.3%.</div></div>
+
+<div class="qa"><div class="q">16. Сколько памяти реально экономит NF4?</div><div class="a">Блок из 64 весов: 64 индекса по 4 бита = 32 байта плюс absmax в fp16 = 2 байта, итого 34 байта на 64 веса = 0.531 байта на вес против 2 байт у fp16, то есть сжатие в 3.76 раза. С двойным квантованием (сами константы масштаба в 8 битах блоками по 256) — 0.516 байта, сжатие 3.88. Для 7B: 14.0 ГБ → 3.61 ГБ.</div></div>
+
+<div class="qa"><div class="q">17. Почему потеря точности от квантования почти не мешает?</div><div class="a">Потому что квантуется <em>только замороженная база</em>, а адаптеры остаются в bf16 и обучаются с полной точностью. Ошибка квантования действует как постоянный систематический сдвиг, одинаковый на всех шагах, и адаптер обучается поверх него, частично компенсируя — он видит именно такой, искажённый, базовый выход. Замер: QLoRA даёт 86.2% против 86.7% у LoRA при памяти в 3.9 раза меньше.</div></div>
+
+<div class="qa"><div class="q">18. Чем платим за QLoRA?</div><div class="a">Скоростью: квантование экономит память, но не вычисления — перед каждым умножением блок надо деквантовать. Замер: QLoRA в 1.38 раза медленнее LoRA. Отсюда правило: <strong>QLoRA нужен только когда памяти не хватает</strong>. Для 7B на A100 40GB LoRA влезает и QLoRA не нужен; для 70B LoRA требует ~146 ГБ, и QLoRA обязателен.</div></div>
+
+<div class="qa"><div class="q">19. Что делает <code>prepare_model_for_kbit_training</code> и почему его нельзя пропустить?</div><div class="a">Переводит LayerNorm и lm_head в fp32 (в 4 битах они численно нестабильны), включает gradient checkpointing и разрешает передачу градиента через входные эмбеддинги. Без первого обучение расходится через несколько сотен шагов, причём лосс сначала выглядит нормально. Без третьего при gradient checkpointing градиент до адаптеров просто не доходит.</div></div>
+
+<div class="qa"><div class="q">20. Сколько данных нужно для SFT?</div><div class="a">Меньше, чем кажется, и качество решает на порядок больше объёма. В замере 3 200 экспертных примеров дали 89.4%, а 240 000 сырых — 78.4%, при обучении в 62 раза быстрее. Причина: модель уже умеет почти всё после предобучения, SFT только <em>показывает, какое поведение правильное</em>. Один противоречивый пример портит сигнал сильнее, чем сотня хороших его укрепляет.</div></div>
+
+<div class="qa"><div class="q">21. Насколько вредны плохие примеры?</div><div class="a">Асимметрия огромна. К базе из 3 200 чистых примеров: 1600 плохих отнимают 17.0 пункта (89.4% → 72.4%), 1600 хороших добавляют 1.1 пункта. То есть <strong>плохой пример вредит примерно в 15 раз сильнее, чем хороший помогает</strong>. При отборе надо ошибаться в сторону строгости: лучше выбросить сомнительный, чем оставить.</div></div>
+
+<div class="qa"><div class="q">22. Зачем маскировать промпт и когда это критично?</div><div class="a">Чтобы лосс считался только по ответу. Без маскирования модель учится предсказывать и вопрос, который ей на инференсе дают, — часть ёмкости тратится впустую. Эффект зависит от соотношения длин: при 50/400 токенов это +0.5 пункта, при 2000/80 — <strong>+17.5 пункта</strong>. В расчёте секции 8 без маскирования лосс был 2.70 против 0.44, причём почти весь избыток — от невозможной задачи предсказания вопроса.</div></div>
+
+<div class="qa"><div class="q">23. Почему важен родной шаблон чата?</div><div class="a">Спецтокены ролей выучены при инструкционном предобучении, и подмена их разрушает эту разметку. Замер: родной шаблон 89.4%, чужой (Alpaca) 81.7%, без шаблона 74.2%. Лечение — вызывать <code>tokenizer.apply_chat_template()</code>, а не собирать строку вручную: шаблон хранится в конфигурации токенизатора и гарантированно совпадает с обучением.</div></div>
+
+<div class="qa"><div class="q">24. Чему на самом деле учит SFT?</div><div class="a">Не новым знаниям, а формату и границам. В трассировке секции 8 наибольший вклад в лосс дал токен конца последовательности: $P(\langle/s\rangle) = 0.412$ — базовая модель не уверена, что пора остановиться, потому что обучена продолжать текст, а не завершать ответ. После SFT эта вероятность вырастает до 0.9+. То же с длиной, структурой и стилем.</div></div>
+
+<div class="qa"><div class="q">25. Какие гиперпараметры SFT самые чувствительные?</div><div class="a">Learning rate — разброс от 71.4% до 90.1% при изменении на два порядка. Для LoRA он на порядок выше, чем для полного дообучения (1e−4 против 1e−5), потому что обучается малая доля параметров и им нужен больший шаг. Второй по важности — число эпох: при 10 эпохах качество падает до 82.8% и резко растёт забывание. Одна-три эпохи — почти всегда правильный ответ.</div></div>
+
+<div class="qa"><div class="q">26. Как устроен DPO и на что он похож?</div><div class="a">$\mathcal{L} = -\log\sigma(\beta[\log\frac{\pi_\theta(y_w)}{\pi_{\text{ref}}(y_w)} - \log\frac{\pi_\theta(y_l)}{\pi_{\text{ref}}(y_l)}])$ — структурно это <strong>ровно BPR из темы 6.1</strong>: сигмоида от разности двух величин, с множителем градиента $(1-\sigma)$, который зануляется на уже решённых парах. Отличие в том, что вместо скоров стоят логарифмы отношений вероятностей к референсной модели, играющие роль неявной награды.</div></div>
+
+<div class="qa"><div class="q">27. Что делает параметр β в DPO?</div><div class="a">Два дела сразу. Во-первых, работает как температура из темы 6.2: малый β делает все пары одинаково «нерешёнными», большой заостряет и обнуляет градиент на парах с заметной разностью. Во-вторых — и это уникально для DPO — задаёт <em>силу привязки к референсной модели</em>: β умножается на логарифмы отношений, поэтому чем он больше, тем дороже обходится любое отклонение от исходной модели.</div></div>
+
+<div class="qa"><div class="q">28. Какая главная патология DPO?</div><div class="a">Лосс зависит только от <em>разности</em> наград, и её можно увеличить, опустив обе вероятности — просто отвергаемую сильнее. В замере секции 9 за 2000 шагов лосс упал с 0.630 до 0.410, а $\log\pi_\theta(y_w)$ упал с −12.40 до −15.90: модель разучилась генерировать хороший ответ. <strong>Кривая обучения выглядит идеально, а модель деградирует.</strong> Лечение: мониторить logps/chosen раздельно, брать больший β, добавить SFT-слагаемое $\lambda \mathcal{L}_{\text{SFT}}(y_w)$, обучать не больше эпохи.</div></div>
+
+<div class="qa"><div class="q">29. Почему нельзя выбирать чекпойнт по лоссу?</div><div class="a">Потому что лосс меряет предсказание <em>эталонных</em> текстов, а не полезность ответов. В замере секции 10 held-out loss падал до конца (1.412 → 1.159), а win rate прошёл максимум 74.1% на 1500 шагах и упал до 61.2% на 8000. Ранняя остановка по лоссу выбрала бы худший чекпойнт. Выбирать надо по win rate против базовой модели, с усреднением по обоим порядкам показа судье.</div></div>
+
+<div class="qa"><div class="q">30. Как измерить и сдержать катастрофическое забывание?</div><div class="a">Регрессионным набором: рассуждение, код, следование формату, отказ от неуместного, многоязычность. Замер: полное дообучение даёт −23.0% среднего забывания, LoRA r=16 — −9.6%, LoRA r=8 при одной эпохе — −3.4%. Ранг влияет напрямую, потому что ограничивает долю затронутых направлений (0.20% при r=8 против 100% при полном FT). <strong>Лучшее средство — replay:</strong> 5% примеров исходных задач снижают забывание до −1.6% ценой 0.7 пункта целевого качества. Особенно важны примеры корректных отказов: безопасность падает с 91.2% до 73.4% <em>без единого небезопасного примера</em> в обучающей выборке.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block9_04_rag.html">← Назад: 9.4 — RAG</a>
+  <a href="block9_01_tokenization_embeddings.html" class="next">К началу блока: 9.1 →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#2563eb', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_RS='#e11d48', C_T='#0d9488', C_GR='#94a3b8', C_V='#7c3aed';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---------- S1: окупаемость ---------- */
+(function(){
+  var q=[200,1000,5000,25000,100000,400000];
+  var days=q.map(function(v){ return +(15000/(0.021*v)).toFixed(1); });
+  mk('c_roi', {type:'line', data:{labels:q.map(function(v){return v.toLocaleString('ru');}), datasets:[
+    {label:'Дней до окупаемости дообучения', data:days, borderColor:C_RS, backgroundColor:'rgba(225,29,72,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Порог разумности (90 дней)', data:q.map(function(){return 90;}), borderColor:'#1e293b', borderDash:[3,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Запросов в сутки'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Дней до окупаемости (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i<=1) return '⚠ Не окупается: промпт с большой моделью дешевле и гибче';
+        if(i>=4) return '✓ Окупается за считанные дни'; return ''; }}}}}});
+})();
+
+/* ---------- S2: память от доли обучаемых ---------- */
+(function(){
+  var p=[0.0012,0.005,0.01,0.05,0.1,0.25,0.5,1.0];
+  mk('c_mem', {type:'line', data:{labels:p.map(function(v){return (100*v).toFixed(2)+'%';}), datasets:[
+    {label:'Память, ГБ (модель 7B)', data:p.map(function(v){return +(14+98*v).toFixed(1);}), borderColor:C_RS, backgroundColor:'rgba(225,29,72,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Размер самой модели (14 ГБ)', data:p.map(function(){return 14;}), borderColor:C_G, borderDash:[4,3], borderWidth:2, pointRadius:0},
+    {label:'A100 80GB', data:p.map(function(){return 80;}), borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Доля обучаемых параметров'}},NOG),
+             y:Object.assign({title:{display:true,text:'Память, ГБ'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        return i<=2 ? 'Кривая уже насыщена: почти вся память — замороженная база,\nдальше сокращать нечего' : ''; }}}}}});
+})();
+
+/* ---------- S3: экономия параметров по рангу ---------- */
+(function(){
+  var r=[1,2,4,8,16,32,64,128,256];
+  var full=4096*4096;
+  var lora=r.map(function(v){ return v*(4096+4096); });
+  mk('c_params', {type:'line', data:{labels:r, datasets:[
+    {label:'Параметров LoRA на слой', data:lora, borderColor:C_RS, backgroundColor:'rgba(225,29,72,.10)', fill:true, tension:.25, pointRadius:5, borderWidth:2.5},
+    {label:'Полная матрица 4096×4096', data:r.map(function(){return full;}), borderColor:C_R, borderDash:[4,3], borderWidth:2, pointRadius:0},
+    {label:'Экономия, раз', data:r.map(function(v){ return +(full/(v*8192)).toFixed(1); }), borderColor:C_G, tension:.25, pointRadius:5, borderWidth:2.5, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Ранг r'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Параметров (лог)'}},GRID),
+             y2:{position:'right', type:'logarithmic', title:{display:true,text:'Экономия, раз'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var v=r[c[0].dataIndex];
+        return 'При r='+v+' обучается '+(100*v*8192/full).toFixed(2)+'% параметров слоя'; }}}}}});
+})();
+
+/* ---------- S4: ранг train vs held-out ---------- */
+(function(){
+  var r=[1,4,8,16,32,64,128];
+  mk('c_rank', {type:'line', data:{labels:r, datasets:[
+    {label:'Train loss', data:[1.412,1.284,1.201,1.156,1.118,1.071,0.984], borderColor:C_GR, borderDash:[5,4], tension:.3, pointRadius:5, borderWidth:2},
+    {label:'Held-out loss', data:[1.438,1.301,1.219,1.181,1.179,1.196,1.247], borderColor:C_RS, backgroundColor:'rgba(225,29,72,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Качество на задаче, %', data:[71.2,80.4,84.9,86.7,87.1,86.2,83.8], borderColor:C_G, tension:.3, pointRadius:6, borderWidth:2.5, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Ранг r (α = 2r)'}},NOG),
+             y:Object.assign({title:{display:true,text:'Loss'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Качество, %'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i<=1) return 'Не хватает ёмкости адаптера';
+        if(i>=5) return '⚠ Разрыв train/held-out открылся — переобучение';
+        return '✓ Рабочий диапазон'; }}}}}});
+})();
+
+/* ---------- S5: целевые модули ---------- */
+(function(){
+  mk('c_targets', {type:'bar', data:{labels:['q+v\nr=32','всё внимание\nr=16','только MLP\nr=10','все 7\nr=6'], datasets:[
+    {label:'Качество при бюджете ~17 млн параметров, %', data:[87.4,87.9,88.6,89.2],
+     backgroundColor:['rgba(148,163,184,.70)','rgba(217,119,6,.70)','rgba(13,148,136,.72)','rgba(22,163,74,.82)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Качество при r=16 у всех, %', data:[86.7,87.9,88.4,90.1], type:'line', borderColor:C_RS, borderWidth:2.5, pointRadius:6, tension:.2, order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({min:84, title:{display:true,text:'Качество, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===3) return '✓ При равном бюджете широко и мелко лучше\nна 1.8 пункта, чем узко и глубоко'; return ''; }}}}}});
+})();
+
+/* ---------- S6: сетка NF4 ---------- */
+(function(){
+  var nf4=[-1.0000,-0.6962,-0.5251,-0.3949,-0.2844,-0.1848,-0.0911,0.0000,
+           0.0796,0.1609,0.2461,0.3379,0.4407,0.5626,0.7230,1.0000];
+  var uni=[]; for(var i=0;i<16;i++) uni.push(+(-1+2*i/15).toFixed(4));
+  // плотность нормального распределения для фона
+  var dens=[]; for(var x=-1.2;x<=1.2;x+=0.02){ dens.push({x:+x.toFixed(3), y:+(Math.exp(-x*x/(2*0.35*0.35))).toFixed(4)}); }
+  mk('c_nf4', {type:'scatter', data:{datasets:[
+    {label:'Распределение весов (нормальное)', data:dens, type:'line', borderColor:'#e2e8f0', backgroundColor:'rgba(226,232,240,.55)', fill:true, borderWidth:2, pointRadius:0, tension:.2},
+    {label:'Уровни NF4 (по квантилям)', data:nf4.map(function(v){return {x:v,y:0.45};}), backgroundColor:C_RS, borderColor:C_RS, pointRadius:7, pointStyle:'triangle'},
+    {label:'Уровни равномерной сетки', data:uni.map(function(v){return {x:v,y:0.15};}), backgroundColor:C_GR, borderColor:C_GR, pointRadius:7, pointStyle:'rectRot'}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({min:-1.2,max:1.2,title:{display:true,text:'Значение веса (нормировано на absmax)'}},GRID),
+             y:Object.assign({min:0,max:1.1,display:false},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{label:function(c){return 'уровень '+c.parsed.x.toFixed(4);},
+        afterBody:function(){return 'NF4 ставит уровни гуще возле нуля — там,\nгде сосредоточено большинство весов.\nШаг возле нуля 0.0796, у края 0.2770 — разница 3.5×';}}}}}});
+})();
+
+/* ---------- S6: точность базы ---------- */
+(function(){
+  mk('c_quant', {type:'bar', data:{labels:['bf16','int8','NF4','FP4','int4'], datasets:[
+    {label:'Качество после дообучения, %', data:[86.7,86.5,86.2,84.8,82.3],
+     backgroundColor:['rgba(148,163,184,.70)','rgba(13,148,136,.70)','rgba(22,163,74,.82)','rgba(217,119,6,.72)','rgba(220,38,38,.75)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Память базы, ГБ', data:[14.0,7.0,3.6,3.6,3.6], type:'line', borderColor:C_RS, borderWidth:2.5, pointRadius:6, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({min:80, title:{display:true,text:'Качество, %'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Память базы, ГБ'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i>=2) return 'Все три по 4 бита и по 3.6 ГБ —\nразница только в том, ГДЕ расставлены уровни'; return ''; }}}}}});
+})();
+
+/* ---------- S7: объём против качества отбора ---------- */
+(function(){
+  mk('c_data', {type:'scatter', data:{datasets:[
+    {label:'Сырой краулинг', data:[{x:240000,y:78.4}], backgroundColor:C_R, borderColor:C_R, pointRadius:11},
+    {label:'+ дедупликация', data:[{x:171000,y:81.1}], backgroundColor:C_A, borderColor:C_A, pointRadius:10},
+    {label:'+ фильтр длины', data:[{x:142000,y:82.9}], backgroundColor:'#f59e0b', borderColor:'#f59e0b', pointRadius:10},
+    {label:'Отбор моделью-оценщиком', data:[{x:18000,y:88.1}], backgroundColor:C_T, borderColor:C_T, pointRadius:11},
+    {label:'Ручная экспертная разметка', data:[{x:3200,y:89.4}], backgroundColor:C_G, borderColor:C_G, pointRadius:13, pointStyle:'star'}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:Object.assign({type:'logarithmic',title:{display:true,text:'Число примеров (лог)'}},GRID),
+             y:Object.assign({min:76,max:92,title:{display:true,text:'Качество, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.x.toLocaleString('ru')+' примеров → '+c.parsed.y+'%';},
+        afterBody:function(){return 'Направление стрелки — влево и вверх:\nменьше данных, выше качество';}}}}}});
+})();
+
+/* ---------- S7: асимметрия шума ---------- */
+(function(){
+  mk('c_noise', {type:'line', data:{labels:['0','5%','10%','20%','50%'], datasets:[
+    {label:'Добавляем ПЛОХИЕ примеры', data:[89.4,88.1,85.9,81.2,72.4], borderColor:C_R, backgroundColor:'rgba(220,38,38,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Добавляем ХОРОШИЕ примеры', data:[89.4,89.6,89.8,90.0,90.5], borderColor:C_G, tension:.3, pointRadius:6, borderWidth:2.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Доля добавленных примеров к базе из 3 200'}},NOG),
+             y:Object.assign({title:{display:true,text:'Качество, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex>=3
+        ? '1600 плохих отнимают 17 пунктов,\n1600 хороших добавляют один — асимметрия 15×' : ''; }}}}}});
+})();
+
+/* ---------- S8: learning rate ---------- */
+(function(){
+  mk('c_lr', {type:'line', data:{labels:['1e−5','3e−5','1e−4','2e−4','3e−4','5e−4','1e−3'], datasets:[
+    {label:'Качество, %', data:[79.1,85.2,89.4,90.1,89.8,86.3,71.4], borderColor:C_RS, backgroundColor:'rgba(225,29,72,.12)', fill:true, tension:.3, pointRadius:7, borderWidth:3},
+    {label:'Рабочий диапазон', data:[null,null,89.4,90.1,89.8,null,null], borderColor:C_G, borderWidth:5, pointRadius:0, spanGaps:false}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Learning rate (LoRA)'}},NOG),
+             y:Object.assign({min:68, title:{display:true,text:'Качество, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return 'Слишком мал: адаптер почти не обучается';
+        if(i===6) return '⚠ Расходимость, лосс скачет';
+        if(i>=2 && i<=4) return '✓ Для LoRA lr на порядок выше, чем для полного FT'; return ''; }}}}}});
+})();
+
+/* ---------- S9: патология DPO ---------- */
+(function(){
+  mk('c_dpo', {type:'line', data:{labels:['0','200','500','1000','2000'], datasets:[
+    {label:'Лосс DPO', data:[0.630,0.560,0.510,0.470,0.410], borderColor:C_G, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'log π(предпочитаемый) — НЕ должен падать', data:[-12.40,-12.10,-12.60,-13.80,-15.90], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3, yAxisID:'y2'},
+    {label:'log π(отвергаемый)', data:[-15.80,-16.90,-18.40,-21.20,-25.10], borderColor:C_GR, borderDash:[4,3], tension:.3, pointRadius:5, borderWidth:2, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Шагов обучения'}},NOG),
+             y:Object.assign({title:{display:true,text:'Лосс'}},GRID),
+             y2:{position:'right', title:{display:true,text:'log-вероятность'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ return c[0].dataIndex>=3
+        ? '⚠ Лосс красиво падает, но модель разучилась\nгенерировать даже ХОРОШИЙ ответ' : ''; }}}}}});
+})();
+
+/* ---------- S10: лосс против качества ---------- */
+(function(){
+  mk('c_eval', {type:'line', data:{labels:['0','500','1500','4000','8000'], datasets:[
+    {label:'Held-out loss', data:[1.412,1.243,1.181,1.164,1.159], borderColor:C_GR, borderDash:[5,4], tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Win rate против базовой, %', data:[50.0,68.4,74.1,69.8,61.2], borderColor:C_RS, backgroundColor:'rgba(225,29,72,.12)', fill:true, tension:.3, pointRadius:7, borderWidth:3, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Шагов обучения'}},NOG),
+             y:Object.assign({title:{display:true,text:'Held-out loss'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Win rate, %'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return '✓ Настоящий оптимум по качеству';
+        if(i===4) return '⚠ Лосс минимален, качество худшее.\nОстановка по лоссу выбрала бы этот чекпойнт'; return ''; }}}}}});
+})();
+
+/* ---------- S11: мультиарендность ---------- */
+(function(){
+  mk('c_serve', {type:'bar', data:{labels:['База','1 адаптер','4 адаптера\nв батче','16 адаптеров\nв батче','наивно:\nбатч по 1'], datasets:[
+    {label:'Токенов/сек', data:[2840,2390,2180,1740,410],
+     backgroundColor:['rgba(148,163,184,.70)','rgba(22,163,74,.80)','rgba(22,163,74,.70)','rgba(217,119,6,.72)','rgba(220,38,38,.80)'],
+     borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Токенов в секунду (A100, батч 16)'}},GRID)},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:function(c){ return c.parsed.y.toLocaleString('ru')+' ток/с ('+(100*c.parsed.y/2840).toFixed(0)+'% от базы)'; },
+        afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===4) return '⚠ Батчирование потеряно — так делать нельзя';
+        if(i===2) return '✓ Сгруппированное умножение сохраняет 77%'; return ''; }}}}}});
+})();
+
+/* ---------- S12: забывание по шагам ---------- */
+(function(){
+  mk('c_forget', {type:'line', data:{labels:['0','500','1500','3000','6000','12000'], datasets:[
+    {label:'Целевая задача, %', data:[52.1,81.4,90.1,91.2,91.6,89.8], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Безопасность (отказы), %', data:[91.2,90.1,85.4,78.9,68.2,54.1], borderColor:C_R, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Генерация кода, %', data:[34.2,33.8,31.2,28.4,23.1,18.7], borderColor:C_A, tension:.3, pointRadius:5, borderWidth:2.5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Шагов обучения'}},NOG),
+             y:Object.assign({title:{display:true,text:'Качество, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return '✓ Целевая задача вышла на плато — здесь останавливаться';
+        if(i>=4) return '⚠ +0.5 пункта целевой ценой 17 пунктов безопасности'; return ''; }}}}}});
+})();
+
+/* ---------- S12: метод против забывания ---------- */
+(function(){
+  mk('c_method', {type:'bar', data:{labels:['Полное FT','LoRA r=64','LoRA r=16','LoRA r=8\n1 эпоха','LoRA r=16\n+5% replay'], datasets:[
+    {label:'Целевая задача, %', data:[91.4,90.4,90.1,86.9,89.4], backgroundColor:'rgba(22,163,74,.78)', borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Среднее забывание, %', data:[23.0,10.8,9.6,3.4,1.6], backgroundColor:'rgba(220,38,38,.78)', borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Доля затронутых направлений, %', data:[100,1.56,0.39,0.20,0.39], type:'line', borderColor:C_V, borderWidth:2.5, pointRadius:6, tension:.2, yAxisID:'y2', order:1}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Проценты'}},GRID),
+             y2:{position:'right', type:'logarithmic', title:{display:true,text:'Направлений, % (лог)'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return 'Целевое качество почти как у LoRA,\nа забывание вдвое больше';
+        if(i===4) return '✓ Лучший баланс: забывание в 6 раз ниже\nценой 0.7 пункта целевого качества'; return ''; }}}}}});
+})();
+
+/* ---------- Интерактив: ранг и alpha ---------- */
+function updLoRA(){
+  var r = +document.getElementById('sl_r').value;
+  var a = +document.getElementById('sl_a').value;
+  var n = +document.getElementById('sl_n').value;
+  document.getElementById('out_r').textContent = r;
+  document.getElementById('out_a').textContent = a;
+  document.getElementById('out_n').textContent = n.toLocaleString('ru');
+  var scale = a/r;
+  var perLayer = r*(4096+4096);
+  var totalParams = perLayer*7*32;   // 7 модулей, 32 слоя
+  var pct = 100*totalParams/7e9;
+  var memGB = 14 + 14*totalParams/1e9;
+  var rOpt = Math.max(4, Math.min(64, Math.pow(2, Math.round(Math.log2(n/1000)))));
+  var html = '<b>Обучаемых: '+totalParams.toLocaleString('ru')+' ('+pct.toFixed(3)+'%)</b> &nbsp;·&nbsp; масштаб α/r = <b>'+scale.toFixed(2)+'</b><br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'память ≈ '+memGB.toFixed(1)+' ГБ (без активаций) &nbsp;·&nbsp; ';
+  html += 'рекомендуемый r для '+n.toLocaleString('ru')+' примеров: <b>'+rOpt+'</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#881337;">';
+  if(r > rOpt*4) html += '⚠️ Ранг сильно выше рекомендуемого — при '+n.toLocaleString('ru')+' примерах вероятно переобучение и усиленное забывание';
+  else if(r > rOpt*1.5) html += '⚠️ Ранг выше рекомендуемого, следи за разрывом train/held-out';
+  else if(r < rOpt/2) html += '⚠️ Ранг ниже рекомендуемого — возможно, не хватит ёмкости, качество упрётся в потолок';
+  else html += '✓ Ранг соответствует объёму данных';
+  if(Math.abs(scale-2) < 0.01) html += '<br>✓ Правило α = 2r соблюдено — при смене ранга lr перенастраивать не придётся';
+  else if(scale > 4) html += '<br>⚠️ Масштаб '+scale.toFixed(1)+' высок: добавка агрессивна, забывание вырастет. Стандарт α = 2r даёт масштаб 2';
+  else if(scale < 1) html += '<br>⚠️ Масштаб '+scale.toFixed(2)+' мал: добавка слабая, обучение будет медленным';
+  else html += '<br>ℹ️ Масштаб '+scale.toFixed(2)+'; помни, что он входит в градиенты — эквивалентен множителю на lr';
+  html += '</span>';
+  document.getElementById('out_lres').innerHTML = html;
+}
+
+/* ---------- Интерактив: DPO ---------- */
+function updDPO(){
+  var beta = +document.getElementById('sl_beta').value/100;
+  var gap = +document.getElementById('sl_gap').value/100;
+  document.getElementById('out_beta').textContent = beta.toFixed(2);
+  document.getElementById('out_gap').textContent = gap.toFixed(2);
+  var z = beta*gap;
+  var sig = 1/(1+Math.exp(-z));
+  var loss = -Math.log(Math.max(sig,1e-300));
+  var gradMul = 1-sig;
+  var html = '<b>β × разность = '+z.toFixed(4)+'</b> &nbsp;·&nbsp; σ = <b>'+sig.toFixed(4)+'</b> &nbsp;·&nbsp; лосс = <b>'+loss.toFixed(4)+'</b><br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'множитель градиента (1−σ) = <b>'+gradMul.toFixed(4)+'</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#881337;">';
+  if(gap < 0) html += '⚠️ Разность отрицательна: модель считает ОТВЕРГАЕМЫЙ ответ лучше. Градиент максимален — пара очень информативна';
+  else if(gradMul > 0.45) html += 'Пара «не решена»: градиент почти максимален, модель ещё учится на ней';
+  else if(gradMul > 0.15) html += '✓ Пара даёт содержательный сигнал';
+  else html += 'Пара практически «решена»: градиент '+gradMul.toFixed(3)+', вычисления на ней почти впустую';
+  html += '<br>';
+  if(beta < 0.05) html += 'ℹ️ Малый β: слабая привязка к референсной модели, она может далеко уйти — выше риск вырождения';
+  else if(beta > 0.8) html += 'ℹ️ Большой β: сильная привязка к референсной модели, обучение осторожное, но медленное';
+  else html += 'ℹ️ β в рабочем диапазоне 0.1–0.5';
+  html += '</span>';
+  document.getElementById('out_dres').innerHTML = html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updLoRA(); updDPO();
+</script>
+</body>
+</html>

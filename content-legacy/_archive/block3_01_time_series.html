@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3.1 · Time Series Forecasting</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;--blue-d:#1e3a8a;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --slate:#334155;--slate-l:#f8fafc;
+  --gray:#6b7280;--border:#e5e7eb;
+  --bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;letter-spacing:-.3px;}
+.ph .sub{font-size:14px;opacity:.8;line-height:1.6;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--gray);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+.snav a:hover{color:var(--blue);border-bottom-color:var(--blue);}
+.main{max-width:960px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:60px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+strong{color:var(--text);}
+/* Formula boxes */
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.green{border-left-color:var(--grn);}
+.fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);}
+.fbox.pur{border-left-color:var(--pur);}
+.fbox.teal{border-left-color:var(--teal);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;}
+.fbox.green .flabel{color:var(--grn);}
+.fbox.amber .flabel{color:var(--amber);}
+.fbox.teal .flabel{color:var(--teal);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+/* Intuition */
+.intuition{background:var(--blue-l);border:1px solid var(--blue-b);border-left:4px solid var(--blue);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:var(--blue-d);margin-bottom:4px;line-height:1.7;}
+/* Use-when box */
+.usewhen{background:#fefce8;border:1px solid var(--amber-b);border-left:4px solid var(--amber);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.usewhen-label{font-size:10.5px;font-weight:800;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.usewhen p{font-size:13.5px;color:#78350f;margin-bottom:4px;}
+.usewhen ul{padding-left:16px;}
+.usewhen li{font-size:13.5px;color:#78350f;margin-bottom:3px;line-height:1.6;}
+/* callouts */
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.ins{background:var(--pur-l);border:1px solid var(--pur-b);color:#5b21b6;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+/* tables */
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.04);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:var(--slate-l);padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--gray);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh{background:var(--blue-l)!important;} .trh td{font-weight:600;color:var(--blue-d)!important;}
+.trg{background:#f0fdf4!important;}
+.mn{font-family:'SF Mono','Fira Code',Menlo,monospace;font-size:13px;}
+.pos{color:#16a34a;font-weight:700;} .neg{color:#dc2626;font-weight:700;}
+/* charts */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+/* ======= VISUAL DIAGRAMS (CSS) ======= */
+/* Decomposition diagram */
+.decomp-vis{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;margin:16px 0;}
+.decomp-row{display:grid;grid-template-columns:80px 1fr;align-items:center;gap:16px;margin-bottom:12px;}
+.decomp-label{font-size:12px;font-weight:700;color:var(--text3);text-align:right;}
+.decomp-line{height:44px;position:relative;background:#f8fafc;border-radius:6px;overflow:hidden;}
+.decomp-line svg{width:100%;height:100%;}
+/* Stationarity comparison */
+.stat-vis{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;}
+.stat-card h4{font-size:13px;font-weight:700;margin-bottom:10px;}
+.stat-card canvas{width:100%;height:80px;}
+/* Walk-forward diagram */
+.wf-vis{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;margin:16px 0;}
+.wf-row{display:grid;grid-template-columns:60px 1fr;align-items:center;gap:12px;margin-bottom:8px;font-size:13px;}
+.wf-label{font-size:12px;font-weight:600;color:var(--text3);text-align:right;}
+.wf-bar{height:28px;display:flex;border-radius:5px;overflow:hidden;position:relative;}
+.wf-train{background:#bfdbfe;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1d4ed8;}
+.wf-test{background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#15803d;}
+.wf-future{background:#f3f4f6;flex:1;}
+/* ARIMA step-by-step */
+.arima-step{display:grid;grid-template-columns:28px 1fr;gap:12px;margin:10px 0;align-items:flex-start;}
+.arima-n{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.arima-body{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.arima-body h4{font-size:13px;font-weight:700;margin-bottom:4px;}
+.arima-body p{font-size:13px;color:var(--text2);margin:0;}
+/* System design */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:120px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#64748b;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.syshighlight{background:#1e3a5f;border:1px solid #2563eb;border-radius:8px;padding:9px 13px;font-size:12px;color:#93c5fd;min-width:120px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#bfdbfe;display:block;font-size:13px;margin-bottom:2px;}
+.sysgreen{background:#052e16;border:1px solid #16a34a;border-radius:8px;padding:9px 13px;font-size:12px;color:#86efac;min-width:120px;text-align:center;line-height:1.5;}
+.sysgreen strong{color:#a7f3d0;display:block;font-size:13px;margin-bottom:2px;}
+/* Case box */
+.casebox{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:#0284c7;color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#0c4a6e;margin-bottom:8px;}
+.casebox p{color:#075985;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;margin-top:6px;}
+.casebox li{color:#075985;font-size:14px;line-height:1.7;}
+/* Q&A */
+.qah{font-size:18px;font-weight:800;color:var(--blue);margin-bottom:16px;margin-top:8px;}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--gray);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--blue-l);color:var(--blue-d);}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#dbeafe;color:#1d4ed8;} .td{background:#fee2e2;color:#991b1b;}
+.tpr{background:#f3e8ff;color:#7e22ce;} .ttl{background:#ccfbf1;color:#0f766e;}
+/* footer nav */
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--blue);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#1d4ed8;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--blue);border:2px solid var(--blue);}
+/* numeric example block */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;}
+.numex-badge{background:var(--blue);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.numex-badge.grn{background:var(--grn);}
+.numex-badge.amb{background:var(--amber);}
+.numex-badge.red{background:var(--red);}
+.numex p{margin-bottom:4px;color:var(--text2);}
+@media(max-width:640px){
+  .charts-2,.stat-vis{grid-template-columns:1fr;}
+  .ph{padding:22px 16px;} .main{padding:20px 14px 48px;}
+  .wf-train,.wf-test{font-size:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">⚡ Блок 3 · Production ML & Advanced Topics</div>
+  <h1>3.1 Time Series Forecasting</h1>
+  <p class="sub">Декомпозиция · ARIMA · Prophet · ML-подход · Walk-Forward CV · Demand Forecasting</p>
+</div>
+
+<nav class="snav">
+  <a href="#what">Что такое ВР</a>
+  <a href="#decomp">Декомпозиция</a>
+  <a href="#stat">Стационарность</a>
+  <a href="#arima">ARIMA</a>
+  <a href="#prophet">Prophet</a>
+  <a href="#ml">ML-подход</a>
+  <a href="#val">Walk-Forward</a>
+  <a href="#metrics">Метрики</a>
+  <a href="#num">🔢 Числа</a>
+  <a href="#charts">Графики</a>
+  <a href="#cases">System Design</a>
+  <a href="#qa">Q&A</a>
+</nav>
+
+<div class="main">
+
+<!-- ═══ WHAT IS TS ═══ -->
+<section class="sec" id="what">
+  <div class="stitle">📈 Что такое задача прогнозирования ВР?</div>
+  <div class="sdesc">Временной ряд — последовательность наблюдений, упорядоченных во времени. Цель — предсказать будущие значения.</div>
+
+  <p>Задача: дано $y_1, y_2, \ldots, y_T$ — предсказать $y_{T+1}, \ldots, y_{T+h}$, где $h$ — горизонт прогноза.</p>
+
+  <!-- Visual: what industries / use-cases -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0;">
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🛒</div>
+      <strong style="font-size:13px;color:#1e40af;">Ритейл</strong>
+      <p style="font-size:12px;color:#3b82f6;margin:4px 0 0;">Прогноз продаж, заказ товаров, управление запасами</p>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">⚡</div>
+      <strong style="font-size:13px;color:#15803d;">Энергетика</strong>
+      <p style="font-size:12px;color:#22c55e;margin:4px 0 0;">Спрос на электричество, оптимизация генерации</p>
+    </div>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🚗</div>
+      <strong style="font-size:13px;color:#c2410c;">Транспорт</strong>
+      <p style="font-size:12px;color:#f97316;margin:4px 0 0;">Surge pricing (Uber), загруженность дорог</p>
+    </div>
+    <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">💰</div>
+      <strong style="font-size:13px;color:#7e22ce;">Финансы</strong>
+      <p style="font-size:12px;color:#a855f7;margin:4px 0 0;">Цены активов, волатильность, риск-метрики</p>
+    </div>
+    <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🏥</div>
+      <strong style="font-size:13px;color:#0891b2;">Здравоохранение</strong>
+      <p style="font-size:12px;color:#06b6d4;margin:4px 0 0;">Заболеваемость, нагрузка на больницы, эпидемии</p>
+    </div>
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">📱</div>
+      <strong style="font-size:13px;color:#dc2626;">Tech</strong>
+      <p style="font-size:12px;color:#ef4444;margin:4px 0 0;">Трафик серверов, DAU/MAU, CPU forecasting</p>
+    </div>
+  </div>
+
+  <div class="cl ins">
+    <div class="cli">💡</div>
+    <div><strong>Ключевое отличие от обычного ML:</strong> нельзя перемешивать данные — время имеет значение. Паттерны из прошлого помогают предсказывать будущее, но только если соблюдать хронологию.</div>
+  </div>
+</section>
+
+<!-- ═══ DECOMPOSITION ═══ -->
+<section class="sec" id="decomp">
+  <div class="stitle">🔍 Декомпозиция временного ряда</div>
+  <div class="sdesc">Любой ВР = Тренд + Сезонность + Остаток. Понять структуру ряда — первый шаг перед выбором модели.</div>
+
+  <div class="fbox">
+    <div class="flabel">Аддитивная декомпозиция</div>
+    $$Y_t = T_t + S_t + R_t$$
+    <div class="fnote"><strong>$T_t$ (Trend)</strong> — долгосрочное направление. <strong>$S_t$ (Seasonal)</strong> — повторяющиеся паттерны. <strong>$R_t$ (Residual)</strong> — случайный шум.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 На пальцах — аддитивная</div>
+    <p><strong>Пример: продажи кофе в кафе.</strong></p>
+    <p>🗓 Тренд: каждый год продаём на 5% больше — бизнес растёт.<br>
+    📅 Сезонность: летом меньше горячего кофе, зимой больше — одинаковая разница каждый год.<br>
+    💨 Остаток: случайный дождь в понедельник — неожиданный скачок.</p>
+    <p>Аддитивная: <strong>Продажи = 500 (тренд) + 50 (декабрь, +) + 20 (случайный дождь) = 570</strong></p>
+  </div>
+
+  <div class="fbox amber">
+    <div class="flabel">Мультипликативная декомпозиция</div>
+    $$Y_t = T_t \times S_t \times R_t$$
+    <div class="fnote">Используется когда <strong>амплитуда сезонности пропорциональна тренду</strong>. Пример: интернет-магазин — в 2019 продаёт 1000/мес, пик декабря +50% = +500. В 2023 продаёт 5000/мес, пик декабря +50% = +2500. Пик растёт вместе с трендом.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Аддитивная vs Мультипликативная — визуально</div>
+    <p>📊 Смотрим на график: если пики и провалы <strong>одинаковой высоты</strong> независимо от уровня тренда → аддитивная.<br>
+    Если пики <strong>растут вместе с трендом</strong> (всё шире) → мультипликативная.<br>
+    🛠 Лайфхак: log-трансформация $\ln(Y_t)$ превращает мультипликативную в аддитивную: $\ln(T\times S\times R) = \ln T + \ln S + \ln R$.</p>
+  </div>
+
+  <!-- Visual decomposition -->
+  <div class="decomp-vis">
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:16px;">Визуальная схема декомпозиции (синтетический пример — 36 месяцев)</div>
+    <div class="decomp-row"><div class="decomp-label">Исходный ряд</div><div style="position:relative;height:44px;"><canvas id="c_orig"></canvas></div></div>
+    <div class="decomp-row"><div class="decomp-label">= Тренд</div><div style="position:relative;height:44px;"><canvas id="c_trend"></canvas></div></div>
+    <div class="decomp-row"><div class="decomp-label">+ Сезон</div><div style="position:relative;height:44px;"><canvas id="c_seas"></canvas></div></div>
+    <div class="decomp-row"><div class="decomp-label">+ Остаток</div><div style="position:relative;height:44px;"><canvas id="c_resid"></canvas></div></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;">Исходный ряд ≈ сумма трёх нижних компонентов</div>
+  </div>
+
+  <div class="usewhen">
+    <div class="usewhen-label">⏰ Когда и где применяется декомпозиция</div>
+    <ul>
+      <li><strong>EDA:</strong> первый шаг — понять, есть ли тренд/сезонность, прежде чем выбрать модель</li>
+      <li><strong>STL (Seasonal-Trend decomposition using Loess)</strong> — стандарт в Python/R, устойчив к выбросам</li>
+      <li><strong>Аномалии:</strong> остаток $R_t$ — где искать выбросы и аномалии</li>
+      <li><strong>Amazon, Netflix:</strong> используют декомпозицию для feature engineering перед ML-моделями</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ STATIONARITY ═══ -->
+<section class="sec" id="stat">
+  <div class="stitle">⚖️ Стационарность</div>
+  <div class="sdesc">ARIMA требует стационарного ряда. Как проверить и исправить — базовый навык.</div>
+
+  <div class="fbox">
+    <div class="flabel">Определение стационарности</div>
+    $$E[y_t] = \mu \quad \text{(постоянное среднее)}$$
+    $$\text{Var}[y_t] = \sigma^2 \quad \text{(постоянная дисперсия)}$$
+    $$\text{Cov}(y_t, y_{t-k}) = \gamma_k \quad \text{(зависит только от лага } k\text{, не от }t\text{)}$$
+    <div class="fnote">Слабая стационарность = выполнены все три условия. Строгая (сильная) = стационарны все моменты. На практике достаточно слабой.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 На пальцах</div>
+    <p><strong>Стационарный ряд</strong> — как шум вентилятора: всегда около одного среднего, одинаковая "громкость", одинаковые корреляции.</p>
+    <p><strong>Нестационарный</strong> — как цена биткоина: среднее меняется (то 10К, то 60К), дисперсия тоже растёт. Паттерны из 2018 не помогают предсказывать 2021.</p>
+    <p>Суть: ARIMA ищет повторяющиеся паттерны. Они могут повторяться только если ряд "стабилен" (стационарен).</p>
+  </div>
+
+  <!-- Visual: stationary vs non-stationary -->
+  <div class="stat-vis">
+    <div class="stat-card">
+      <h4 style="color:var(--grn);">✅ Стационарный</h4>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Среднее ≈ const, дисперсия ≈ const</p>
+      <div style="position:relative;height:90px;"><canvas id="c_stat"></canvas></div>
+    </div>
+    <div class="stat-card">
+      <h4 style="color:var(--red);">❌ Нестационарный (тренд)</h4>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Растущее среднее — ARIMA не работает</p>
+      <div style="position:relative;height:90px;"><canvas id="c_nstat"></canvas></div>
+    </div>
+    <div class="stat-card">
+      <h4 style="color:var(--amber);">⚠️ Нестационарный (дисперсия)</h4>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Растущая дисперсия — GARCH / log-трансформация</p>
+      <div style="position:relative;height:90px;"><canvas id="c_hetero"></canvas></div>
+    </div>
+    <div class="stat-card">
+      <h4 style="color:var(--blue);">🔧 После дифференцирования</h4>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">$\Delta y_t = y_t - y_{t-1}$ убирает тренд</p>
+      <div style="position:relative;height:90px;"><canvas id="c_diff"></canvas></div>
+    </div>
+  </div>
+
+  <div class="fbox teal">
+    <div class="flabel">ADF-тест (Augmented Dickey-Fuller)</div>
+    $$H_0: \text{ряд нестационарен (единичный корень)}$$
+    $$\Delta y_t = \alpha + \beta t + \gamma y_{t-1} + \sum_{i=1}^p \delta_i \Delta y_{t-i} + \varepsilon_t$$
+    $$\text{Тест-статистика: } \hat{\tau} = \frac{\hat{\gamma}}{SE(\hat{\gamma})}$$
+    <div class="fnote">$H_0$: γ=0 (единичный корень, нестационарен). Если p-value < 0.05 → отвергаем $H_0$ → ряд стационарен. В Python: <code>from statsmodels.tsa.stattools import adfuller; adfuller(y)</code>.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 На пальцах — ADF тест</div>
+    <p>ADF проверяет: "если я сдвину ряд на 1 шаг назад и вычту — получится стационарный или нет?". Формально: тестирует коэффициент при $y_{t-1}$ в регрессии. γ ≈ 0 → каждый лаг "тянет" ряд вверх → нестационарен (блуждание). γ &lt; 0 → ряд "возвращается" к среднему → стационарен.</p>
+    <p><strong>Правило:</strong> p &lt; 0.05 → стационарен → можно ARIMA(p, <strong>d=0</strong>, q). p ≥ 0.05 → нужно дифференцировать ($d=1$).</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Пример: как дифференцирование убирает тренд</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>t</th><th>Цена акции $y_t$</th><th>$\Delta y_t = y_t - y_{t-1}$</th><th>Стационарно?</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">1</td><td class="mn">100</td><td class="mn">—</td><td>—</td></tr>
+          <tr><td class="mn">2</td><td class="mn">105</td><td class="mn pos">+5</td><td>—</td></tr>
+          <tr><td class="mn">3</td><td class="mn">102</td><td class="mn neg">−3</td><td>—</td></tr>
+          <tr><td class="mn">4</td><td class="mn">108</td><td class="mn pos">+6</td><td>—</td></tr>
+          <tr><td class="mn">5</td><td class="mn">115</td><td class="mn pos">+7</td><td>—</td></tr>
+          <tr class="trh"><td colspan="2">Среднее $y_t$ растёт → нестационарен</td><td colspan="2">Среднее $\Delta y_t ≈ 0$ → <span class="pos">стационарен!</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-top:8px;">Дифференцирование = "смотрим на изменения, а не на абсолютные значения". Параметр $d=1$ в ARIMA(p,1,q).</p>
+  </div>
+</section>
+
+<!-- ═══ ARIMA ═══ -->
+<section class="sec" id="arima">
+  <div class="stitle">📐 ARIMA</div>
+  <div class="sdesc">AutoRegressive Integrated Moving Average — классический инструмент для стационарных/интегрированных рядов.</div>
+
+  <div class="fbox">
+    <div class="flabel">ARIMA(p, d, q) — три компонента</div>
+    $$\underbrace{\phi(B)}_{\text{AR часть}}\underbrace{(1-B)^d}_{\text{I часть}} y_t = \underbrace{\theta(B)\varepsilon_t}_{\text{MA часть}}$$
+    <div class="fnote">
+      <strong>AR(p):</strong> $y_t = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \ldots + \phi_p y_{t-p} + \varepsilon_t$ — зависимость от прошлых значений.<br>
+      <strong>I(d):</strong> $(1-B)^d y_t$ — дифференцирование $d$ раз для достижения стационарности.<br>
+      <strong>MA(q):</strong> $y_t = \varepsilon_t + \theta_1\varepsilon_{t-1} + \ldots + \theta_q\varepsilon_{t-q}$ — зависимость от прошлых ошибок.
+    </div>
+  </div>
+
+  <!-- Visual: AR vs MA vs ARMA comparison -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0;">
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;">
+      <strong style="font-size:13px;color:#1e40af;">AR(p)</strong>
+      <p style="font-size:12px;color:#3b82f6;margin:6px 0;">"Инерция" — завтра похоже на сегодня</p>
+      <div style="font-size:12px;color:#1d4ed8;font-family:monospace;background:#dbeafe;padding:6px 8px;border-radius:5px;">$y_t = 0.8y_{t-1} + \varepsilon_t$</div>
+      <p style="font-size:11px;color:#6b7280;margin-top:6px;">Примеры: температура, цены, курс валют</p>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;">
+      <strong style="font-size:13px;color:#15803d;">MA(q)</strong>
+      <p style="font-size:12px;color:#22c55e;margin:6px 0;">"Память об ошибках" — прошлые шоки влияют</p>
+      <div style="font-size:12px;color:#166534;font-family:monospace;background:#dcfce7;padding:6px 8px;border-radius:5px;">$y_t = \varepsilon_t + 0.5\varepsilon_{t-1}$</div>
+      <p style="font-size:11px;color:#6b7280;margin-top:6px;">Примеры: реакция рынка на новости</p>
+    </div>
+    <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;">
+      <strong style="font-size:13px;color:#7e22ce;">ARMA(p,q)</strong>
+      <p style="font-size:12px;color:#a855f7;margin:6px 0;">Комбинация: инерция + память об ошибках</p>
+      <div style="font-size:12px;color:#6b21a8;font-family:monospace;background:#f3e8ff;padding:6px 8px;border-radius:5px;">$y_t = 0.7y_{t-1} + \varepsilon_t + 0.3\varepsilon_{t-1}$</div>
+      <p style="font-size:11px;color:#6b7280;margin-top:6px;">Большинство реальных рядов</p>
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 AR vs MA — аналогия</div>
+    <p><strong>AR — "GPS-навигатор":</strong> смотрит на предыдущие позиции и экстраполирует. Продажи вчера 100, позавчера 90 → завтра ≈ 110.</p>
+    <p><strong>MA — "Официант с памятью":</strong> если час назад было неожиданно много гостей (ошибка прогноза), учитывает это в следующем часу. Не помнит абсолютных значений — помнит только "сюрпризы".</p>
+  </div>
+
+  <!-- Step-by-step ARIMA selection -->
+  <div class="chb">
+    <div class="cht">Пошаговый выбор параметров ARIMA</div>
+    <div class="chsub">Методология Box-Jenkins — как выбрать p, d, q</div>
+    <div class="arima-step">
+      <div class="arima-n">1</div>
+      <div class="arima-body">
+        <h4>Проверяем стационарность → выбираем d</h4>
+        <p>ADF-тест. p-value > 0.05 → дифференцировать (d=1). Повторяем до стационарности. Обычно d=0 или d=1.</p>
+      </div>
+    </div>
+    <div class="arima-step">
+      <div class="arima-n">2</div>
+      <div class="arima-body">
+        <h4>Строим ACF (Autocorrelation Function) → выбираем q</h4>
+        <p>Если ACF резко обрывается на лаге q → MA(q). Лаги выше q → незначимы (в полосе ±1.96/√n).</p>
+      </div>
+    </div>
+    <div class="arima-step">
+      <div class="arima-n">3</div>
+      <div class="arima-body">
+        <h4>Строим PACF (Partial Autocorrelation Function) → выбираем p</h4>
+        <p>Если PACF резко обрывается на лаге p → AR(p). Лаги выше p → незначимы.</p>
+      </div>
+    </div>
+    <div class="arima-step">
+      <div class="arima-n">4</div>
+      <div class="arima-body">
+        <h4>Сравниваем несколько моделей по AIC/BIC → финальный выбор</h4>
+        <p>AIC = 2k − 2ln(L̂). Меньше = лучше. auto_arima() делает это автоматически.</p>
+      </div>
+    </div>
+    <div class="arima-step">
+      <div class="arima-n">5</div>
+      <div class="arima-body">
+        <h4>Диагностика остатков</h4>
+        <p>Остатки должны быть белым шумом: нет автокорреляции (Ljung-Box тест), нормальное распределение.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACF/PACF interpretation table -->
+  <div class="tw">
+    <table>
+      <thead><tr><th>Что видим на ACF</th><th>Что видим на PACF</th><th>Процесс</th><th>Параметры</th></tr></thead>
+      <tbody>
+        <tr><td>Затухает геометрически</td><td><strong>Срезается на лаге p</strong></td><td>AR(p)</td><td>p = число значимых лагов PACF</td></tr>
+        <tr><td><strong>Срезается на лаге q</strong></td><td>Затухает геометрически</td><td>MA(q)</td><td>q = число значимых лагов ACF</td></tr>
+        <tr class="trh"><td>Затухает (волнами/экспоненциально)</td><td>Затухает (волнами)</td><td>ARMA(p,q)</td><td>Подбор по AIC</td></tr>
+        <tr><td>Значимый пик на лагах s, 2s, 3s…</td><td>Значимый пик на лаге s</td><td>Сезонность (период s)</td><td>Добавить SARIMA季节 часть</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="usewhen">
+    <div class="usewhen-label">⏰ Когда использовать ARIMA</div>
+    <ul>
+      <li><strong>Хорошо:</strong> один ряд с достаточной историей (100+ точек), нет явных внешних факторов</li>
+      <li><strong>Хорошо:</strong> финансовые ряды (возвраты акций), данные без выраженных праздников</li>
+      <li><strong>Плохо:</strong> множество рядов (5M SKU — слишком медленно), явные праздники, нелинейные паттерны</li>
+      <li><strong>Альтернатива:</strong> при сезонности → SARIMA. При внешних регрессорах → ARIMAX. При множестве рядов → LightGBM global model</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ PROPHET ═══ -->
+<section class="sec" id="prophet">
+  <div class="stitle">🔮 Facebook (Meta) Prophet</div>
+  <div class="sdesc">Аддитивная модель с явными компонентами тренда, сезонности и праздников. Не требует стационарности.</div>
+
+  <div class="fbox green">
+    <div class="flabel">Модель Prophet</div>
+    $$y(t) = g(t) + s(t) + h(t) + \varepsilon_t$$
+    <div class="fnote">
+      <strong>$g(t)$</strong> — тренд: либо piecewise-linear, либо logistic growth (с насыщением).<br>
+      <strong>$s(t)$</strong> — сезонность через ряды Фурье (годовая + недельная + дневная).<br>
+      <strong>$h(t)$</strong> — праздники (holiday effects) — явно заданные пользователем.<br>
+      <strong>$\varepsilon_t$</strong> — шум.
+    </div>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Сезонность через ряды Фурье</div>
+    $$s(t) = \sum_{n=1}^{N}\!\left(a_n\cos\!\frac{2\pi n t}{P} + b_n\sin\!\frac{2\pi n t}{P}\right)$$
+    <div class="fnote">$P$ — период (365.25 для годовой, 7 для недельной). $N$ — число гармоник (Prophet default: N=10 годовая, N=3 недельная). Параметры $a_n, b_n$ обучаются из данных. Больше N → более гибкая сезонность, но риск overfitting.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Ряды Фурье — зачем синусы?</div>
+    <p>Любую периодическую функцию можно разложить в сумму синусов и косинусов (теорема Фурье). Первая гармоника ($n=1$) — базовая "волна" с периодом P. Вторая ($n=2$) — удвоенная частота, детали. И так далее.</p>
+    <p><strong>Аналогия:</strong> звук гитарной струны = основная нота + обертоны. Сезонность = основной цикл + детальные поднастройки. Больше гармоник → точнее форма сезонности.</p>
+  </div>
+
+  <!-- Visual: Fourier harmonics -->
+  <div class="chb">
+    <div class="cht">Как гармоники складываются в сезонность</div>
+    <div class="chsub">N=1 (грубо) → N=3 (лучше) → N=10 (детально)</div>
+    <div style="position:relative;height:200px;"><canvas id="c_fourier"></canvas></div>
+  </div>
+
+  <div class="fbox amber">
+    <div class="flabel">Piecewise Linear тренд с changepoints</div>
+    $$g(t) = (k + \mathbf{a}(t)^T\!\boldsymbol{\delta})\,t + (m + \mathbf{a}(t)^T\!\boldsymbol{\gamma})$$
+    <div class="fnote">$k$ — базовый наклон. $\boldsymbol{\delta}$ — корректировки наклона в changepoints. $\mathbf{a}(t)$ — индикаторная функция (в каком сегменте мы). Prophet автоматически находит changepoints — точки, где тренд меняет направление. Обнаруживает, например, момент запуска нового продукта или кризис.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Changepoints на пальцах</div>
+    <p>Представь рост пользователей Twitter: 2008–2012 — стремительный рост, 2016 — плато, 2022 — резкое падение после покупки Маском. Один глобальный тренд такое не опишет. Prophet делит тренд на отрезки — в каждом свой наклон. Переломы (changepoints) он находит автоматически по данным.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Критерий</th><th>Prophet</th><th>ARIMA/SARIMA</th><th>LightGBM (ML)</th></tr></thead>
+      <tbody>
+        <tr><td>Стационарность</td><td class="pos">Не нужна</td><td class="neg">Обязательна</td><td class="pos">Не нужна</td></tr>
+        <tr><td>Праздники/события</td><td class="pos">Явно задаются</td><td class="neg">Нет</td><td class="pos">Как признаки</td></tr>
+        <tr><td>Много рядов</td><td class="neg">Медленно</td><td class="neg">Медленно</td><td class="pos">Одна global модель</td></tr>
+        <tr><td>Интерпретируемость</td><td class="pos">Высокая (компоненты)</td><td class="pos">Высокая</td><td class="neg">Низкая (без SHAP)</td></tr>
+        <tr><td>Нелинейность</td><td class="neg">Ограничена</td><td class="neg">Только линейная</td><td class="pos">Полная</td></tr>
+        <tr><td>Лучший для</td><td>Бизнес-KPI, аналитика</td><td>Финансы, один ряд</td><td>Retail, много SKU</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="usewhen">
+    <div class="usewhen-label">⏰ Когда Prophet — лучший выбор</div>
+    <ul>
+      <li>Бизнес-показатели с явными праздниками (выручка, DAU)</li>
+      <li>Аналитики-нетехнари нуждаются в объяснении компонентов</li>
+      <li>Данные с пропусками и выбросами (устойчив к ним)</li>
+      <li><strong>Реальные кейсы:</strong> Facebook — прогноз нагрузки серверов; Airbnb — спрос на аренду по городам; Booking.com — прогноз заездов</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ ML APPROACH ═══ -->
+<section class="sec" id="ml">
+  <div class="stitle">🤖 ML-подход: ВР как Supervised Learning</div>
+  <div class="sdesc">Превращаем задачу ВР в обычный регрессионный датасет — тогда можно использовать XGBoost, LightGBM, нейросети.</div>
+
+  <!-- Visual: tabularization -->
+  <div class="chb" style="padding:20px;">
+    <div class="cht">Схема: как ВР превращается в табличный датасет</div>
+    <div class="chsub">Скользящее окно (sliding window): горизонт H=1, лаги 1,2,3</div>
+    <div style="overflow-x:auto;">
+      <table style="font-size:13px;margin-top:8px;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th>t</th><th>$y_t$ (факт)</th><th>lag_1=$y_{t-1}$</th><th>lag_2=$y_{t-2}$</th><th>lag_3=$y_{t-3}$</th><th>roll_mean_3</th><th>day_of_week</th><th><strong>target=$y_t$</strong></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mn">4</td><td class="mn">112</td><td class="mn">105</td><td class="mn">100</td><td class="mn">—</td><td class="mn">—</td><td class="mn">Mon</td><td class="mn"><strong>112</strong></td></tr>
+          <tr><td class="mn">5</td><td class="mn">108</td><td class="mn">112</td><td class="mn">105</td><td class="mn">100</td><td class="mn">105.7</td><td class="mn">Tue</td><td class="mn"><strong>108</strong></td></tr>
+          <tr><td class="mn">6</td><td class="mn">115</td><td class="mn">108</td><td class="mn">112</td><td class="mn">105</td><td class="mn">108.3</td><td class="mn">Wed</td><td class="mn"><strong>115</strong></td></tr>
+          <tr style="background:#fefce8;"><td class="mn">7</td><td class="mn">?</td><td class="mn">115</td><td class="mn">108</td><td class="mn">112</td><td class="mn">111.7</td><td class="mn">Thu</td><td class="mn"><strong>← предсказать!</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px;">Жёлтая строка — то, что модель предсказывает. Признаки (lag_1, lag_2…) — известны заранее.</p>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Lag features</div>
+    $$x_t^{(k)} = y_{t-k}, \quad k \in \{1, 7, 14, 30, 365\}$$
+    <div class="fnote">Лаги выбираем на основе ACF: если ACF значимо на лагах 1, 7, 30 → включаем lag_1, lag_7, lag_30. Лаг-7 = "неделю назад" захватывает недельную сезонность без явного seasonality компонента.</div>
+  </div>
+  <div class="intuition">
+    <div class="intuition-label">🤏 На пальцах</div>
+    <p>Хочешь предсказать продажи в следующий понедельник? Дай модели: продажи прошлого понедельника (lag_7), позапрошлого (lag_14), месяц назад (lag_30), год назад (lag_365). Модель сама выучит "в понедельник обычно продаём столько сколько в прошлый понедельник ± X".</p>
+  </div>
+
+  <div class="fbox green">
+    <div class="flabel">Rolling window features</div>
+    $$\bar{y}^{(k)}_t = \frac{1}{k}\sum_{i=1}^{k} y_{t-i}$$
+    $$\sigma^{(k)}_t = \sqrt{\frac{1}{k-1}\sum_{i=1}^{k}\!\left(y_{t-i} - \bar{y}^{(k)}_t\right)^2}$$
+    <div class="fnote">Rolling mean сглаживает шум → плавный тренд. Rolling std = волатильность (нестабильность). Ещё: rolling max/min (сигнал "был ли резкий всплеск?"), rolling median (устойчив к выбросам).</div>
+  </div>
+  <div class="intuition">
+    <div class="intuition-label">🤏 На пальцах</div>
+    <p>Rolling mean за 7 дней = "какова средняя температура за последнюю неделю?" — не нужно смотреть на каждый день. Rolling std = "насколько нестабильна была неделя?" — если std высокий, всё скачет, значит что-то необычное.</p>
+  </div>
+
+  <div class="fbox pur">
+    <div class="flabel">Calendar / синусно-косинусное кодирование</div>
+    $$x_{\sin} = \sin\!\left(\frac{2\pi \cdot \text{dow}}{7}\right), \quad x_{\cos} = \cos\!\left(\frac{2\pi \cdot \text{dow}}{7}\right)$$
+    <div class="fnote">Проблема: если кодировать день недели числом 1–7, то воскресенье (7) "далеко" от понедельника (1) — нарушается периодичность. Sin/cos "замыкают" неделю в круг: 0 → 2π. Для tree models (LightGBM) подойдёт и прямое число — деревья могут сами найти разрыв.</div>
+  </div>
+
+  <!-- Visual: sin/cos encoding -->
+  <div class="chb">
+    <div class="cht">Синусно-косинусное кодирование дня недели</div>
+    <div class="chsub">Пн(0) и Вс(6) должны быть "близко" — sin/cos это обеспечивает</div>
+    <div style="position:relative;height:180px;"><canvas id="c_sincos"></canvas></div>
+  </div>
+
+  <div class="usewhen">
+    <div class="usewhen-label">⏰ Когда ML-подход лучше ARIMA/Prophet</div>
+    <ul>
+      <li><strong>Много рядов:</strong> одна global LightGBM на 5M SKU против 5M ARIMA-моделей</li>
+      <li><strong>Внешние признаки важны:</strong> цена конкурентов, погода, маркетинговые расходы — всё как feature</li>
+      <li><strong>Нелинейные паттерны:</strong> "при скидке > 30% AND праздник → продажи ×5" — деревья легко справятся</li>
+      <li><strong>Примеры:</strong> Amazon demand forecasting (DeepAR), Walmart M5 competition (LightGBM выиграл), Uber surge (gradient boosting)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ WALK-FORWARD ═══ -->
+<section class="sec" id="val">
+  <div class="stitle">✅ Walk-Forward Validation</div>
+  <div class="sdesc">Единственно честный способ оценить модель ВР. Random split = утечка данных.</div>
+
+  <div class="fbox">
+    <div class="flabel">Схема Walk-Forward CV</div>
+    $$\text{Fold } k: \;\; \text{Train}=[1,\,t_k], \quad \text{Test}=[t_k+1,\,t_k+h]$$
+    <div class="fnote">Каждый fold сдвигается вперёд на $h$ (горизонт прогноза). Модель ВСЕГДА обучается только на прошлом, тестируется только на будущем. Число фолдов = (T - initial_train) / h.</div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Почему Random Split — смерть для ВР</div>
+    <p>Строим модель продаж. Лаговый признак lag_7 для test-точки "сентябрь 2024" требует данных из "августа 2024". При random split "август 2024" может оказаться в train — тогда модель вычисляет lag_7 корректно. Но в production мы предсказываем будущее — там этих данных не было бы при обучении.</p>
+    <p>Результат: lab AUC/RMSE отличный, production RMSE в 2-3 раза хуже. Walk-forward честно симулирует production-среду.</p>
+  </div>
+
+  <!-- Visual: walk-forward diagram -->
+  <div class="wf-vis">
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:16px;">Walk-Forward: каждый fold сдвигается вперёд</div>
+    <div style="display:grid;grid-template-columns:55px 1fr;gap:8px;margin-bottom:6px;font-size:11px;font-weight:600;color:var(--text3);">
+      <div></div>
+      <div style="display:flex;gap:0;">
+        <div style="width:20%;text-align:center;">Jan</div><div style="width:20%;text-align:center;">Feb</div>
+        <div style="width:20%;text-align:center;">Mar</div><div style="width:20%;text-align:center;">Apr</div>
+        <div style="width:20%;text-align:center;">May</div>
+      </div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-label">Fold 1</div>
+      <div class="wf-bar">
+        <div class="wf-train" style="width:40%;">TRAIN</div>
+        <div class="wf-test" style="width:20%;">TEST</div>
+        <div class="wf-future" style="width:40%;"></div>
+      </div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-label">Fold 2</div>
+      <div class="wf-bar">
+        <div class="wf-train" style="width:60%;">TRAIN</div>
+        <div class="wf-test" style="width:20%;">TEST</div>
+        <div class="wf-future" style="width:20%;"></div>
+      </div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-label">Fold 3</div>
+      <div class="wf-bar">
+        <div class="wf-train" style="width:80%;">TRAIN</div>
+        <div class="wf-test" style="width:20%;">TEST</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:5px;"><div style="width:14px;height:14px;background:#bfdbfe;border-radius:3px;"></div>Train (исторические данные)</div>
+      <div style="display:flex;align-items:center;gap:5px;"><div style="width:14px;height:14px;background:#bbf7d0;border-radius:3px;"></div>Test (оценка качества)</div>
+      <div style="display:flex;align-items:center;gap:5px;"><div style="width:14px;height:14px;background:#f3f4f6;border-radius:3px;border:1px solid #e5e7eb;"></div>Будущее (недоступно)</div>
+    </div>
+  </div>
+
+  <div class="cl tip">
+    <div class="cli">✅</div>
+    <div><strong>Fixed vs Expanding window:</strong> в примере выше — expanding (train растёт). Альтернатива: fixed window — train всегда одинакового размера (скользит). Expanding лучше когда весь исторический контекст полезен. Fixed лучше когда данные нестационарны (старые данные вредят).</div>
+  </div>
+</section>
+
+<!-- ═══ METRICS ═══ -->
+<section class="sec" id="metrics">
+  <div class="stitle">📏 Метрики качества прогноза</div>
+  <div class="sdesc">Разные метрики для разных бизнес-задач. Нельзя использовать MSE как для классификации.</div>
+
+  <div class="fbox">
+    <div class="flabel">Основные метрики</div>
+    $$\text{MAE} = \frac{1}{n}\sum_{t=1}^n |y_t - \hat{y}_t|$$
+    $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^n (y_t - \hat{y}_t)^2}$$
+    $$\text{MAPE} = \frac{100\%}{n}\sum_{t=1}^n \frac{|y_t - \hat{y}_t|}{y_t}$$
+    $$\text{SMAPE} = \frac{200\%}{n}\sum_{t=1}^n \frac{|y_t - \hat{y}_t|}{|y_t| + |\hat{y}_t|}$$
+    <div class="fnote">MAPE нельзя считать при $y_t \approx 0$ (деление на ноль). SMAPE решает эту проблему. WAPE = $\sum|y-\hat{y}|/\sum y$ — взвешенный MAE, хорош при разных масштабах.</div>
+  </div>
+
+  <!-- Visual: metrics comparison with examples -->
+  <div class="numex">
+    <div class="numex-title">🔢 Сравнение метрик на одних данных</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>t</th><th>Факт $y_t$</th><th>Прогноз $\hat{y}_t$</th><th>Ошибка</th><th>|e|</th><th>e²</th><th>|e|/y</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">1</td><td class="mn">100</td><td class="mn">95</td><td class="mn neg">−5</td><td class="mn">5</td><td class="mn">25</td><td class="mn">5%</td></tr>
+          <tr><td class="mn">2</td><td class="mn">200</td><td class="mn">210</td><td class="mn pos">+10</td><td class="mn">10</td><td class="mn">100</td><td class="mn">5%</td></tr>
+          <tr><td class="mn">3</td><td class="mn">50</td><td class="mn">65</td><td class="mn pos">+15</td><td class="mn">15</td><td class="mn">225</td><td class="mn">30%</td></tr>
+          <tr class="trh"><td colspan="3"><strong>Итого</strong></td><td class="mn"><strong>MAE = 10</strong></td><td class="mn"><strong>RMSE = 12.9</strong></td><td class="mn"><strong>MAPE = 13.3%</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-top:8px;">Замечание: ошибка в t=3 (50→65: +30%) сильнее влияет на MAPE, чем t=2 (200→210: +5%). RMSE карает t=3 сильнее MAE из-за квадрата.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Метрика</th><th>Плюсы</th><th>Минусы</th><th>Когда использовать</th></tr></thead>
+      <tbody>
+        <tr><td><strong>MAE</strong></td><td>Устойчив к выбросам, понятен (в единицах ряда)</td><td>Абсолютный — плохо сравнивать разные ряды</td><td>Если выбросы важны, аномалии</td></tr>
+        <tr><td><strong>RMSE</strong></td><td>Штрафует большие ошибки</td><td>Чувствителен к выбросам, в единицах ряда²</td><td>Когда большие ошибки критичны (безопасность)</td></tr>
+        <tr class="trh"><td><strong>MAPE</strong></td><td>В %, понятен бизнесу</td><td>Нельзя при y≈0, асимметричен</td><td>Бизнес-отчётность, ненулевые ряды</td></tr>
+        <tr><td><strong>SMAPE</strong></td><td>Симметричен, работает при малых y</td><td>Менее интуитивен</td><td>Retail с промо-акциями (нули)</td></tr>
+        <tr><td><strong>WAPE</strong></td><td>Взвешен по объёму — важные SKU важнее</td><td>Крупные SKU доминируют</td><td>Portfolio-level оценка в ритейле</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ NUMERIC ═══ -->
+<section class="sec" id="num">
+  <div class="stitle">🔢 Числовой разбор: ARIMA(1,1,1) вручную</div>
+  <div class="sdesc">Пройдём все шаги от сырых данных до прогноза. Ряд: ежемесячные продажи кофемашин.</div>
+
+  <div class="numex">
+    <div class="numex-title">Шаг 1: Исходные данные и дифференцирование (d=1)</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Месяц</th><th>$y_t$ (продажи)</th><th>$\Delta y_t = y_t - y_{t-1}$</th><th>ADF на $\Delta y_t$</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">Янв</td><td class="mn">100</td><td class="mn">—</td><td rowspan="6" style="vertical-align:middle;text-align:center;"><span class="pos">p = 0.03</span><br><small>Стационарен!<br>d = 1</small></td></tr>
+          <tr><td class="mn">Фев</td><td class="mn">107</td><td class="mn pos">+7</td></tr>
+          <tr><td class="mn">Мар</td><td class="mn">104</td><td class="mn neg">−3</td></tr>
+          <tr><td class="mn">Апр</td><td class="mn">112</td><td class="mn pos">+8</td></tr>
+          <tr><td class="mn">Май</td><td class="mn">109</td><td class="mn neg">−3</td></tr>
+          <tr><td class="mn">Июн</td><td class="mn">116</td><td class="mn pos">+7</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">Шаг 2: Оценка параметров AR(1) и MA(1)</div>
+    <p style="font-size:13.5px;color:var(--text2);margin-bottom:10px;">Предположим, что после подбора по MLE: $\hat{\phi}_1 = 0.6$ (AR), $\hat{\theta}_1 = 0.4$ (MA).</p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Месяц</th><th>$\Delta y_t$</th><th>AR-прогноз $\phi_1\Delta y_{t-1}$</th><th>Ошибка $\hat{\varepsilon}_t$</th><th>MA-корр. $\theta_1\hat{\varepsilon}_{t-1}$</th><th>Итоговый $\widehat{\Delta y}_t$</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">Фев</td><td class="mn pos">+7</td><td class="mn">—</td><td class="mn pos">+7</td><td class="mn">—</td><td class="mn">—</td></tr>
+          <tr><td class="mn">Мар</td><td class="mn neg">−3</td><td class="mn">0.6×7=<strong>4.2</strong></td><td class="mn neg">−3−4.2=<strong>−7.2</strong></td><td class="mn">0.4×7=<strong>+2.8</strong></td><td class="mn">4.2+2.8=<strong>7.0</strong></td></tr>
+          <tr><td class="mn">Апр</td><td class="mn pos">+8</td><td class="mn">0.6×(−3)=<strong>−1.8</strong></td><td class="mn pos">8−(−1.8)=<strong>+9.8</strong></td><td class="mn">0.4×(−7.2)=<strong>−2.9</strong></td><td class="mn">−1.8+(−2.9)=<strong>−4.7</strong></td></tr>
+          <tr><td class="mn">Май</td><td class="mn neg">−3</td><td class="mn">0.6×8=<strong>4.8</strong></td><td class="mn neg">−3−4.8=<strong>−7.8</strong></td><td class="mn">0.4×9.8=<strong>+3.9</strong></td><td class="mn">4.8+3.9=<strong>8.7</strong></td></tr>
+          <tr><td class="mn">Июн</td><td class="mn pos">+7</td><td class="mn">0.6×(−3)=<strong>−1.8</strong></td><td class="mn pos">7−(−1.8)=<strong>+8.8</strong></td><td class="mn">0.4×(−7.8)=<strong>−3.1</strong></td><td class="mn">−1.8+(−3.1)=<strong>−4.9</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">Шаг 3: Прогноз на Июль</div>
+    <div class="numex-step">
+      <div class="numex-badge">1</div>
+      <div>$\widehat{\Delta y}_{Jul} = \hat{\phi}_1 \cdot \Delta y_{Jun} + \hat{\theta}_1 \cdot \hat{\varepsilon}_{Jun} = 0.6 \times 7 + 0.4 \times 8.8 = 4.2 + 3.5 = 7.7$</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">2</div>
+      <div>$\hat{y}_{Jul} = y_{Jun} + \widehat{\Delta y}_{Jul} = 116 + 7.7 = \mathbf{123.7}$</div>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-top:8px;">Для горизонта h>1: ошибки будущих периодов неизвестны → $\hat{\varepsilon}=0$. Дисперсия прогноза растёт с горизонтом → доверительный интервал расширяется.</p>
+  </div>
+</section>
+
+<!-- ═══ CHARTS ═══ -->
+<section class="sec" id="charts">
+  <div class="stitle">📊 Интерактивные графики</div>
+  <div class="sdesc">Визуальное сравнение методов и демонстрация концепций.</div>
+  <div class="charts-2">
+    <div class="chb">
+      <div class="cht">ACF vs PACF — определяем AR/MA порядок</div>
+      <div class="chsub">Оранжевые линии = граница значимости ±1.96/√n</div>
+      <div style="position:relative;height:220px;"><canvas id="c_acf"></canvas></div>
+    </div>
+    <div class="chb">
+      <div class="cht">Walk-forward MAE по методам и горизонтам</div>
+      <div class="chsub">Чем дальше горизонт, тем хуже прогноз</div>
+      <div style="position:relative;height:220px;"><canvas id="c_wf_mae"></canvas></div>
+    </div>
+  </div>
+  <div class="chb">
+    <div class="cht">Сравнение прогнозов: ARIMA vs Prophet vs LightGBM</div>
+    <div class="chsub">Последние 4 точки — прогноз, до них — факт</div>
+    <div style="position:relative;height:200px;"><canvas id="c_forecast"></canvas></div>
+  </div>
+</section>
+
+<!-- ═══ SYSTEM DESIGN CASES ═══ -->
+<section class="sec" id="cases">
+  <div class="stitle">🏗️ System Design Cases</div>
+  <div class="sdesc">Как крупные компании строят forecasting в production — реальные архитектуры.</div>
+
+  <!-- Case 1: Amazon -->
+  <div class="casebox">
+    <div class="caseco">🏬 Amazon · Supply Chain Forecasting</div>
+    <h4>DeepAR: нейросетевой прогноз для 400M+ SKU</h4>
+    <p><strong>Задача:</strong> прогнозировать спрос на 400M+ SKU по всему миру. Стандартный ARIMA — нереально: 400M моделей, холодный старт для новых товаров, нет crosslearning.</p>
+    <ul>
+      <li><strong>DeepAR (Amazon Research, 2020):</strong> рекуррентная нейросеть (LSTM), обученная глобально на всех SKU. Каждый SKU — один "example" в обучении. Глобальная модель разделяет веса → знания о сезонности переносятся между SKU.</li>
+      <li><strong>Probabilistic forecasting:</strong> вместо точечного прогноза → распределение. P10/P50/P90 → гибкое управление запасами.</li>
+      <li><strong>Cold start:</strong> новый SKU без истории — модель использует static features (категория, цена, описание) и "похожие" паттерны из обученных рядов.</li>
+      <li><strong>Результат:</strong> ~15% снижение out-of-stock при снижении overstock на ~10% по сравнению с ensemble ARIMA.</li>
+    </ul>
+  </div>
+  <div class="sysbox">
+    <h4>🏗️ Amazon DeepAR Pipeline</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Sales Events</strong>Kafka → S3<br>real-time stream</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Feature Store</strong>price, promotions<br>category hierarchy</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>DeepAR Training</strong>LSTM global model<br>SageMaker weekly</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>P10/P50/P90</strong>per SKU×horizon<br>stored in DynamoDB</div>
+    </div>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Anomaly filter</strong>outlier events<br>COVID, stockouts</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Hierarchical Rec.</strong>SKU → Category<br>→ Region → Total</div>
+      <div class="sysarrow">→</div>
+      <div class="sysgreen"><strong>Replenishment</strong>auto order trigger<br>P90 safety stock</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Monitoring</strong>WAPE by category<br>alert if >25%</div>
+    </div>
+    <div class="sysnote">
+      <strong>Ключевые решения Amazon:</strong><br>
+      1. <strong>Иерархическое согласование (MinT):</strong> прогнозы SKU должны суммироваться в региональные, те — в глобальные. MinT (Minimum Trace) reconciliation: находит взвешенную комбинацию прогнозов всех уровней иерархии для минимизации суммарной дисперсии ошибок.<br>
+      2. <strong>Quantile loss:</strong> для P10/P50/P90 обучают модель с pinball loss: $L_\alpha = \alpha\max(y-\hat{y}, 0) + (1-\alpha)\max(\hat{y}-y, 0)$. P90 используется для safety stock (консервативно), P50 для baseline.<br>
+      3. <strong>Feature engineering:</strong> признаки-"индикаторы событий": ближайший Prime Day, Black Friday, локальные праздники — добавляются как binary/distance features к каждой точке ряда.
+    </div>
+  </div>
+
+  <!-- Case 2: Uber -->
+  <div class="casebox" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-color:#fed7aa;">
+    <div class="caseco" style="background:#ea580c;">🚗 Uber · Surge Pricing & Driver Dispatch</div>
+    <h4>Real-Time demand forecasting для surge pricing</h4>
+    <p><strong>Задача:</strong> предсказать спрос на поездки в следующие 5–60 минут для каждой geo-ячейки (hex grid H3). Управлять surge multiplier в реальном времени.</p>
+    <ul>
+      <li><strong>Granularity:</strong> прогноз на уровне hex-ячейки (≈500м) × 5-минутных окон. Миллионы рядов по всему миру.</li>
+      <li><strong>Model:</strong> gradient boosted trees (LightGBM) с temporal/spatial features: лаги 5/10/15/30/60 мин, rolling stats, день недели, праздники, погода (API), события (концерты).</li>
+      <li><strong>Pipeline latency:</strong> prediction latency < 200ms для real-time serving.</li>
+      <li><strong>Публичный paper:</strong> "Forecasting at Uber: An Introduction" (2018) — рекомендованное чтение.</li>
+    </ul>
+  </div>
+  <div class="sysbox">
+    <h4>🏗️ Uber Forecasting System</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Ride Requests</strong>Kafka stream<br>geo + timestamp</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Flink aggregation</strong>5-min buckets<br>H3 hex grid</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>Feature Vector</strong>lags, rolling<br>weather, events</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>LightGBM Inference</strong>ONNX <200ms<br>per hex cell</div>
+    </div>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Forecast Store</strong>Redis<br>TTL 5 min</div>
+      <div class="sysarrow">→</div>
+      <div class="sysgreen"><strong>Surge Engine</strong>supply/demand ratio<br>→ price multiplier</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Driver Dispatch</strong>reposition signals<br>to high-demand areas</div>
+    </div>
+    <div class="sysnote">
+      <strong>Уникальный подход Uber — Spatial correlation:</strong><br>
+      Спрос в ячейке A зависит от спроса в соседних ячейках B, C, D. Uber добавляет spatial lag features: среднее по K соседям за последние T шагов. Это позволяет модели учить "волна спроса распространяется из центра к периферии". Дополнительно: graph neural networks для моделирования spatial correlations.
+    </div>
+  </div>
+
+  <!-- Case 3: Netflix -->
+  <div class="casebox" style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border-color:#fca5a5;">
+    <div class="caseco" style="background:#dc2626;">🎬 Netflix · Server Capacity Forecasting</div>
+    <h4>CPU/bandwidth прогноз для provisioning инфраструктуры</h4>
+    <p><strong>Задача:</strong> предсказать нагрузку на CDN-узлы за 1 день, 1 неделю, 1 месяц вперёд для заблаговременного provisioning серверов. Недооценка = outage. Переоценка = $ миллионы на лишние серверы.</p>
+    <ul>
+      <li><strong>Метод:</strong> Ensemble из Prophet (сезонность + праздники: День Благодарения +300% трафика) + ARIMA + LightGBM. Финальный прогноз = взвешенное среднее.</li>
+      <li><strong>Content-aware features:</strong> release schedule (выход нового сезона "Stranger Things" = +X% трафика в регионе) как external regressor.</li>
+      <li><strong>Region-level:</strong> прогноз по 190+ странам раздельно + глобальный rollup.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ Q&A ═══ -->
+<section class="sec" id="qa">
+  <div class="qah">❓ Q&amp;A — 10 вопросов</div>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое стационарность и почему ARIMA требует её? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>Стационарность:</strong> среднее, дисперсия и автоковариация ряда не меняются со временем.<br><br>
+      <strong>Почему нужна для ARIMA:</strong> ARIMA ищет устойчивые паттерны (AR- и MA-коэффициенты), которые одинаковы во всех периодах. Для нестационарного ряда паттерны меняются — в 2020 среднее одно, в 2023 — другое. Модель, обученная на 2020, будет плохо работать в 2023.<br><br>
+      <strong>Проверка:</strong> ADF-тест (p &lt; 0.05 → стационарен). Визуально: нет явного тренда, постоянная дисперсия.<br><br>
+      <strong>Решение при нестационарности:</strong> дифференцирование (параметр d). Цена акции — нестационарна. Логарифмические возвраты (log returns) — стационарны.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как выбрать параметры p, d, q для ARIMA? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>d:</strong> ADF-тест. p ≥ 0.05 → дифференцировать. Применяем столько раз, пока p &lt; 0.05. Обычно d=0 или d=1.<br><br>
+      <strong>p (AR порядок):</strong> PACF-график. Находим лаг, после которого PACF резко обрывается (в зону незначимости ±1.96/√n). p = этот лаг.<br><br>
+      <strong>q (MA порядок):</strong> ACF-график. Находим лаг, после которого ACF резко обрывается. q = этот лаг.<br><br>
+      <strong>Автоматически:</strong> <code>from pmdarima import auto_arima; auto_arima(y, stepwise=True)</code> перебирает комбинации и выбирает по AIC.<br><br>
+      <strong>Практика:</strong> для большинства экономических рядов ARIMA(1,1,1) или ARIMA(0,1,1) — хорошая отправная точка.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>В чём Prophet лучше ARIMA и когда его использовать? <span class="tag tpr">сравнение</span></summary>
+    <div class="qa">
+      <strong>Prophet выигрывает:</strong><br>
+      1. Нет требования стационарности<br>
+      2. Автоматически обрабатывает праздники и события (holidays параметр)<br>
+      3. Обнаруживает changepoints в тренде<br>
+      4. Устойчив к пропускам и выбросам<br>
+      5. Выдаёт интерпретируемые компоненты (тренд + сезонность отдельно)<br><br>
+      <strong>ARIMA выигрывает:</strong><br>
+      1. Теоретически строгий для стационарных рядов<br>
+      2. Лучше для финансовых данных без выраженной сезонности<br>
+      3. Быстрее для одного ряда<br><br>
+      <strong>Когда Prophet:</strong> бизнес-показатели (выручка, DAU), сезонные ряды с праздниками, когда нужна интерпретация компонентов.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Почему нельзя random split для ВР? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      Лаговые признаки создают "зависимость от будущего" при random split:<br><br>
+      Пример: предсказываем продажи в день T. Признак lag_7 = продажи в день T-7. При random split день T-7 может попасть в test, а день T — в train. Тогда при вычислении lag_7 для train-точки T мы используем значение из test.<br><br>
+      Это leakage: модель обучается "зная" будущие тестовые данные.<br><br>
+      <strong>Walk-forward (правильно):</strong> train всегда строго раньше test по времени. Симулирует реальный deployment.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое lag leakage и как его избежать? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      <strong>Lag leakage:</strong> при создании признаков лаги вычисляются неправильно — включают данные из будущего.<br><br>
+      <strong>Примеры:</strong><br>
+      1. Lag_1 для предсказания t+1 вычисляется от "сегодня" вместо "вчера"<br>
+      2. Rolling mean за 7 дней для точки T включает данные из T+1..T+3 (если неправильно сдвинуть)<br>
+      3. Признак "выручка за следующую неделю" (явная утечка будущего)<br><br>
+      <strong>Как избежать:</strong><br>
+      - Для предсказания горизонта h: все признаки должны быть из периода ≤ T (не T+1 и далее)<br>
+      - Использовать <code>df.shift(1)</code> в pandas при создании лагов<br>
+      - Писать unit-тесты на датасет: проверять что нет корреляции признаков с "будущим таргетом"<br>
+      - Строгий temporal join при создании датасета
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое иерархическое согласование прогнозов? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      В ритейле прогнозы должны быть согласованы: сумма прогнозов по SKU = прогноз по категории = прогноз по магазину = общий прогноз.<br><br>
+      <strong>Подходы:</strong><br>
+      1. <strong>Bottom-Up:</strong> суммируем прогнозы SKU → категории → итого. Точен на нижнем уровне, но ошибки SKU накапливаются.<br>
+      2. <strong>Top-Down:</strong> прогнозируем на верхнем уровне, делим вниз пропорционально историческим долям. Теряет точность SKU.<br>
+      3. <strong>MinT (Minimum Trace, Wickramasuriya et al., 2019):</strong> находит оптимальную матрицу P для взвешивания прогнозов всех уровней. Минимизирует суммарную дисперсию ошибок по иерархии. Используется в Amazon, Walmart.<br><br>
+      В Python: пакет <code>hierarchicalforecast</code> (Nixtla).
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как строить доверительные интервалы для прогноза? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      Точечный прогноз недостаточен для принятия решений (управление запасами, provisioning).<br><br>
+      <strong>Методы:</strong><br>
+      1. <strong>ARIMA CI:</strong> аналитически из дисперсии ошибки. Расширяется с горизонтом: $\sigma_h^2 = \sigma^2(1 + \sum_{i=1}^{h-1}\psi_i^2)$.<br>
+      2. <strong>Quantile regression:</strong> LightGBM с quantile loss. Обучаем три модели: α=0.1, 0.5, 0.9 → получаем P10/P50/P90.<br>
+      3. <strong>Conformal prediction:</strong> используем остатки из holdout для построения адаптивных PI. Гарантированное покрытие без предположений о распределении.<br>
+      4. <strong>Bootstrap:</strong> генерируем 1000 версий ряда, добавляя случайные residuals → CI из квантилей ансамбля.<br><br>
+      <strong>Практика Amazon/Uber:</strong> P90 для "консервативного" решения (overstock лучше чем outage), P50 для baseline.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое intermittent demand и как с ним работать? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Intermittent (sporadic) demand:</strong> товар продаётся редко, много нулей в ряду. Типично для: запчасти, промышленное оборудование, медицинские расходники.<br><br>
+      <strong>Метрики ADI и CV²:</strong><br>
+      - ADI (Average Demand Interval) = средний интервал между ненулевыми продажами<br>
+      - CV² = (std нулевых продаж)² / (mean нулевых продаж)²<br>
+      По матрице ADI × CV² классифицируем ряд: smooth, erratic, intermittent, lumpy.<br><br>
+      <strong>Методы:</strong><br>
+      1. Croston's method: раздельно моделирует интервал и размер события<br>
+      2. Zero-inflated Poisson/NegBin: смешанная модель P(y=0) + distribution(y>0)<br>
+      3. Temporal aggregation: еженедельные/месячные данные — меньше нулей
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как выбрать между ARIMA, Prophet и ML (LightGBM) для конкретной задачи? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>Один ряд + нет выраженных праздников + короткая история:</strong> ARIMA<br>
+      <strong>Бизнес-KPI с праздниками + нужна интерпретация:</strong> Prophet<br>
+      <strong>Много рядов (100+) + есть внешние признаки:</strong> LightGBM global model<br>
+      <strong>Сложные нелинейные паттерны + много данных:</strong> DeepAR/N-BEATS (нейросети)<br><br>
+      <strong>Практическое правило:</strong> начинать с простых baseline (naive, seasonal naive, moving average), потом Prophet/ETS, потом ML. Если ML даёт &lt;10% улучшения над Prophet — Prophet достаточен.<br><br>
+      <strong>Ensemble:</strong> лучший результат обычно у ансамбля из 3-5 моделей. Amazon, Netflix, Walmart используют weighted ensemble.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Какие метрики использовать для оценки прогнозов? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>MAPE:</strong> процентная ошибка — понятна бизнесу ("ошибаемся на 8%"). Нельзя при y≈0.<br>
+      <strong>SMAPE:</strong> симметричный MAPE, решает проблему нулей. Используется в M-competition.<br>
+      <strong>RMSE:</strong> штрафует крупные ошибки сильнее — если outage критичен, RMSE важнее MAE.<br>
+      <strong>WAPE = Σ|e|/Σy:</strong> взвешенный MAE. Стандарт в ритейле — крупные SKU важнее мелких.<br>
+      <strong>Bias = Σ(ŷ-y)/Σy:</strong> систематическое занижение/завышение. Для WMS bias > 0 (overforecast) лучше чем bias < 0 (underforecast → stockout).<br><br>
+      <strong>Правило:</strong> всегда считать несколько метрик + отдельно по категориям, горизонтам, периодам. Одна метрика — недостаточно.
+    </div>
+  </details>
+
+  <div class="pfooter">
+    <a href="block2_quiz.html" class="btn prev">← Блок 2: Тест</a>
+    <a href="block3_02_embeddings.html" class="btn">Embeddings & Representations →</a>
+  </div>
+</section>
+</div>
+
+<script>
+// ─── helpers ───────────────────────────────────────────────
+function randArr(n, min, max){ return Array.from({length:n},()=>min+Math.random()*(max-min)); }
+function seededRand(seed){ let s=seed; return function(){ s=(s*9301+49297)%233280; return s/233280; }; }
+
+window.addEventListener('DOMContentLoaded',function(){
+
+// ─── Decomposition mini-charts ──────────────────────────────
+const T=36;
+const t=Array.from({length:T},(_,i)=>i);
+const trend=t.map(i=>80+i*1.8);
+const seas=t.map(i=>20*Math.sin(2*Math.PI*i/12));
+const sr=seededRand(42);
+const resid=t.map(()=>(sr()-0.5)*12);
+const orig=t.map((i,j)=>trend[j]+seas[j]+resid[j]);
+
+function miniLine(id, data, color){
+  const ctx=document.getElementById(id); if(!ctx)return;
+  const min=Math.min(...data), max=Math.max(...data);
+  new Chart(ctx,{type:'line',data:{labels:t,datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,tension:0.3,fill:false}]},
+    options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false,min:min-(max-min)*0.1,max:max+(max-min)*0.1}}}});
+}
+miniLine('c_orig', orig, '#2563eb');
+miniLine('c_trend', trend, '#dc2626');
+miniLine('c_seas', seas, '#16a34a');
+miniLine('c_resid', resid, '#9ca3af');
+
+// ─── Stationarity charts ────────────────────────────────────
+function miniChart(id, data, color){
+  const ctx=document.getElementById(id); if(!ctx)return;
+  new Chart(ctx,{type:'line',data:{labels:Array.from({length:data.length},(_,i)=>i),datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,tension:0.1}]},
+    options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}}}});
+}
+const sr2=seededRand(7);
+const statData=Array.from({length:60},()=>50+(sr2()-0.5)*20);
+const nonStat=Array.from({length:60},(_,i)=>30+i*0.8+(sr2()-0.5)*10);
+const hetero=Array.from({length:60},(_,i)=>50+(sr2()-0.5)*i*0.5);
+const diffData=nonStat.slice(1).map((v,i)=>v-nonStat[i]);
+miniChart('c_stat',statData,'#16a34a');
+miniChart('c_nstat',nonStat,'#dc2626');
+miniChart('c_hetero',hetero,'#d97706');
+miniChart('c_diff',diffData,'#2563eb');
+
+// ─── Fourier harmonics ──────────────────────────────────────
+(function(){
+  const ctx=document.getElementById('c_fourier'); if(!ctx)return;
+  const t2=Array.from({length:100},(_,i)=>i/100*2*Math.PI);
+  function fourier(n){ return t2.map(x=>{ let s=0; for(let k=1;k<=n;k++){s+=Math.sin(k*x)*0.8/k*Math.pow(-1,k+1);} return s; }); }
+  new Chart(ctx,{type:'line',data:{labels:t2.map(x=>x.toFixed(1)),datasets:[
+    {label:'N=1 (грубо)',data:fourier(1),borderColor:'#f87171',borderWidth:2,pointRadius:0,tension:0.3},
+    {label:'N=3 (средне)',data:fourier(3),borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:0.3},
+    {label:'N=10 (точно)',data:fourier(10),borderColor:'#22c55e',borderWidth:2.5,pointRadius:0,tension:0.1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{x:{display:false},y:{grid:{color:'#f3f4f6'},title:{display:true,text:'Значение сезонного компонента'}}}}});
+})();
+
+// ─── Sin/Cos encoding ───────────────────────────────────────
+(function(){
+  const ctx=document.getElementById('c_sincos'); if(!ctx)return;
+  const days=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const sinV=days.map((_,i)=>parseFloat(Math.sin(2*Math.PI*i/7).toFixed(3)));
+  const cosV=days.map((_,i)=>parseFloat(Math.cos(2*Math.PI*i/7).toFixed(3)));
+  const linear=[1,2,3,4,5,6,7];
+  new Chart(ctx,{type:'bar',data:{labels:days,datasets:[
+    {label:'Линейное (плохо)',data:linear,backgroundColor:'rgba(239,68,68,0.5)',yAxisID:'y2'},
+    {label:'sin(2π·dow/7)',data:sinV,backgroundColor:'rgba(37,99,235,0.6)',yAxisID:'y1'},
+    {label:'cos(2π·dow/7)',data:cosV,backgroundColor:'rgba(22,163,74,0.5)',yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{
+        y1:{position:'left',title:{display:true,text:'sin/cos'},min:-1.2,max:1.2,grid:{color:'#f3f4f6'}},
+        y2:{position:'right',title:{display:true,text:'linear'},display:false},
+        x:{grid:{display:false}}}}});
+})();
+
+// ─── ACF / PACF chart ───────────────────────────────────────
+(function(){
+  const ctx=document.getElementById('c_acf'); if(!ctx)return;
+  const lags=Array.from({length:15},(_,i)=>i+1);
+  const acf=[0.75,0.52,0.35,0.21,0.14,0.09,0.07,0.05,0.03,0.02,0.01,0.01,-0.01,0.01,-0.02];
+  const pacf=[0.75,0.02,0.01,-0.01,0.02,-0.02,0.01,0.02,-0.01,0.01,0.02,-0.01,0.01,-0.02,0.01];
+  const sig=0.16;
+  const sigLine=Array(15).fill(sig);
+  const sigLineN=Array(15).fill(-sig);
+  new Chart(ctx,{type:'bar',data:{labels:lags,datasets:[
+    {label:'ACF (затухает → AR(1))',data:acf,backgroundColor:acf.map(v=>Math.abs(v)>sig?'#2563eb':'#bfdbfe'),borderRadius:3,order:2},
+    {label:'PACF (срез на лаге 1 → AR(1)!)',data:pacf,backgroundColor:pacf.map(v=>Math.abs(v)>sig?'#16a34a':'#bbf7d0'),borderRadius:3,order:2},
+    {type:'line',label:'Граница +sig',data:sigLine,borderColor:'#f59e0b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:1},
+    {type:'line',label:'Граница -sig',data:sigLineN,borderColor:'#f59e0b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,order:1}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:11},filter:(item)=>!item.text.startsWith('Граница')}}},
+      scales:{x:{title:{display:true,text:'Lag'},grid:{display:false}},
+        y:{min:-0.3,max:1,title:{display:true,text:'Корреляция'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// ─── Walk-forward MAE ───────────────────────────────────────
+(function(){
+  const ctx=document.getElementById('c_wf_mae'); if(!ctx)return;
+  const h=[1,3,7,14,30];
+  new Chart(ctx,{type:'line',data:{labels:h.map(x=>x+' д'),datasets:[
+    {label:'ARIMA',data:[5.2,7.1,10.4,14.8,19.2],borderColor:'#60a5fa',tension:0.3,pointRadius:4,borderWidth:2},
+    {label:'Prophet',data:[5.0,6.8,9.9,13.5,17.8],borderColor:'#34d399',tension:0.3,pointRadius:4,borderWidth:2},
+    {label:'LightGBM',data:[4.5,6.1,8.8,12.1,15.9],borderColor:'#f59e0b',tension:0.3,pointRadius:4,borderWidth:2},
+    {label:'Ensemble',data:[4.1,5.6,8.2,11.4,14.8],borderColor:'#8b5cf6',tension:0.3,pointRadius:4,borderWidth:2.5,borderDash:[5,3]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{x:{title:{display:true,text:'Горизонт прогноза'},grid:{color:'#f3f4f6'}},
+        y:{title:{display:true,text:'MAE'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// ─── Forecast comparison ────────────────────────────────────
+(function(){
+  const ctx=document.getElementById('c_forecast'); if(!ctx)return;
+  const months=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт'];
+  const actual= [110,118,112,125,130,128,null,null,null,null];
+  const arima=  [null,null,null,null,null,128,132,129,135,138];
+  const prophet=[null,null,null,null,null,128,135,133,140,144];
+  const lgbm=   [null,null,null,null,null,128,134,131,138,143];
+  new Chart(ctx,{type:'line',data:{labels:months,datasets:[
+    {label:'Факт',data:actual,borderColor:'#0f172a',borderWidth:2.5,pointRadius:4,tension:0.2},
+    {label:'ARIMA',data:arima,borderColor:'#60a5fa',borderWidth:2,pointRadius:3,tension:0.2,borderDash:[5,3]},
+    {label:'Prophet',data:prophet,borderColor:'#34d399',borderWidth:2,pointRadius:3,tension:0.2,borderDash:[5,3]},
+    {label:'LightGBM',data:lgbm,borderColor:'#f59e0b',borderWidth:2,pointRadius:3,tension:0.2,borderDash:[5,3]}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{x:{grid:{color:'#f3f4f6'}},y:{title:{display:true,text:'Продажи'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+}); // DOMContentLoaded
+</script>
+</body>
+</html>

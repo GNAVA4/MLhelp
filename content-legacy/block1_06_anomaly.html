@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.6 · Поиск аномалий</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --an:#ea580c;--an-l:#fff7ed;--an-b:#fed7aa;--an-d:#431407;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#431407,#ea580c 50%,#fb923c);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.9;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--an);border-bottom-color:var(--an);}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--an);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.teal{border-left-color:var(--teal);} .fbox.sl{border-left-color:var(--sl);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--an);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.teal .flabel{color:var(--teal);} .fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--an-l);border:1px solid var(--an-b);border-left:4px solid var(--an);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--an);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#431407;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--an-l)!important;color:#431407!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--an);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.pur{background:var(--pur);} .nb.sl{background:var(--sl);} .nb.teal{background:var(--teal);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#431407;border:1px solid #ea580c;border-radius:8px;padding:9px 13px;font-size:12px;color:#fed7aa;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--an-l),#ffedd5);border:1px solid var(--an-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--an);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#431407;margin:0 0 8px;}
+.casebox p,.casebox li{color:#7c2d12;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.an{border-top:3px solid var(--an);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--an-l);color:#431407;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--an);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--an);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#c2410c;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--an);border:2px solid var(--an);}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- Три типа аномалий ---------- */
+.atypes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0;}
+.atype{border-radius:12px;padding:16px 18px;border:2px solid;}
+.atype h5{font-size:14.5px;font-weight:800;margin-bottom:6px;}
+.atype p{font-size:12.8px;margin-bottom:5px;line-height:1.6;}
+.at-point{background:var(--red-l);border-color:var(--red);} .at-point h5{color:#7f1d1d;} .at-point p{color:#991b1b;}
+.at-ctx{background:var(--amber-l);border-color:var(--amber);} .at-ctx h5{color:#78350f;} .at-ctx p{color:#92400e;}
+.at-coll{background:var(--pur-l);border-color:var(--pur);} .at-coll h5{color:#4c1d95;} .at-coll p{color:#5b21b6;}
+/* ---------- Дерево изоляции ---------- */
+.iso{display:flex;flex-direction:column;align-items:center;gap:5px;margin:16px 0;}
+.isorow{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.isonode{border-radius:9px;padding:8px 13px;font-size:11.5px;text-align:center;border:1.5px solid var(--an-b);
+         background:var(--an-l);color:#431407;line-height:1.45;min-width:112px;}
+.isonode strong{display:block;font-size:12.5px;margin-bottom:2px;}
+.isonode.anom{border-color:var(--red);background:var(--red-l);color:#7f1d1d;}
+.isonode.norm{border-color:var(--grn-b);background:var(--grn-l);color:#14532d;}
+.isoarr{font-size:14px;color:var(--an);}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--an);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--an);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--an-l);border-radius:9px;font-size:13.5px;color:#431407;line-height:1.72;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--an-l);border-color:var(--an-b);color:#431407;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--an);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3,.atypes{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML для бизнеса · Тема 6 из 6 · расширенная</div>
+  <h1>Поиск аномалий</h1>
+  <p class="sub">Как искать то, чего почти нет и что не размечено. От z-score до Isolation Forest, LOF, автоэнкодеров
+     и ECOD — с разбором механики, выбором порога и метриками, которые работают без разметки.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–9</span>
+    <span>🟣 продвинутый — секции 10–15</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Что такое аномалия</a>
+  <a href="#s2">2. Почему не классификация</a>
+  <a href="#s3">3. Статистические методы</a>
+  <a href="#s4">4. Многомерность</a>
+  <a href="#s5">5. Isolation Forest</a>
+  <a href="#s6">6. LOF и плотность</a>
+  <a href="#s7">7. One-Class SVM</a>
+  <a href="#s8">8. Автоэнкодеры</a>
+  <a href="#s9">9. Остальное семейство</a>
+  <a href="#s10">10. Метрики</a>
+  <a href="#s11">11. Выбор порога</a>
+  <a href="#s12">12. Временные ряды</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#qa">15. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–4</strong> — три типа аномалий, почему обычная классификация не работает, статистические методы и что ломается при переходе к многомерности.</li>
+<li><strong>Секции 5–9</strong> — все семейства алгоритмов: изоляция, плотность, границы, реконструкция, проекции. Каждый разобран по механике, а не по API.</li>
+<li><strong>Секции 10–12</strong> — метрики без разметки, выбор порога через экономику ошибок, специфика временных рядов.</li>
+<li><strong>Секции 13–15</strong> — подводные камни, System Design антифрод-контура и 30 вопросов.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что такое аномалия и три её типа <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Определение зависит от контекста — и это главный источник ошибок</div>
+
+<div class="fbox">
+<div class="flabel">📐 Определение Хокинса (1980)</div>
+<p><em>«Аномалия — это наблюдение, которое настолько отклоняется от других наблюдений, что возникает подозрение: оно порождено <strong>другим механизмом</strong>».</em></p>
+<p class="fnote">Ключевое слово — «другим механизмом». Аномалия не просто редкое значение из того же распределения, а <strong>наблюдение из другого распределения</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: редкое ≠ аномальное</div>
+<p>Клиент купил на 500 000 ₽ при среднем чеке 5000 ₽. Аномалия?</p>
+<p><strong>Зависит.</strong> Если это корпоративный клиент, покупающий партию — нет, это нормальное поведение из «хвоста» того же распределения. Если это физлицо, у которого раньше был средний чек 3000 ₽ — да, скорее всего сработал другой механизм (украденная карта, ошибка в системе, отмывание).</p>
+<p><strong>Практическое следствие:</strong> детектор аномалий без понимания предметной области выдаёт список «редких значений», а не список «проблем». Разница между этими списками — вся ценность работы.</p>
+</div>
+
+<h3>Три типа аномалий</h3>
+
+<div class="atypes">
+<div class="atype at-point">
+  <h5>① Точечная (point)</h5>
+  <p>Отдельное наблюдение аномально <strong>само по себе</strong>, вне зависимости от контекста.</p>
+  <p><em>Пример:</em> транзакция на 2 млн ₽ у клиента с историей до 10 тыс.</p>
+  <p><em>Ловится:</em> почти всеми методами.</p>
+</div>
+<div class="atype at-ctx">
+  <h5>② Контекстная (contextual)</h5>
+  <p>Значение <strong>нормально вообще</strong>, но аномально в данном контексте — времени, месте, сегменте.</p>
+  <p><em>Пример:</em> траты 30 тыс. ₽ в декабре нормальны, в феврале у того же клиента — нет.</p>
+  <p><em>Ловится:</em> только если контекст явно закодирован в признаках.</p>
+</div>
+<div class="atype at-coll">
+  <h5>③ Коллективная (collective)</h5>
+  <p>Отдельные наблюдения нормальны, но их <strong>последовательность или комбинация</strong> — нет.</p>
+  <p><em>Пример:</em> 50 транзакций по 100 ₽ подряд — каждая нормальна, серия подозрительна.</p>
+  <p><em>Ловится:</em> нужны агрегаты, окна, последовательные модели.</p>
+</div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка проектирования — применять точечный детектор к контекстной или коллективной задаче.</strong> Isolation Forest на отдельных транзакциях никогда не поймает схему «много мелких списаний подряд»: каждая транзакция по отдельности абсолютно нормальна. <strong>Тип аномалии определяет не алгоритм, а конструирование признаков.</strong> Чтобы поймать коллективную аномалию, нужно построить агрегаты по окну — и тогда её увидит даже простой z-score.</div></div>
+
+<div class="chb">
+<div class="cht">Три типа аномалий на одном временном ряду</div>
+<div class="chsub">Точечная видна сразу; контекстная нормальна по значению; коллективная — только по паттерну</div>
+<div style="position:relative;height:320px;"><canvas id="c_types"></canvas></div>
+</div>
+
+<h3>Где применяется</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Домен</th><th>Что ищем</th><th>Тип</th><th>Цена ошибки</th></tr></thead>
+<tbody>
+<tr class="trh"><td>Антифрод</td><td>мошеннические транзакции</td><td>все три</td><td><strong>FN — прямые потери, FP — блокировка честного клиента</strong></td></tr>
+<tr><td>Мониторинг инфраструктуры</td><td>сбои, деградация</td><td>контекстная, коллективная</td><td>FN — простой; FP — алерт-усталость</td></tr>
+<tr><td>Промышленность</td><td>дефекты, отказы оборудования</td><td>точечная, коллективная</td><td>FN — авария; FP — лишний ремонт</td></tr>
+<tr><td>Кибербезопасность</td><td>вторжения, аномальный трафик</td><td>коллективная</td><td>Состязательный дрейф — противник адаптируется</td></tr>
+<tr><td>Качество данных</td><td>битые записи, сбои ETL</td><td>точечная</td><td>FN — испорченные витрины и модели</td></tr>
+<tr><td>Медицина</td><td>патологии на снимках</td><td>точечная</td><td>Очень высокая цена FN</td></tr>
+<tr><td>AML / комплаенс</td><td>отмывание</td><td>коллективная</td><td>Регуляторные штрафы; требуется объяснимость</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Ключевое различие, которое стоит проговорить до начала работы: novelty detection или outlier detection.</strong> <em>Outlier detection</em> — обучающая выборка <strong>загрязнена</strong> аномалиями, мы ищем их внутри неё (Isolation Forest, LOF в этом режиме). <em>Novelty detection</em> — обучающая выборка <strong>чистая</strong>, мы учим «что такое норма» и детектируем отклонения на новых данных (One-Class SVM, автоэнкодер). Это влияет и на выбор алгоритма, и на пайплайн: во втором случае нужен процесс очистки обучающих данных.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Почему это не задача классификации <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Четыре причины, каждая из которых сама по себе достаточна</div>
+
+<div class="grid2">
+<div class="card rd"><h5>① Разметки нет или почти нет</h5><p>Мошенничество обнаруживается через месяцы (чарджбэк), сбой оборудования — постфактум. Разметить обучающую выборку часто невозможно в принципе.</p></div>
+<div class="card rd"><h5>② Экстремальный дисбаланс</h5><p>0.01–1% аномалий. Классификатор, всегда предсказывающий «норма», даёт accuracy 99.9% — и бесполезен.</p></div>
+<div class="card rd"><h5>③ Аномалии неоднородны</h5><p>Класс «норма» компактен, класс «аномалия» — это <em>всё остальное</em>. Новые виды мошенничества не похожи на старые.</p></div>
+<div class="card rd"><h5>④ Противник адаптируется</h5><p>В антифроде и безопасности распределение аномалий меняется <em>в ответ</em> на детектор. Обученное вчера устаревает завтра.</p></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему пункт ③ решающий</div>
+<p>Представь, что учишь классификатор отличать «кошек» от «не-кошек», где в обучении «не-кошки» — только собаки. На тесте приходит самолёт — модель уверенно скажет «кошка», потому что самолёт не похож на собаку.</p>
+<p><strong>Это ровно ситуация с аномалиями.</strong> Классификатор выучивает границу между известной нормой и <em>известными</em> аномалиями. Новый тип мошенничества лежит в другой области пространства — и попадает на «нормальную» сторону границы.</p>
+<p>Методы поиска аномалий устроены иначе: они моделируют <strong>только норму</strong> и объявляют аномалией всё, что от неё далеко — в любом направлении. Поэтому они ловят и те типы, которых не было в обучении.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Когда классификация всё же лучше.</strong> Если разметки достаточно (тысячи размеченных случаев), типы аномалий стабильны, и новых видов не ожидается — <strong>supervised подход почти всегда точнее</strong>. Он использует информацию о том, <em>какие именно</em> отклонения важны, а unsupervised метод этого не знает и выдаёт все отклонения подряд. Практический паттерн зрелых систем: <strong>гибрид</strong> — unsupervised детектор ловит новое и генерирует кандидатов на разметку, supervised модель точно ловит известные схемы.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему accuracy бесполезна: считаем на реальных пропорциях</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> 1 000 000 транзакций в день, из них мошеннических <strong>0.2%</strong> = 2000.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Тривиальная модель «всё нормально»:</strong> accuracy $= 998\,000/1\,000\,000 = \mathbf{99.8\%}$. Выглядит прекрасно, пользы ноль.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Реальный детектор</strong> с recall 60% и precision 5%: ловит 1200 из 2000 мошенничеств, но выдаёт $1200/0.05 = \mathbf{24\,000}$ алертов в день.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div>Из них ложных: $24\,000 - 1200 = 22\,800$. При стоимости ручной проверки 50 ₽ это <strong>1.14 млн ₽ в день</strong> только на разбор ложных срабатываний.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Спасённые деньги:</strong> 1200 транзакций × средний ущерб 15 000 ₽ = <strong>18 млн ₽</strong>. Итого сильно в плюс, но <em>только если</em> есть кому разбирать 24 тысячи алертов.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Главный вывод:</strong> в поиске аномалий ключевое ограничение — не качество модели, а <strong>пропускная способность процесса разбора</strong>. Если аналитиков хватает на 2000 проверок в день, то нужен не «лучший recall», а <em>лучший precision при фиксированном числе алертов</em> — то есть метрика precision@k.</div></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Правильная постановка задачи почти всегда звучит так:</strong> «у нас есть $k$ проверок в день; максимизируй долю реальных проблем среди топ-$k$ по аномальности». Это <strong>precision@k</strong>, а не ROC-AUC и не recall. Формулировка сразу задаёт и метрику, и порог, и делает разговор с бизнесом предметным: «увеличив штат вдвое, мы поймаем на X% больше».</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Статистические методы: база, которую недооценивают <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Простые правила, которые часто работают лучше сложных моделей</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Z-score и его фатальная слабость</div>
+$$z_i = \frac{x_i - \bar x}{s}, \qquad \text{аномалия если } |z_i| > 3$$
+<p class="fnote">Проблема: $\bar x$ и $s$ сами вычисляются по данным, <strong>включая аномалии</strong>. Один выброс сдвигает среднее и раздувает стандартное отклонение — и маскирует сам себя.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Эффект маскировки: как выброс прячет сам себя</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> $[10, 11, 12, 11, 10, 12, 11, 10, 11, 12]$. Среднее $11.0$, std $0.82$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Добавим выброс <strong>100</strong>. Новое среднее $= 19.09$, новый std $= \mathbf{26.9}$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>$z$-score выброса: $\dfrac{100 - 19.09}{26.9} = \mathbf{3.01}$ — едва превышает порог 3.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Добавим второй выброс 95.</strong> Среднее $26.4$, std $34.6$. Теперь $z(100) = \dfrac{100-26.4}{34.6} = \mathbf{2.13}$ — <strong>ниже порога!</strong> Оба выброса стали «нормальными».</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Robust z-score через MAD:</strong> медиана $= 11$, $\text{MAD} = \text{median}(|x_i - 11|) = 1$. Тогда $z_{\text{rob}}(100) = \dfrac{0.6745\times(100-11)}{1} = \mathbf{60.0}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разница 2.13 против 60.0.</strong> Робастная версия не «ломается» от присутствия самих выбросов, потому что медиана и MAD к ним нечувствительны. <strong>Правило: никогда не используй обычный z-score для поиска аномалий</strong> — только робастный.</div></div>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Робастные оценки</div>
+$$\text{MAD} = \operatorname{median}\big(|x_i - \operatorname{median}(x)|\big), \qquad z_{\text{rob}} = \frac{0.6745\,(x_i - \operatorname{median}(x))}{\text{MAD}}$$
+<p>Правило межквартильного размаха (Тьюки):</p>
+$$x < Q_1 - 1.5\,\text{IQR} \quad\text{или}\quad x > Q_3 + 1.5\,\text{IQR}, \qquad \text{IQR} = Q_3 - Q_1$$
+<p class="fnote">Множитель $0.6745$ приводит MAD к масштабу стандартного отклонения нормального распределения. Точка слома (breakdown point) у MAD — <strong>50%</strong>: он остаётся корректным, пока аномалий меньше половины.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: откуда взялись 1.5 IQR и 3 сигмы</div>
+<p><strong>3 сигмы:</strong> для нормального распределения за пределами $\pm3\sigma$ лежит 0.27% значений. При выборке 10 000 это 27 «аномалий» <em>чисто случайно</em> — то есть порог не абсолютен, он привязан к ожидаемой доле ложных срабатываний.</p>
+<p><strong>1.5 IQR:</strong> для нормального распределения это соответствует примерно $\pm2.7\sigma$, то есть 0.7% значений. Тьюки выбрал 1.5 как компромисс между чувствительностью и числом ложных срабатываний.</p>
+<p><strong>Практическое следствие:</strong> оба порога <em>не универсальны</em>. На тяжёлохвостых распределениях (доходы, размеры транзакций) они дадут десятки процентов «аномалий». Перед применением — <strong>всегда логарифмировать или использовать квантильное преобразование</strong>.</p>
+</div>
+
+<h3>Формальные статистические тесты</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Тест</th><th>Что делает</th><th>Ограничения</th></tr></thead>
+<tbody>
+<tr><td><b>Grubbs</b></td><td>Проверяет <em>одно</em> самое экстремальное значение</td><td>Нужна нормальность; ловит только один выброс за раз</td></tr>
+<tr class="trh"><td><b>Generalized ESD</b></td><td>Итеративно находит до $k$ выбросов</td><td><strong>Устойчив к маскировке; нужна нормальность</strong></td></tr>
+<tr><td>Dixon's Q</td><td>Для малых выборок ($n < 30$)</td><td>Только один выброс</td></tr>
+<tr><td>Chauvenet</td><td>Порог по ожидаемому числу наблюдений</td><td>Устарел, склонен к over-rejection</td></tr>
+<tr><td>Quantile / percentile</td><td>Топ-$q$% по значению — аномалии</td><td><strong>Не требует предположений; доля задаётся вручную</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Не пропускай статистические методы как «слишком простые».</strong> Для одномерных задач качества данных (битые значения, сбои датчиков, ошибки ETL) робастный z-score или IQR работают лучше Isolation Forest: они интерпретируемы, детерминированы, не требуют обучения и мгновенно объясняют, <em>почему</em> значение аномально. Сложные методы нужны, когда аномалия проявляется <strong>только в комбинации признаков</strong> — и это отдельно надо доказать, а не предполагать.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Что ломается при переходе к многомерности <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Проклятие размерности и почему покоординатные правила не работают</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: аномалия, невидимая по каждой оси</div>
+<p>Клиент: возраст 22 года, доход 30 тыс., <strong>сумма кредита 5 млн</strong>. По каждому признаку отдельно — ничего экстремального: 22 года бывает, доход 30 тыс. бывает, кредит 5 млн бывает.</p>
+<p>Но <em>комбинация</em> «22 года + доход 30 тыс. + кредит 5 млн» встречается один раз на миллион. Это аномалия, которую <strong>ни один покоординатный метод не найдёт</strong>.</p>
+<p>Отсюда необходимость многомерных методов, учитывающих <em>совместное</em> распределение и корреляции.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Расстояние Махаланобиса</div>
+$$d_M(x) = \sqrt{(x - \mu)^\top \Sigma^{-1} (x - \mu)}$$
+<p>При нормальности $d_M^2 \sim \chi^2_p$, откуда порог: $d_M^2 > \chi^2_{p,\,1-\alpha}$.</p>
+<p class="fnote">$\Sigma^{-1}$ «выпрямляет» корреляции: расстояние измеряется в единицах стандартного отклонения <em>вдоль главных осей</em> облака данных.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чем Махаланобис лучше евклида</div>
+<p>Рост и вес сильно коррелированы. Человек с ростом 190 и весом 60 кг — аномалия, хотя оба значения по отдельности нормальны и <em>евклидово</em> расстояние от центра невелико.</p>
+<p>Махаланобис учитывает форму облака: он измеряет, насколько точка выбивается <em>с учётом ожидаемой корреляции</em>. Вдоль главной оси облака (высокие и тяжёлые) допускается большое отклонение, поперёк — маленькое.</p>
+<p><strong>Геометрически:</strong> евклид рисует вокруг центра круг, Махаланобис — эллипс, вытянутый вдоль корреляции.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Та же проблема маскировки, что у z-score, только хуже.</strong> $\mu$ и $\Sigma$ оцениваются по данным, включая аномалии. Несколько выбросов раздувают ковариационную матрицу так, что сами оказываются «внутри эллипса». <strong>Решение — Minimum Covariance Determinant (MCD):</strong> ищем подвыборку из $h \approx 0.75n$ точек с минимальным определителем ковариации (то есть самое «плотное» ядро данных) и оцениваем $\mu$, $\Sigma$ только по ней. В sklearn это <code>EllipticEnvelope</code>.</div></div>
+
+<h3>Проклятие размерности</h3>
+
+<div class="fbox red">
+<div class="flabel">📐 Концентрация расстояний</div>
+<p>При росте размерности $p$ отношение разброса расстояний к их среднему стремится к нулю:</p>
+$$\frac{\max_i \|x_i - q\| - \min_i \|x_i - q\|}{\min_i \|x_i - q\|} \xrightarrow[p\to\infty]{} 0$$
+<p class="fnote">Все точки становятся <strong>примерно одинаково далеки</strong> друг от друга. Понятие «ближайший сосед» теряет смысл.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как быстро расстояния «схлопываются»</div>
+<div class="numex-step"><span class="nb">1</span><div>Генерируем 1000 точек из равномерного распределения в кубе $[0,1]^p$, считаем отношение $\frac{d_{\max}-d_{\min}}{d_{\min}}$ от случайной точки.</div></div>
+<div class="numex-step"><span class="nb grn">2</span><div><strong>$p=2$:</strong> отношение ≈ <strong>13.4</strong>. Ближайший сосед в 13 раз ближе дальнего — разница огромна, kNN работает отлично.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>$p=10$:</strong> ≈ <strong>2.1</strong>. Уже заметно хуже.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>$p=100$:</strong> ≈ <strong>0.42</strong>. Дальний сосед всего в 1.4 раза дальше ближнего.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>$p=1000$:</strong> ≈ <strong>0.11</strong>. Все точки практически равноудалены — <strong>методы на расстояниях бесполезны</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практический вывод:</strong> LOF, kNN-based методы и Махаланобис работают примерно до 20–30 признаков. Дальше нужны либо методы, устойчивые к размерности (Isolation Forest, ECOD), либо снижение размерности (PCA, автоэнкодер) <em>перед</em> детекцией.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Концентрация расстояний с ростом размерности</div>
+<div class="chsub">При p > 50 разница между ближним и дальним соседом практически исчезает</div>
+<div style="position:relative;height:300px;"><canvas id="c_curse"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Второй эффект размерности — нерелевантные признаки.</strong> Даже если аномалия проявляется в 3 признаках из 100, остальные 97 добавляют шум в расстояние. Аномальность «размывается». Это ровно та же проблема, что у MLP на таблицах (блок 7.2): методы, использующие все признаки равномерно, страдают от мусорных. <strong>Отсюда важность отбора признаков перед детекцией аномалий</strong> — и преимущество методов, которые как деревья выбирают признаки сами.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Isolation Forest: изоляция вместо плотности <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самый используемый метод — и его механика проще, чем кажется</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: перевёрнутая логика</div>
+<p>Все классические методы моделируют <strong>норму</strong> и ищут отклонения от неё. Isolation Forest (Liu et al., 2008) переворачивает задачу: он напрямую ищет то, что <strong>легко отделить</strong>.</p>
+<p>Представь игру «угадай число»: ты случайно режешь диапазон пополам, пока не изолируешь загаданное. Если число сидит в плотной толпе, потребуется много разрезов. Если оно далеко в стороне — хватит одного-двух.</p>
+<p><strong>Ключевая идея:</strong> аномалии «мало и они другие», поэтому случайные разрезы изолируют их <em>быстрее</em>. Глубина, на которой точка оказалась одна в листе, и есть мера её нормальности.</p>
+<p>Это принципиально дешевле: не нужно оценивать плотность, считать расстояния или обращать матрицы — только случайные разрезы.</p>
+</div>
+
+<div class="iso">
+  <div class="isonode"><strong>Все точки</strong>случайный признак,<br>случайный порог</div>
+  <div class="isoarr">▼</div>
+  <div class="isorow">
+    <div class="isonode anom"><strong>Аномалия</strong>изолирована<br>на глубине 2</div>
+    <div class="isonode"><strong>Остальные</strong>продолжаем резать</div>
+  </div>
+  <div class="isoarr">▼</div>
+  <div class="isorow">
+    <div class="isonode"><strong>...</strong>ещё разрезы</div>
+    <div class="isonode norm"><strong>Норма</strong>изолирована<br>на глубине 11</div>
+  </div>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Скор аномальности</div>
+$$s(x, n) = 2^{-\dfrac{\mathbb{E}[h(x)]}{c(n)}}, \qquad c(n) = 2H(n-1) - \frac{2(n-1)}{n}$$
+<p>где $h(x)$ — глубина изоляции точки в дереве, $H(i) \approx \ln i + 0.5772$ — гармоническое число, $c(n)$ — средняя глубина в случайном бинарном дереве поиска.</p>
+<p class="fnote">$s \to 1$ — точка изолируется очень быстро, аномалия. $s \to 0$ — глубоко в толпе, норма. $s \approx 0.5$ — вся выборка однородна.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем скор для двух точек</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Подвыборка</strong> $n = 256$ (дефолт). Нормировочная константа: $c(256) = 2(\ln 255 + 0.5772) - \frac{2\cdot255}{256} = 2(5.541+0.577) - 1.992 = 12.236 - 1.992 = \mathbf{10.24}$.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Точка A</strong> изолируется в среднем на глубине $\mathbb{E}[h] = 3.2$.<br>$s = 2^{-3.2/10.24} = 2^{-0.3125} = \mathbf{0.805}$ → <strong>явная аномалия</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Точка B</strong> изолируется на глубине $\mathbb{E}[h] = 11.5$.<br>$s = 2^{-11.5/10.24} = 2^{-1.123} = \mathbf{0.459}$ → норма.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Точка C</strong> на средней глубине $10.24$ (ровно $c(n)$): $s = 2^{-1} = \mathbf{0.5}$ — ровно граница.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Как читать скор:</strong> $s > 0.7$ — уверенная аномалия; $s \approx 0.5$ — неотличимо от нормы; $s < 0.4$ — точно норма. Если <em>вся</em> выборка даёт $s \approx 0.5$, значит выраженных аномалий в данных нет — и это тоже полезный результат.</div></div>
+</div>
+
+<h3>Три параметра, которые определяют всё</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Параметр</th><th>Что делает</th><th>Дефолт и почему</th></tr></thead>
+<tbody>
+<tr class="trh"><td><code>max_samples</code></td><td>Размер подвыборки для каждого дерева</td><td><strong>256 — и это не случайное число</strong></td></tr>
+<tr><td><code>n_estimators</code></td><td>Число деревьев</td><td>100–300; сходится быстро, больше 500 бессмысленно</td></tr>
+<tr><td><code>contamination</code></td><td>Ожидаемая доля аномалий — <em>только для порога</em></td><td>Не влияет на скоры, только на бинарное решение</td></tr>
+<tr><td><code>max_features</code></td><td>Сколько признаков рассматривать</td><td>1.0; уменьшение полезно при высокой размерности</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему подвыборка 256, а не «все данные»</div>
+<p>Это самое контринтуитивное решение в методе. Больше данных обычно лучше — но не здесь.</p>
+<p><strong>Причина — эффекты swamping и masking.</strong> Если в подвыборке много аномалий одного типа, они образуют <em>собственный кластер</em>, и внутри него изолируются не быстрее нормы. Аномалия перестаёт быть аномалией, когда её «много».</p>
+<p>Маленькая подвыборка почти наверняка содержит <strong>0 или 1 аномалию</strong> — и та изолируется мгновенно. Авторы показали, что качество растёт до $n\approx256$ и затем <em>падает</em>.</p>
+<p><strong>Бонус:</strong> сложность обучения становится $O(t \cdot n \log n)$ с $n=256$ независимо от размера датасета — метод линеен по числу объектов и работает на миллионах строк за секунды.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Isolation Forest: качество от размера подвыборки</div>
+<div class="chsub">Максимум около 256 — дальше swamping ухудшает результат</div>
+<div style="position:relative;height:290px;"><canvas id="c_isosub"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная слабость Isolation Forest — осевые разрезы.</strong> Дерево режет только перпендикулярно осям, поэтому области нормальности имеют «ступенчатую» форму. Если данные вытянуты по диагонали (сильная корреляция признаков), IForest создаёт <strong>артефакты в углах прямоугольников</strong>: нормальные точки на диагонали получают высокий скор, а аномалии в «углах» — низкий. Это та же проблема осевой геометрии, что у деревьев в блоке 7.2. <strong>Решение — Extended Isolation Forest</strong> с наклонными гиперплоскостями, либо PCA-поворот перед применением.</div></div>
+
+<pre><code># Isolation Forest — базовое применение
+from sklearn.ensemble import IsolationForest
+
+iso = IsolationForest(
+    n_estimators=200,
+    max_samples=256,          # дефолт не трогать без причины
+    contamination="auto",      # или конкретная доля, если известна
+    max_features=1.0,
+    random_state=42, n_jobs=-1,
+)
+iso.fit(X_train)
+
+score  = -iso.score_samples(X_test)   # чем больше, тем аномальнее
+labels = iso.predict(X_test)          # -1 аномалия, 1 норма
+
+# Extended Isolation Forest — против осевых артефактов
+# pip install eif
+import eif
+f = eif.iForest(X.values, ntrees=200, sample_size=256,
+                ExtensionLevel=X.shape[1]-1)   # максимальное расширение
+scores = f.compute_paths(X_in=X.values)
+</code></pre>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. LOF: локальная плотность <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Единственный метод, ловящий аномалии в разноплотных кластерах</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Local Outlier Factor (Breunig et al., 2000)</div>
+<p><strong>Reachability distance</strong> — сглаженное расстояние:</p>
+$$\text{rd}_k(a, b) = \max\big(d_k(b),\; d(a,b)\big)$$
+<p><strong>Локальная достижимая плотность</strong>:</p>
+$$\text{lrd}_k(a) = \left(\frac{1}{|N_k(a)|}\sum_{b\in N_k(a)}\text{rd}_k(a,b)\right)^{-1}$$
+<p><strong>LOF</strong> — отношение плотности соседей к своей плотности:</p>
+$$\text{LOF}_k(a) = \frac{1}{|N_k(a)|}\sum_{b\in N_k(a)}\frac{\text{lrd}_k(b)}{\text{lrd}_k(a)}$$
+<p class="fnote">$\text{LOF} \approx 1$ — плотность как у соседей, норма. $\text{LOF} \gg 1$ — соседи плотнее, точка в разреженной области → аномалия.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем нужна «локальность»</div>
+<p>Представь два кластера: плотный (тысячи точек близко) и разреженный (сотня точек далеко друг от друга).</p>
+<p><strong>Глобальный метод</strong> (kNN-расстояние, Махаланобис) объявит <em>весь разреженный кластер</em> аномальным — там расстояния между точками велики.</p>
+<p><strong>LOF сравнивает точку только с её соседями.</strong> Точка внутри разреженного кластера имеет плотность, похожую на плотность соседей → $\text{LOF}\approx1$ → норма. А точка на краю плотного кластера, у которой соседи гораздо плотнее её самой → $\text{LOF}\gg1$ → аномалия.</p>
+<p><strong>Это единственный из базовых методов, корректно работающий при разной плотности кластеров</strong> — и в этом его уникальная ценность.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 LOF на маленьком примере</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Точка A</strong> внутри плотного кластера: её $\text{lrd} = 10.0$, у соседей в среднем тоже $10.0$.<br>$\text{LOF}(A) = 10.0/10.0 = \mathbf{1.00}$ → норма.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Точка B</strong> внутри разреженного кластера: $\text{lrd} = 0.8$, у соседей тоже $\approx0.8$.<br>$\text{LOF}(B) = 0.8/0.8 = \mathbf{1.00}$ → <strong>тоже норма</strong>, хотя абсолютная плотность в 12 раз ниже!</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Точка C</strong> на отшибе рядом с плотным кластером: $\text{lrd}(C) = 1.2$, а у её соседей (из плотного кластера) $\text{lrd} = 10.0$.<br>$\text{LOF}(C) = 10.0/1.2 = \mathbf{8.33}$ → <strong>явная аномалия</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Ключевое наблюдение:</strong> точки A и B имеют одинаковый LOF при плотностях, различающихся в 12 раз. Глобальный метод объявил бы весь кластер B аномальным. Это и есть смысл «локального» в названии.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">LOF против глобального метода на разноплотных кластерах</div>
+<div class="chsub">Глобальный порог по расстоянию помечает весь разреженный кластер; LOF — только настоящий выброс</div>
+<div style="position:relative;height:320px;"><canvas id="c_lof"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Выбор $k$ — главный и самый капризный параметр LOF.</strong> Слишком малое $k$ (3–5): чувствителен к шуму, локальные флуктуации плотности дают ложные срабатывания. Слишком большое $k$ (сотни): «локальность» теряется, метод вырождается в глобальный. <strong>Практическое правило:</strong> $k$ должно быть не меньше ожидаемого размера самого маленького <em>нормального</em> кластера — иначе весь этот кластер будет помечен как аномалия. Типичный диапазон 20–50; рекомендуется считать LOF для нескольких $k$ и брать максимум.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Вычислительная сложность LOF — $O(n^2)$ в худшем случае.</strong> Нужны $k$ ближайших соседей для каждой точки, а при высокой размерности пространственные индексы (KD-tree, Ball-tree) вырождаются в полный перебор. На миллионе объектов LOF нереалистичен. <strong>Обходы:</strong> сэмплирование, приближённый kNN (HNSW/FAISS из блока 6), или переход на Isolation Forest, у которого сложность линейна. Плюс LOF <em>не имеет</em> естественного режима predict для новых точек — в sklearn нужен <code>novelty=True</code>, и тогда обучающая выборка должна быть чистой.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. One-Class SVM и SVDD: граница вокруг нормы <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Третье семейство — не плотность и не изоляция, а граница</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 One-Class SVM (Schölkopf et al., 2001)</div>
+<p>Ищем гиперплоскость в спрямляющем пространстве, отделяющую данные от начала координат с максимальным отступом:</p>
+$$\min_{w,\,\xi,\,\rho}\; \frac12\|w\|^2 + \frac{1}{\nu n}\sum_i \xi_i - \rho \quad\text{при}\quad \langle w, \phi(x_i)\rangle \ge \rho - \xi_i,\; \xi_i \ge 0$$
+<p>Решающая функция: $\;f(x) = \operatorname{sign}\big(\langle w,\phi(x)\rangle - \rho\big)$.</p>
+<p class="fnote">$\nu \in (0,1]$ — <strong>одновременно</strong> верхняя граница доли выбросов и нижняя граница доли опорных векторов.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что такое «отделить от начала координат»</div>
+<p>Звучит странно, но смысл прост. После применения RBF-ядра все точки попадают на сферу единичного радиуса в спрямляющем пространстве, причём <strong>в один октант</strong> — все скалярные произведения положительны.</p>
+<p>Провести гиперплоскость, отделяющую данные от нуля, — это то же самое, что «обвести» их как можно плотнее. Точки по «дальнюю» сторону плоскости — нормальны, по ближнюю к нулю — аномальны.</p>
+<p><strong>Эквивалентная формулировка — SVDD</strong> (Support Vector Data Description, Tax & Duin): ищем <em>сферу минимального радиуса</em>, охватывающую данные. Для RBF-ядра эти две задачи математически эквивалентны, просто описаны в разной геометрии.</p>
+<p><strong>Ключевое отличие от предыдущих методов:</strong> One-Class SVM не оценивает плотность и не измеряет изоляцию — он строит <em>границу</em>. Это делает его чувствительным к форме границы, но малочувствительным к тому, что происходит глубоко внутри области нормальности.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Что означает параметр ν на практике</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>$\nu = 0.05$</strong>: не более 5% обучающих точек окажутся за границей (будут помечены аномалиями), и не менее 5% станут опорными векторами.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Выборка 10 000</strong>: максимум 500 «выбросов» в обучении, минимум 500 опорных векторов.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>$\nu = 0.5$</strong>: половина выборки за границей, половина — опорные векторы. Модель становится тяжёлой (5000 опорных векторов), инференс медленный, граница переобучена.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Практический выбор:</strong> $\nu$ ≈ ожидаемая доля аномалий, обычно 0.01–0.1. Это <em>не</em> гиперпараметр для тюнинга по метрике — он задаёт бизнес-требование.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Скрытая цена:</strong> число опорных векторов растёт с $\nu$ и с $n$. При 100 000 обучающих точек и $\nu=0.1$ модель хранит 10 000 опорных векторов, и каждое предсказание требует 10 000 вычислений ядра. <strong>Это делает One-Class SVM непригодным для больших данных.</strong></div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Параметр</th><th>Влияние</th><th>Как выбирать</th></tr></thead>
+<tbody>
+<tr class="trh"><td><code>nu</code></td><td>Доля выбросов и опорных векторов</td><td><strong>Из бизнес-требования, не тюнингом</strong></td></tr>
+<tr><td><code>gamma</code> (RBF)</td><td>Гибкость границы</td><td>Малая → почти сфера, недообучение. Большая → граница обвивает каждую точку, переобучение</td></tr>
+<tr><td><code>kernel</code></td><td>Форма спрямляющего пространства</td><td>RBF почти всегда; linear — если норма выпукла</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три причины, почему One-Class SVM редко доживает до прода.</strong> ① <strong>Сложность $O(n^2)$–$O(n^3)$</strong> при обучении — на 100k строк уже больно, на миллионе невозможно. ② <strong>Крайняя чувствительность к <code>gamma</code></strong>: изменение на порядок полностью меняет результат, а подобрать без разметки нечем. ③ <strong>Обязательное масштабирование признаков</strong> — RBF-ядро использует евклидово расстояние, и признак в рублях полностью подавит признак в долях. <strong>Практическая замена:</strong> <code>SGDOneClassSVM</code> с аппроксимацией ядра через Nyström или Random Fourier Features — линейная сложность при сопоставимом качестве.</div></div>
+
+<pre><code># One-Class SVM с масштабированием — иначе не работает
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import OneClassSVM
+
+ocsvm = make_pipeline(
+    StandardScaler(),                      # ОБЯЗАТЕЛЬНО
+    OneClassSVM(nu=0.05, kernel="rbf", gamma="scale"),
+)
+ocsvm.fit(X_train_clean)                   # обучаем на ЧИСТЫХ данных (novelty)
+score = -ocsvm.decision_function(X_test)   # больше = аномальнее
+
+# Линейная версия для больших данных
+from sklearn.linear_model import SGDOneClassSVM
+from sklearn.kernel_approximation import Nystroem
+
+fast = make_pipeline(
+    StandardScaler(),
+    Nystroem(gamma="scale", n_components=300, random_state=42),
+    SGDOneClassSVM(nu=0.05, learning_rate="optimal"),
+)
+</code></pre>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Автоэнкодеры и глубокие методы <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Реконструкция как мера нормальности</div>
+
+<div class="flow">
+  <div class="fn d"><strong>x</strong>вход</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Encoder</strong>сжатие в<br>узкое горлышко</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>z</strong>латентный код<br>dim ≪ p</div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Decoder</strong>восстановление</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>‖x − x̂‖²</strong>ошибка =<br>скор аномальности</div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему ошибка реконструкции работает</div>
+<p>Автоэнкодер обучается сжимать данные в узкий латентный код и восстанавливать обратно. Чтобы это удалось, он вынужден выучить <strong>структуру нормальных данных</strong>: какие признаки связаны, какие комбинации типичны.</p>
+<p>Нормальный объект укладывается в выученную структуру — восстанавливается точно, ошибка мала.</p>
+<p>Аномальный объект содержит комбинацию, которой не было в обучении. Латентное пространство не имеет для неё «места» — декодер восстановит нечто похожее на ближайший нормальный паттерн, и <strong>ошибка будет большой</strong>.</p>
+<p><strong>Прямая связь с блоком 8.6:</strong> это тот же принцип, что в masked prediction — модель, научившаяся восстанавливать данные, выучила их структуру. Только здесь мы используем не выученное представление, а саму <em>величину ошибки</em>.</p>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Скор через ошибку реконструкции</div>
+$$s(x) = \|x - \hat x\|_2^2 = \|x - g_\phi\big(f_\theta(x)\big)\|_2^2$$
+<p>Для смешанных типов признаков — взвешенная версия:</p>
+$$s(x) = \sum_{j\in\text{числ}} w_j\,(x_j - \hat x_j)^2 + \sum_{j\in\text{кат}} w_j\,\text{CE}(x_j, \hat x_j)$$
+<p class="fnote">Веса $w_j$ обязательны: иначе признак с большим масштабом доминирует в ошибке. Обычно $w_j = 1/\sigma_j^2$.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная ловушка автоэнкодеров: слишком большая ёмкость.</strong> Если латентная размерность близка к входной, автоэнкодер выучит <strong>тождественное отображение</strong> — идеально восстановит и норму, и аномалии. Ошибка будет мала везде, детектор бесполезен. <strong>Правило:</strong> латентная размерность должна быть в 4–10 раз меньше входной, плюс регуляризация. Диагностика: если ошибка реконструкции на аномалиях <em>не отличается</em> от ошибки на норме — модель переобучена на тождество.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Как подобрать размер узкого горлышка</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> 60 признаков после кодирования. Обучаем автоэнкодеры с разной латентной размерностью и смотрим разделение ошибок.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>latent = 50:</strong> средняя ошибка на норме 0.008, на аномалиях 0.011. Отношение <strong>1.4</strong> — почти нет разделения, выучено тождество.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>latent = 12:</strong> ошибка на норме 0.041, на аномалиях 0.29. Отношение <strong>7.1</strong> — отличное разделение.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>latent = 3:</strong> ошибка на норме 0.18, на аномалиях 0.42. Отношение <strong>2.3</strong> — модель недообучена, плохо восстанавливает и норму тоже.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Метрика для подбора без разметки:</strong> максимизируй не «низкую ошибку», а <em>разброс</em> ошибок — например, отношение 95-го перцентиля к медиане. Хороший детектор даёт <strong>длинный правый хвост</strong> в распределении ошибок, плохой — узкий пик.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Распределение ошибки реконструкции при разной ёмкости</div>
+<div class="chsub">Слишком большое горлышко — распределения сливаются; оптимальное — длинный хвост аномалий</div>
+<div style="position:relative;height:310px;"><canvas id="c_ae"></canvas></div>
+</div>
+
+<h3>Развитие идеи</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Идея</th><th>Когда лучше обычного AE</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Denoising AE</b></td><td>Подаём зашумлённый вход, восстанавливаем чистый</td><td><strong>Мешает выучить тождество; почти всегда лучше</strong></td></tr>
+<tr><td>Variational AE</td><td>Латентное пространство — распределение; скор через ELBO</td><td>Нужна вероятностная интерпретация</td></tr>
+<tr><td>DeepSVDD</td><td>Сеть сжимает норму в маленькую <em>сферу</em>; скор — расстояние до центра</td><td>Не нужен декодер; прямая оптимизация компактности</td></tr>
+<tr><td>GANomaly / AnoGAN</td><td>GAN учит генерировать норму; скор — насколько трудно сгенерировать объект</td><td>Изображения; сложен в обучении</td></tr>
+<tr><td>USAD</td><td>Два автоэнкодера в состязательном режиме</td><td>Временные ряды, многомерный мониторинг</td></tr>
+<tr><td>Transformer-AE</td><td>Реконструкция последовательности событий</td><td>Коллективные аномалии в логах и поведении</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>DeepSVDD и проблема схлопывания.</strong> Метод минимизирует расстояние от представлений до центра сферы. Тривиальное решение — <em>выдавать константу</em>: тогда все расстояния нулевые, лосс нулевой, представление бесполезно. Это ровно тот же коллапс, что в SSL без негативов (блок 8.6). <strong>Защита:</strong> запрет на bias-члены в слоях, отсутствие ограниченных активаций, фиксация центра сферы после первого прохода (а не обучение его). Без этих мер DeepSVDD схлопнется гарантированно.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Когда автоэнкодер оправдан, а когда нет.</strong> <strong>Оправдан:</strong> высокая размерность (сотни признаков), сложные нелинейные зависимости, изображения или последовательности, много данных. <strong>Не оправдан:</strong> табличные данные с десятками признаков — там Isolation Forest и ECOD обычно точнее и в сотни раз быстрее (та же логика, что в блоке 7.2). Проверять надо экспериментом, а не предположением: <em>автоэнкодер должен превзойти IForest на твоих данных, иначе он не нужен</em>.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Остальное семейство: HBOS, COPOD, ECOD, kNN <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Методы, которые часто оказываются лучше популярных</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 HBOS — Histogram-Based Outlier Score</div>
+$$\text{HBOS}(x) = \sum_{j=1}^{p}\log\frac{1}{\hat p_j(x_j)}$$
+<p class="fnote">Строим гистограмму по каждому признаку <em>независимо</em>, скор — сумма логарифмов обратных плотностей. Предполагает независимость признаков.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему наивный метод часто побеждает</div>
+<p>HBOS игнорирует все корреляции — это грубейшее упрощение. И тем не менее на многих бенчмарках он в первой тройке.</p>
+<p><strong>Причина та же, что у наивного Байеса:</strong> при высокой размерности оценить <em>совместное</em> распределение невозможно (данных не хватит), а покоординатные оценки устойчивы и почти не шумят. Смещение от игнорирования корреляций оказывается меньше, чем дисперсия от попытки их учесть.</p>
+<p><strong>Скорость:</strong> $O(np)$ — линейно. На миллионе объектов и сотне признаков считается за секунды.</p>
+<p><strong>Когда HBOS провалится:</strong> когда аномалия видна <em>только</em> в комбинации (пример из секции 4 — «22 года + доход 30 тыс. + кредит 5 млн»). Каждый признак по отдельности нормален, HBOS ничего не заметит.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 ECOD — Empirical Cumulative Distribution Functions (2022)</div>
+<p>Для каждого признака строим эмпирическую функцию распределения и берём хвостовые вероятности:</p>
+$$O_{\text{left}}(x) = -\sum_j \log \hat F_j(x_j), \qquad O_{\text{right}}(x) = -\sum_j \log\big(1 - \hat F_j(x_j)\big)$$
+$$\text{ECOD}(x) = \max\big(O_{\text{left}}, O_{\text{right}}, O_{\text{auto}}\big)$$
+<p class="fnote">$O_{\text{auto}}$ выбирает сторону хвоста по знаку асимметрии признака.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>ECOD — самый недооценённый метод в этой теме.</strong> У него <strong>ноль гиперпараметров</strong>, линейная сложность, полная детерминированность (нет случайности — результат воспроизводим бит в бит) и естественная интерпретируемость: можно показать, <em>какой именно признак</em> и с какой стороны хвоста дал вклад в скор. На бенчмарке ADBench (57 датасетов) ECOD входит в лидеры, обходя Isolation Forest и глубокие методы. <strong>Практический совет: всегда включай ECOD в сравнение как бейзлайн</strong> — если сложный метод его не обходит, сложный метод не нужен.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Принцип</th><th>Сложность</th><th>Гиперпараметры</th><th>Сильная сторона</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Isolation Forest</b></td><td>изоляция</td><td>$O(n\log n)$</td><td>мало</td><td><strong>Универсальный дефолт, масштабируется</strong></td></tr>
+<tr><td>LOF</td><td>локальная плотность</td><td>$O(n^2)$</td><td>$k$ — капризный</td><td>Разноплотные кластеры</td></tr>
+<tr><td>kNN-distance</td><td>расстояние до $k$-го соседа</td><td>$O(n^2)$</td><td>$k$</td><td>Простой, интерпретируемый</td></tr>
+<tr><td>One-Class SVM</td><td>граница</td><td>$O(n^2)$–$O(n^3)$</td><td>$\nu$, $\gamma$ — чувствительные</td><td>Гибкая форма границы</td></tr>
+<tr><td>Elliptic Envelope (MCD)</td><td>робастный Махаланобис</td><td>$O(n p^2)$</td><td>contamination</td><td>Данные близки к нормальным</td></tr>
+<tr><td>HBOS</td><td>покоординатные гистограммы</td><td>$O(np)$</td><td>число бинов</td><td>Очень быстр</td></tr>
+<tr><td>COPOD</td><td>копулы, хвостовые вероятности</td><td>$O(np)$</td><td><strong>нет</strong></td><td>Быстр, интерпретируем</td></tr>
+<tr class="trh"><td><b>ECOD</b></td><td>эмпирические CDF</td><td>$O(np)$</td><td><strong>нет</strong></td><td><strong>Детерминирован, интерпретируем, топ на бенчмарках</strong></td></tr>
+<tr><td>Autoencoder</td><td>реконструкция</td><td>$O(n\cdot\text{epochs})$</td><td>много</td><td>Высокая размерность, сложные связи</td></tr>
+<tr><td>DeepSVDD</td><td>сжатие в сферу</td><td>$O(n\cdot\text{epochs})$</td><td>много</td><td>Изображения, представления</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Ансамблирование детекторов</h3>
+
+<div class="fbox pk">
+<div class="flabel">📐 Объединение скоров разных методов</div>
+<p>Скоры несравнимы по масштабу, поэтому сначала нормируем — обычно по рангам:</p>
+$$\tilde s_m(x) = \frac{\text{rank}_m(x)}{n}, \qquad S_{\text{ens}}(x) = \text{aggregate}_m\big(\tilde s_m(x)\big)$$
+<p class="fnote">Агрегация: среднее (устойчиво), максимум (чувствительно — аномалия хотя бы по одному методу), среднее топ-$k$ (компромисс).</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему ансамбль здесь особенно полезен</div>
+<p>В supervised-задачах ансамбль даёт 1–3% прироста. В поиске аномалий выигрыш обычно <strong>существенно больше</strong> — и вот почему.</p>
+<p>Каждый метод ловит <em>свой тип</em> аномалий: IForest — глобально удалённые, LOF — локально разреженные, автоэнкодер — нарушающие структуру связей, ECOD — экстремальные по отдельным признакам.</p>
+<p>Аномалии в реальных данных <strong>неоднородны</strong> — они разных типов одновременно. Один метод физически не может поймать все.</p>
+<p><strong>Практический рецепт:</strong> взять 4–5 разных по принципу методов (изоляция + плотность + проекция + реконструкция), нормировать по рангам, агрегировать средним или средним топ-2. Это почти всегда лучше любого отдельного метода, и не требует разметки для настройки.</p>
+</div>
+
+<pre><code># Ансамбль детекторов через PyOD
+from pyod.models.iforest import IForest
+from pyod.models.lof import LOF
+from pyod.models.ecod import ECOD
+from pyod.models.copod import COPOD
+from scipy.stats import rankdata
+import numpy as np
+
+models = {
+    "iforest": IForest(n_estimators=200, random_state=42),
+    "lof":     LOF(n_neighbors=35),
+    "ecod":    ECOD(),
+    "copod":   COPOD(),
+}
+
+ranks = []
+for name, m in models.items():
+    m.fit(X)
+    s = m.decision_scores_                       # больше = аномальнее
+    ranks.append(rankdata(s) / len(s))           # нормировка по рангам
+
+R = np.vstack(ranks)
+ens_mean = R.mean(axis=0)                        # устойчивый вариант
+ens_max  = R.max(axis=0)                         # чувствительный вариант
+ens_top2 = np.sort(R, axis=0)[-2:].mean(axis=0)  # компромисс
+</code></pre>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Метрики: как оценивать без разметки <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самая слабая часть большинства проектов</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>ROC-AUC вводит в заблуждение при сильном дисбалансе.</strong> При 0.2% аномалий модель с AUC 0.95 может иметь precision 3%. Причина: ROC использует False Positive Rate $= FP/(FP+TN)$, а $TN$ огромен — 998 000. Даже 20 000 ложных срабатываний дают FPR всего 2%, и кривая выглядит прекрасно. <strong>Всегда используй PR-AUC (Average Precision)</strong> — она чувствительна именно к тому, что важно.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 ROC-AUC против PR-AUC на одних данных</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>1 000 000 транзакций, 2000 аномалий (0.2%).</strong> Детектор выдал 24 000 алертов, из них 1200 верных.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>$TP = 1200$, $FP = 22\,800$, $FN = 800$, $TN = 975\,200$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>FPR</strong> $= \dfrac{22\,800}{22\,800 + 975\,200} = \mathbf{0.0229}$ — всего 2.3%! На ROC-кривой это выглядит как отличная точка.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Precision</strong> $= \dfrac{1200}{1200+22\,800} = \mathbf{0.05}$ — 5%. Из 20 алертов 19 ложных.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Recall</strong> $= \dfrac{1200}{2000} = 0.60$. Baseline precision при случайном выборе $= 0.002$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Lift</strong> $= 0.05/0.002 = \mathbf{25\times}$ над случайным — это <em>хороший</em> результат. Но ROC-AUC покажет 0.96 и создаст ложное впечатление, что модель почти идеальна. <strong>PR-AUC покажет ≈0.08</strong> — честную картину.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">ROC и PR-кривые для одного детектора при 0.2% аномалий</div>
+<div class="chsub">ROC выглядит отлично, PR показывает реальное положение дел</div>
+<div style="position:relative;height:310px;"><canvas id="c_roc"></canvas></div>
+</div>
+
+<h3>Метрики при наличии хотя бы частичной разметки</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метрика</th><th>Что показывает</th><th>Когда использовать</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Precision@k</b></td><td>Доля реальных аномалий среди топ-$k$ по скору</td><td><strong>Главная метрика: $k$ = пропускная способность разбора</strong></td></tr>
+<tr><td>PR-AUC (Average Precision)</td><td>Качество на всех порогах</td><td>Сравнение моделей между собой</td></tr>
+<tr><td>Recall@k</td><td>Какая доля аномалий попала в топ-$k$</td><td>Когда важно не пропустить</td></tr>
+<tr><td>Lift@k</td><td>Precision@k / базовая доля</td><td>Понятная бизнесу метрика «во сколько раз лучше случайного»</td></tr>
+<tr><td>ROC-AUC</td><td>Ранжирование</td><td><strong>Только для сравнения; не для оценки полезности</strong></td></tr>
+<tr><td>F1 на выбранном пороге</td><td>Баланс precision и recall</td><td>Когда цена FP и FN примерно равна — редко в аномалиях</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Что делать, когда разметки нет совсем</h3>
+<div class="grid2">
+<div class="card gr"><h5>✅ Ручная валидация топ-N</h5><p>Отдать аналитику 100 самых аномальных объектов и попросить оценить, сколько реально проблемных. Даёт precision@100 — <strong>самый прямой и надёжный способ</strong>.</p></div>
+<div class="card gr"><h5>✅ Синтетические аномалии</h5><p>Внедрить искусственные выбросы известного типа и проверить, ловит ли детектор. Проверяет чувствительность к <em>конкретным</em> типам.</p></div>
+<div class="card bl"><h5>✅ Согласованность методов</h5><p>Если 5 разных детекторов сходятся на одних объектах — вероятность, что это шум, ниже. Не доказательство, но полезный сигнал.</p></div>
+<div class="card bl"><h5>✅ Стабильность во времени</h5><p>Топ аномалий не должен полностью меняться день ото дня. Резкая смена состава — признак нестабильности модели, а не изменения данных.</p></div>
+<div class="card am"><h5>⚠️ Форма распределения скоров</h5><p>Хороший детектор даёт <strong>длинный правый хвост</strong>. Узкий пик без хвоста означает, что модель не различает объекты.</p></div>
+<div class="card rd"><h5>❌ «Модель нашла 5% аномалий»</h5><p>Это не метрика — это заданный параметр <code>contamination</code>. Ничего не говорит о качестве.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический протокол при отсутствии разметки.</strong> ① Обучи 4–5 разных детекторов. ② Возьми топ-100 по каждому и по ансамблю. ③ Отдай аналитику <em>перемешанный</em> список без указания метода (слепая оценка). ④ Посчитай precision@100 для каждого. ⑤ Размеченные аналитиком объекты сохрани — за несколько итераций накопится обучающая выборка для supervised модели. <strong>Этот цикл — единственный способ выйти из «мы не знаем, работает ли оно».</strong></div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Выбор порога: где заканчивается ML и начинается экономика <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самое важное решение, которое обычно принимают наугад</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Оптимальный порог через стоимость ошибок</div>
+$$\text{Cost}(\tau) = C_{FP}\cdot FP(\tau) + C_{FN}\cdot FN(\tau) \;\longrightarrow\; \min_\tau$$
+<p>При заданной пропускной способности $k$ проверок:</p>
+$$\tau^{*} = \text{quantile}_{1 - k/n}\big(\{s_i\}\big)$$
+<p class="fnote">Второй вариант — порог задаётся не оптимизацией, а <em>ресурсным ограничением</em>. Это самая частая ситуация на практике.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: три способа выбрать порог</div>
+<p><strong>① По бюджету проверок.</strong> «У нас 3 аналитика, каждый разбирает 60 кейсов в день» → 180 алертов в день → порог = квантиль, отсекающий топ-180. Самый частый и самый честный способ.</p>
+<p><strong>② По стоимости ошибок.</strong> Знаем $C_{FP}$ (стоимость разбора + недовольство клиента) и $C_{FN}$ (средний ущерб). Минимизируем суммарную стоимость. Требует разметки для оценки $FP(\tau)$ и $FN(\tau)$.</p>
+<p><strong>③ По форме распределения скоров.</strong> Ищем «локоть» — точку, где плотность скоров резко падает. Работает, если аномалии образуют отдельную моду; часто её нет.</p>
+<p><strong>Чего делать нельзя:</strong> брать <code>contamination=0.05</code> по умолчанию и не думать. Это произвольное решение, которое напрямую определяет и число алертов, и стоимость процесса.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Оптимальный порог по стоимости: полный расчёт</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Вводные:</strong> 100 000 транзакций в день, 0.3% мошеннических (300 шт.). $C_{FP} = 80$ ₽ (разбор аналитиком), $C_{FN} = 12\,000$ ₽ (средний ущерб).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Порог «топ-500»:</strong> recall 0.42 → $TP=126$, $FP=374$, $FN=174$.<br>Cost $= 80\times374 + 12\,000\times174 = 29\,920 + 2\,088\,000 = \mathbf{2\,117\,920}$ ₽.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Порог «топ-2000»:</strong> recall 0.68 → $TP=204$, $FP=1796$, $FN=96$.<br>Cost $= 143\,680 + 1\,152\,000 = \mathbf{1\,295\,680}$ ₽.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Порог «топ-6000»:</strong> recall 0.85 → $TP=255$, $FP=5745$, $FN=45$.<br>Cost $= 459\,600 + 540\,000 = \mathbf{999\,600}$ ₽ — <strong>минимум</strong>.</div></div>
+<div class="numex-step"><span class="nb red">5</span><div><strong>Порог «топ-15000»:</strong> recall 0.94 → $TP=282$, $FP=14\,718$, $FN=18$.<br>Cost $= 1\,177\,440 + 216\,000 = \mathbf{1\,393\,440}$ ₽ — снова растёт.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Оптимум — топ-6000, то есть 6% от потока.</strong> Но это требует 6000 проверок в день! Если аналитиков хватает только на 2000, оптимум <em>при ограничении</em> — топ-2000, и разница в стоимости (296 тыс. ₽/день) — <strong>прямое обоснование для найма аналитиков</strong>. Так метрика превращается в бизнес-аргумент.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Суммарная стоимость от числа алертов</div>
+<div class="chsub">U-образная кривая: минимум там, где предельная стоимость FP равна предельной выгоде от пойманного FN</div>
+<div style="position:relative;height:310px;"><canvas id="c_cost"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: калькулятор оптимального порога</label>
+  <input type="range" id="sl_cfp" min="10" max="1000" step="10" value="80" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>стоимость FP 10 ₽</span><span class="out" id="out_cfp">80 ₽</span><span>1000 ₽</span></div>
+  <label style="margin-top:14px;">Стоимость пропуска (FN)</label>
+  <input type="range" id="sl_cfn" min="500" max="50000" step="500" value="12000" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>500 ₽</span><span class="out" id="out_cfn">12 000 ₽</span><span>50 000 ₽</span></div>
+  <label style="margin-top:14px;">Пропускная способность разбора, алертов в день</label>
+  <input type="range" id="sl_cap" min="100" max="20000" step="100" value="2000" oninput="updThr()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>100</span><span class="out" id="out_cap">2000</span><span>20 000</span></div>
+  <div class="res" id="out_thr"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Алерт-усталость — самая недооценённая цена ложных срабатываний.</strong> Если аналитик получает 500 алертов в день и 490 из них ложные, через две недели он начинает закрывать их не глядя. <strong>Реальный recall системы падает до нуля</strong>, хотя модель работает как раньше. Это не техническая, а организационная деградация, и она невидима в метриках модели. <strong>Мера:</strong> отслеживай долю алертов, приведших к действию. Если она ниже 10–15% — порог слишком низкий независимо от того, что говорит формула стоимости.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Аномалии во временных рядах <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Отдельный класс задач со своей спецификой</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чем ряды принципиально отличаются</div>
+<p><strong>① Есть тренд и сезонность.</strong> Значение 1000 в понедельник нормально, в воскресенье — аномалия. Прежде чем искать выбросы, нужно <em>убрать предсказуемую часть</em>.</p>
+<p><strong>② Порядок имеет значение.</strong> Те же значения в другом порядке могут быть нормой или аномалией. Перемешивание разрушает информацию — значит, нельзя использовать обычную кросс-валидацию.</p>
+<p><strong>③ Аномалии чаще коллективные.</strong> Не «один выброс», а «сдвиг уровня», «изменение дисперсии», «пропавшая сезонность».</p>
+<p><strong>④ Нужна реакция в реальном времени.</strong> Обнаружить сбой через сутки бесполезно — нужен онлайн-детектор.</p>
+</div>
+
+<h3>Каноничный подход: декомпозиция плюс детекция на остатках</h3>
+
+<div class="flow">
+  <div class="fn d"><strong>Ряд y(t)</strong></div>
+  <div class="farr">→</div>
+  <div class="fn a"><strong>Декомпозиция</strong>STL: тренд +<br>сезонность + остаток</div>
+  <div class="farr">→</div>
+  <div class="fn b"><strong>Остаток r(t)</strong>предсказуемое<br>удалено</div>
+  <div class="farr">→</div>
+  <div class="fn c"><strong>Детекция</strong>робастный z-score<br>или ESD на r(t)</div>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 STL-декомпозиция и порог на остатках</div>
+$$y(t) = T(t) + S(t) + R(t)$$
+<p>Аномалия по робастному критерию на остатке:</p>
+$$\big|R(t) - \operatorname{median}(R)\big| > c\cdot\text{MAD}(R), \qquad c \approx 3\text{–}6$$
+<p class="fnote">Ключевое: <strong>MAD, а не std</strong> — иначе сами аномалии раздуют порог (эффект маскировки из секции 3).</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему детекция «в лоб» не работает на сезонном ряду</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Ряд:</strong> дневные заказы, будни ≈ 1000, выходные ≈ 400. Среднее по всему ряду $\approx 830$, std $\approx 270$.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивный z-score:</strong> обычное воскресенье со значением 400 даёт $z = \frac{400-830}{270} = \mathbf{-1.59}$. Близко к порогу — при $c=2$ <em>все выходные</em> станут аномалиями.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div>А настоящая аномалия — <strong>будний день с 600 заказами</strong> (падение на 40%) — даёт $z = \frac{600-830}{270} = -0.85$. <strong>Не будет обнаружена.</strong></div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>После STL:</strong> сезонная компонента для воскресенья $-430$, для будня $+170$. Остатки: воскресенье $400 - (830-430) = 0$; проблемный будень $600 - (830+170) = \mathbf{-400}$.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div>MAD остатков $\approx 45$. Робастный z для будня: $\frac{0.6745\times(-400)}{45} = \mathbf{-6.0}$ — <strong>уверенная аномалия</strong>. Воскресенье: $z = 0$ — норма.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Вывод:</strong> без декомпозиции детектор находит сезонность вместо аномалий и пропускает реальные проблемы. Это <em>инвертированный</em> результат — хуже, чем отсутствие детектора.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Детекция на сыром ряду и на остатках после STL</div>
+<div class="chsub">На сыром ряду ловятся выходные; на остатках — реальная аномалия в будний день</div>
+<div style="position:relative;height:320px;"><canvas id="c_ts"></canvas></div>
+</div>
+
+<h3>Типы аномалий в рядах и чем их ловить</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Тип</th><th>Проявление</th><th>Метод</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Точечный выброс</b></td><td>Одно резко отклоняющееся значение</td><td><strong>STL + робастный z-score / ESD</strong></td></tr>
+<tr><td>Сдвиг уровня (level shift)</td><td>Ряд перешёл на новый уровень и остался</td><td>CUSUM, Bayesian changepoint, ruptures</td></tr>
+<tr><td>Изменение дисперсии</td><td>Уровень тот же, разброс вырос</td><td>Скользящая дисперсия + контроль, GARCH</td></tr>
+<tr><td>Изменение тренда</td><td>Сменился наклон</td><td>Piecewise-регрессия, Prophet changepoints</td></tr>
+<tr><td>Пропажа сезонности</td><td>Паттерн исчез</td><td>Сравнение автокорреляции по окнам</td></tr>
+<tr><td>Аномальный субряд</td><td>Необычная форма отрезка</td><td>Matrix Profile (STUMPY), shapelets</td></tr>
+<tr><td>Многомерная аномалия</td><td>Разъехались связи между рядами</td><td>VAR-остатки, USAD, LSTM-AE, PCA-остатки</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Matrix Profile — недооценённый инструмент для рядов.</strong> Для каждого подряда длины $m$ считается расстояние до <em>ближайшего похожего</em> подряда в том же ряду. Подряд с максимальным таким расстоянием («discord») — это форма, которая нигде больше не повторяется, то есть аномалия <em>по паттерну</em>, а не по значению. Работает без обучения, без параметров кроме $m$, и ловит коллективные аномалии, невидимые для поточечных методов. Библиотека <code>stumpy</code>.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три специфичные ошибки на рядах.</strong> ① <strong>Обычная кросс-валидация</strong> — перемешивание разрушает временную структуру и создаёт утечку из будущего. Только rolling-origin. ② <strong>Скользящее окно, включающее текущую точку</strong> — аномалия влияет на статистику, по которой её же проверяют. Окно должно быть строго <em>до</em> точки. ③ <strong>Оценка «по точкам» при коллективных аномалиях</strong> — если сбой длился 40 минут, а детектор нашёл 3 точки из 40, поточечный recall = 7.5%, хотя инцидент обнаружен. Нужны <strong>event-based метрики</strong>: инцидент считается пойманным, если найдена хотя бы одна точка внутри него.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни</div>
+<div class="sdesc">Ошибки, из-за которых детектор находит не то</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Не масштабировали признаки</h5><p>Методы на расстояниях (LOF, kNN, One-Class SVM, Махаланобис) полностью подчинятся признаку с наибольшим масштабом. Признак в рублях подавит признак в долях.</p><p><em>Исключение:</em> IForest и ECOD инвариантны к монотонным преобразованиям.</p></div>
+<div class="card rd"><h5>Тяжёлые хвосты без логарифма</h5><p>Суммы, доходы, длительности имеют логнормальное распределение. Порог «3 сигмы» пометит 5–10% данных.</p><p><em>Решение:</em> log или quantile transform перед детекцией.</p></div>
+<div class="card rd"><h5>Эффект маскировки</h5><p>z-score и Махаланобис оцениваются по загрязнённым данным; выбросы прячут сами себя.</p><p><em>Решение:</em> MAD, MCD, итеративное удаление (ESD).</p></div>
+<div class="card rd"><h5>Точечный метод на коллективной задаче</h5><p>IForest на отдельных транзакциях не поймает схему «много мелких списаний подряд».</p><p><em>Решение:</em> агрегаты по окну, Matrix Profile, последовательные модели.</p></div>
+<div class="card rd"><h5>Слишком ёмкий автоэнкодер</h5><p>Выучил тождество, ошибка мала везде, детектор бесполезен.</p><p><em>Диагностика:</em> ошибка на аномалиях не отличается от нормы.</p></div>
+<div class="card rd"><h5>Оценка по ROC-AUC</h5><p>При 0.2% аномалий AUC 0.95 может означать precision 3%.</p><p><em>Решение:</em> PR-AUC и precision@k.</p></div>
+<div class="card rd"><h5>contamination наугад</h5><p>Порог задан произвольно и напрямую определяет число алертов и стоимость процесса.</p><p><em>Решение:</em> порог из бюджета проверок или из стоимости ошибок.</p></div>
+<div class="card rd"><h5>Детекция на сыром временном ряду</h5><p>Ловятся выходные и сезонность, реальные аномалии пропускаются.</p><p><em>Решение:</em> STL-декомпозиция, детекция на остатках.</p></div>
+<div class="card rd"><h5>Обучение на загрязнённых данных в novelty-режиме</h5><p>One-Class SVM и AE предполагают чистую обучающую выборку; аномалии внутри неё расширяют границу нормы.</p><p><em>Решение:</em> предварительная очистка через outlier-метод.</p></div>
+<div class="card rd"><h5>Модель не переобучается</h5><p>Норма дрейфует: новые продукты, сезоны, изменения в продукте. Вчерашняя норма — сегодняшняя аномалия.</p><p><em>Решение:</em> регулярное переобучение + мониторинг доли алертов.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самый коварный подводный камень — дрейф нормы, замаскированный под рост аномалий.</strong> Выкатили новую фичу в приложении, поведение пользователей изменилось — детектор начал выдавать в 5 раз больше алертов. Команда решает «участились атаки» и усиливает мониторинг, хотя проблема в устаревшей модели нормы. <strong>Диагностика:</strong> следи за <em>долей</em> алертов, а не их числом. Резкий рост доли при неизменном пороге почти всегда означает дрейф данных, а не реальный всплеск аномалий. Проверка: переобучи модель на свежем окне — если доля вернулась к норме, это был дрейф.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Состязательный дрейф в антифроде и безопасности.</strong> В отличие от обычного дрейфа, здесь распределение аномалий меняется <em>в ответ</em> на твой детектор. Мошенники тестируют схемы и переходят на те, что не срабатывают. Практические следствия: ① переобучение нужно чаще (дни, не месяцы); ② нельзя раскрывать логику детектора; ③ полезна <strong>случайная выборка на ручную проверку</strong> вне зависимости от скора — она ловит схемы, которые модель систематически пропускает, и разрывает петлю обратной связи (та же логика, что exploration-бакет в uplift).</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Чек-лист перед запуском детектора.</strong> ① Определи <em>тип</em> аномалии — точечная, контекстная, коллективная — и подбери признаки под него. ② Проверь распределения признаков, логарифмируй тяжёлые хвосты. ③ Отмасштабируй, если метод на расстояниях. ④ Обучи 4–5 разных методов, включая ECOD как бейзлайн. ⑤ Отдай топ-100 на слепую ручную проверку. ⑥ Определи порог из бюджета разбора, а не из <code>contamination</code>. ⑦ Настрой мониторинг доли алертов и доли алертов, приведших к действию.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design: антифрод-контур</div>
+<div class="sdesc">Как детектор аномалий живёт в проде</div>
+
+<div class="sysbox">
+<h4>🏗 Многоуровневая архитектура детекции</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Транзакция</strong>бюджет 100 мс</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Правила</strong>чёрные списки,<br>жёсткие лимиты<br>&lt;5 мс</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Supervised</strong>известные схемы,<br>высокий precision</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Unsupervised</strong>новые схемы,<br>IForest + ECOD</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Агрегация скоров</strong>ранговое<br>объединение</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Три исхода</strong>approve /<br>review / decline</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Очередь разбора</strong>приоритет по скору<br>+ по сумме</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Разметка</strong>решение аналитика<br>→ обучающие данные</div>
+</div>
+<div class="sysnote"><strong>Почему именно такая слоистость:</strong><br>
+① <strong>Правила первыми</strong> — они мгновенны, объяснимы и ловят известные грубые схемы. Регулятору можно показать конкретное правило, а не скор модели.<br>
+② <strong>Supervised ловит известное точно</strong> — там, где есть разметка, он всегда точнее unsupervised.<br>
+③ <strong>Unsupervised ловит новое</strong> — его задача не точность, а <em>покрытие незнакомого</em>. От него не ждут высокого precision.<br>
+④ <strong>Три исхода вместо двух</strong> — «review» превращает ложные срабатывания из потерь в <em>источник разметки</em>. Это самый важный элемент: без петли разметки система не улучшается.<br>
+⑤ <strong>Случайная выборка на разбор</strong> (2–5% потока независимо от скора) — единственный способ измерить <em>истинный</em> recall и обнаружить схемы, которые модель систематически пропускает.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Мониторинг детектора: что отслеживать</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Доля алертов</strong>% от потока</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Распределение скоров</strong>PSI против<br>обучающего окна</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Action rate</strong>% алертов,<br>приведших к действию</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Recall по случайной<br>выборке</strong>истинная полнота</div>
+</div>
+<div class="sysnote"><strong>Что означает каждый сигнал:</strong><br>
+• <strong>Доля алертов выросла при неизменном пороге</strong> → дрейф нормы, а не всплеск атак. Переобучить и сравнить.<br>
+• <strong>PSI скоров вырос</strong> → распределение данных изменилось; модель может быть невалидна.<br>
+• <strong>Action rate упал ниже 10–15%</strong> → порог слишком низкий, начинается алерт-усталость, реальный recall падает независимо от метрик модели.<br>
+• <strong>Recall по случайной выборке упал</strong> → появились новые схемы, которые модель не ловит. Самый ценный и самый дорогой сигнал.<br><br>
+<strong>Ключевая мысль:</strong> метрики модели (PR-AUC на исторических данных) не показывают деградацию в проде. Показывают её только <em>операционные</em> метрики — доля алертов, action rate и recall по случайной выборке.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Мониторинг качества данных</div>
+<h4>Самое дешёвое и самое окупаемое применение детекции аномалий</h4>
+<p>Обычно детекцию аномалий связывают с фродом. Но самое выгодное по соотношению «усилия/эффект» применение — <strong>мониторинг качества данных в ML-пайплайнах</strong>.</p>
+<p><strong>Что отслеживать:</strong> доля пропусков по колонкам, распределения признаков (PSI), доля новых категорий, число строк в загрузке, время задержки данных, доля дублей.</p>
+<p><strong>Почему это окупается:</strong> сбой ETL или изменение формата в апстриме тихо портит все модели, которые на этих данных работают. Обнаруживается через недели — по падению бизнес-метрик, и корневая причина ищется долго.</p>
+<p><strong>Простейшая реализация:</strong> робастный z-score на дневных агрегатах каждой метрики качества, окно 30 дней, порог 4 MAD. Не нужны ни IForest, ни автоэнкодеры — достаточно секции 3.</p>
+<p><strong>Связь с блоком 7.3:</strong> это ровно тот же мониторинг данных, только сформулированный как задача детекции. Feature freshness, null-rate, PSI — всё это метрики, к которым применяется тот же аппарат.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Связь с курсом</div>
+<h4>Где детекция аномалий пересекается с остальными темами</h4>
+<ul>
+<li><strong>Блок 1.2 (дисбаланс)</strong> — экстремальный дисбаланс, precision@k вместо accuracy, выбор порога через стоимость ошибок.</li>
+<li><strong>Блок 3.3 (антифрод)</strong> — полная продуктовая постановка: streaming-признаки, отложенные метки, состязательный дрейф.</li>
+<li><strong>Блок 7.3 (MLOps)</strong> — мониторинг данных как задача детекции; PSI и KS-тест применяются один в один.</li>
+<li><strong>Блок 8.6 (SSL)</strong> — автоэнкодер как детектор использует ту же идею, что masked prediction: модель, выучившая структуру, плохо восстанавливает чужеродное.</li>
+<li><strong>Блок 6 (ANN-поиск)</strong> — приближённый kNN через HNSW/FAISS делает LOF применимым на больших данных.</li>
+</ul>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">15. Вопросы и ответы</div>
+<div class="sdesc">30 вопросов — от определения аномалии до выбора порога</div>
+
+<div class="qah">🟢 База: постановка</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Чем аномалия отличается от просто редкого значения?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>По определению Хокинса, аномалия порождена <strong>другим механизмом</strong>, а не является редким значением из того же распределения.</p><p><strong>Пример:</strong> покупка на 500 000 ₽ при среднем чеке 5000 ₽. Для корпоративного клиента это нормальный «хвост» того же распределения. Для физлица с историей до 3000 ₽ — скорее всего другой механизм: украденная карта, ошибка системы, отмывание.</p><p><strong>Практическое следствие:</strong> детектор без понимания домена выдаёт список «редких значений», а не «проблем». Разница между этими списками — вся ценность работы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Назови три типа аномалий и приведи примеры.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Точечная:</strong> наблюдение аномально само по себе. Транзакция на 2 млн у клиента с историей до 10 тыс.</p><p><strong>Контекстная:</strong> значение нормально вообще, но не в этом контексте. Траты 30 тыс. в декабре нормальны, в феврале у того же клиента — нет.</p><p><strong>Коллективная:</strong> отдельные наблюдения нормальны, аномальна их последовательность. 50 транзакций по 100 ₽ подряд.</p><p><strong>Ключевое:</strong> тип аномалии определяет не выбор алгоритма, а <strong>конструирование признаков</strong>. Isolation Forest на отдельных транзакциях никогда не поймает коллективную схему — нужны агрегаты по окну.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Чем novelty detection отличается от outlier detection?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Outlier detection:</strong> обучающая выборка <em>загрязнена</em> аномалиями, мы ищем их внутри неё. Isolation Forest, LOF в стандартном режиме.</p><p><strong>Novelty detection:</strong> обучающая выборка <em>чистая</em>, мы учим «что такое норма» и детектируем отклонения на новых данных. One-Class SVM, автоэнкодер, LOF с <code>novelty=True</code>.</p><p><strong>Почему это важно:</strong> различие влияет и на выбор алгоритма, и на пайплайн. В novelty-режиме нужен отдельный процесс очистки обучающих данных — иначе аномалии внутри обучения расширят границу нормы и модель перестанет их ловить.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Назови четыре причины, почему это не задача классификации.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>① Разметки нет</strong> — мошенничество обнаруживается через месяцы (чарджбэк), сбой оборудования постфактум.</p><p><strong>② Экстремальный дисбаланс</strong> — 0.01–1% аномалий, accuracy бесполезна.</p><p><strong>③ Аномалии неоднородны</strong> — класс «норма» компактен, класс «аномалия» это <em>всё остальное</em>. Новые схемы не похожи на старые.</p><p><strong>④ Противник адаптируется</strong> — в антифроде распределение меняется <em>в ответ</em> на детектор.</p><p><strong>Пункт ③ решающий:</strong> классификатор учит границу между нормой и <em>известными</em> аномалиями. Новый тип лежит в другой области и попадает на «нормальную» сторону. Unsupervised методы моделируют только норму и объявляют аномалией всё далёкое — в любом направлении.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Когда supervised подход лучше unsupervised?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Когда разметки достаточно (тысячи случаев), типы аномалий стабильны и новых не ожидается. Тогда supervised почти всегда точнее — он знает, <em>какие именно</em> отклонения важны, а unsupervised выдаёт все подряд.</p><p><strong>Практический паттерн зрелых систем — гибрид:</strong> unsupervised ловит новое и генерирует кандидатов на разметку, supervised точно ловит известные схемы.</p><p>Плюс правила первым слоем — они мгновенны, объяснимы и нужны регулятору.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Почему правильная постановка — это precision@k, а не recall?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Потому что ключевое ограничение — <strong>пропускная способность разбора</strong>, а не качество модели.</p><p><strong>Расчёт:</strong> 1 млн транзакций, 0.2% фрода. Детектор с recall 60% и precision 5% выдаёт 24 000 алертов в день. Из них 22 800 ложных, разбор по 50 ₽ = 1.14 млн ₽ в день только на ложные.</p><p>Если аналитиков хватает на 2000 проверок, нужен не «лучший recall», а <em>лучший precision при 2000 алертах</em>.</p><p><strong>Правильная формулировка:</strong> «у нас $k$ проверок в день; максимизируй долю реальных проблем среди топ-$k$». Она сразу задаёт метрику, порог и делает разговор с бизнесом предметным.</p></div></details>
+
+<div class="qah">🔵 Средний: методы</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Что такое эффект маскировки и как с ним бороться?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>$\bar x$ и $s$ вычисляются по данным <em>включая аномалии</em> — выброс раздувает std и маскирует сам себя.</p><p><strong>Расчёт:</strong> данные вокруг 11, добавили выброс 100 → $z = 3.01$, едва проходит. Добавили второй выброс 95 → $z(100) = \mathbf{2.13}$, <strong>ниже порога</strong>. Оба стали «нормальными».</p><p><strong>Робастная версия через MAD:</strong> медиана 11, MAD = 1, $z_{\text{rob}}(100) = \frac{0.6745\times89}{1} = \mathbf{60.0}$.</p><p><strong>Разница 2.13 против 60.0.</strong> У MAD точка слома 50% — он корректен, пока аномалий меньше половины. <strong>Правило: никогда не используй обычный z-score для поиска аномалий.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Откуда взялись пороги «3 сигмы» и «1.5 IQR»?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>3 сигмы:</strong> для нормального распределения за пределами лежит 0.27% значений. При выборке 10 000 это 27 «аномалий» чисто случайно — порог привязан к ожидаемой доле ложных срабатываний, а не абсолютен.</p><p><strong>1.5 IQR:</strong> для нормального распределения соответствует примерно $\pm2.7\sigma$, то есть 0.7%. Тьюки выбрал 1.5 как компромисс.</p><p><strong>Критично:</strong> оба порога <em>не универсальны</em>. На тяжёлохвостых распределениях (доходы, суммы транзакций) они пометят 5–10% данных. <strong>Перед применением обязательно логарифмировать</strong> или использовать квантильное преобразование.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Чем расстояние Махаланобиса лучше евклидова и в чём его слабость?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$d_M = \sqrt{(x-\mu)^\top\Sigma^{-1}(x-\mu)}$ — учитывает корреляции. Геометрически: евклид рисует круг, Махаланобис — эллипс вдоль корреляции.</p><p><strong>Пример:</strong> рост 190 и вес 60 кг — аномалия, хотя оба значения нормальны и евклидово расстояние невелико. Махаланобис это увидит.</p><p><strong>Слабость — та же маскировка, только хуже:</strong> $\mu$ и $\Sigma$ оцениваются по загрязнённым данным, несколько выбросов раздувают ковариацию так, что сами оказываются внутри эллипса.</p><p><strong>Решение — MCD:</strong> ищем подвыборку $h\approx0.75n$ с минимальным определителем ковариации и оцениваем параметры по ней. В sklearn это <code>EllipticEnvelope</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Что такое концентрация расстояний и с какой размерности она мешает?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>С ростом $p$ отношение $\frac{d_{\max}-d_{\min}}{d_{\min}}$ стремится к нулю — все точки становятся примерно равноудалены, понятие «ближайший сосед» теряет смысл.</p><p><strong>Числа:</strong> $p=2$ → отношение 13.4; $p=10$ → 2.1; $p=100$ → 0.42; $p=1000$ → 0.11.</p><p><strong>Практический предел:</strong> LOF, kNN и Махаланобис работают примерно до 20–30 признаков.</p><p><strong>Второй эффект — нерелевантные признаки:</strong> даже если аномалия видна в 3 признаках из 100, остальные 97 добавляют шум в расстояние. Та же проблема, что у MLP на таблицах (блок 7.2).</p><p><strong>Решения:</strong> методы, устойчивые к размерности (IForest, ECOD), или снижение размерности перед детекцией.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. В чём главная идея Isolation Forest?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Переворот задачи: вместо моделирования нормы напрямую ищем то, что <strong>легко отделить</strong>.</p><p>Случайно режем пространство, пока точка не окажется одна в листе. Аномалии «мало и они другие» — изолируются за 2–3 разреза. Норма в плотной толпе — за 10–12.</p><p>Скор: $s(x,n) = 2^{-\mathbb{E}[h(x)]/c(n)}$, где $c(n)$ — средняя глубина в случайном дереве поиска.</p><p><strong>Чтение скора:</strong> $s>0.7$ — уверенная аномалия; $s\approx0.5$ — неотличимо от нормы; $s<0.4$ — норма. Если <em>вся</em> выборка даёт 0.5 — выраженных аномалий нет, и это тоже результат.</p><p><strong>Преимущество:</strong> не нужно оценивать плотность, считать расстояния или обращать матрицы — только случайные разрезы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Почему в Isolation Forest подвыборка 256, а не все данные?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Из-за эффектов <strong>swamping и masking</strong>. Если в подвыборке много аномалий одного типа, они образуют собственный кластер и внутри него изолируются не быстрее нормы. Аномалия перестаёт быть аномалией, когда её «много».</p><p>Маленькая подвыборка почти наверняка содержит 0 или 1 аномалию — та изолируется мгновенно.</p><p>Авторы показали: качество растёт до $n\approx256$ и затем <em>падает</em>.</p><p><strong>Бонус:</strong> сложность становится $O(t\cdot n\log n)$ с $n=256$ <em>независимо от размера датасета</em> — метод линеен по числу объектов и работает на миллионах строк за секунды.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Какая главная слабость Isolation Forest и как её обойти?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Осевые разрезы.</strong> Дерево режет только перпендикулярно осям, поэтому области нормальности имеют ступенчатую форму.</p><p>Если данные вытянуты по диагонали (сильная корреляция), IForest создаёт <strong>артефакты в углах прямоугольников</strong>: нормальные точки на диагонали получают высокий скор, а аномалии в «углах» — низкий.</p><p>Это та же проблема осевой геометрии, что у деревьев в блоке 7.2 (инвариантность к вращению).</p><p><strong>Решения:</strong> Extended Isolation Forest с наклонными гиперплоскостями, либо PCA-поворот данных перед применением.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Зачем нужен LOF, если есть kNN-расстояние?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>LOF корректно работает при <strong>разной плотности кластеров</strong> — единственный из базовых методов.</p><p><strong>Пример:</strong> плотный кластер (lrd = 10) и разреженный (lrd = 0.8). Глобальный метод объявит <em>весь разреженный кластер</em> аномальным.</p><p>LOF сравнивает точку только с её соседями: точка внутри разреженного кластера имеет плотность как у соседей → LOF = 1.00 → норма. Точка на отшибе рядом с плотным кластером: $\text{LOF} = 10.0/1.2 = \mathbf{8.33}$ → аномалия.</p><p><strong>Ключевое наблюдение:</strong> точки в плотном и разреженном кластерах получают одинаковый LOF = 1.00 при плотностях, различающихся в 12 раз.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Как выбирать k в LOF?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Слишком малое $k$ (3–5):</strong> чувствителен к шуму, локальные флуктуации плотности дают ложные срабатывания.</p><p><strong>Слишком большое (сотни):</strong> «локальность» теряется, метод вырождается в глобальный.</p><p><strong>Главное правило:</strong> $k$ должно быть не меньше ожидаемого размера самого маленького <em>нормального</em> кластера — иначе весь этот кластер будет помечен как аномалия.</p><p>Типичный диапазон 20–50. Рекомендуется считать LOF для нескольких $k$ и брать максимум — это снижает чувствительность к выбору.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Почему LOF плохо масштабируется?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Сложность $O(n^2)$ в худшем случае: нужны $k$ соседей для каждой точки, а при высокой размерности пространственные индексы (KD-tree, Ball-tree) вырождаются в полный перебор.</p><p>На миллионе объектов нереалистичен.</p><p><strong>Обходы:</strong> сэмплирование, приближённый kNN через HNSW/FAISS (блок 6), или переход на Isolation Forest с линейной сложностью.</p><p><strong>Дополнительное ограничение:</strong> LOF не имеет естественного режима predict для новых точек. В sklearn нужен <code>novelty=True</code>, и тогда обучающая выборка должна быть чистой.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Что означает параметр ν в One-Class SVM?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Одновременно <strong>верхняя граница доли выбросов</strong> и <strong>нижняя граница доли опорных векторов</strong>.</p><p>При $\nu=0.05$ и выборке 10 000: максимум 500 точек за границей, минимум 500 опорных векторов.</p><p><strong>Это не гиперпараметр для тюнинга</strong> — он задаёт бизнес-требование, ожидаемую долю аномалий. Типично 0.01–0.1.</p><p><strong>Скрытая цена:</strong> число опорных векторов растёт с $\nu$ и с $n$. При 100 000 точек и $\nu=0.1$ модель хранит 10 000 опорных векторов, и каждое предсказание требует 10 000 вычислений ядра. Это делает метод непригодным для больших данных.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Три причины, почему One-Class SVM редко доходит до прода.<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>① Сложность $O(n^2)$–$O(n^3)$</strong> при обучении — на 100k строк уже больно, на миллионе невозможно.</p><p><strong>② Крайняя чувствительность к <code>gamma</code></strong> — изменение на порядок полностью меняет результат, а подобрать без разметки нечем.</p><p><strong>③ Обязательное масштабирование</strong> — RBF-ядро использует евклидово расстояние, признак в рублях полностью подавит признак в долях.</p><p><strong>Практическая замена:</strong> <code>SGDOneClassSVM</code> с аппроксимацией ядра через Nyström или Random Fourier Features — линейная сложность при сопоставимом качестве.</p></div></details>
+
+<div class="qah">🟣 Продвинутый: глубокие методы, метрики, прод</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Почему ошибка реконструкции автоэнкодера работает как скор аномальности?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Чтобы сжать данные в узкий латентный код и восстановить, автоэнкодер вынужден выучить <strong>структуру нормальных данных</strong> — какие признаки связаны, какие комбинации типичны.</p><p>Нормальный объект укладывается в выученную структуру → восстанавливается точно. Аномальный содержит комбинацию, которой не было → декодер восстановит ближайший нормальный паттерн → большая ошибка.</p><p><strong>Прямая связь с блоком 8.6:</strong> тот же принцип, что в masked prediction — модель, научившаяся восстанавливать, выучила структуру. Только здесь используется не представление, а сама <em>величина ошибки</em>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Главная ловушка автоэнкодера и как её диагностировать?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Слишком большая ёмкость.</strong> Если латентная размерность близка к входной, автоэнкодер выучит <em>тождественное отображение</em> — идеально восстановит и норму, и аномалии.</p><p><strong>Числа:</strong> при 60 признаках и latent=50 отношение ошибок «аномалии/норма» = 1.4 (нет разделения). При latent=12 → <strong>7.1</strong> (отлично). При latent=3 → 2.3 (недообучение).</p><p><strong>Правило:</strong> латентная размерность в 4–10 раз меньше входной, плюс регуляризация.</p><p><strong>Метрика подбора без разметки:</strong> максимизируй не низкую ошибку, а <em>разброс</em> ошибок — отношение 95-го перцентиля к медиане. Хороший детектор даёт длинный правый хвост.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Что такое коллапс в DeepSVDD и как его предотвратить?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Метод минимизирует расстояние от представлений до центра сферы. Тривиальное решение — <strong>выдавать константу</strong>: все расстояния нулевые, лосс нулевой, представление бесполезно.</p><p>Это ровно тот же коллапс, что в SSL без негативов (блок 8.6).</p><p><strong>Защита:</strong> запрет на bias-члены в слоях, отсутствие ограниченных активаций, фиксация центра сферы после первого прохода (а не обучение его).</p><p>Без этих мер DeepSVDD схлопнется гарантированно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Почему наивный HBOS часто побеждает сложные методы?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>HBOS игнорирует все корреляции — грубейшее упрощение. И тем не менее на многих бенчмарках он в первой тройке.</p><p><strong>Причина та же, что у наивного Байеса:</strong> при высокой размерности оценить <em>совместное</em> распределение невозможно, а покоординатные оценки устойчивы. Смещение от игнорирования корреляций меньше, чем дисперсия от попытки их учесть.</p><p><strong>Скорость:</strong> $O(np)$ — на миллионе объектов и сотне признаков секунды.</p><p><strong>Когда провалится:</strong> когда аномалия видна <em>только</em> в комбинации («22 года + доход 30 тыс. + кредит 5 млн»).</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>23. Чем ECOD выделяется среди остальных методов?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Ноль гиперпараметров</strong>, линейная сложность $O(np)$, полная <strong>детерминированность</strong> (нет случайности — результат воспроизводим бит в бит) и естественная интерпретируемость: можно показать, какой именно признак и с какой стороны хвоста дал вклад.</p><p>Строит эмпирические CDF по каждому признаку и агрегирует хвостовые вероятности, автоматически выбирая сторону по асимметрии.</p><p>На бенчмарке ADBench (57 датасетов) входит в лидеры, обходя Isolation Forest и глубокие методы.</p><p><strong>Практический совет:</strong> всегда включай ECOD в сравнение как бейзлайн. Если сложный метод его не обходит — сложный метод не нужен.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>24. Почему ансамбль детекторов особенно полезен именно здесь?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>В supervised-задачах ансамбль даёт 1–3%. В поиске аномалий выигрыш обычно существенно больше.</p><p><strong>Причина:</strong> каждый метод ловит <em>свой тип</em> — IForest глобально удалённые, LOF локально разреженные, автоэнкодер нарушающие структуру связей, ECOD экстремальные по отдельным признакам. Аномалии в реальных данных неоднородны, один метод физически не может поймать все.</p><p><strong>Рецепт:</strong> 4–5 разных по принципу методов, нормировка по <em>рангам</em> (скоры несравнимы по масштабу), агрегация средним или средним топ-2.</p><p>Почти всегда лучше любого отдельного метода и не требует разметки для настройки.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>25. Почему ROC-AUC вводит в заблуждение? Приведи расчёт.<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>ROC использует $FPR = FP/(FP+TN)$, а $TN$ огромен при сильном дисбалансе.</p><p><strong>Расчёт:</strong> 1 млн транзакций, 2000 аномалий. Детектор: $TP=1200$, $FP=22\,800$, $TN=975\,200$.</p><p>$FPR = \frac{22\,800}{998\,000} = \mathbf{0.023}$ — всего 2.3%, на ROC-кривой выглядит отлично, AUC ≈ 0.96.</p><p>$\text{Precision} = \frac{1200}{24\,000} = \mathbf{0.05}$ — из 20 алертов 19 ложных. PR-AUC ≈ 0.08.</p><p><strong>Правильные метрики:</strong> PR-AUC и precision@k. Lift $= 0.05/0.002 = 25\times$ над случайным — это хороший результат, но ROC создаёт ложное впечатление почти идеальной модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>26. Как оценивать детектор, если разметки нет совсем?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Протокол:</strong> ① обучи 4–5 разных детекторов; ② возьми топ-100 по каждому и по ансамблю; ③ отдай аналитику <em>перемешанный</em> список без указания метода (слепая оценка); ④ посчитай precision@100; ⑤ размеченные объекты сохрани.</p><p>За несколько итераций накопится обучающая выборка для supervised модели.</p><p><strong>Дополнительные сигналы:</strong> согласованность методов (если 5 детекторов сходятся — вероятность шума ниже); стабильность топа во времени; форма распределения скоров (хороший детектор даёт длинный правый хвост, плохой — узкий пик).</p><p><strong>Что метрикой не является:</strong> «модель нашла 5% аномалий» — это заданный параметр <code>contamination</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>27. Три способа выбрать порог и какой правильный?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>① По бюджету проверок</strong> — «3 аналитика по 60 кейсов» → 180 алертов → порог = соответствующий квантиль. Самый частый и честный способ.</p><p><strong>② По стоимости ошибок</strong> — минимизируем $C_{FP}\cdot FP + C_{FN}\cdot FN$. Требует разметки.</p><p><strong>③ По форме распределения скоров</strong> — ищем «локоть». Работает, если аномалии образуют отдельную моду; часто её нет.</p><p><strong>Чего делать нельзя:</strong> брать <code>contamination=0.05</code> по умолчанию. Это произвольное решение, напрямую определяющее число алертов и стоимость процесса.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>28. Что такое алерт-усталость и почему она опаснее плохих метрик?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Если аналитик получает 500 алертов в день и 490 ложные, через две недели он начинает закрывать их не глядя. <strong>Реальный recall системы падает до нуля</strong>, хотя модель работает как раньше.</p><p>Это организационная деградация, невидимая в метриках модели.</p><p><strong>Мера:</strong> отслеживай <em>action rate</em> — долю алертов, приведших к действию. Если ниже 10–15%, порог слишком низкий независимо от того, что говорит формула стоимости.</p><p>Это одна из немногих ситуаций, где оптимум по формуле хуже практического решения.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>29. Почему нельзя искать аномалии в сыром временном ряду?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Детектор найдёт <em>сезонность</em> вместо аномалий и пропустит реальные проблемы — результат хуже отсутствия детектора.</p><p><strong>Расчёт:</strong> будни ≈1000 заказов, выходные ≈400, среднее 830, std 270. Обычное воскресенье даёт $z=-1.59$ — при пороге 2 все выходные станут аномалиями. А настоящая проблема (будень с 600 вместо 1000) даёт $z=-0.85$ и <strong>не будет обнаружена</strong>.</p><p><strong>После STL:</strong> остаток воскресенья 0, остаток проблемного будня $-400$, MAD остатков 45 → робастный $z = \mathbf{-6.0}$. Аномалия найдена, выходные — норма.</p><p><strong>Правило:</strong> сначала убрать предсказуемую часть (тренд + сезонность), детектировать на остатках, обязательно робастным критерием.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>30. Как отличить дрейф нормы от реального всплеска аномалий?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Ситуация:</strong> выкатили новую фичу, поведение изменилось, детектор выдаёт в 5 раз больше алертов. Команда решает «участились атаки» — а проблема в устаревшей модели нормы.</p><p><strong>Диагностика:</strong> следи за <em>долей</em> алертов, а не их числом. Резкий рост доли при неизменном пороге почти всегда означает дрейф.</p><p><strong>Проверка:</strong> переобучи модель на свежем окне. Если доля вернулась к норме — это был дрейф, а не атаки.</p><p><strong>Дополнительно для антифрода:</strong> дрейф здесь <em>состязательный</em> — распределение меняется в ответ на детектор. Нужно частое переобучение (дни, не месяцы) и <strong>случайная выборка на ручную проверку</strong> вне зависимости от скора — она ловит схемы, которые модель систематически пропускает, и разрывает петлю обратной связи.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block1_05_survival.html" class="btn prev">← Анализ выживаемости</a>
+  <a href="block1_quiz.html" class="btn">Тест Блока 1 →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Три типа аномалий ---
+(function(){
+  const xs=[]; for(let t=0;t<70;t++) xs.push(t);
+  const base = xs.map(t=>50 + 22*Math.sin(t*2*Math.PI/7) + 4*Math.sin(t*0.31));
+  const series = base.slice();
+  series[18] = 128;                               // точечная
+  for(let i=33;i<=36;i++) series[i] = 30;         // контекстная: будни на уровне выходных
+  for(let i=52;i<=61;i++) series[i] = base[i]*0.55 + 14;  // коллективная: сжатая амплитуда
+  new Chart(document.getElementById('c_types'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'ряд',data:series,borderColor:'#ea580c',pointRadius:0,borderWidth:2.2,tension:.2},
+      {label:'① точечная',data:xs.map(t=>t===18?series[18]:null),borderColor:'#dc2626',
+       pointRadius:9,pointStyle:'circle',borderWidth:0},
+      {label:'② контекстная (будни на уровне выходных)',data:xs.map(t=>(t>=33&&t<=36)?series[t]:null),
+       borderColor:'#d97706',pointRadius:7,pointStyle:'rectRot',borderWidth:0},
+      {label:'③ коллективная (пропала амплитуда)',data:xs.map(t=>(t>=52&&t<=61)?series[t]:null),
+       borderColor:'#7c3aed',pointRadius:6,pointStyle:'triangle',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'дни'},ticks:{maxTicksLimit:12}},
+              y:{title:{display:true,text:'значение'}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Проклятие размерности ---
+(function(){
+  const ps=[2,5,10,20,50,100,200,500,1000];
+  const ratio=ps.map(p=>13.4/Math.pow(p/2,0.72));
+  new Chart(document.getElementById('c_curse'), {
+    type:'line',
+    data:{labels:ps,datasets:[
+      {label:'(d_max − d_min) / d_min',data:ratio,borderColor:'#ea580c',
+       backgroundColor:'rgba(234,88,12,.13)',fill:true,pointRadius:4,borderWidth:3,tension:.25},
+      {label:'практический предел применимости методов на расстояниях',
+       data:ps.map(p=>1),borderColor:'#dc2626',borderDash:[6,4],pointRadius:0,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'размерность p'}},
+              y:{type:'logarithmic',title:{display:true,text:'относительный разброс расстояний'}}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>i[0].parsed.y<1?'⚠️ Расстояния почти не различаются — kNN/LOF бесполезны':''}}}}
+  });
+})();
+
+// --- IForest: подвыборка ---
+new Chart(document.getElementById('c_isosub'), {
+  type:'line',
+  data:{labels:['16','32','64','128','256','512','1024','4096','16384'],datasets:[
+    {label:'ROC-AUC детектора',data:[0.71,0.79,0.86,0.91,0.935,0.928,0.912,0.881,0.847],
+     borderColor:'#ea580c',pointRadius:5,borderWidth:3,tension:.25},
+    {label:'👍 дефолт 256',data:[null,null,null,null,0.935,null,null,null,null],
+     borderColor:'#16a34a',pointRadius:12,pointStyle:'star',borderWidth:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'max_samples — размер подвыборки на дерево'}},
+            y:{title:{display:true,text:'ROC-AUC'},min:0.68,max:0.96}},
+    plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{afterBody:i=>i[0].dataIndex>4?'Swamping: аномалий в подвыборке много, они образуют кластер':''}}}}
+});
+
+// --- LOF vs глобальный ---
+(function(){
+  const dense=[], sparse=[], out=[];
+  let seed=11; const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647-0.5;};
+  for(let i=0;i<80;i++) dense.push({x:3+rnd()*1.4, y:3+rnd()*1.4});
+  for(let i=0;i<35;i++) sparse.push({x:9+rnd()*5.5, y:8+rnd()*5.5});
+  out.push({x:5.4,y:4.6},{x:1.0,y:5.9});
+  new Chart(document.getElementById('c_lof'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'Плотный кластер — норма (LOF ≈ 1.0)',data:dense,backgroundColor:'rgba(13,148,136,.65)',pointRadius:5},
+      {label:'Разреженный кластер — тоже норма (LOF ≈ 1.0)',data:sparse,backgroundColor:'rgba(2,132,199,.65)',pointRadius:5},
+      {label:'Настоящие выбросы (LOF > 5)',data:out,backgroundColor:'#dc2626',pointRadius:11,pointStyle:'triangle'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'признак 1'},min:-1,max:16},
+              y:{title:{display:true,text:'признак 2'},min:1,max:15}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>i[0].datasetIndex===1?'Глобальный метод пометил бы весь этот кластер аномальным':''}}}}
+  });
+})();
+
+// --- Автоэнкодер: распределение ошибок ---
+(function(){
+  const bins=[]; for(let i=0;i<=24;i++) bins.push((i*0.025).toFixed(3));
+  const g=(x,m,s)=>Math.exp(-Math.pow(x-m,2)/(2*s*s));
+  const normBig = bins.map((b,i)=>g(i*0.025,0.008,0.012)*100);
+  const anomBig = bins.map((b,i)=>g(i*0.025,0.011,0.014)*22);
+  const normOk  = bins.map((b,i)=>g(i*0.025,0.041,0.020)*100);
+  const anomOk  = bins.map((b,i)=>g(i*0.025,0.29,0.10)*20);
+  new Chart(document.getElementById('c_ae'), {
+    type:'line',
+    data:{labels:bins,datasets:[
+      {label:'latent=50: норма',data:normBig,borderColor:'#94a3b8',pointRadius:0,borderWidth:2,tension:.3},
+      {label:'latent=50: аномалии — СЛИЛИСЬ',data:anomBig,borderColor:'#dc2626',borderDash:[5,4],pointRadius:0,borderWidth:2,tension:.3},
+      {label:'latent=12: норма',data:normOk,borderColor:'#0891b2',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'latent=12: аномалии — ОТДЕЛЕНЫ',data:anomOk,borderColor:'#ea580c',pointRadius:0,borderWidth:2.8,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'ошибка реконструкции'},ticks:{maxTicksLimit:10}},
+              y:{title:{display:true,text:'плотность (усл.)'},display:false}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- ROC vs PR ---
+(function(){
+  const fpr=[], tprv=[], rec=[], prec=[];
+  for(let i=0;i<=40;i++){
+    const t=i/40;
+    const tp=Math.pow(t,0.35);
+    const fp=Math.pow(t,1.7);
+    fpr.push(fp); tprv.push(tp);
+    rec.push(tp);
+    prec.push(Math.max(0.002, (tp*0.002)/(tp*0.002 + fp*0.998)));
+  }
+  new Chart(document.getElementById('c_roc'), {
+    type:'line',
+    data:{labels:fpr.map(v=>v.toFixed(2)),datasets:[
+      {label:'ROC: TPR от FPR — AUC ≈ 0.96, «отлично»',data:tprv,borderColor:'#0891b2',
+       pointRadius:0,borderWidth:3,tension:.2},
+      {label:'PR: precision от recall — AUC ≈ 0.08, реальность',data:prec.map((p,i)=>p),
+       borderColor:'#dc2626',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'случайный классификатор (ROC)',data:fpr,borderColor:'#94a3b8',
+       borderDash:[5,4],pointRadius:0,borderWidth:1.8}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'FPR (для ROC) / recall (для PR)'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'TPR / precision'},min:0,max:1.05}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Стоимость от числа алертов ---
+(function(){
+  const ks=[100,250,500,1000,2000,4000,6000,9000,12000,15000,20000];
+  const CFP=80, CFN=12000, TOTAL=300;
+  const rec=k=>1-Math.exp(-k/4200);
+  const cost=ks.map(k=>{const r=rec(k);const tp=TOTAL*r;const fp=k-tp;return CFP*fp + CFN*(TOTAL-tp);});
+  const minIdx=cost.indexOf(Math.min(...cost));
+  new Chart(document.getElementById('c_cost'), {
+    type:'line',
+    data:{labels:ks.map(k=>k.toLocaleString('ru-RU')),datasets:[
+      {label:'суммарная стоимость, ₽/день',data:cost,borderColor:'#ea580c',
+       backgroundColor:'rgba(234,88,12,.12)',fill:true,pointRadius:4,borderWidth:3,tension:.25},
+      {label:'👍 оптимум',data:ks.map((k,i)=>i===minIdx?cost[i]:null),
+       borderColor:'#16a34a',pointRadius:12,pointStyle:'star',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'число алертов в день'}},
+              y:{title:{display:true,text:'стоимость, ₽'}}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.parsed.y?Math.round(c.parsed.y).toLocaleString('ru-RU')+' ₽':''}}}}
+  });
+})();
+
+// --- Временной ряд: сырой vs остатки ---
+(function(){
+  const xs=[]; for(let t=0;t<42;t++) xs.push(t);
+  const seas=t=>(t%7===5||t%7===6)?-430:170;
+  const raw=xs.map(t=>830+seas(t)+(t===23?-400:0));
+  const resid=xs.map(t=>raw[t]-830-seas(t));
+  new Chart(document.getElementById('c_ts'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'сырой ряд — видна только сезонность',data:raw,borderColor:'#94a3b8',
+       pointRadius:0,borderWidth:2.2,tension:.15,yAxisID:'y'},
+      {label:'остаток после STL',data:resid,borderColor:'#ea580c',
+       pointRadius:0,borderWidth:2.8,tension:.15,yAxisID:'y1'},
+      {label:'🚨 реальная аномалия (будень с падением 40%)',data:xs.map(t=>t===23?resid[23]:null),
+       borderColor:'#dc2626',pointRadius:11,pointStyle:'triangle',borderWidth:0,yAxisID:'y1'},
+      {label:'порог 4·MAD на остатках',data:xs.map(()=>-180),borderColor:'#dc2626',
+       borderDash:[6,4],pointRadius:0,borderWidth:1.8,yAxisID:'y1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'дни'},ticks:{maxTicksLimit:11}},
+              y:{title:{display:true,text:'сырой ряд'},position:'left'},
+              y1:{title:{display:true,text:'остаток'},position:'right',grid:{drawOnChartArea:false},min:-480,max:200}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Интерактив: порог ---
+function updThr(){
+  const CFP = +document.getElementById('sl_cfp').value;
+  const CFN = +document.getElementById('sl_cfn').value;
+  const CAP = +document.getElementById('sl_cap').value;
+  document.getElementById('out_cfp').textContent = CFP.toLocaleString('ru-RU')+' ₽';
+  document.getElementById('out_cfn').textContent = CFN.toLocaleString('ru-RU')+' ₽';
+  document.getElementById('out_cap').textContent = CAP.toLocaleString('ru-RU');
+  const TOTAL = 300;
+  const rec = k => 1 - Math.exp(-k/4200);
+  const cost = k => { const r=rec(k); const tp=TOTAL*r; const fp=Math.max(0,k-tp); return CFP*fp + CFN*(TOTAL-tp); };
+  // ищем безусловный оптимум
+  let best=1e18, bestK=100;
+  for (let k=100;k<=30000;k+=100){ const c=cost(k); if(c<best){best=c;bestK=k;} }
+  const capCost = cost(Math.min(CAP,30000));
+  const gap = capCost - best;
+  const recAtCap = rec(CAP), precAtCap = TOTAL*recAtCap/CAP;
+  let verdict;
+  if (bestK <= CAP) verdict = '✅ Пропускной способности хватает — работай на безусловном оптимуме ' + bestK.toLocaleString('ru-RU') + ' алертов.';
+  else if (gap > best*0.3) verdict = '🚨 Мощности разбора сильно не хватает. Разница ' + Math.round(gap).toLocaleString('ru-RU') +
+        ' ₽/день — прямое обоснование для найма аналитиков.';
+  else verdict = '⚠️ Мощности не хватает, но потеря умеренная. Можно жить на текущем пороге.';
+  document.getElementById('out_thr').innerHTML =
+    'Безусловный оптимум: <strong>' + bestK.toLocaleString('ru-RU') + '</strong> алертов/день, стоимость <strong>' +
+    Math.round(best).toLocaleString('ru-RU') + ' ₽</strong>' +
+    '<br>При вашей мощности ' + CAP.toLocaleString('ru-RU') + ': recall <strong>' + (recAtCap*100).toFixed(0) +
+    '%</strong>, precision <strong>' + (precAtCap*100).toFixed(1) + '%</strong>, стоимость <strong>' +
+    Math.round(capCost).toLocaleString('ru-RU') + ' ₽</strong>' +
+    '<br>' + verdict;
+}
+updThr();
+</script>
+</body>
+</html>

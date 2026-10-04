@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9.2 · Поиск и ранжирование: от BM25 до нейронных реранкеров</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#059669;--rf-l:#ecfdf5;--rf-b:#a7f3d0;--rf-d:#064e3b;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#064e3b,#059669 50%,#6ee7b7);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.92;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(5,150,105,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.vi{border-left-color:var(--vi);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.vi .flabel{color:var(--vi);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#064e3b;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#064e3b!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.vi{background:var(--vi);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#6ee7b7;font-style:normal;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.rf{border-top:3px solid var(--rf);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.cy{border-top:3px solid var(--cy);} .card.rd{border-top:3px solid var(--red);}
+.card.vi{border-top:3px solid var(--vi);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--rf-l);color:#064e3b;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--rf);margin:26px 0 12px;}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#064e3b;line-height:1.72;}
+/* ---------- Выдача ---------- */
+.serp{margin:16px 0;}
+.srow{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:#fff;border:1px solid var(--border);margin-bottom:5px;font-size:12.5px;}
+.spos{background:var(--sl);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;min-width:26px;text-align:center;}
+.sdoc{flex:1;font-family:'SF Mono',monospace;}
+.sscore{font-family:'SF Mono',monospace;font-size:11.5px;color:var(--text3);min-width:64px;text-align:right;}
+.srel{border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700;min-width:52px;text-align:center;}
+.rel3{background:#dcfce7;color:#14532d;} .rel2{background:#fef3c7;color:#78350f;}
+.rel1{background:#e0f2fe;color:#0c4a6e;} .rel0{background:#f1f5f9;color:#64748b;}
+/* ---------- Пайплайн ---------- */
+.pl{display:flex;flex-direction:column;gap:8px;margin:18px 0;}
+.plrow{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;}
+.plbox{flex:1;min-width:128px;border-radius:11px;padding:12px 14px;font-size:12.5px;line-height:1.55;border:1.5px solid;}
+.plbox strong{display:block;font-size:13px;margin-bottom:3px;}
+.plnum{font-size:10.5px;opacity:.75;display:block;margin-top:4px;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-14px);}to{opacity:1;transform:translateX(0);}}
+.slide{animation:slideIn .5s ease both;}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--rf-l);border-color:var(--rf-b);color:#064e3b;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--vi-l);border-color:var(--vi-b);color:#4c1d95;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--rf);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .srow{font-size:10.5px;}.sdoc{font-size:10px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 9 · NLP, поиск и LLM · Тема 2 из 6</div>
+  <h1>Поиск и ранжирование: от BM25 до нейронных реранкеров</h1>
+  <p class="sub">Поиск — задача, где почти всё решается архитектурой пайплайна, а не отдельной моделью.
+     Разбираем, почему лексика и вектора обязаны работать вместе, как устроен LambdaMART,
+     почему клики нельзя использовать напрямую и что такое interleaving,
+     ставший индустриальным стандартом онлайн-оценки.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–4</span>
+    <span>🔵 средний — секции 5–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Анатомия поиска</a>
+  <a href="#s2">2. Лексический поиск и BM25</a>
+  <a href="#s3">3. Векторный поиск</a>
+  <a href="#s4">4. Гибридный поиск</a>
+  <a href="#s5">5. Cross-encoder</a>
+  <a href="#s6">6. Learning to Rank</a>
+  <a href="#s7">7. LambdaMART</a>
+  <a href="#s8">8. Метрики</a>
+  <a href="#s9">9. Клики как разметка</a>
+  <a href="#s10">10. Position bias</a>
+  <a href="#s11">11. Query understanding</a>
+  <a href="#s12">12. Онлайн-оценка</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 4 — практическое ядро.</strong> Гибридный поиск не компромисс, а необходимость: лексика и вектора проваливаются на разных типах запросов.</li>
+    <li>Секции 2–3 — два столпа retrieval; секция 5 — реранкинг, дающий самый большой прирост качества на единицу усилий.</li>
+    <li>Секции 6–8 — Learning to Rank и метрики: как обучать ранжирование и как его честно измерять.</li>
+    <li><strong>Секции 9–10 — самые недооценённые.</strong> Клики смещены позицией, и без коррекции любая новая модель будет выглядеть лучше просто потому, что её показали выше.</li>
+    <li>Секции 11–15 — понимание запроса, онлайн-оценка, подводные камни, кейсы и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Анатомия поисковой системы <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Почему поиск — всегда каскад, а не одна модель</div>
+
+<div class="pl">
+  <div class="plrow">
+    <div class="plbox" style="background:#f5f3ff;border-color:#ddd6fe;color:#4c1d95;"><strong>① Query understanding</strong>Опечатки, нормализация, расширение, интент<span class="plnum">~1–5 мс</span></div>
+    <div class="plbox" style="background:#ecfdf5;border-color:#a7f3d0;color:#064e3b;"><strong>② Retrieval</strong>BM25 + вектора из миллионов документов<span class="plnum">10⁶–10⁹ → 10³, ~10–30 мс</span></div>
+    <div class="plbox" style="background:#ecfeff;border-color:#a5f3fc;color:#083344;"><strong>③ Ranking</strong>LambdaMART на десятках признаков<span class="plnum">10³ → 10², ~5–15 мс</span></div>
+  </div>
+  <div class="plrow">
+    <div class="plbox" style="background:#fffbeb;border-color:#fcd34d;color:#78350f;"><strong>④ Reranking</strong>Cross-encoder на топ-50…100<span class="plnum">10² → 10², ~30–80 мс</span></div>
+    <div class="plbox" style="background:#fef2f2;border-color:#fca5a5;color:#7f1d1d;"><strong>⑤ Бизнес-правила</strong>Наличие, регион, буст, разнообразие, фильтры<span class="plnum">~1–3 мс</span></div>
+    <div class="plbox" style="background:#f8fafc;border-color:#cbd5e1;color:#334155;"><strong>⑥ Логирование</strong>Показы, позиции, клики, версия ранжировщика<span class="plnum">асинхронно</span></div>
+  </div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя одной моделью</div>
+<p>Лучшая модель релевантности — <strong>cross-encoder</strong>: он читает запрос и документ вместе и понимает их соотношение. Его качество недостижимо для других подходов.</p>
+<p><strong>Но он стоит один прогон трансформера на пару «запрос–документ».</strong> При корпусе в 10 млн документов и SLA 200 мс это означает 10 млн прогонов за 200 мс — физически невозможно.</p>
+<p><strong>Отсюда каскад:</strong> дешёвые методы сужают миллионы до сотен, дорогие точно упорядочивают эти сотни. Каждая стадия в 10–100 раз дороже предыдущей на документ, но работает с в 10–100 раз меньшим числом документов.</p>
+<p><strong>Ключевое следствие:</strong> качество системы ограничено сверху <em>первой</em> стадией. Если релевантный документ не попал в топ-1000 на retrieval, никакой реранкер его не вернёт. Поэтому recall retrieval важнее precision ranking.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Бюджет времени и стоимости по стадиям</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Корпус:</strong> 12 млн документов. SLA: 200 мс на p99. Нагрузка: 800 запросов/сек.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивно — cross-encoder на весь корпус.</strong> Один прогон ≈ 3 мс на GPU при батчинге → $12\text{M}\times3$ мс = <strong>10 часов на один запрос.</strong> Нереализуемо в принципе.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Retrieval (BM25 + ANN).</strong> 12 млн → 1 000 кандидатов за 22 мс. Стоимость на запрос ≈ 0.002 ₽.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Ranking (LambdaMART, 60 признаков).</strong> 1 000 → 100 за 9 мс. Стоимость ≈ 0.0004 ₽.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>Reranking (cross-encoder на топ-50).</strong> 50 прогонов ≈ 42 мс на GPU. Стоимость ≈ 0.008 ₽.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Итого:</strong> 73 мс, 0.0104 ₽ на запрос. При 800 rps и круглосуточной работе — <strong>≈ 270 тыс ₽/мес</strong>, из которых 77% приходится на реранкер.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Отсюда главный рычаг оптимизации:</strong> глубина реранкинга. Переход с топ-100 на топ-50 экономит половину бюджета; вопрос в том, сколько NDCG теряется — обычно 0.005–0.015, что часто приемлемо. Это решение принимается по кривой «глубина реранкинга ↔ NDCG», а не наугад.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество и стоимость в зависимости от глубины реранкинга</div>
+<div class="chsub">NDCG@10 выходит на плато раньше, чем растёт стоимость</div>
+<div style="position:relative;height:310px;"><canvas id="c_depth"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Recall retrieval — потолок всей системы.</strong> Если на стадии retrieval релевантный документ не попал в кандидаты, ни ranking, ни reranking его не вернут. Поэтому первое, что нужно измерять при отладке поиска, — <strong>recall@1000 стадии retrieval</strong>, а не NDCG финальной выдачи. Типичная ошибка: команда месяцами улучшает реранкер, тогда как recall retrieval составляет 0.72, и 28% релевантных документов недостижимы в принципе. Улучшение retrieval с 0.72 до 0.88 даст больше, чем любая работа над последующими стадиями.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Лексический поиск: инвертированный индекс и BM25 <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Классика, которая остаётся сильнейшей базовой линией</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: инвертированный индекс</div>
+<p>Прямой индекс: документ → список его слов. Чтобы найти документы со словом «гарантия», пришлось бы просмотреть все документы.</p>
+<p><strong>Инвертированный индекс:</strong> слово → список документов, где оно встречается (posting list), с позициями и частотами. Поиск по слову — это чтение готового списка, а не перебор корпуса.</p>
+<p><strong>Запрос из нескольких слов</strong> — пересечение или объединение posting-списков. Списки хранятся отсортированными по id документа, поэтому пересечение делается линейным слиянием.</p>
+<p><strong>Почему это до сих пор быстрее векторов:</strong> для редкого слова posting list короткий — десятки документов вместо миллионов. Векторный поиск обязан обойти структуру индекса независимо от редкости запроса.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 BM25 — формула и смысл каждого множителя</div>
+$$\text{BM25}(q, d) = \sum_{t \in q} \underbrace{\text{IDF}(t)}_{\text{редкость слова}} \cdot \frac{f(t,d)\,(k_1+1)}{f(t,d) + k_1\left(1 - b + b\dfrac{|d|}{\text{avgdl}}\right)}$$
+$$\text{IDF}(t) = \ln\left(\frac{N - \text{df}_t + 0.5}{\text{df}_t + 0.5} + 1\right)$$
+<p class="fnote">$f(t,d)$ — частота слова в документе, $|d|$ — длина документа, avgdl — средняя длина. Параметры: $k_1 \in [1.2, 2.0]$ управляет насыщением по частоте, $b \in [0, 1]$ — силой нормализации на длину.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что делают $k_1$ и $b$</div>
+<p><strong>$k_1$ — насыщение частоты.</strong> Если слово встретилось в документе 20 раз вместо 10, документ вдвое релевантнее? Почти наверняка нет. BM25 применяет насыщающую функцию: вклад растёт, но всё медленнее. При $k_1 \to 0$ важен только факт наличия слова; при больших $k_1$ вклад почти линеен по частоте.</p>
+<p><strong>$b$ — нормализация на длину.</strong> Длинный документ содержит больше вхождений любого слова просто потому, что он длинный. При $b = 1$ длина учитывается полностью, при $b = 0$ — игнорируется.</p>
+<p><strong>Практическое правило:</strong> для коротких однородных документов (названия товаров) $b$ ставят низким (0.3–0.5) — длина там не признак «водянистости». Для длинных разнородных (статьи, инструкции) — ближе к 0.75. Дефолты $k_1 = 1.2$, $b = 0.75$ разумны, но <strong>подбор под домен даёт 0.02–0.05 NDCG почти бесплатно.</strong></p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем BM25 вручную</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Корпус:</strong> $N = 1\,000\,000$, avgdl = 240 слов. Параметры: $k_1 = 1.2$, $b = 0.75$.<br><strong>Запрос:</strong> «гарантия ремонт».</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>IDF.</strong> «гарантия»: $\text{df} = 40\,000$ → $\ln\!\left(\frac{10^6 - 40\,000 + 0.5}{40\,000 + 0.5} + 1\right) = \ln(25.0) = \mathbf{3.22}$.<br>«ремонт»: $\text{df} = 180\,000$ → $\ln\!\left(\frac{820\,000}{180\,000} + 1\right) = \ln(5.56) = \mathbf{1.71}$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Документ A</strong> (длина 120, «гарантия» 3 раза, «ремонт» 2 раза).<br>Нормировка длины: $1 - 0.75 + 0.75\times\frac{120}{240} = 0.625$.<br>«гарантия»: $3.22\times\frac{3\times2.2}{3 + 1.2\times0.625} = 3.22\times\frac{6.6}{3.75} = 5.67$.<br>«ремонт»: $1.71\times\frac{2\times2.2}{2 + 0.75} = 1.71\times1.60 = 2.74$.<br><strong>Итого 8.41.</strong></div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Документ B</strong> (длина 900, «гарантия» 6 раз, «ремонт» 5 раз).<br>Нормировка: $0.25 + 0.75\times\frac{900}{240} = 3.06$.<br>«гарантия»: $3.22\times\frac{6\times2.2}{6 + 1.2\times3.06} = 3.22\times\frac{13.2}{9.67} = 4.40$.<br>«ремонт»: $1.71\times\frac{11}{5+3.67} = 1.71\times1.27 = 2.17$.<br><strong>Итого 6.57.</strong></div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Документ A выигрывает</strong> (8.41 против 6.57), хотя абсолютных вхождений в нём вдвое меньше. Причина — нормализация на длину: в коротком документе те же слова «плотнее».</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Обрати внимание на вклад IDF:</strong> «гарантия» (редкое) даёт 67% итогового скора документа A. Именно IDF делает BM25 устойчивым к частым словам без всяких стоп-листов — тот же механизм, что в TF-IDF (тема 9.1).</div></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: параметры BM25</label>
+  <label style="margin-top:2px;">$k_1$ — насыщение по частоте</label>
+  <input type="range" id="sl_k1" min="0" max="30" step="1" value="12" oninput="updBM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.0</span><span class="out" id="out_k1">1.2</span><span>3.0</span></div>
+  <label style="margin-top:14px;">$b$ — нормализация на длину</label>
+  <input type="range" id="sl_b" min="0" max="100" step="5" value="75" oninput="updBM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.00</span><span class="out" id="out_b">0.75</span><span>1.00</span></div>
+  <label style="margin-top:14px;">Длина документа, слов</label>
+  <input type="range" id="sl_dl" min="20" max="2000" step="10" value="120" oninput="updBM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>20</span><span class="out" id="out_dl">120</span><span>2000</span></div>
+  <label style="margin-top:14px;">Частота слова в документе</label>
+  <input type="range" id="sl_tf" min="1" max="40" step="1" value="3" oninput="updBM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_tf">3</span><span>40</span></div>
+  <div class="res" id="out_bm"></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>BM25F — недооценённое расширение для структурированных документов.</strong> У товара есть название, описание, характеристики, отзывы; совпадение в названии значит гораздо больше, чем в отзывах. BM25F считает взвешенную частоту по полям <em>до</em> применения насыщения: $\tilde f(t,d) = \sum_{s} w_s \cdot \frac{f(t,d_s)}{1 - b_s + b_s|d_s|/\text{avgdl}_s}$. Это не то же самое, что суммировать BM25 по полям — насыщение применяется один раз к общей частоте, что даёт заметно лучший результат. В e-commerce переход с BM25 на BM25F с разумными весами полей типично даёт +0.03–0.06 NDCG.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Лексический поиск требует языковой обработки, и она часто настроена плохо.</strong> Для русского критичны: ① <strong>лемматизация или стемминг</strong> — без них «гарантию» и «гарантия» разные термы; ② <strong>обработка составных слов и дефисов</strong>; ③ <strong>синонимы и аббревиатуры</strong> на уровне индекса; ④ <strong>раскладка и транслит</strong> («ноутбук» / «yjenden» / «notebook»). Каждый из пунктов даёт единицы процентов recall, а вместе — десятки. Прежде чем внедрять нейронный реранкер, стоит проверить, что базовая языковая обработка не теряет очевидное.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Векторный поиск: bi-encoder и ANN <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Что он даёт сверх лексики и чего стоит</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: bi-encoder против cross-encoder</div>
+<p><strong>Bi-encoder</strong> кодирует запрос и документ <em>независимо</em>: два прогона, два вектора, близость — скалярное произведение. Документы можно закодировать заранее и положить в индекс; при запросе считается только один вектор.</p>
+<p><strong>Cross-encoder</strong> подаёт пару «запрос [SEP] документ» в модель целиком. Внимание работает между словами запроса и документа, поэтому качество выше — но предрассчитать ничего нельзя: для каждой пары нужен прогон.</p>
+<p><strong>Компромисс очевиден:</strong> bi-encoder масштабируется на миллиарды документов и проигрывает в качестве; cross-encoder точен и применим только к сотням кандидатов.</p>
+<p><strong>Отсюда стандартная схема:</strong> bi-encoder на retrieval, cross-encoder на reranking. Это не «две модели на всякий случай», а прямое следствие вычислительной асимметрии.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Bi-encoder</th><th>Cross-encoder</th><th>Late interaction (ColBERT-style)</th></tr></thead>
+<tbody>
+<tr><td><b>Кодирование</b></td><td>Раздельное</td><td>Совместное</td><td>Раздельное, но на уровне токенов</td></tr>
+<tr><td><b>Предрасчёт индекса</b></td><td><strong>Да</strong></td><td>Нет</td><td>Да (тяжелее — вектор на токен)</td></tr>
+<tr><td><b>Качество</b></td><td>Базовое</td><td><strong>Лучшее</strong></td><td>Близко к cross-encoder</td></tr>
+<tr><td><b>Размер индекса</b></td><td>1 вектор/документ</td><td>—</td><td><strong>~100 векторов/документ</strong></td></tr>
+<tr class="trh"><td><b>Роль в пайплайне</b></td><td><strong>Retrieval</strong></td><td><strong>Reranking</strong></td><td>Retrieval или лёгкий реранк</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 ANN-индексы: что выбирать</div>
+<p><strong>HNSW</strong> — многослойный граф. Лучшее качество при заданной скорости; память ~1.5–2× от векторов. Дефолт для корпусов до десятков миллионов.</p>
+<p><strong>IVF-PQ</strong> — разбиение на кластеры + квантование. Сильное сжатие (в 10–30 раз), качество ниже; для сотен миллионов векторов.</p>
+<p><strong>ScaNN / DiskANN</strong> — оптимизированы под конкретные сценарии: анизотропное квантование и работа с диска соответственно.</p>
+<p class="fnote">Ключевой параметр качества — <em>recall@k индекса относительно точного поиска</em>. Он настраивается (<code>efSearch</code> в HNSW, <code>nprobe</code> в IVF) и торгуется на скорость. Типичная рабочая точка — recall 0.95–0.98 при ускорении в 50–200 раз.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Приближённость ANN: сколько теряется</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Корпус:</strong> 12 млн векторов размерности 768, HNSW.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Точный поиск (brute force):</strong> NDCG@10 = 0.612, время 1 400 мс на запрос. Неприменимо.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>HNSW, efSearch = 40:</strong> recall индекса 0.91, NDCG@10 = <strong>0.594</strong>, время <strong>6 мс</strong>.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>efSearch = 128:</strong> recall 0.977, NDCG@10 = <strong>0.609</strong>, время <strong>14 мс</strong>.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>efSearch = 400:</strong> recall 0.994, NDCG@10 = 0.611, время 41 мс. Прирост качества 0.002 за утроение времени.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Рабочая точка — efSearch 128:</strong> потеря NDCG всего 0.003 от точного поиска при ускорении в 100 раз. <strong>Важно:</strong> потеря recall индекса 2.3% превращается в потерю NDCG всего 0.5% — потому что пропускаются в основном документы с низких позиций, которые и так не попали бы в топ. Прямой перенос recall индекса на качество системы — распространённая ошибка интерпретации.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">HNSW: recall индекса, качество и время от efSearch</div>
+<div class="chsub">NDCG выходит на плато намного раньше, чем recall индекса</div>
+<div style="position:relative;height:310px;"><canvas id="c_ann"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Векторный поиск систематически проваливается на точных совпадениях.</strong> Артикулы («BX-4471»), коды ошибок («ORA-01555»), имена собственные, номера моделей, аббревиатуры — всё это эмбеддер «размывает»: он обучен на семантике, а у артикула семантики нет. В разборе из темы 9.1 попадание в топ-10 составило 34% для векторов против 97% для BM25 на таких запросах. <strong>И это не лечится лучшим эмбеддером</strong> — это структурное свойство задачи. Отсюда следующая секция.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Гибридный поиск: не компромисс, а необходимость <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Как правильно смешивать две выдачи</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя просто сложить скоры</div>
+<p>BM25 даёт скор в диапазоне примерно 0–40, зависящий от длины запроса и редкости слов. Косинусная близость — от −1 до 1. Складывать их напрямую бессмысленно: BM25 полностью задавит вектор.</p>
+<p><strong>Нормализация скоров</strong> (min-max или z-score в пределах выдачи) частично решает проблему, но остаётся хрупкой: распределения скоров меняются от запроса к запросу, и на одном запросе BM25 может быть «растянут», а на другом сжат.</p>
+<p><strong>RRF (Reciprocal Rank Fusion)</strong> обходит проблему целиком: он использует не скоры, а <em>ранги</em>. Ранг всегда в одной шкале, независимо от природы скора.</p>
+<p><strong>Цена:</strong> RRF теряет информацию о «насколько» документ лучше следующего — учитывается только порядок. На практике это редко существенно, и надёжность обычно перевешивает.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Reciprocal Rank Fusion</div>
+$$\text{RRF}(d) = \sum_{r \in R} \frac{1}{k + \text{rank}_r(d)}$$
+<p>$R$ — набор ранжировщиков (BM25, вектора, возможно другие), $\text{rank}_r(d)$ — позиция документа в выдаче $r$ (начиная с 1), $k$ — сглаживающая константа, обычно 60.</p>
+<p class="fnote">Смысл $k$: он ограничивает вклад самых верхних позиций. При $k=0$ первое место даёт вклад 1.0, второе 0.5 — доминирование топ-1. При $k=60$ первое даёт 0.0164, второе 0.0161 — разница мала, и решает <em>согласие между ранжировщиками</em>, а не позиция в одном из них. Именно это делает RRF устойчивым.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 RRF на конкретной выдаче</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Запрос «гарантия на ноутбук BX-4471».</strong><br>BM25: D3, D7, D1, D9, D2.<br>Вектора: D1, D5, D3, D8, D7.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>RRF с $k = 60$.</strong><br>D3: $\frac{1}{61} + \frac{1}{63} = 0.01639 + 0.01587 = \mathbf{0.03226}$.<br>D1: $\frac{1}{63} + \frac{1}{61} = \mathbf{0.03226}$ (симметрично).<br>D7: $\frac{1}{62} + \frac{1}{65} = 0.01613 + 0.01538 = \mathbf{0.03151}$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Документы из одного списка.</strong><br>D5 (только вектора, позиция 2): $\frac{1}{62} = \mathbf{0.01613}$.<br>D9 (только BM25, позиция 4): $\frac{1}{64} = \mathbf{0.01563}$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Итоговый порядок:</strong> D3 ≈ D1 &gt; D7 &gt; D5 &gt; D9 &gt; D8 &gt; D2.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Ключевое наблюдение:</strong> документы, найденные <em>обоими</em> методами (D3, D1, D7), уверенно опережают найденные только одним — даже если в своём списке те стоят выше. D5 на 2-м месте у векторов проигрывает D7 на 5-м, потому что D7 подтверждён вторым источником.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Это и есть механизм RRF:</strong> он вознаграждает <strong>согласие независимых сигналов</strong>. Именно поэтому он работает без калибровки и настройки — и почему стал дефолтом гибридного поиска.</div></div>
+</div>
+
+<div class="serp">
+  <div class="srow slide"><span class="spos" style="background:#059669;">1</span><span class="sdoc">D3 — «Условия гарантии на ноутбуки серии BX»</span><span class="sscore">BM25 #1 · vec #3</span><span class="srel rel3">RRF 0.0323</span></div>
+  <div class="srow slide" style="animation-delay:.06s"><span class="spos" style="background:#059669;">2</span><span class="sdoc">D1 — «Гарантийное обслуживание BX-4471»</span><span class="sscore">BM25 #3 · vec #1</span><span class="srel rel3">RRF 0.0323</span></div>
+  <div class="srow slide" style="animation-delay:.12s"><span class="spos" style="background:#0891b2;">3</span><span class="sdoc">D7 — «Сроки ремонта портативной техники»</span><span class="sscore">BM25 #2 · vec #5</span><span class="srel rel2">RRF 0.0315</span></div>
+  <div class="srow slide" style="animation-delay:.18s"><span class="spos" style="background:#94a3b8;">4</span><span class="sdoc">D5 — «Как продлить гарантию»</span><span class="sscore">— · vec #2</span><span class="srel rel1">RRF 0.0161</span></div>
+  <div class="srow slide" style="animation-delay:.24s"><span class="spos" style="background:#94a3b8;">5</span><span class="sdoc">D9 — «Каталог: ноутбуки BX»</span><span class="sscore">BM25 #4 · —</span><span class="srel rel1">RRF 0.0156</span></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Способ слияния</th><th>Как работает</th><th>Плюсы</th><th>Минусы</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>RRF</b></td><td>Сумма обратных рангов</td><td><strong>Не требует калибровки, устойчив, работает сразу</strong></td><td>Теряет величину разрыва между документами</td></tr>
+<tr><td>Взвешенная сумма нормированных скоров</td><td>$\alpha\,\tilde s_{\text{bm25}} + (1-\alpha)\,\tilde s_{\text{vec}}$</td><td>Использует величину скоров; $\alpha$ настраивается</td><td>Чувствителен к схеме нормализации и к запросу</td></tr>
+<tr class="trh"><td><b>Обучаемое слияние</b></td><td>Скоры обеих систем как признаки в LTR</td><td><strong>Лучшее качество; учитывает признаки запроса</strong></td><td>Нужна разметка и обучение</td></tr>
+<tr><td>Каскад</td><td>Вектора только если лексика дала мало результатов</td><td>Экономит вычисления</td><td>Резкие переключения поведения</td></tr>
+<tr><td>Разреженно-плотный единый индекс</td><td>SPLADE и подобные: обучаемые разрежённые представления</td><td>Одна система вместо двух</td><td>Сложнее в эксплуатации</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практичный путь развития гибридного поиска.</strong> ① Начни с <strong>RRF</strong> — он работает сразу, без разметки и настройки, и обычно даёт +0.05–0.12 NDCG к лучшему из двух. ② Когда появится разметка, замени слияние на <strong>LTR-модель</strong>, где скоры BM25 и векторов — просто два признака среди прочих (свежесть, популярность, наличие). Это даёт ещё +0.03–0.07 и позволяет модели выучить, что на разных типах запросов веса разные. ③ Оптимизацию $\alpha$ во взвешенной сумме — <em>пропусти</em>: она хуже RRF по надёжности и хуже LTR по качеству, занимая промежуточное положение без преимуществ.</div></div>
+
+<pre><code># Гибридный retrieval с RRF
+def rrf_fuse(rankings, k=60, top_n=1000):
+    """rankings: список списков doc_id, упорядоченных по релевантности."""
+    scores = {}
+    for ranking in rankings:
+        for rank, doc in enumerate(ranking, start=1):
+            scores[doc] = scores.get(doc, 0.0) + 1.0 / (k + rank)
+    return sorted(scores, key=scores.get, reverse=True)[:top_n]
+
+bm25_hits = bm25_search(query, top_k=1000)
+vec_hits  = ann_index.search(embed(query), top_k=1000)
+candidates = rrf_fuse([bm25_hits, vec_hits], k=60, top_n=1000)
+
+# ДИАГНОСТИКА: сколько даёт каждый источник и как велико пересечение
+inter = len(set(bm25_hits[:100]) & set(vec_hits[:100]))
+print(f"пересечение топ-100: {inter}%")
+# < 20% — источники ловят совсем разное, гибрид даст много
+# > 70% — векторный поиск почти дублирует лексический, выгода мала
+
+# Проверка на своей разметке: recall@1000 каждого источника и гибрида
+for name, hits in [("bm25", bm25_hits), ("vec", vec_hits), ("hybrid", candidates)]:
+    rec = len(set(hits[:1000]) & relevant_docs) / max(len(relevant_docs), 1)
+    print(f"{name:7s} recall@1000 = {rec:.3f}")
+</code></pre>
+
+<div class="chb">
+<div class="cht">Recall@1000 по источникам и типам запросов</div>
+<div class="chsub">Гибрид не «средний» — он выше обоих почти везде</div>
+<div style="position:relative;height:310px;"><canvas id="c_hybrid"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Cross-encoder: самый выгодный прирост качества <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Дорогая модель на дешёвой глубине</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему cross-encoder настолько лучше</div>
+<p>Bi-encoder сжимает документ в один вектор <em>до того</em>, как узнал запрос. Вектор должен «предугадать» все возможные запросы — это узкое место в буквальном смысле: 768 чисел на весь документ.</p>
+<p>Cross-encoder видит запрос и документ вместе. Внимание строит прямые связи между словами запроса и релевантными фрагментами документа. Никакого сжатия нет — модель может «посмотреть», есть ли ответ на конкретный вопрос в конкретном месте текста.</p>
+<p><strong>Разрыв в качестве типично 0.06–0.15 NDCG</strong> — больше, чем даёт любое другое одиночное улучшение в поисковом пайплайне.</p>
+<p><strong>Цена:</strong> нельзя предрассчитать. Отсюда единственно возможное применение — реранкинг топ-50…200 кандидатов, где число прогонов ограничено.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Вклад стадий в итоговое качество</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Только BM25:</strong> NDCG@10 = <strong>0.412</strong>.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Только векторный поиск:</strong> NDCG@10 = <strong>0.448</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Гибрид через RRF:</strong> NDCG@10 = <strong>0.531</strong> (+0.083 к лучшему из двух).</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>+ LTR-ранжирование</strong> на 60 признаках: NDCG@10 = <strong>0.588</strong> (+0.057).</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>+ Cross-encoder на топ-50:</strong> NDCG@10 = <strong>0.694</strong> (<strong>+0.106</strong> — крупнейший единичный вклад).</div></div>
+<div class="numex-step"><span class="nb">6</span><div><strong>+ бизнес-правила и разнообразие:</strong> NDCG@10 = 0.688 (−0.006 по офлайн-метрике, но <em>+4.2% CTR</em> онлайн — разнообразие не измеряется NDCG).</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Cross-encoder даёт больше, чем всё остальное</strong>, но только при условии, что кандидаты до него хорошие: его качество ограничено тем, что подали. Именно поэтому порядок внедрения — сначала гибридный retrieval, потом реранкер. Реранкер поверх слабого retrieval даёт вдвое меньший прирост.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Накопленный вклад стадий в NDCG@10</div>
+<div class="chsub">Cross-encoder — крупнейший единичный прирост, но требует хороших кандидатов</div>
+<div style="position:relative;height:300px;"><canvas id="c_stages"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Дистилляция cross-encoder в bi-encoder — стандартный приём, который стоит знать.</strong> Cross-encoder используется как «учитель»: он размечает большое количество пар «запрос–документ» мягкими скорами, и на этой разметке обучается bi-encoder. Ученик не достигает качества учителя, но заметно превосходит bi-encoder, обученный обычным способом — типично +0.03–0.06 NDCG на retrieval. Это <em>сдвигает потолок всей системы</em>, поскольку улучшает recall первой стадии. Приём особенно ценен, когда реранкинг ограничен по бюджету и глубину увеличить нельзя.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Реранкер не обязан быть трансформером.</strong> При жёстком бюджете задержки работают более дешёвые варианты: ① <strong>late interaction</strong> (ColBERT-подобные) — качество близко к cross-encoder при возможности частичного предрасчёта; ② <strong>дистиллированный маленький cross-encoder</strong> (6 слоёв вместо 12) — теряет 0.01–0.02 NDCG при ускорении вдвое; ③ <strong>реранкинг только для «трудных» запросов</strong> — если LTR-модель уверена в порядке, реранкер пропускается. Последний приём типично снижает нагрузку на реранкер на 40–60% при потере менее 0.01 NDCG.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Learning to Rank: три постановки <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Pointwise, pairwise, listwise — и почему это не просто «регрессия на релевантность»</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Что предсказывает</th><th>Лосс</th><th>Плюсы / минусы</th></tr></thead>
+<tbody>
+<tr><td><b>Pointwise</b></td><td>Абсолютную релевантность документа</td><td>MSE, логлосс</td><td>Просто; <strong>но оптимизирует не то</strong> — метрики зависят от порядка, а не от абсолютных значений</td></tr>
+<tr class="trh"><td><b>Pairwise</b></td><td>Кто из двух документов релевантнее</td><td>RankNet: $\log(1+e^{-\sigma(s_i - s_j)})$</td><td><strong>Ближе к цели; все пары равнозначны, хотя топ важнее</strong></td></tr>
+<tr class="trh"><td><b>Listwise</b></td><td>Порядок всего списка</td><td>LambdaRank, ListNet, ApproxNDCG</td><td><strong>Прямо оптимизирует метрику; сложнее</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему pointwise проигрывает</div>
+<p>Pointwise-модель обучается предсказывать «релевантность документа = 3». Она честно минимизирует ошибку по всем документам, включая миллионы нерелевантных.</p>
+<p><strong>Но метрика поиска зависит только от порядка</strong>, причём преимущественно верхних позиций. Модели безразлично, ошиблась она на документе с позиции 1 или 800 — в MSE вклад одинаков.</p>
+<p><strong>Pairwise</strong> исправляет главное: обучается на парах «этот выше того». Теперь оптимизируется порядок, а не абсолютные значения.</p>
+<p><strong>Но остаётся проблема:</strong> для RankNet пара (позиции 1 и 2) и пара (позиции 500 и 501) одинаково важны. А для NDCG первая критична, вторая не влияет вовсе.</p>
+<p><strong>LambdaRank решает это</strong> взвешиванием градиента на изменение метрики — об этом следующая секция.</p>
+</div>
+
+<div class="fbox vi">
+<div class="flabel">📐 RankNet: базовый pairwise-лосс</div>
+$$P_{ij} = \sigma\!\left(\sigma_0 (s_i - s_j)\right), \qquad \mathcal{L}_{ij} = -\bar P_{ij}\log P_{ij} - (1 - \bar P_{ij})\log(1 - P_{ij})$$
+<p>$s_i$, $s_j$ — скоры документов, $\bar P_{ij} \in \{0, 0.5, 1\}$ — целевая вероятность (1 если $i$ релевантнее, 0.5 если равны).</p>
+$$\frac{\partial \mathcal{L}_{ij}}{\partial s_i} = \sigma_0\left(\frac{1}{1 + e^{\sigma_0 (s_i - s_j)}} - (1 - \bar P_{ij})\right) \;=\; -\lambda_{ij}$$
+<p class="fnote">Ключевое свойство: градиент по каждому документу — <em>сумма</em> вкладов от всех пар, в которых он участвует: $\lambda_i = \sum_{j:(i,j)} \lambda_{ij} - \sum_{j:(j,i)} \lambda_{ji}$. Это позволяет обучать за один проход по списку, а не по всем парам явно.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему pairwise не эквивалентен NDCG</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Выдача из 6 документов</strong> с истинной релевантностью: [3, 0, 2, 0, 1, 0] в текущем порядке.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Вариант A — исправить одну пару в топе:</strong> поменять местами позиции 1 и 2 нельзя (там уже верно), но поменять 2 и 3 → [3, 2, 0, 0, 1, 0].<br>DCG растёт с $3 + 0 + 1.0 + 0 + 0.387 = 4.387$ до $3 + 1.262 + 0 + 0 + 0.387 = 4.649$. <strong>Прирост 0.262.</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Вариант B — исправить одну пару в хвосте:</strong> поменять позиции 5 и 6 → [3, 0, 2, 0, 0, 1].<br>DCG: $3 + 0 + 1.0 + 0 + 0 + 0.356 = 4.356$. <strong>Изменение −0.031.</strong></div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Для RankNet обе пары — одна единица лосса.</strong> Модель потратит одинаковые усилия на исправление обеих, хотя первая в 8 раз ценнее, а вторая вообще вредна.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>LambdaRank домножает градиент пары на $|\Delta\text{NDCG}_{ij}|$</strong> — изменение метрики при перестановке этой пары. Пара в топе получает большой вес, пара в хвосте — почти нулевой.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Это и есть вся идея LambdaRank</strong> — одна строчка домножения превращает pairwise-обучение в фактическую оптимизацию listwise-метрики, без необходимости дифференцировать саму NDCG (которая недифференцируема, поскольку зависит от порядка).</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Вклад перестановки пары в NDCG в зависимости от позиций</div>
+<div class="chsub">Именно этот вес LambdaRank добавляет к градиенту RankNet</div>
+<div style="position:relative;height:300px;"><canvas id="c_lambda"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. LambdaMART под капотом <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Рабочая лошадь промышленного ранжирования</div>
+
+<div class="fbox">
+<div class="flabel">📐 Из чего собран LambdaMART</div>
+<p><strong>MART</strong> = Multiple Additive Regression Trees, то есть градиентный бустинг над деревьями (тема 1.1).</p>
+<p><strong>Lambda</strong> = градиенты берутся не из обычного лосса, а из LambdaRank:</p>
+$$\lambda_{ij} = \frac{-\sigma_0}{1 + e^{\sigma_0(s_i - s_j)}}\cdot \left|\Delta\text{NDCG}_{ij}\right|$$
+$$\lambda_i = \sum_{j:\,r_i > r_j} \lambda_{ij} \;-\; \sum_{j:\,r_j > r_i} \lambda_{ji}$$
+<p class="fnote">На каждой итерации бустинга дерево обучается предсказывать $\lambda_i$ — «в какую сторону и насколько сильно надо двигать скор документа $i$». Вторая производная берётся аналогично для шага Ньютона в листьях. Никакой явной функции потерь не существует — есть только градиенты, что формально делает это не градиентным спуском по лоссу, а прямым конструированием направления.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему LambdaMART до сих пор стандарт</div>
+<p><strong>① Табличные признаки.</strong> Ранжирование — это десятки разнородных числовых признаков: BM25 по полям, векторная близость, свежесть, популярность, CTR документа, длина, наличие. GBDT на таких данных сильнее нейросетей — та же история, что в блоке 7.</p>
+<p><strong>② Прямая оптимизация метрики.</strong> Через $|\Delta\text{NDCG}|$ модель концентрируется на верхних позициях, где метрика чувствительна.</p>
+<p><strong>③ Скорость инференса.</strong> Несколько сотен неглубоких деревьев на 1 000 кандидатов — единицы миллисекунд.</p>
+<p><strong>④ Интерпретируемость.</strong> Важности признаков и SHAP объясняют, почему документ поднялся — критично для отладки поиска и для разговора с бизнесом.</p>
+<p><strong>Нейронные ранжировщики</strong> выигрывают тогда, когда основной сигнал — <em>текстовый</em>, а не признаковый. Отсюда стандартная связка: LambdaMART на признаках → cross-encoder на тексте.</p>
+</div>
+
+<h3>Признаки для LTR: что реально работает</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>Группа</th><th>Примеры</th><th>Важность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Текстовая релевантность</b></td><td>BM25 по каждому полю, TF-IDF, векторная близость, доля покрытых слов запроса, совпадение в точной форме</td><td><strong>Высокая</strong></td></tr>
+<tr class="trh"><td><b>Поведенческие</b></td><td>CTR документа (сглаженный), доля долгих кликов, конверсия, число показов</td><td><strong>Очень высокая — и самая опасная</strong></td></tr>
+<tr><td>Качество документа</td><td>Полнота заполнения, наличие изображений, рейтинг, свежесть</td><td>Средняя</td></tr>
+<tr><td>Признаки запроса</td><td>Длина, наличие цифр/латиницы, определённый интент, частотность запроса</td><td>Средняя (важны во взаимодействиях)</td></tr>
+<tr><td>Признаки пары</td><td>Совпадение категории с интентом, расстояние по графу категорий</td><td>Средняя</td></tr>
+<tr><td>Контекст</td><td>Регион, устройство, время, история сессии</td><td>Низкая–средняя</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Поведенческие признаки создают петлю обратной связи — самая коварная проблема LTR.</strong> CTR документа высок, потому что он стоял высоко; модель видит высокий CTR и ставит его ещё выше; новые документы никогда не получают показов и не набирают CTR. Система «замерзает»: выдача перестаёт меняться независимо от качества новых документов. <strong>Механизмы борьбы:</strong> ① сглаживание CTR к среднему по категории при малом числе показов; ② исключение показов, вызванных самой моделью, из подсчёта; ③ обязательный exploration-бакет, дающий показы новым документам; ④ признак «возраст документа в индексе» и явное отслеживание доли новых документов в выдаче.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сглаживание CTR: почему без него признак вреден</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Документ A:</strong> 2 показа, 1 клик → сырой CTR = <strong>0.50</strong>.<br><strong>Документ B:</strong> 40 000 показов, 6 800 кликов → CTR = <strong>0.17</strong>.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>По сырому CTR документ A выигрывает втрое.</strong> Модель поднимет его наверх, он получит показы, и если реально плох — испортит выдачу тысячам пользователей.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Сглаживание к среднему по категории</strong> ($\bar{c} = 0.14$, $m = 200$ — сила сглаживания):<br>A: $\frac{1 + 0.14\times200}{2 + 200} = \frac{29}{202} = \mathbf{0.144}$.<br>B: $\frac{6800 + 28}{40\,000 + 200} = \frac{6828}{40\,200} = \mathbf{0.170}$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Теперь B выигрывает</strong>, а A получает значение, близкое к среднему по категории, — модель не имеет о нём информации, и это честно отражено.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Выбор $m$.</strong> Он равен «числу псевдонаблюдений» априорного среднего. Ориентир: $m$ такое, чтобы документ с медианным числом показов получал примерно половину веса от собственных данных. При медиане 200 показов $m \approx 200$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Это тот же байесовский shrinkage</strong>, что в Gamma-Gamma при оценке чека (тема 2.1) и в target encoding (тема 1.1). Один и тот же приём решает одну и ту же проблему: <em>ненадёжная оценка по малому числу наблюдений стягивается к априорному среднему</em>.</div></div>
+</div>
+
+<pre><code># LambdaMART в LightGBM: ключевые детали
+import lightgbm as lgb, numpy as np
+
+# Данные группируются по запросу: group[i] = число документов у i-го запроса
+train = lgb.Dataset(X_train, label=y_train, group=group_train)   # label: 0..4 градации
+valid = lgb.Dataset(X_valid, label=y_valid, group=group_valid, reference=train)
+
+params = dict(
+    objective="lambdarank",
+    metric="ndcg",
+    ndcg_eval_at=[1, 5, 10],
+    lambdarank_truncation_level=30,   # пары считаются только для топ-30 — экономия и фокус
+    label_gain=[0, 1, 3, 7, 15],      # gain для градаций 0..4 (по умолчанию 2^r - 1)
+    learning_rate=0.05,
+    num_leaves=63,
+    min_data_in_leaf=100,
+    feature_fraction=0.85,
+    lambda_l2=2.0,
+)
+model = lgb.train(params, train, num_boost_round=3000, valid_sets=[valid],
+                  callbacks=[lgb.early_stopping(150)])
+
+# ВАЖНО: группы не должны разрываться между train и valid
+assert sum(group_train) == len(X_train), "группы не согласованы с данными"
+
+# Сглаженный CTR как признак — обязательно, сырой вреден
+def smoothed_ctr(clicks, impressions, prior, m=200):
+    return (clicks + prior * m) / (impressions + m)
+</code></pre>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Две настройки LambdaMART, которые почти всегда стоит трогать.</strong> ① <code>lambdarank_truncation_level</code> — глубина, до которой считаются пары. По умолчанию она велика, и модель тратит усилия на упорядочивание глубокого хвоста, не влияющего на NDCG@10. Установка 20–30 обычно ускоряет обучение и слегка улучшает метрику в топе. ② <code>label_gain</code> — насколько градация 4 ценнее градации 3. Дефолт $2^r - 1$ даёт резкий рост (1, 3, 7, 15); если у тебя разметка «нерелевантно / частично / релевантно», такой разрыв искажает приоритеты, и стоит задать более пологую шкалу.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Метрики ранжирования <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">NDCG, MRR, MAP, ERR — и когда какая уместна</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Четыре метрики</div>
+$$\text{DCG@}k = \sum_{i=1}^{k}\frac{2^{r_i} - 1}{\log_2(i+1)}, \qquad \text{NDCG@}k = \frac{\text{DCG@}k}{\text{IDCG@}k}$$
+$$\text{MRR} = \frac{1}{|Q|}\sum_q \frac{1}{\text{rank of first relevant}}, \qquad \text{MAP} = \frac{1}{|Q|}\sum_q \frac{1}{R_q}\sum_{i:\,\text{rel}} \text{Prec@}i$$
+$$\text{ERR} = \sum_{i=1}^{k}\frac{1}{i}\,R_i \prod_{j<i}(1 - R_j), \qquad R_i = \frac{2^{r_i} - 1}{2^{r_{\max}}}$$
+<p class="fnote">NDCG учитывает градации релевантности и логарифмическое затухание по позиции. MRR смотрит только на первый релевантный. MAP усредняет точность по позициям релевантных. ERR моделирует, что пользователь <em>останавливается</em>, найдя подходящее, — поэтому документ ниже сильно релевантного почти не влияет.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: какую метрику когда</div>
+<p><strong>NDCG</strong> — дефолт для поиска с градациями релевантности. Учитывает и порядок, и степень релевантности. Нормировка на идеальный порядок делает запросы сравнимыми между собой.</p>
+<p><strong>MRR</strong> — когда нужен <em>один</em> ответ: навигационные запросы («личный кабинет»), вопросно-ответные системы, автодополнение. Смотрит только на позицию первого релевантного.</p>
+<p><strong>MAP</strong> — когда важна полнота: пользователь просматривает много результатов (юридический поиск, патенты, подбор кандидатов).</p>
+<p><strong>ERR</strong> — когда пользователь останавливается, найдя нужное. Ближе к реальному поведению в веб-поиске, чем NDCG, но менее распространён.</p>
+<p><strong>Recall@k</strong> — обязательная метрика <em>retrieval-стадии</em>, а не финальной выдачи. Она задаёт потолок всей системы.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Считаем NDCG@5 вручную</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Выдача с релевантностью:</strong> [2, 0, 3, 1, 0]. Максимальная градация 3.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>DCG.</strong><br>Поз. 1: $\frac{2^2-1}{\log_2 2} = \frac{3}{1} = 3.000$<br>Поз. 2: $\frac{2^0-1}{\log_2 3} = 0$<br>Поз. 3: $\frac{2^3-1}{\log_2 4} = \frac{7}{2} = 3.500$<br>Поз. 4: $\frac{2^1-1}{\log_2 5} = \frac{1}{2.322} = 0.431$<br>Поз. 5: $0$<br><strong>DCG@5 = 6.931</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Идеальный порядок:</strong> [3, 2, 1, 0, 0].<br>$\frac{7}{1} + \frac{3}{1.585} + \frac{1}{2} + 0 + 0 = 7 + 1.893 + 0.500 = \mathbf{9.393}$</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>NDCG@5 = 6.931 / 9.393 = 0.738.</strong></div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>Другие метрики на той же выдаче.</strong> MRR = $1/1 = 1.0$ (первый документ релевантен). MAP: релевантные на позициях 1, 3, 4 → $\frac{1}{3}(\frac{1}{1} + \frac{2}{3} + \frac{3}{4}) = 0.806$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Три метрики дают 0.738, 1.000 и 0.806 на одной выдаче.</strong> Все верны и отвечают на разные вопросы. MRR = 1.0 говорит «пользователь сразу нашёл что-то релевантное», NDCG = 0.738 говорит «но самый релевантный документ был не первым». Отчитываться одной метрикой — терять половину картины.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>NDCG, посчитанные по-разному, несравнимы — и это встречается постоянно.</strong> Различия возникают из-за: ① <strong>разной глубины</strong> (NDCG@5 против @10 — разные числа); ② <strong>разной формулы gain</strong> ($2^r - 1$ против линейного $r$); ③ <strong>обработки запросов без релевантных документов</strong> (исключать или считать нулём — меняет среднее на 0.05–0.15); ④ <strong>усечения IDCG</strong> при числе релевантных больше $k$. <strong>Правило:</strong> фиксируй схему расчёта в коде один раз и указывай её в каждом отчёте. Сравнение чисел из разных экспериментов без этого бессмысленно.</div></div>
+
+<div class="chb">
+<div class="cht">Одна выдача, четыре метрики</div>
+<div class="chsub">Метрики расходятся, когда релевантные документы распределены по-разному</div>
+<div style="position:relative;height:310px;"><canvas id="c_metrics"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Клики как слабая разметка <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Единственный масштабируемый источник данных — и он смещён</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Источник разметки</th><th>Объём</th><th>Качество</th><th>Смещение</th></tr></thead>
+<tbody>
+<tr><td>Асессорская разметка</td><td>Тысячи запросов</td><td><strong>Высокое</strong></td><td>Не отражает реальных пользователей и их интентов</td></tr>
+<tr class="trh"><td><b>Клики</b></td><td><strong>Миллионы в день</strong></td><td>Шумное</td><td><strong>Позиция, представление, доверие к бренду</strong></td></tr>
+<tr><td>Долгие клики / dwell time</td><td>Как клики</td><td>Лучше кликов</td><td>Те же смещения + зависит от типа контента</td></tr>
+<tr><td>Конверсии</td><td>Меньше</td><td>Ближе всего к цели</td><td>Смещение к дешёвым и популярным товарам</td></tr>
+<tr><td>Явная обратная связь</td><td>Мало</td><td>Высокое</td><td>Отвечают недовольные и энтузиасты</td></tr>
+<tr><td>LLM-разметка</td><td>Средний</td><td>Приемлемое</td><td>Смещения модели; дёшево масштабируется</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему клик — не метка релевантности</div>
+<p>Клик означает «пользователь <em>посмотрел</em> результат <strong>и</strong> счёл его подходящим на вид». Это конъюнкция двух событий, и первое зависит от позиции.</p>
+<p>Документ на 10-й позиции не кликнут не потому, что он плох, а потому что до него не долистали. Отсутствие клика на нижних позициях почти не несёт информации о релевантности.</p>
+<p><strong>Формально:</strong> $P(\text{click}) = P(\text{examine} \mid \text{pos}) \cdot P(\text{relevant} \mid q, d)$.</p>
+<p>Нас интересует второй множитель, а наблюдаем мы произведение. Чтобы восстановить релевантность, нужно <em>оценить</em> $P(\text{examine}\mid\text{pos})$ — это и есть задача коррекции position bias.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Обучение на сырых кликах закрепляет текущее ранжирование.</strong> Модель учится предсказывать клик; клик определяется позицией; позицию определила предыдущая модель. Новая модель выучивает <em>старую модель</em>, а не релевантность. Это самый быстрый способ построить систему, которая никогда не улучшается: офлайн-метрики растут, онлайн ничего не меняется. Признак проблемы: сильнейшим признаком в LTR оказывается «позиция в предыдущей выдаче» или сильно с ней коррелирующий.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько сильно позиция искажает клики</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Типичные вероятности просмотра по позициям</strong> (из экспериментов с рандомизацией): поз. 1 — 1.00, 2 — 0.62, 3 — 0.44, 4 — 0.34, 5 — 0.28, 8 — 0.17, 10 — 0.13.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Документ X</strong> с истинной релевантностью $P(\text{rel}) = 0.30$ стоит на позиции 1: наблюдаемый CTR $= 1.00\times0.30 = \mathbf{0.300}$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Документ Y</strong> с истинной релевантностью $P(\text{rel}) = 0.55$ стоит на позиции 5: наблюдаемый CTR $= 0.28\times0.55 = \mathbf{0.154}$.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>По сырым кликам X выглядит вдвое лучше Y</strong>, хотя в реальности Y релевантнее почти вдвое. Модель, обученная на этих данных, поднимет X и опустит Y.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>После IPW-коррекции</strong> (деление на вероятность просмотра):<br>X: $0.300 / 1.00 = 0.300$. Y: $0.154 / 0.28 = \mathbf{0.550}$. Порядок восстановлен.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разница в 3.6 раза</strong> между наблюдаемым и скорректированным отношением. Без коррекции модель систематически закрепляет всё, что уже стоит высоко, — и это ровно то, что делает большинство первых версий поисковых систем.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Вероятность просмотра по позициям и её влияние на CTR</div>
+<div class="chsub">Наблюдаемый CTR — произведение релевантности и вероятности просмотра</div>
+<div style="position:relative;height:310px;"><canvas id="c_pos"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Position bias: как его измерить и убрать <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре способа, от самого честного к самому дешёвому</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Как оценивает $P(\text{examine}\mid\text{pos})$</th><th>Цена</th><th>Надёжность</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Рандомизация выдачи</b></td><td>Случайная перестановка топ-k на части трафика</td><td><strong>Высокая — ухудшает выдачу</strong></td><td><strong>Максимальная</strong></td></tr>
+<tr class="trh"><td><b>Интервенция на паре позиций</b></td><td>Меняем местами позиции 1 и 2 на малой доле трафика</td><td>Низкая</td><td><strong>Высокая, дёшево</strong></td></tr>
+<tr><td>Регрессия на естественных перестановках</td><td>Один документ на разных позициях в разных запросах</td><td>Бесплатно</td><td>Средняя, есть остаточное смещение</td></tr>
+<tr><td>EM (Regression-EM)</td><td>Совместная оценка релевантности и склонности</td><td>Бесплатно</td><td>Средняя, зависит от модели клика</td></tr>
+<tr><td>Dual Learning / Unbiased LTR</td><td>Обучение ранжировщика и модели склонности вместе</td><td>Бесплатно</td><td>Средняя–высокая</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: интервенция на паре позиций</div>
+<p>Полная рандомизация топ-10 сильно ухудшает выдачу и потому редко проходит согласование.</p>
+<p><strong>Гораздо дешевле:</strong> на 1–3% трафика менять местами <em>две соседние позиции</em>, например 2 и 3. Ухудшение выдачи минимально, а данные получаются идеальные: один и тот же документ наблюдается на обеих позициях при прочих равных.</p>
+<p><strong>Оценка получается напрямую:</strong> $\frac{P(\text{examine}\mid\text{pos }3)}{P(\text{examine}\mid\text{pos }2)} = \frac{\text{CTR документа на поз. }3}{\text{CTR того же документа на поз. }2}$.</p>
+<p>Повторив для пар (1,2), (2,3), (3,4)… получаем всю кривую склонности по цепочке отношений. <strong>Это самый практичный способ</strong>: дёшево, честно, не требует моделирования.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 IPW-взвешивание в обучении ранжировщика</div>
+$$\mathcal{L}_{\text{unbiased}} = \sum_{q}\sum_{d:\,c_{qd}=1} \frac{\Delta(d, \pi_q)}{\hat p(\text{pos}_{qd})}$$
+<p>Каждый кликнутый документ входит в лосс с весом, обратным вероятности просмотра его позиции. Клик на низкой позиции «стоит» больше, потому что до него реже добирались.</p>
+<p class="fnote"><strong>Практическая деталь:</strong> веса $1/\hat p$ для нижних позиций достигают 8–10 и создают высокую дисперсию. Обязательно <em>обрезать</em> веса сверху (clipping на 5–10) — это вносит небольшое смещение, но резко снижает дисперсию и обычно улучшает итоговый результат. Тот же приём, что в off-policy оценке NBO (тема 2.5).</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Оценка склонности через интервенцию</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Эксперимент.</strong> На 2% трафика меняем местами позиции 2 и 3. Собираем 400 тыс. показов.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Данные.</strong> Документы, побывавшие на обеих позициях: CTR на позиции 2 — 0.0812; тех же документов на позиции 3 — 0.0574.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Отношение склонностей:</strong> $\frac{p_3}{p_2} = \frac{0.0574}{0.0812} = \mathbf{0.707}$.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Повторяем для соседних пар:</strong> $\frac{p_2}{p_1} = 0.62$, $\frac{p_4}{p_3} = 0.77$, $\frac{p_5}{p_4} = 0.82$.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Собираем цепочку</strong> при $p_1 = 1$:<br>$p_2 = 0.620$, $p_3 = 0.620\times0.707 = 0.438$, $p_4 = 0.438\times0.77 = 0.337$, $p_5 = 0.337\times0.82 = 0.277$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Полученная кривая совпадает с типичными оценками</strong> из секции 9, но получена <em>на своих данных</em> — а склонность зависит от интерфейса: на мобильном она падает круче, при карточной выдаче медленнее, при наличии рекламы иначе. <strong>Переносить чужие оценки склонности нельзя</strong>, а измерить свои стоит 2% трафика на неделю.</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Position bias — не единственное смещение кликов.</strong> Есть ещё: <strong>presentation bias</strong> (документ с картинкой и рейтингом кликают чаще при равной релевантности), <strong>trust bias</strong> (пользователи доверяют верхним позициям и кликают их даже при слабой релевантности — это <em>отдельный</em> эффект от простого просмотра), <strong>selection bias</strong> (документы, никогда не показанные, не имеют кликов вовсе — это уже проблема цензурирования), <strong>caption bias</strong> (сниппет влияет на клик больше, чем содержание документа). IPW по позиции лечит только первое. Полная коррекция требует более богатых моделей клика, но <em>начинать надо с позиции</em> — она даёт основной вклад.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Query understanding <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Самая дешёвая стадия с самой высокой отдачей</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Компонент</th><th>Что делает</th><th>Типичный вклад</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Исправление опечаток</b></td><td>«ноутбкук» → «ноутбук»</td><td><strong>+3–8% успешных сессий</strong></td></tr>
+<tr><td>Раскладка и транслит</td><td>«yjenden» → «ноутбук», «notebook» → «ноутбук»</td><td>+1–3%</td></tr>
+<tr><td>Нормализация и лемматизация</td><td>«гарантию» → «гарантия»</td><td>Существенно для флективных языков</td></tr>
+<tr class="trh"><td><b>Определение интента</b></td><td>Навигационный / информационный / транзакционный</td><td><strong>Меняет всю логику ранжирования</strong></td></tr>
+<tr><td>Извлечение сущностей</td><td>Бренд, категория, цена, размер из текста запроса</td><td>Позволяет применять фильтры</td></tr>
+<tr><td>Расширение запроса</td><td>Синонимы, гиперонимы, связанные термины</td><td>+2–6% recall</td></tr>
+<tr><td>Сегментация</td><td>Разбиение слитно написанного</td><td>Важно для e-commerce</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: интент меняет всё</div>
+<p><strong>Навигационный</strong> («личный кабинет», «условия доставки») — нужен <em>один конкретный</em> результат. Метрика — MRR. Разнообразие вредно: пользователь ищет конкретную страницу.</p>
+<p><strong>Информационный</strong> («как выбрать ноутбук») — нужен обзор, полезны разные точки зрения. Метрика — NDCG. Разнообразие полезно.</p>
+<p><strong>Транзакционный</strong> («купить ноутбук BX-4471») — нужны товары в наличии, с ценой, с возможностью заказа. Важны бизнес-сигналы: наличие, срок доставки, маржа.</p>
+<p><strong>Практическое следствие:</strong> один ранжировщик для всех интентов вынужден усреднять противоречивые требования. Признак интента в LTR (или отдельные модели) типично даёт +0.02–0.05 NDCG — дёшево относительно любой работы над текстовыми моделями.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Исправление опечаток — самая недооценённая часть поиска.</strong> Доля запросов с опечатками в e-commerce составляет 8–15%, и без исправления они дают почти пустую выдачу — это прямая потеря сессий и конверсии. При этом задача решается дёшево: словарь из индекса + расстояние Дамерау-Левенштейна + языковая модель на биграммах + ранжирование кандидатов по частотности в логах. <strong>Ключевая деталь:</strong> исправлять надо <em>осторожно</em> — артикулы, названия моделей и редкие бренды выглядят как опечатки и не должны исправляться. Практика: не исправлять, если запрос даёт достаточное число результатов, и всегда показывать «искали ли вы…» вместо молчаливой замены.</div></div>
+
+<div class="numex">
+<div class="numex-title">🔢 Вклад query understanding в общий результат</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Базовая система:</strong> гибридный retrieval + LTR + cross-encoder. Доля успешных сессий (был клик и не было переформулировки): <strong>68.4%</strong>.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>+ исправление опечаток.</strong> 11.2% запросов содержали опечатки; из них 74% исправлены верно.<br>Успешные сессии: <strong>73.1%</strong> (+4.7 п.п.).</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>+ раскладка и транслит:</strong> 74.6% (+1.5 п.п.).</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>+ определение интента</strong> и разная логика ранжирования: <strong>77.9%</strong> (+3.3 п.п.).</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>+ извлечение сущностей</strong> (бренд, категория, ценовой диапазон) с применением фильтров: <strong>80.2%</strong> (+2.3 п.п.).</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итого +11.8 п.п. успешных сессий</strong> — сопоставимо с вкладом всех текстовых моделей вместе, при кратно меньшей стоимости разработки и нулевом влиянии на задержку. <strong>Если поиск запускается с нуля, query understanding даёт больше на единицу усилий, чем любая работа над ранжированием.</strong></div></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Онлайн-оценка: почему interleaving стал стандартом <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">A/B в поиске работает плохо — и вот чем его заменяют</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: проблема A/B в поиске</div>
+<p>Классический A/B: половина пользователей видит систему A, половина — B. Сравниваем CTR.</p>
+<p><strong>Проблема — дисперсия.</strong> Пользователи и запросы крайне разнородны: навигационные запросы дают CTR 0.9, информационные 0.2. Разница между системами обычно 1–3%, а межпользовательский разброс в разы больше. Нужны миллионы сессий и недели ожидания.</p>
+<p><strong>Interleaving</strong> смешивает выдачи A и B <em>в одном списке</em> и смотрит, из какой системы пользователь кликает чаще. Сравнение происходит <em>внутри одного показа одному пользователю</em> — межпользовательская дисперсия исчезает.</p>
+<p><strong>Выигрыш огромен:</strong> interleaving требует в 10–100 раз меньше трафика для той же статистической мощности. Эксперимент, требующий двух недель A/B, укладывается в день.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Team-Draft Interleaving</div>
+<p>Списки A и B «выбирают» документы по очереди, как капитаны команд в дворовом футболе:</p>
+<p>① Случайно определяем, кто выбирает первым. ② Каждая система по очереди берёт свой самый высокий ещё не выбранный документ. ③ Документ помечается принадлежностью к выбравшей команде. ④ Клик засчитывается той команде, чей документ кликнули.</p>
+<p class="fnote">Свойство: если системы дают одинаковые выдачи, результат — ничья по построению. Если B лучше, его документы чаще оказываются кликнутыми. Случайный выбор первого хода устраняет смещение в пользу того, кто начинает.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Сколько трафика экономит interleaving</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Задача:</strong> обнаружить относительное улучшение CTR на 2% при базовом CTR 0.34.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Обычный A/B.</strong> $\sigma^2 = 0.34\times0.66 = 0.2244$; эффект $\Delta = 0.0068$.<br>$n = \frac{2\times7.84\times0.2244}{0.0068^2} \approx \mathbf{76\,000}$ на группу — но это <em>на запрос</em>. С учётом кластеризации по пользователям (несколько запросов на сессию, корреляция внутри) эффективный размер выше в 2.5–4 раза: <strong>≈ 250 тыс запросов на группу.</strong></div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Team-draft interleaving.</strong> Сравнение внутри показа снимает межпользовательскую и межзапросную дисперсию. Эмпирически требуемый объём меньше в 10–100 раз: <strong>≈ 8–25 тыс запросов.</strong></div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>При 300 тыс поисковых запросов в день:</strong> A/B требует ~2 дней на группу (итого 3–4 дня с учётом прогрева), interleaving — <strong>около часа.</strong></div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практическое следствие важнее арифметики:</strong> при таком удешевлении можно тестировать <em>десятки</em> гипотез в неделю вместо двух-трёх. Скорость итераций становится главным преимуществом — именно поэтому interleaving стал индустриальным стандартом в поиске, несмотря на ограничения.</div></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Ограничения interleaving, о которых надо помнить.</strong> ① Он измеряет <em>относительное предпочтение</em>, а не абсолютные метрики: нельзя узнать, вырос ли CTR на 2% — только что B предпочтительнее A. ② Не измеряет долгосрочные эффекты (удержание, доверие) и метрики уровня сессии. ③ Плохо работает, когда системы дают сильно разные выдачи — смешанный список может оказаться хуже обеих. ④ Неприменим, если изменение затрагивает не порядок, а представление (сниппеты, карточки). <strong>Рабочая схема:</strong> interleaving для быстрого отбора кандидатов, полноценный A/B для финального подтверждения победителя и измерения абсолютного эффекта на бизнес-метрики.</div></div>
+
+<div class="chb">
+<div class="cht">Требуемый объём трафика: A/B против interleaving</div>
+<div class="chsub">Логарифмическая шкала — разрыв в десятки раз</div>
+<div style="position:relative;height:300px;"><canvas id="c_inter"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Офлайн-оценка тоже должна быть двухслойной.</strong> ① <strong>Асессорская выборка</strong> (500–2 000 запросов с градациями релевантности) — стабильна, воспроизводима, годится для регрессионного тестирования: перед выкаткой проверяем, что NDCG не упал. ② <strong>Кликовые логи с IPW-коррекцией</strong> — отражают реальное распределение запросов, включая длинный хвост, которого нет в асессорской выборке. Расхождение между этими двумя оценками — сам по себе полезный сигнал: если модель хороша на асессорах и плоха на логах, она оптимизирована под «красивые» запросы, а не под реальные.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Двенадцать ошибок поисковых систем</div>
+
+<div class="cl danger"><span class="cli">1️⃣</span><div><strong>Улучшают ranking при низком recall retrieval.</strong> Если релевантный документ не попал в топ-1000, никакой реранкер его не вернёт. Мерить надо recall@1000 первой стадии, а не только финальный NDCG.</div></div>
+
+<div class="cl danger"><span class="cli">2️⃣</span><div><strong>Только векторный поиск.</strong> Проваливается на артикулах, кодах ошибок, именах: 34% попадания против 97% у BM25. Не лечится лучшим эмбеддером — это структурное свойство.</div></div>
+
+<div class="cl danger"><span class="cli">3️⃣</span><div><strong>Только лексический поиск.</strong> Проваливается на перефразировках и синонимах: 18–24% против 81–86% у векторов.</div></div>
+
+<div class="cl danger"><span class="cli">4️⃣</span><div><strong>Прямое сложение скоров BM25 и косинуса.</strong> Разные шкалы, BM25 задавит вектор. RRF работает по рангам и не требует калибровки.</div></div>
+
+<div class="cl danger"><span class="cli">5️⃣</span><div><strong>Cross-encoder на слишком большой глубине.</strong> 77% бюджета инференса уходит на реранкер, при том что NDCG выходит на плато после топ-50.</div></div>
+
+<div class="cl danger"><span class="cli">6️⃣</span><div><strong>Обучение LTR на сырых кликах.</strong> Модель выучивает предыдущую модель, а не релевантность. Офлайн-метрики растут, онлайн ничего не меняется.</div></div>
+
+<div class="cl danger"><span class="cli">7️⃣</span><div><strong>Сырой CTR как признак.</strong> Документ с 2 показами и 1 кликом получает CTR 0.5 и обгоняет документ с 40 000 показов и CTR 0.17. Нужно байесовское сглаживание.</div></div>
+
+<div class="cl danger"><span class="cli">8️⃣</span><div><strong>Нет коррекции position bias.</strong> Документ с релевантностью 0.30 на позиции 1 выглядит вдвое лучше документа с релевантностью 0.55 на позиции 5 — искажение в 3.6 раза.</div></div>
+
+<div class="cl danger"><span class="cli">9️⃣</span><div><strong>Перенос чужих оценок склонности.</strong> Кривая $P(\text{examine}\mid\text{pos})$ зависит от интерфейса, устройства и наличия рекламы. Своя измеряется за 2% трафика на неделю.</div></div>
+
+<div class="cl danger"><span class="cli">🔟</span><div><strong>NDCG посчитаны по-разному в разных экспериментах.</strong> Глубина, формула gain, обработка запросов без релевантных, усечение IDCG — каждое различие меняет число на 0.02–0.15.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣1️⃣</span><div><strong>Пропущен query understanding.</strong> Исправление опечаток, транслит, интент и извлечение сущностей дали +11.8 п.п. успешных сессий — сопоставимо со всеми текстовыми моделями вместе при кратно меньшей стоимости.</div></div>
+
+<div class="cl danger"><span class="cli">1️⃣2️⃣</span><div><strong>Петля обратной связи через поведенческие признаки.</strong> Новые документы не получают показов, не набирают CTR и не поднимаются. Выдача «замерзает». Нужен exploration-бакет и мониторинг доли новых документов.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Метавывод.</strong> В поиске <em>архитектура пайплайна и качество данных решают больше, чем модели</em>. Порядок работ по убыванию отдачи: ① query understanding (дёшево, +10 п.п. сессий); ② гибридный retrieval через RRF (+0.08 NDCG, день работы); ③ измерение и коррекция position bias (без этого остальное неизмеримо); ④ cross-encoder на топ-50 (+0.10 NDCG); ⑤ LTR с правильно сглаженными признаками; ⑥ и только потом — тонкая настройка моделей. <strong>Команда, начавшая с шестого пункта, потратит месяцы на прирост, который первые два дали бы за неделю.</strong></div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Четыре кейса: как устроен поиск в разных доменах</div>
+
+<div class="sysbox">
+<h4>🛒 Поиск в e-commerce — где релевантность не главная цель</h4>
+<p><strong>Ключевое отличие от веб-поиска.</strong> Оптимизируется не релевантность, а <em>выручка</em>. Релевантный, но отсутствующий на складе товар бесполезен; чуть менее релевантный, но доступный и с быстрой доставкой — лучше.</p>
+<p><strong>Архитектура.</strong> Query understanding (опечатки, извлечение бренда/категории/цены) → гибридный retrieval (BM25F по полям + вектора) → LTR на 60–100 признаках → бизнес-правила.</p>
+<p><strong>BM25F вместо BM25.</strong> У товара есть название, бренд, категория, описание, характеристики, отзывы. Совпадение в названии на порядок важнее совпадения в отзывах. Взвешенная по полям частота <em>до</em> насыщения даёт +0.03–0.06 NDCG.</p>
+<p><strong>Бизнес-слой поверх релевантности:</strong> наличие, срок доставки, маржинальность, продвигаемые товары, разнообразие по брендам. Он может понижать NDCG и одновременно повышать выручку — и это нормально, если измеряется правильная метрика.</p>
+<p><strong>Нюанс валидации.</strong> Асессорская релевантность и конверсия расходятся: асессор оценивает соответствие запросу, покупатель — ещё и цену, отзывы, доставку. <strong>Финальная метрика — онлайн-конверсия и выручка на сессию</strong>, офлайн-NDCG служит регрессионным тестом, а не критерием выкатки.</p>
+</div>
+
+<div class="sysbox">
+<h4>🌐 Веб-поиск — масштаб меняет всё</h4>
+<p><strong>Порядок величин.</strong> Индекс — сотни миллиардов документов, запросы — десятки тысяч в секунду, SLA — сотни миллисекунд. При таком масштабе каскад становится глубже: не три стадии, а пять-шесть, каждая со своим бюджетом.</p>
+<p><strong>Retrieval распределён по шардам.</strong> Индекс разбит на сотни шардов; запрос идёт во все параллельно, каждый возвращает свой топ, результаты сливаются. Задержка определяется <em>самым медленным</em> шардом, отсюда борьба с «хвостовой латентностью»: дублирование запросов, отсечение по таймауту, адаптивные бюджеты.</p>
+<p><strong>Кэширование многослойное:</strong> кэш результатов для частых запросов (закон Ципфа — небольшая доля запросов даёт большую часть трафика), кэш posting-списков, кэш векторов запросов. Хит-рейт верхнего кэша типично 30–50%.</p>
+<p><strong>Свежесть как отдельная подсистема.</strong> Новостные и «горячие» запросы требуют документов возрастом в минуты. Отдельный индекс свежего контента с быстрым обновлением сливается с основным на уровне ранжирования.</p>
+<p><strong>Нюанс валидации.</strong> При таком масштабе interleaving — основной инструмент: он даёт статистическую значимость за часы. Полноценные A/B резервируются для изменений, влияющих на метрики сессии и удержания, где interleaving неприменим.</p>
+</div>
+
+<div class="sysbox">
+<h4>📚 Корпоративный поиск по базе знаний — права доступа меняют архитектуру</h4>
+<p><strong>Главное отличие.</strong> Разные пользователи имеют доступ к разным документам. Это не фильтр «после поиска», а ограничение <em>на этапе retrieval</em> — иначе топ-1000 может целиком состоять из недоступных документов, и пользователь получит пустую выдачу при наличии релевантных доступных.</p>
+<p><strong>Два способа реализации.</strong> ① <em>Pre-filtering</em> — ограничить кандидатов до поиска: точно, но требует поддержки фильтров в ANN-индексе и деградирует при селективных фильтрах. ② <em>Post-filtering с запасом</em> — брать топ-5000 и фильтровать: проще, но при доступе к 1% документов ломается. На практике — гибрид: раздельные индексы по крупным группам доступа плюс фильтрация внутри.</p>
+<p><strong>Разнородность корпуса.</strong> Документы разной длины и структуры: короткие заметки, длинные регламенты, таблицы, код. Единая стратегия чанкинга работает плохо — нужен разбор по структуре документа (подробно в теме 9.4 про RAG).</p>
+<p><strong>Мало кликов.</strong> Корпоративный поиск даёт тысячи запросов в день, а не миллионы. Кликовых данных недостаточно для обучения LTR, и основной источник — асессорская разметка плюс явная обратная связь.</p>
+<p><strong>Нюанс валидации.</strong> При малом трафике ни A/B, ни interleaving не набирают мощности за разумное время. Основной инструмент — <strong>офлайн-оценка на фиксированной асессорской выборке</strong> плюс качественный разбор жалоб. Требуется дисциплина: выборка должна обновляться, иначе система переобучится под неё.</p>
+</div>
+
+<div class="sysbox">
+<h4>💬 Поиск в мессенджере или почте — персональный корпус</h4>
+<p><strong>Специфика.</strong> У каждого пользователя свой корпус в тысячи–миллионы сообщений. Общий индекс невозможен; поиск персональный по построению.</p>
+<p><strong>Что это меняет.</strong> ① Нет кликовых данных для обучения общей модели релевантности — у каждого пользователя слишком мало запросов. ② Запросы короткие и часто содержат имена, даты, фрагменты фраз. ③ Важнее <em>точное совпадение и время</em>, чем семантика: человек ищет конкретное сообщение, которое помнит.</p>
+<p><strong>Отсюда — лексика доминирует.</strong> BM25 с сильными сигналами recency и «от кого» обычно бьёт векторный поиск. Векторный слой полезен как дополнение для запросов «о чём-то», но не как основа.</p>
+<p><strong>Сильнейшие признаки:</strong> точное совпадение фразы, свежесть, частота общения с отправителем, наличие вложений, был ли диалог закреплён.</p>
+<p><strong>Нюанс валидации.</strong> Данные приватны, асессорская разметка невозможна. Оценка строится на <em>агрегированных поведенческих сигналах</em>: доля сессий с кликом, доля переформулировок, позиция клика — без доступа к содержанию. Плюс синтетические выборки: берём случайное сообщение, генерируем из него правдоподобный запрос и проверяем, находится ли оно.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Что общего у четырёх кейсов.</strong> ① <strong>Целевая функция почти нигде не равна «релевантности»</strong> — выручка в e-commerce, сессионные метрики в вебе, скорость нахождения в личном поиске. ② <strong>Ограничение определяет архитектуру</strong>: права доступа, масштаб шардов, приватность — каждое переписывает пайплайн. ③ <strong>Объём кликов решает, чем можно оценивать</strong>: миллионы — interleaving, тысячи — асессоры, ноль — синтетика и агрегированные сигналы. ④ <strong>Лексический поиск остаётся основой</strong> везде, где важны точные совпадения; вектора добавляют, а не заменяют.</div></div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">От BM25 до interleaving</div>
+
+<div class="qah">Часть 1. Архитектура и retrieval</div>
+
+<details class="qi"><summary><span class="qch">▶</span>1. Почему поиск — всегда каскад?</summary><div class="qa"><p>Лучшая модель релевантности (cross-encoder) требует прогона на каждую пару «запрос–документ». При 12 млн документов это 10 часов на один запрос — физически невозможно.</p><p>Каскад: дешёвые методы сужают миллионы до сотен, дорогие точно упорядочивают эти сотни. Каждая стадия в 10–100 раз дороже на документ, но работает с в 10–100 раз меньшим их числом.</p><p><strong>Ключевое следствие:</strong> качество ограничено сверху первой стадией. Recall retrieval важнее precision ranking.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>2. Что мерить в первую очередь при отладке поиска?</summary><div class="qa"><p><strong>Recall@1000 стадии retrieval</strong>, а не NDCG финальной выдачи.</p><p>Если релевантный документ не попал в кандидаты, ни ranking, ни reranking его не вернут. Типичная ошибка: команда месяцами улучшает реранкер при recall retrieval 0.72 — 28% релевантных недостижимы в принципе.</p><p>Улучшение retrieval с 0.72 до 0.88 даст больше, чем любая работа над последующими стадиями.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>3. Что делают параметры $k_1$ и $b$ в BM25?</summary><div class="qa"><p><strong>$k_1$ — насыщение по частоте.</strong> 20 вхождений слова не делают документ вдвое релевантнее 10; вклад растёт, но всё медленнее. При $k_1 \to 0$ важен только факт наличия.</p><p><strong>$b$ — нормализация на длину.</strong> Длинный документ содержит больше вхождений просто из-за длины. При $b=1$ учитывается полностью, при $b=0$ игнорируется.</p><p><strong>Практика:</strong> для коротких однородных документов $b$ = 0.3–0.5, для длинных разнородных — 0.75. Подбор под домен даёт 0.02–0.05 NDCG почти бесплатно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>4. Что такое BM25F и зачем он нужен?</summary><div class="qa"><p>Расширение для структурированных документов: совпадение в названии товара значит больше, чем в отзывах.</p><p>BM25F считает <strong>взвешенную по полям частоту до применения насыщения</strong>: $\tilde f(t,d) = \sum_s w_s \frac{f(t,d_s)}{1 - b_s + b_s|d_s|/\text{avgdl}_s}$.</p><p>Это <em>не то же самое</em>, что суммировать BM25 по полям — насыщение применяется один раз к общей частоте. В e-commerce переход даёт +0.03–0.06 NDCG.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>5. Чем bi-encoder отличается от cross-encoder?</summary><div class="qa"><p><strong>Bi-encoder</strong> кодирует запрос и документ независимо → векторы можно предрассчитать и положить в индекс. Масштабируется на миллиарды.</p><p><strong>Cross-encoder</strong> подаёт пару целиком, внимание работает между словами запроса и документа → качество выше на 0.06–0.15 NDCG, но предрасчёт невозможен.</p><p><strong>Отсюда стандартная схема:</strong> bi-encoder на retrieval, cross-encoder на reranking топ-50…200. Это не избыточность, а следствие вычислительной асимметрии.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>6. Сколько теряется от приближённости ANN?</summary><div class="qa"><p>Меньше, чем кажется. В расчёте секции 3: HNSW с efSearch=128 даёт recall индекса 0.977 и NDCG 0.609 против 0.612 у точного поиска — <strong>потеря 0.003 при ускорении в 100 раз</strong>.</p><p><strong>Важная деталь:</strong> потеря recall индекса 2.3% превращается в потерю NDCG всего 0.5%, потому что пропускаются в основном документы с низких позиций, которые и так не попали бы в топ.</p><p>Прямой перенос recall индекса на качество системы — распространённая ошибка интерпретации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>7. Почему векторный поиск проваливается на артикулах?</summary><div class="qa"><p>Артикулы, коды ошибок, номера моделей, аббревиатуры не имеют семантики — эмбеддер обучен на смысле, а его тут нет. Модель «размывает» такие строки в пространстве.</p><p>Попадание в топ-10: 34% у векторов против 97% у BM25 на таких запросах.</p><p><strong>Это структурное свойство, а не недостаток конкретной модели</strong> — лучшим эмбеддером не лечится. Отсюда необходимость гибридного поиска.</p></div></details>
+
+<div class="qah">Часть 2. Гибрид и реранкинг</div>
+
+<details class="qi"><summary><span class="qch">▶</span>8. Почему нельзя просто сложить скоры BM25 и косинуса?</summary><div class="qa"><p>Разные шкалы: BM25 примерно 0–40 и зависит от длины запроса и редкости слов, косинус от −1 до 1. При прямом сложении BM25 полностью задавит вектор.</p><p>Нормализация скоров частично помогает, но остаётся хрупкой: распределения меняются от запроса к запросу.</p><p><strong>RRF обходит проблему</strong>, работая с рангами, а не скорами — ранг всегда в одной шкале.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>9. Как работает RRF и зачем в нём константа k?</summary><div class="qa"><p>$\text{RRF}(d) = \sum_r \frac{1}{k + \text{rank}_r(d)}$, обычно $k = 60$.</p><p><strong>Смысл $k$:</strong> он ограничивает вклад верхних позиций. При $k=0$ первое место даёт 1.0, второе 0.5 — доминирование топ-1. При $k=60$ первое даёт 0.0164, второе 0.0161 — решает <em>согласие между ранжировщиками</em>, а не позиция в одном.</p><p>В примере секции 4 документы, найденные обоими методами, уверенно обгоняют найденные одним — даже если в своём списке те стоят выше. Это и есть механизм RRF.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>10. Какой путь развития гибридного поиска правильный?</summary><div class="qa"><p><strong>① Начать с RRF</strong> — работает сразу, без разметки и настройки, даёт +0.05–0.12 NDCG к лучшему из двух источников.</p><p><strong>② С появлением разметки — заменить на LTR</strong>, где скоры BM25 и векторов просто два признака среди прочих. Ещё +0.03–0.07 и способность выучить разные веса для разных типов запросов.</p><p><strong>③ Оптимизацию α во взвешенной сумме пропустить</strong> — она хуже RRF по надёжности и хуже LTR по качеству, занимая промежуточное положение без преимуществ.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>11. Какой прирост даёт cross-encoder и при каком условии?</summary><div class="qa"><p>Крупнейший единичный прирост в пайплайне: в разборе секции 5 <strong>+0.106 NDCG</strong> — больше, чем гибридный retrieval (+0.083) и LTR (+0.057).</p><p><strong>Условие:</strong> его качество ограничено тем, что подали на вход. Реранкер поверх слабого retrieval даёт вдвое меньший прирост.</p><p>Отсюда порядок внедрения: сначала гибридный retrieval, потом реранкер.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>12. Что такое дистилляция cross-encoder в bi-encoder?</summary><div class="qa"><p>Cross-encoder используется как учитель: размечает мягкими скорами много пар «запрос–документ», на этой разметке обучается bi-encoder.</p><p>Ученик не достигает качества учителя, но превосходит обычно обученный bi-encoder на 0.03–0.06 NDCG.</p><p><strong>Ценность в том, что это сдвигает потолок системы</strong> — улучшается recall первой стадии. Особенно полезно, когда бюджет реранкинга ограничен и глубину увеличить нельзя.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>13. Как удешевить реранкинг?</summary><div class="qa"><p><strong>① Уменьшить глубину</strong> — NDCG выходит на плато после топ-50; переход со 100 на 50 экономит половину бюджета при потере 0.005–0.015.</p><p><strong>② Late interaction</strong> (ColBERT-подобные) — качество близко к cross-encoder с частичным предрасчётом.</p><p><strong>③ Дистиллированный маленький cross-encoder</strong> — 6 слоёв вместо 12, потеря 0.01–0.02 при ускорении вдвое.</p><p><strong>④ Реранкинг только «трудных» запросов</strong> — если LTR уверена в порядке, реранкер пропускается; снижает нагрузку на 40–60% при потере менее 0.01.</p></div></details>
+
+<div class="qah">Часть 3. Learning to Rank</div>
+
+<details class="qi"><summary><span class="qch">▶</span>14. Почему pointwise-подход проигрывает?</summary><div class="qa"><p>Он минимизирует ошибку абсолютных значений релевантности по всем документам. Но метрика поиска зависит <em>только от порядка</em>, причём преимущественно верхних позиций.</p><p>Модели безразлично, ошиблась она на позиции 1 или 800 — вклад в MSE одинаков.</p><p>Pairwise исправляет главное — обучается на парах «этот выше того», оптимизируя порядок.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>15. Чего не хватает RankNet и как это чинит LambdaRank?</summary><div class="qa"><p>Для RankNet пара (позиции 1 и 2) и пара (позиции 500 и 501) одинаково важны. Для NDCG первая критична, вторая не влияет вовсе.</p><p>В расчёте секции 6: исправление пары в топе даёт +0.262 DCG, в хвосте — −0.031.</p><p><strong>LambdaRank домножает градиент пары на $|\Delta\text{NDCG}_{ij}|$</strong> — изменение метрики при перестановке. Одна строчка превращает pairwise-обучение в фактическую оптимизацию listwise-метрики, без необходимости дифференцировать недифференцируемую NDCG.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>16. Почему LambdaMART до сих пор стандарт?</summary><div class="qa"><p><strong>① Табличные признаки</strong> — ранжирование это десятки разнородных числовых признаков, где GBDT сильнее нейросетей.<br><strong>② Прямая оптимизация метрики</strong> через $|\Delta\text{NDCG}|$.<br><strong>③ Скорость</strong> — сотни неглубоких деревьев на 1 000 кандидатов за единицы миллисекунд.<br><strong>④ Интерпретируемость</strong> — важности и SHAP объясняют, почему документ поднялся.</p><p>Нейронные ранжировщики выигрывают, когда основной сигнал <em>текстовый</em>. Отсюда связка: LambdaMART на признаках → cross-encoder на тексте.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>17. Какие настройки LambdaMART стоит трогать?</summary><div class="qa"><p><strong>① <code>lambdarank_truncation_level</code></strong> — глубина, до которой считаются пары. Дефолт велик, и модель упорядочивает хвост, не влияющий на NDCG@10. Установка 20–30 ускоряет обучение и слегка улучшает топ.</p><p><strong>② <code>label_gain</code></strong> — насколько градация 4 ценнее градации 3. Дефолт $2^r-1$ даёт резкий рост; при разметке «нерелевантно / частично / релевантно» такой разрыв искажает приоритеты.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>18. Почему сырой CTR как признак вреден?</summary><div class="qa"><p>Документ с 2 показами и 1 кликом даёт CTR 0.5 и обгоняет документ с 40 000 показов и CTR 0.17. Модель поднимет первый наверх на основании двух наблюдений.</p><p><strong>Байесовское сглаживание</strong> к среднему по категории: $\frac{c + \bar c\, m}{n + m}$. При $\bar c = 0.14$, $m = 200$: 0.144 против 0.170 — порядок восстановлен.</p><p>Это тот же shrinkage, что в Gamma-Gamma (тема 2.1) и target encoding (тема 1.1): ненадёжная оценка по малому числу наблюдений стягивается к априорному среднему.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>19. Как поведенческие признаки создают петлю обратной связи?</summary><div class="qa"><p>CTR документа высок, потому что он стоял высоко → модель ставит его ещё выше → новые документы не получают показов и не набирают CTR. Выдача «замерзает».</p><p><strong>Механизмы борьбы:</strong> ① сглаживание CTR при малом числе показов; ② исключение показов, вызванных самой моделью; ③ exploration-бакет, дающий показы новым документам; ④ признак «возраст документа в индексе» и мониторинг доли новых документов в выдаче.</p></div></details>
+
+<div class="qah">Часть 4. Метрики и клики</div>
+
+<details class="qi"><summary><span class="qch">▶</span>20. Какую метрику когда использовать?</summary><div class="qa"><p><strong>NDCG</strong> — дефолт для поиска с градациями релевантности; учитывает порядок и степень.<br><strong>MRR</strong> — когда нужен один ответ: навигационные запросы, QA, автодополнение.<br><strong>MAP</strong> — когда важна полнота: юридический поиск, патенты, подбор кандидатов.<br><strong>ERR</strong> — когда пользователь останавливается, найдя нужное.<br><strong>Recall@k</strong> — обязательна для retrieval-стадии, задаёт потолок системы.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>21. Почему NDCG из разных экспериментов несравнимы?</summary><div class="qa"><p>Четыре источника расхождений: ① <strong>разная глубина</strong> (@5 против @10); ② <strong>разная формула gain</strong> ($2^r-1$ против линейного); ③ <strong>обработка запросов без релевантных документов</strong> (исключать или считать нулём — меняет среднее на 0.05–0.15); ④ <strong>усечение IDCG</strong> при числе релевантных больше $k$.</p><p><strong>Правило:</strong> зафиксировать схему расчёта в коде один раз и указывать её в каждом отчёте.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>22. Почему клик — не метка релевантности?</summary><div class="qa"><p>Клик — конъюнкция двух событий: пользователь <em>посмотрел</em> результат <strong>и</strong> счёл его подходящим.</p><p>$P(\text{click}) = P(\text{examine}\mid\text{pos})\cdot P(\text{relevant}\mid q,d)$.</p><p>Нас интересует второй множитель, наблюдаем произведение. Документ на 10-й позиции не кликнут не потому, что он плох, а потому что до него не долистали.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>23. Что происходит при обучении на сырых кликах?</summary><div class="qa"><p>Модель учится предсказывать клик; клик определяется позицией; позицию определила предыдущая модель. <strong>Новая модель выучивает старую модель, а не релевантность.</strong></p><p>Офлайн-метрики растут, онлайн ничего не меняется.</p><p><strong>Признак проблемы:</strong> сильнейшим признаком в LTR оказывается «позиция в предыдущей выдаче» или сильно с ней коррелирующий.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>24. Насколько сильно позиция искажает оценку?</summary><div class="qa"><p>В расчёте секции 9: документ с истинной релевантностью 0.30 на позиции 1 даёт наблюдаемый CTR 0.300; документ с релевантностью 0.55 на позиции 5 — CTR 0.154.</p><p><strong>По сырым кликам первый выглядит вдвое лучше, хотя реально хуже почти вдвое.</strong> Искажение отношения в 3.6 раза.</p><p>После IPW-коррекции (деление на вероятность просмотра) порядок восстанавливается.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>25. Как измерить position bias дёшево?</summary><div class="qa"><p><strong>Интервенция на паре позиций:</strong> на 1–3% трафика менять местами две соседние позиции. Ухудшение выдачи минимально, данные идеальные — один документ наблюдается на обеих позициях при прочих равных.</p><p>Оценка напрямую: $\frac{p_3}{p_2} = \frac{\text{CTR на поз. 3}}{\text{CTR на поз. 2}}$. Повторяя для соседних пар, собираем всю кривую по цепочке.</p><p><strong>Чужие оценки склонности переносить нельзя</strong> — она зависит от интерфейса, устройства и наличия рекламы. Своя измеряется за 2% трафика на неделю.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>26. Какие ещё смещения есть у кликов кроме позиционного?</summary><div class="qa"><p><strong>Presentation bias</strong> — документ с картинкой и рейтингом кликают чаще при равной релевантности.<br><strong>Trust bias</strong> — пользователи доверяют верхним позициям и кликают их даже при слабой релевантности; это отдельный эффект от простого просмотра.<br><strong>Selection bias</strong> — никогда не показанные документы не имеют кликов вовсе.<br><strong>Caption bias</strong> — сниппет влияет на клик больше содержания документа.</p><p>IPW по позиции лечит только первое, но оно даёт основной вклад — с него и надо начинать.</p></div></details>
+
+<div class="qah">Часть 5. Query understanding и оценка</div>
+
+<details class="qi"><summary><span class="qch">▶</span>27. Почему интент запроса важен для ранжирования?</summary><div class="qa"><p><strong>Навигационный</strong> — нужен один конкретный результат; метрика MRR, разнообразие вредно.<br><strong>Информационный</strong> — нужен обзор; метрика NDCG, разнообразие полезно.<br><strong>Транзакционный</strong> — нужны товары в наличии с ценой; важны бизнес-сигналы.</p><p>Один ранжировщик для всех интентов усредняет противоречивые требования. Признак интента в LTR даёт +0.02–0.05 NDCG — дёшево относительно работы над текстовыми моделями.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>28. Какой вклад даёт query understanding?</summary><div class="qa"><p>В разборе секции 11: исправление опечаток +4.7 п.п. успешных сессий, раскладка и транслит +1.5, определение интента +3.3, извлечение сущностей +2.3. <strong>Итого +11.8 п.п.</strong></p><p>Это сопоставимо с вкладом всех текстовых моделей вместе, при кратно меньшей стоимости разработки и нулевом влиянии на задержку.</p><p><strong>Если поиск запускается с нуля, query understanding даёт больше на единицу усилий, чем любая работа над ранжированием.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>29. Почему interleaving стал стандартом?</summary><div class="qa"><p>Классический A/B в поиске страдает от огромной межпользовательской дисперсии: CTR навигационных запросов 0.9, информационных 0.2, а разница между системами 1–3%.</p><p><strong>Interleaving смешивает выдачи в одном списке</strong> — сравнение происходит внутри одного показа одному пользователю, межпользовательская дисперсия исчезает.</p><p>Требуется в 10–100 раз меньше трафика: эксперимент вместо 3–4 дней укладывается в час. Главное преимущество — <em>скорость итераций</em>: десятки гипотез в неделю вместо двух-трёх.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span>30. Каковы ограничения interleaving?</summary><div class="qa"><p><strong>①</strong> Измеряет относительное предпочтение, а не абсолютные метрики — нельзя узнать, вырос ли CTR на 2%.<br><strong>②</strong> Не измеряет долгосрочные эффекты и метрики уровня сессии.<br><strong>③</strong> Плохо работает при сильно разных выдачах — смешанный список может быть хуже обеих.<br><strong>④</strong> Неприменим для изменений представления (сниппеты, карточки), а не порядка.</p><p><strong>Рабочая схема:</strong> interleaving для быстрого отбора кандидатов, полноценный A/B для финального подтверждения и измерения эффекта на бизнес-метрики.</p></div></details>
+</div>
+
+<div class="pnav">
+  <a href="block9_01_tokenization_embeddings.html" class="prev">← 9.1 Токенизация и эмбеддинги</a>
+  <a href="block9_03_llm.html" class="next">9.3 LLM: как устроены →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+const GRID = { grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} };
+function mk(id, cfg){ const el = document.getElementById(id); if (el && el.getContext) { try { new Chart(el.getContext('2d'), cfg); } catch(e){} } }
+
+// S1 — глубина реранкинга
+mk('c_depth', { type:'line', data:{
+  labels:['10','20','50','100','200','500'],
+  datasets:[
+    {label:'NDCG@10', data:[0.641,0.672,0.694,0.701,0.704,0.705],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:4, yAxisID:'y'},
+    {label:'Стоимость реранкинга, ₽/1000 запросов', data:[1.6,3.2,8.0,16.0,32.0,80.0],
+     borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.08)', fill:true, borderWidth:2.4, tension:.3, pointRadius:4, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Глубина реранкинга (топ-k)',font:{size:11}}},
+             y:{...GRID, position:'left', min:0.62, max:0.72, title:{display:true,text:'NDCG@10',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'₽/1000 запр.',font:{size:10}}}}}});
+
+// S3 — HNSW
+mk('c_ann', { type:'line', data:{
+  labels:['16','40','64','128','256','400'],
+  datasets:[
+    {label:'Recall индекса', data:[0.812,0.910,0.947,0.977,0.989,0.994],
+     borderColor:'#0891b2', backgroundColor:'transparent', borderWidth:2.4, tension:.3, pointRadius:4, yAxisID:'y'},
+    {label:'NDCG@10', data:[0.571,0.594,0.603,0.609,0.610,0.611],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.8, tension:.3, pointRadius:4, yAxisID:'y'},
+    {label:'Время, мс', data:[3,6,9,14,26,41],
+     borderColor:'#d97706', backgroundColor:'transparent', borderWidth:2.2, borderDash:[5,4], tension:.3, pointRadius:4, yAxisID:'y1'}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'efSearch',font:{size:11}}},
+             y:{...GRID, position:'left', min:0.55, max:1.0, title:{display:true,text:'Recall / NDCG',font:{size:10}}},
+             y1:{...GRID, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'мс',font:{size:10}}}}}});
+
+// S4 — гибрид по типам запросов
+mk('c_hybrid', { type:'bar', data:{
+  labels:['Точные\nсовпадения','Короткие\nключевые','Смешанные','Перефразировки','Описательные'],
+  datasets:[
+    {label:'BM25', data:[0.96,0.88,0.71,0.42,0.31], backgroundColor:'#93c5fd', borderRadius:5},
+    {label:'Вектора', data:[0.38,0.64,0.79,0.87,0.91], backgroundColor:'#6ee7b7', borderRadius:5},
+    {label:'Гибрид (RRF)', data:[0.95,0.91,0.88,0.89,0.92], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:1, title:{display:true,text:'Recall@1000',font:{size:11}}}}}});
+
+// S5 — вклад стадий
+mk('c_stages', { type:'bar', data:{
+  labels:['Только\nBM25','Только\nвектора','Гибрид\n(RRF)','+ LTR','+ Cross-\nencoder'],
+  datasets:[{label:'NDCG@10', data:[0.412,0.448,0.531,0.588,0.694],
+    backgroundColor:['#cbd5e1','#a5f3fc','#6ee7b7','#34d399','#059669'], borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:GRID, y:{...GRID, min:0.35, max:0.75, title:{display:true,text:'NDCG@10',font:{size:11}}}}}});
+
+// S6 — вклад пары в NDCG
+(function(){
+  const pairs = [[1,2],[2,3],[3,5],[5,10],[10,20],[20,50],[50,100]];
+  const vals = pairs.map(([a,b]) => {
+    const g = 7;   // gain для градации 3
+    return +(g*(1/Math.log2(a+1) - 1/Math.log2(b+1))).toFixed(3);
+  });
+  mk('c_lambda', { type:'bar', data:{ labels: pairs.map(p=>p[0]+'↔'+p[1]),
+    datasets:[{label:'|ΔNDCG| при перестановке пары', data:vals,
+      backgroundColor:vals.map(v => v > 1 ? '#059669' : v > 0.3 ? '#34d399' : '#cbd5e1'), borderRadius:6}]},
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{...GRID, title:{display:true,text:'Пара позиций',font:{size:11}}},
+               y:{...GRID, title:{display:true,text:'|ΔDCG|',font:{size:11}}}}}});
+})();
+
+// S8 — метрики на разных выдачах
+mk('c_metrics', { type:'bar', data:{
+  labels:['[3,2,1,0,0]\nидеал','[2,0,3,1,0]\nразброс','[0,0,3,2,1]\nтоп пуст','[3,0,0,0,0]\nодин сверху'],
+  datasets:[
+    {label:'NDCG@5', data:[1.00,0.738,0.634,0.745], backgroundColor:'#059669', borderRadius:5},
+    {label:'MRR', data:[1.00,1.00,0.333,1.00], backgroundColor:'#6ee7b7', borderRadius:5},
+    {label:'MAP', data:[1.00,0.806,0.478,1.00], backgroundColor:'#a5f3fc', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, min:0, max:1.05, title:{display:true,text:'Значение метрики',font:{size:11}}}}}});
+
+// S9 — position bias
+mk('c_pos', { type:'line', data:{
+  labels:['1','2','3','4','5','6','7','8','9','10'],
+  datasets:[
+    {label:'P(examine | позиция)', data:[1.00,0.62,0.44,0.34,0.28,0.24,0.20,0.17,0.15,0.13],
+     borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.08)', fill:true, borderWidth:2.8, tension:.3, pointRadius:4},
+    {label:'Наблюдаемый CTR при P(rel)=0.4', data:[0.40,0.248,0.176,0.136,0.112,0.096,0.080,0.068,0.060,0.052],
+     borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.6, tension:.3, pointRadius:4},
+    {label:'Истинная релевантность 0.4', data:Array(10).fill(0.4),
+     borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:1.6, borderDash:[5,4], pointRadius:0}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:{...GRID, title:{display:true,text:'Позиция в выдаче',font:{size:11}}},
+             y:{...GRID, min:0, max:1.05, title:{display:true,text:'Вероятность',font:{size:11}}}}}});
+
+// S12 — A/B vs interleaving
+mk('c_inter', { type:'bar', data:{
+  labels:['Эффект 5%','Эффект 3%','Эффект 2%','Эффект 1%','Эффект 0.5%'],
+  datasets:[
+    {label:'A/B, тыс. запросов на группу', data:[40,111,250,1000,4000], backgroundColor:'#fca5a5', borderRadius:5},
+    {label:'Interleaving, тыс. запросов', data:[1.5,4,9,36,145], backgroundColor:'#059669', borderRadius:5}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}},
+    scales:{ x:GRID, y:{...GRID, type:'logarithmic', title:{display:true,text:'тыс. запросов (лог. шкала)',font:{size:11}}}}}});
+
+// ============ ИНТЕРАКТИВ: BM25 ============
+function updBM(){
+  const k1 = +document.getElementById('sl_k1').value / 10;
+  const b  = +document.getElementById('sl_b').value / 100;
+  const dl = +document.getElementById('sl_dl').value;
+  const tf = +document.getElementById('sl_tf').value;
+  document.getElementById('out_k1').textContent = k1.toFixed(1);
+  document.getElementById('out_b').textContent  = b.toFixed(2);
+  document.getElementById('out_dl').textContent = dl;
+  document.getElementById('out_tf').textContent = tf;
+
+  const AVGDL = 240, N = 1e6, DF = 40000;
+  const idf = Math.log((N - DF + 0.5) / (DF + 0.5) + 1);
+  const norm = 1 - b + b * dl / AVGDL;
+  const satur = tf * (k1 + 1) / (tf + k1 * norm);
+  const score = idf * satur;
+
+  // вклад следующего вхождения
+  const satur2 = (tf+1) * (k1 + 1) / ((tf+1) + k1 * norm);
+  const marginal = idf * (satur2 - satur);
+
+  let note;
+  if (k1 < 0.3)      note = 'При малом $k_1$ насыщение почти мгновенное: важен сам факт наличия слова, а не частота. Подходит для коротких документов вроде названий товаров.';
+  else if (k1 > 2.2) note = 'При большом $k_1$ вклад почти линеен по частоте — документ с 20 вхождениями будет заметно опережать документ с 10. Рискованно: провоцирует keyword stuffing.';
+  else if (b < 0.25) note = 'Низкий $b$ почти игнорирует длину документа. Разумно для однородных коротких текстов; для разнородного корпуса длинные документы получат преимущество.';
+  else if (b > 0.9)  note = 'Высокий $b$ сильно штрафует длинные документы. Полезно против «водянистых» текстов, но может понижать подробные качественные документы.';
+  else               note = 'Параметры в типичном рабочем диапазоне. Дальше подбирай по своей асессорской выборке — прирост 0.02–0.05 NDCG вполне реалистичен.';
+
+  document.getElementById('out_bm').innerHTML =
+    'IDF = <b>' + idf.toFixed(2) + '</b> · нормировка длины = <b>' + norm.toFixed(3) + '</b> · ' +
+    'фактор насыщения = <b>' + satur.toFixed(3) + '</b><br>' +
+    'BM25 по этому слову: <span style="font-size:20px;font-weight:800;color:#047857">' + score.toFixed(2) + '</span><br>' +
+    'Вклад <b>следующего</b> вхождения слова: <b>+' + marginal.toFixed(3) + '</b> ' +
+    '<span style="font-size:12px;">(' + (marginal / (score/tf) * 100).toFixed(0) + '% от среднего вклада имеющихся)</span><br>' +
+    '<span style="font-size:12.5px;">' + note + '</span>';
+}
+updBM();
+
+// активная секция в навигации
+(function(){
+  const links = Array.from(document.querySelectorAll('.snav a'));
+  const secs  = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function onScroll(){
+    let cur = 0;
+    secs.forEach((s,i)=>{ if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a,i)=> a.classList.toggle('act', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

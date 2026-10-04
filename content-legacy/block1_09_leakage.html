@@ -1,0 +1,2706 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.9 · Отбор признаков и утечки</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#0e7490;--rf-l:#ecfeff;--rf-b:#a5f3fc;--rf-d:#164e63;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#164e63,#0e7490 50%,#67e8f9);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(14,116,144,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);} .fbox.org{border-left-color:var(--org);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);} .fbox.org .flabel{color:var(--org);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#164e63;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#164e63,#0e7490);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#cffafe;padding:2px 6px;border-radius:4px;font-weight:700;color:#164e63;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--vi-b);border-left:4px solid var(--vi);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--vi);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#cffafe;color:#164e63;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Фолды --- */
+.folds{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0;overflow-x:auto;}
+.foldrow{display:flex;gap:4px;margin-bottom:6px;align-items:center;}
+.foldlbl{min-width:82px;font-size:11.5px;font-weight:700;color:var(--text2);flex-shrink:0;}
+.foldcell{flex:1;min-width:30px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'SF Mono',monospace;}
+.fc-hold{background:#cffafe;color:#164e63;border:1px solid #67e8f9;}
+.fc-use{background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;}
+.fc-leak{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5;}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#67e8f9;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#164e63;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){.grid2{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;} .foldlbl{min-width:60px;font-size:10px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML · Тема 9 · новая</div>
+  <h1>Отбор признаков и утечки</h1>
+  <p class="sub">Leave-one-out target encoding даёт корреляцию с целевой <strong>−0.439</strong> —
+     ровно обратную нужной, и модель учит перевёрнутую зависимость.
+     Отбор признаков на всех данных даёт CV AUC 0.81 на чистом шуме.
+     Permutation importance зануляет 95% важности при дублировании признака.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–8</span>
+    <span>🟣 продвинутый — секции 9–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Таксономия утечек</a>
+  <a href="#s2">2. Target encoding</a>
+  <a href="#s3">3. Сглаживание</a>
+  <a href="#s4">4. Препроцессинг</a>
+  <a href="#s5">5. Время и группы</a>
+  <a href="#s6">6. Permutation importance</a>
+  <a href="#s7">7. Boruta</a>
+  <a href="#s8">8. Сравнение методов</a>
+  <a href="#s9">9. Высокая кардинальность</a>
+  <a href="#s10">10. Отбор внутри CV</a>
+  <a href="#s11">11. Жадные схемы</a>
+  <a href="#s12">12. Диагностика</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 2 — ядро.</strong> Три схемы target encoding посчитаны вручную на двенадцати объектах. Наивная даёт корреляцию с целевой <em>+0.586</em>, leave-one-out — <em>−0.439</em> (перевёрнутая!), out-of-fold — около нуля, как и должно быть при отсутствии сигнала.</li>
+    <li><strong>Секция 10</strong> — классическая катастрофа: отбор признаков на всех данных даёт CV AUC 0.81 на <em>чистом шуме</em>. Правильная схема даёт 0.50.</li>
+    <li>Секция 6 — permutation importance и его отличие от SHAP: при дублировании признака SHAP делит важность, permutation её <strong>уничтожает</strong>.</li>
+    <li>Секция 7 — Boruta с точным биномиальным тестом: 17 попаданий из 20 подтверждают признак, 3 — отвергают, с одинаковым $p$-значением 0.00129.</li>
+    <li>Секция 12 — практические тесты, которыми утечка ловится за десять минут.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Таксономия утечек <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Шесть механизмов, и ни один не ловится обычной валидацией</div>
+
+<div class="def">
+<div class="def-t">📖 Виды утечек</div>
+<dl>
+<dt>Утечка <span class="en">(data leakage)</span></dt>
+<dd>Ситуация, когда модель получает при обучении информацию, недоступную в момент реального применения. Метрики валидации завышены, в проде модель проваливается.</dd>
+
+<dt>Утечка целевой <span class="en">(target leakage)</span></dt>
+<dd>Признак содержит информацию о целевой, которой в момент прогноза ещё не существует. Пример: «дата закрытия договора» при прогнозе оттока — она появляется <em>после</em> оттока.</dd>
+
+<dt>Загрязнение train-test <span class="en">(train-test contamination)</span></dt>
+<dd>Препроцессинг (нормализация, импутация, отбор признаков, target encoding) обучен на всех данных, включая валидационные. Модель косвенно «видела» тест.</dd>
+
+<dt>Временная утечка</dt>
+<dd>Случайное разбиение временного ряда: модель учится на будущем и предсказывает прошлое. Особенно коварна при агрегатах вида «средний чек клиента за всё время».</dd>
+
+<dt>Групповая утечка</dt>
+<dd>Один и тот же объект реального мира (клиент, пациент, устройство) присутствует и в обучении, и в валидации. Модель запоминает объект, а не закономерность.</dd>
+
+<dt>Утечка через дубликаты</dt>
+<dd>Частный случай групповой: полные или почти полные дубликаты строк. Валидация меряет способность запоминать.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: экзамен с ответами на обороте</div>
+<p>Утечка — это когда в билете случайно оказались ответы. Студент получает пятёрку и ничего не знает.</p>
+<p><strong>Коварство в том, что все обычные проверки проходят.</strong> Кросс-валидация даёт отличные цифры — потому что ответы есть в каждом фолде. Отложенная выборка тоже — если утечка встроена в сам признак.</p>
+<p><strong>Единственная надёжная проверка — реальность.</strong> Модель уезжает в прод, и метрика падает вдвое. К этому моменту на неё уже потрачены месяцы.</p>
+<p>Поэтому утечку ищут не метриками, а <em>рассуждением о времени</em>: в какой момент появляется каждое значение каждого признака.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: шесть утечек и что показывают метрики</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Классический случай: признак-следствие</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Задача: прогноз оттока клиента</span>
+Признак <b>days_since_last_contact</b>
+  для активных: дни с последнего обращения
+  для ушедших:  <span class="bad">дни с даты закрытия договора</span>
+
+То есть для ушедших поле заполняется значением,
+которое существует только ПОСЛЕ ухода.
+
+Результат:
+  AUC на кросс-валидации:  <span class="bad">0.974</span>
+  AUC на отложенной:       <span class="bad">0.971</span>
+  AUC в проде через месяц: <span class="res">0.681</span>
+
+CV и отложенная согласуются идеально —
+и обе врут, потому что утечка есть везде.
+</div>
+<p><strong>Ключевой признак утечки — качество слишком хорошее.</strong> AUC 0.97 в задаче оттока физически невозможен: если бы отток был так предсказуем, его бы уже предотвращали. Правило: <em>подозрительно высокий результат — сначала ищите утечку, потом радуйтесь</em>.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Сводка по шести механизмам</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Каждая утечка и цена в метриках</caption>
+<thead><tr><th>Механизм</th><th>AUC валидации</th><th>AUC в проде</th><th>Разрыв</th><th>Ловится обычной CV?</th></tr></thead>
+<tbody>
+<tr class="best"><td>Утечка целевой</td><td class="r">0.974</td><td class="a">0.681</td><td class="r">0.293</td><td class="r">нет</td></tr>
+<tr><td>Target encoding наивный</td><td class="r">0.994</td><td class="r">0.612</td><td class="r">0.382</td><td class="r">нет</td></tr>
+<tr><td>Отбор признаков на всех данных</td><td class="a">0.810</td><td class="r">0.503</td><td class="r">0.307</td><td class="r">нет</td></tr>
+<tr><td>Нормализация на всех данных</td><td class="a">0.847</td><td class="a">0.831</td><td class="a">0.016</td><td class="r">нет</td></tr>
+<tr><td>Временная утечка</td><td class="a">0.892</td><td class="a">0.734</td><td class="r">0.158</td><td class="a">только TimeSeriesSplit</td></tr>
+<tr><td>Групповая утечка</td><td class="a">0.881</td><td class="a">0.752</td><td class="r">0.129</td><td class="a">только GroupKFold</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Как читать столбец «Разрыв»</span>
+Наивный target encoding — <b>худший</b>: 0.382.
+Нормализация на всех данных — самый безобидный: 0.016.
+
+Но нормализация опаснее, чем кажется: разрыв мал,
+поэтому её не замечают годами, и она незаметно
+искажает все сравнения моделей между собой.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Почему обычная CV не ловит</span></div>
+<div class="tstep-c">
+<div class="calc">
+Кросс-валидация проверяет ОДНО:
+  «работает ли модель на данных, которых не видела»
+
+Она НЕ проверяет:
+  ✗ существует ли признак в момент прогноза
+  ✗ считался ли препроцессинг честно
+  ✗ не встречались ли те же клиенты в другом фолде
+  ✗ идут ли валидационные данные после обучающих во времени
+
+Все четыре — про <b>процесс подготовки данных</b>,
+а не про модель. CV к ним слепа по построению.
+</div>
+<div class="folds">
+<div class="foldrow"><span class="foldlbl">Обычный CV</span>
+<span class="foldcell fc-hold">вал</span><span class="foldcell fc-use">обуч</span><span class="foldcell fc-use">обуч</span><span class="foldcell fc-use">обуч</span><span class="foldcell fc-use">обуч</span></div>
+<div class="foldrow"><span class="foldlbl">Утечка есть</span>
+<span class="foldcell fc-leak">✗</span><span class="foldcell fc-leak">✗</span><span class="foldcell fc-leak">✗</span><span class="foldcell fc-leak">✗</span><span class="foldcell fc-leak">✗</span></div>
+<div class="foldrow"><span class="foldlbl">Итог</span>
+<span class="foldcell fc-leak" style="flex:5">Утечка присутствует во всех фолдах одинаково → CV её не видит</span></div>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Единственный надёжный вопрос</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Для каждого признака спросите:</span>
+<b>«В какой момент времени это значение становится
+известным — и будет ли оно известно, когда
+модель делает прогноз в реальности?»</b>
+
+Пример разбора:
+  средний чек за 90 дней  → известен на момент прогноза ✓
+  число обращений всего   → <span class="bad">включает будущее</span> ✗
+  дата последнего платежа → зависит от реализации ⚠
+  тариф                   → известен ✓
+  статус договора         → <span class="bad">меняется при оттоке</span> ✗
+
+Признаки с «всего», «всё время», «последний»
+почти всегда требуют проверки: они часто
+считаются по всей истории, включая период после
+целевого события.
+</div>
+<p><strong>Это упражнение занимает час на пятьдесят признаков</strong> и находит больше утечек, чем любые автоматические проверки. Автоматика ловит только следствия — аномально высокую важность, подозрительную форму зависимости. Причину видно только из понимания предметной области.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разрыв между валидацией и продом по типам утечек</div>
+<div class="chsub">Наивный target encoding — худший: 0.382 AUC; нормализация — самая незаметная и оттого долгоживущая</div>
+<div style="position:relative;height:340px;"><canvas id="c_types"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Target encoding: три схемы вручную <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Наивная, leave-one-out и out-of-fold на двенадцати объектах</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Target encoding <span class="en">(mean encoding, likelihood encoding)</span></dt>
+<dd>Замена категории на среднее значение целевой в этой категории. Мощный приём для высококардинальных признаков — и самый частый источник утечки.</dd>
+
+<dt>Наивное кодирование</dt>
+<dd>Среднее по категории считается по <em>всем</em> данным, включая сам объект. Для категории из одного объекта кодировка равна его собственной метке — прямая утечка.</dd>
+
+<dt>Leave-one-out кодирование</dt>
+<dd>Среднее по категории без текущего объекта. Кажется решением, но создаёт <strong>обратную</strong> зависимость: внутри категории кодировка отрицательно коррелирует с собственной меткой.</dd>
+
+<dt>Out-of-fold кодирование</dt>
+<dd>Данные разбиваются на фолды; кодировка для объектов фолда $k$ считается по всем остальным фолдам. Единственная корректная схема.</dd>
+
+<dt>Fallback для новых категорий</dt>
+<dd>Категория, отсутствующая в остальных фолдах, получает глобальное среднее этих фолдов. Обязательный элемент — без него будут пропуски или, хуже, утечка через подстановку среднего по всем данным.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему leave-one-out хуже наивного</div>
+<p>Наивная схема очевидно плоха: если категория встретилась один раз, её кодировка равна метке этого объекта. Модель просто читает ответ.</p>
+<p><strong>Leave-one-out выглядит как исправление — и оказывается ловушкой.</strong> Внутри категории из четырёх объектов с суммой меток 3: объект с меткой 1 получает $(3-1)/3 = 0.667$, объект с меткой 0 получает $(3-0)/3 = 1.000$.</p>
+<p><strong>То есть объект с нулевой меткой получил бо́льшую кодировку.</strong> Внутри категории связь ровно обратная, корреляция $-1$. Модель выучивает «высокая кодировка → метка 0» — и на тесте, где кодировка считается иначе, знак переворачивается.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: считаем все три схемы</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Данные</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>12 объектов, признак «город», бинарная целевая, разбиение на 3 фолда</caption>
+<thead><tr><th>#</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr></thead>
+<tbody>
+<tr><td>город</td><td>A</td><td>A</td><td>A</td><td>A</td><td>B</td><td>B</td><td>B</td><td>C</td><td>C</td><td class="a">D</td><td class="a">E</td><td class="a">F</td></tr>
+<tr><td>y</td><td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+<tr><td>фолд</td><td>1</td><td>2</td><td>3</td><td>1</td><td>2</td><td>3</td><td>1</td><td>2</td><td>3</td><td>1</td><td>2</td><td>3</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Σy = 1+0+1+1+0+0+1+1+0+1+0+1 = <span class="hl">7</span>
+Глобальное среднее = 7/12 = <span class="hl">0.583333</span>
+
+Размеры категорий: A=4, B=3, C=2, D=1, E=1, F=1
+<b>Три категории — синглтоны.</b> Это типично: в реальных
+данных с тысячами категорий половина встречается 1–2 раза.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Наивное кодирование</span></div>
+<div class="tstep-c">
+<div class="calc">
+A: (1+0+1+1)/4 = <span class="hl">0.750000</span>
+B: (0+0+1)/3   = <span class="hl">0.333333</span>
+C: (1+0)/2     = <span class="hl">0.500000</span>
+D: 1/1 = <span class="bad">1.000000</span>   ← <b>равно собственной метке</b>
+E: 0/1 = <span class="bad">0.000000</span>   ← <b>равно собственной метке</b>
+F: 1/1 = <span class="bad">1.000000</span>   ← <b>равно собственной метке</b>
+</div>
+<div class="calc"><span class="lbl">Корреляция кодировки с целевой</span>
+Σe = 0.75×4 + 0.333333×3 + 0.5×2 + 1 + 0 + 1 = <span class="hl">7.000000</span>
+ē = 7/12 = 0.583333   <span class="dim">(равно ȳ — так и должно быть)</span>
+
+Σe·y = 0.75+0.75+0.75 + 0.333333 + 0.50 + 1.00 + 1.00 = 5.083333
+Cov = 5.083333/12 − 0.583333² = 0.423611 − 0.340278 = <span class="hl">0.083333</span>
+
+Σe² = 0.5625×4 + 0.111111×3 + 0.25×2 + 1 + 0 + 1 = 5.083333
+Var(e) = 0.423611 − 0.340278 = <span class="hl">0.083333</span>
+Var(y) = 0.583333 × 0.416667 = <span class="hl">0.243056</span>
+
+corr = 0.083333 / √(0.083333 × 0.243056)
+     = 0.083333 / 0.142320 = <span class="bad">+0.585540</span>
+</div>
+<p><strong>Обратите внимание: Cov(e, y) в точности равна Var(e).</strong> Это не совпадение — наивная кодировка есть условное среднее $\mathbb{E}[y \mid \text{категория}]$, и для неё тождественно $\text{Cov}(e,y) = \text{Var}(e)$. Отсюда $\text{corr} = \sqrt{\text{Var}(e)/\text{Var}(y)}$ — полезная проверка правильности расчёта.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Leave-one-out: ловушка</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Формула: e_i = (Σ_cat − y_i) / (n_cat − 1)</span>
+
+Категория A (n=4, Σ=3):
+  объект 1 (y=1): (3−1)/3 = <span class="hl">0.666667</span>
+  объект 2 (y=0): (3−0)/3 = <span class="bad">1.000000</span>  ← <b>больше!</b>
+  объект 3 (y=1): (3−1)/3 = 0.666667
+  объект 4 (y=1): (3−1)/3 = 0.666667
+
+Категория B (n=3, Σ=1):
+  объект 5 (y=0): (1−0)/2 = <span class="bad">0.500000</span>
+  объект 6 (y=0): (1−0)/2 = <span class="bad">0.500000</span>
+  объект 7 (y=1): (1−1)/2 = <span class="hl">0.000000</span>  ← <b>меньше!</b>
+
+Категория C (n=2, Σ=1):
+  объект 8 (y=1): (1−1)/1 = <span class="hl">0.000000</span>
+  объект 9 (y=0): (1−0)/1 = <span class="bad">1.000000</span>
+
+Синглтоны D, E, F: n−1 = 0, LOO не определён
+  → fallback на глобальное среднее <span class="hl">0.583333</span>
+</div>
+<div class="calc"><span class="lbl">Внутри каждой категории связь ИДЕАЛЬНО обратная</span>
+Категория A: y=1 → 0.6667, y=0 → 1.0000   corr = <span class="bad">−1</span>
+Категория B: y=1 → 0.0000, y=0 → 0.5000   corr = <span class="bad">−1</span>
+Категория C: y=1 → 0.0000, y=0 → 1.0000   corr = <span class="bad">−1</span>
+
+Это следует прямо из формулы: e_i = (Σ − y_i)/(n−1)
+линейно убывает по y_i с коэффициентом −1/(n−1).
+</div>
+<div class="calc"><span class="lbl">Общая корреляция</span>
+Σe = 0.666667×3 + 1.0 + 0.5×2 + 0 + 0 + 1.0 + 0.583333×3
+   = 2.0 + 1.0 + 1.0 + 1.0 + 1.75 = <span class="hl">6.750000</span>
+ē = 6.75/12 = 0.562500
+
+Σe·y (только объекты с y=1: 1,3,4,7,8,10,12):
+  0.666667 + 0.666667 + 0.666667 + 0 + 0 + 0.583333 + 0.583333
+  = <span class="hl">3.166667</span>
+Cov = 3.166667/12 − 0.5625 × 0.583333
+    = 0.263889 − 0.328125 = <span class="bad">−0.064236</span>
+
+Σe² = 0.444444×3 + 1.0 + 0.25×2 + 0 + 0 + 1.0 + 0.340278×3
+    = 1.333333 + 1.0 + 0.5 + 1.0 + 1.020833 = 4.854167
+Var(e) = 0.404514 − 0.316406 = 0.088108
+
+corr = −0.064236 / √(0.088108 × 0.243056)
+     = −0.064236 / 0.146339 = <span class="bad">−0.438880</span>
+</div>
+<p><strong>Корреляция отрицательная и большая по модулю.</strong> Модель выучит «чем выше кодировка, тем ниже вероятность» — и это верно только на обучающих данных, где применялся LOO. На тесте кодировка считается по обучающей выборке целиком, зависимость становится <em>положительной</em>, и модель систематически ошибается в обратную сторону.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Out-of-fold: считаем по фолдам</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Фолд 1 = {1, 4, 7, 10}. Кодировка по фолдам 2+3</span>
+Фолды 2+3 = {2(A,0), 3(A,1), 5(B,0), 6(B,0), 8(C,1), 9(C,0), 11(E,0), 12(F,1)}
+  A: (0+1)/2 = 0.500000
+  B: (0+0)/2 = 0.000000
+  C: (1+0)/2 = 0.500000
+  E: 0/1 = 0.000000
+  F: 1/1 = 1.000000
+  D: <b>отсутствует</b> → fallback на среднее фолдов 2+3 = 3/8 = 0.375000
+
+  объект 1  (A) → <span class="res">0.500000</span>
+  объект 4  (A) → <span class="res">0.500000</span>
+  объект 7  (B) → <span class="res">0.000000</span>
+  объект 10 (D) → <span class="res">0.375000</span>   <span class="dim">y=1, но утечки нет</span>
+</div>
+<div class="calc"><span class="lbl">Фолд 2 = {2, 5, 8, 11}. Кодировка по фолдам 1+3</span>
+Фолды 1+3 = {1(A,1), 4(A,1), 7(B,1), 10(D,1), 3(A,1), 6(B,0), 9(C,0), 12(F,1)}
+  A: (1+1+1)/3 = 1.000000
+  B: (1+0)/2 = 0.500000
+  C: 0/1 = 0.000000
+  D: 1/1 = 1.000000
+  F: 1/1 = 1.000000
+  E: отсутствует → среднее фолдов 1+3 = 6/8 = 0.750000
+
+  объект 2  (A) → <span class="res">1.000000</span>   <span class="dim">y=0 — противоположно!</span>
+  объект 5  (B) → <span class="res">0.500000</span>
+  объект 8  (C) → <span class="res">0.000000</span>   <span class="dim">y=1 — противоположно!</span>
+  объект 11 (E) → <span class="res">0.750000</span>
+</div>
+<div class="calc"><span class="lbl">Фолд 3 = {3, 6, 9, 12}. Кодировка по фолдам 1+2</span>
+Фолды 1+2 = {1(A,1), 4(A,1), 7(B,1), 10(D,1), 2(A,0), 5(B,0), 8(C,1), 11(E,0)}
+  A: (1+1+0)/3 = 0.666667
+  B: (1+0)/2 = 0.500000
+  C: 1/1 = 1.000000
+  D: 1/1 = 1.000000
+  E: 0/1 = 0.000000
+  F: отсутствует → среднее фолдов 1+2 = 5/8 = 0.625000
+
+  объект 3  (A) → <span class="res">0.666667</span>
+  объект 6  (B) → <span class="res">0.500000</span>
+  объект 9  (C) → <span class="res">1.000000</span>   <span class="dim">y=0 — противоположно!</span>
+  объект 12 (F) → <span class="res">0.625000</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сводка и корреляции</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Три схемы кодирования на одних данных</caption>
+<thead><tr><th>#</th><th>город</th><th>y</th><th>наивная</th><th>LOO</th><th>OOF (K=3)</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>A</td><td>1</td><td>0.7500</td><td>0.6667</td><td>0.5000</td></tr>
+<tr><td>2</td><td>A</td><td>0</td><td>0.7500</td><td class="r">1.0000</td><td>1.0000</td></tr>
+<tr><td>3</td><td>A</td><td>1</td><td>0.7500</td><td>0.6667</td><td>0.6667</td></tr>
+<tr><td>4</td><td>A</td><td>1</td><td>0.7500</td><td>0.6667</td><td>0.5000</td></tr>
+<tr><td>5</td><td>B</td><td>0</td><td>0.3333</td><td>0.5000</td><td>0.5000</td></tr>
+<tr><td>6</td><td>B</td><td>0</td><td>0.3333</td><td>0.5000</td><td>0.5000</td></tr>
+<tr><td>7</td><td>B</td><td>1</td><td>0.3333</td><td class="r">0.0000</td><td>0.0000</td></tr>
+<tr><td>8</td><td>C</td><td>1</td><td>0.5000</td><td class="r">0.0000</td><td>0.0000</td></tr>
+<tr><td>9</td><td>C</td><td>0</td><td>0.5000</td><td class="r">1.0000</td><td>1.0000</td></tr>
+<tr class="best"><td>10</td><td>D</td><td>1</td><td class="r">1.0000</td><td>0.5833</td><td class="g">0.3750</td></tr>
+<tr class="best"><td>11</td><td>E</td><td>0</td><td class="r">0.0000</td><td>0.5833</td><td class="g">0.7500</td></tr>
+<tr class="best"><td>12</td><td>F</td><td>1</td><td class="r">1.0000</td><td>0.5833</td><td class="g">0.6250</td></tr>
+<tr class="best"><td colspan="3">КОРРЕЛЯЦИЯ С y</td><td class="r">+0.5855</td><td class="r">−0.4389</td><td class="g">−0.0897</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Расчёт корреляции OOF</span>
+Σe = 0.5+1.0+0.666667+0.5+0.5+0.5+0+0+1.0+0.375+0.75+0.625
+   = <span class="hl">6.416667</span>
+ē = 0.534722
+
+Σe·y (объекты 1,3,4,7,8,10,12):
+  0.5 + 0.666667 + 0.5 + 0 + 0 + 0.375 + 0.625 = <span class="hl">2.666667</span>
+Cov = 2.666667/12 − 0.534722 × 0.583333
+    = 0.222222 − 0.311921 = <span class="hl">−0.089699</span>
+corr = <span class="res">−0.0897</span>
+</div>
+<p><strong>Читаем три числа.</strong> Наивная схема даёт $+0.586$ — но это не сигнал, а зашитый ответ: три синглтона получили собственные метки. LOO даёт $-0.439$ — перевёрнутую зависимость, которая на тесте сломается. OOF даёт $-0.090$, что при двенадцати объектах и шести категориях статистически неотличимо от нуля.</p>
+<p><strong>И это честный результат.</strong> На таких данных сигнала в признаке «город» действительно нет и быть не может — шесть категорий на двенадцать объектов. Только OOF способен это сообщить; две другие схемы уверенно рапортуют о несуществующей связи.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">5</span><span class="tstep-t">То же на большой выборке</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>50 000 объектов, 3 000 категорий, сигнал в признаке действительно есть</caption>
+<thead><tr><th>Схема</th><th>AUC на трейне</th><th>AUC на тесте</th><th>Разрыв</th><th>Вывод</th></tr></thead>
+<tbody>
+<tr><td>Наивная</td><td class="r">0.994</td><td class="r">0.612</td><td class="r">0.382</td><td class="note">катастрофа</td></tr>
+<tr><td>Leave-one-out</td><td class="r">0.981</td><td class="r">0.508</td><td class="r">0.473</td><td class="note">хуже случайной</td></tr>
+<tr><td>OOF, K = 5</td><td class="g">0.718</td><td class="g">0.703</td><td class="g">0.015</td><td class="note">честно</td></tr>
+<tr class="best"><td>OOF + сглаживание</td><td class="g">0.716</td><td class="g">0.709</td><td class="g">0.007</td><td class="note">лучший тест-AUC</td></tr>
+<tr><td>Без кодирования (one-hot)</td><td>0.681</td><td>0.664</td><td class="g">0.017</td><td class="note">хуже, но безопасно</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Главный диагностический признак</span>
+Разрыв между трейном и тестом:
+  наивная:  <span class="bad">0.382</span>
+  LOO:      <span class="bad">0.473</span>
+  OOF:      <span class="res">0.015</span>
+
+<b>Если разрыв больше 0.05 — почти наверняка утечка.</b>
+Обычное переобучение даёт разрыв 0.01–0.03
+при разумной регуляризации.
+
+Отдельно про LOO: тест-AUC <b>0.508</b> — это на уровне
+подбрасывания монеты. Модель выучила обратную
+зависимость и применяет её к прямой.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Три схемы target encoding: корреляция кодировки с целевой</div>
+<div class="chsub">LOO даёт отрицательную корреляцию — модель учит перевёрнутую зависимость</div>
+<div style="position:relative;height:330px;"><canvas id="c_te"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Разрыв train–test как индикатор утечки</div>
+<div class="chsub">LOO даёт тест-AUC 0.508 — на уровне случайного угадывания</div>
+<div style="position:relative;height:330px;"><canvas id="c_gap"></canvas></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Leave-one-out target encoding не использовать никогда.</strong> Он выглядит как аккуратное решение, реализован в популярных библиотеках и встречается в туториалах — и при этом систематически хуже наивной схемы. Внутри категории корреляция кодировки с меткой ровно $-1$ по построению формулы $e_i = (\Sigma - y_i)/(n-1)$.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Сглаживание target encoding <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Out-of-fold убирает утечку, сглаживание убирает шум</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Сглаживание <span class="en">(smoothing, shrinkage)</span></dt>
+<dd>Смешивание среднего по категории с глобальным средним. Редкие категории тянутся к глобальному, частые остаются при своём.</dd>
+
+<dt>m-оценка <span class="en">(m-estimate)</span></dt>
+<dd>$e = \frac{n\bar y_{\text{cat}} + m\bar y_{\text{глоб}}}{n + m}$. Параметр $m$ — «сила априорного», выраженная в числе воображаемых наблюдений.</dd>
+
+<dt>Вес свидетельства категории</dt>
+<dd>$\frac{n}{n+m}$ — какая доля кодировки берётся из самой категории. При $n = m$ ровно половина.</dd>
+
+<dt>Эмпирический байес для $m$</dt>
+<dd>$m = \frac{\bar y(1-\bar y)}{s^2} - 1$, где $s^2$ — дисперсия средних по категориям. Тот же расчёт, что при подборе силы априорного в теме 6.3.</dd>
+
+<dt>Шум CatBoost <span class="en">(ordered target statistics)</span></dt>
+<dd>Альтернатива фолдам: случайная перестановка объектов и кодировка только по предшествующим. Разбор — в теме 1.1.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: одно наблюдение ничего не говорит</div>
+<p>Категория встретилась один раз, метка была 1. Значит ли это, что вероятность в этой категории равна 100%?</p>
+<p><strong>Очевидно нет.</strong> Одно наблюдение — это почти никакая информация. Разумная оценка должна быть близка к глобальному среднему.</p>
+<p>Категория встретилась тысячу раз, доля единиц 0.80. Здесь глобальное среднее уже не важно — данных достаточно.</p>
+<p><strong>Сглаживание задаёт плавный переход между этими крайностями</strong> через один параметр $m$: сколько наблюдений нужно, чтобы категория «заслужила» половину веса.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 m-оценка</div>
+$$e_{\text{cat}} = \frac{n_{\text{cat}}\,\bar y_{\text{cat}} \;+\; m\,\bar y_{\text{глоб}}}{n_{\text{cat}} + m}
+= \underbrace{\frac{n}{n+m}}_{\text{вес категории}}\bar y_{\text{cat}} \;+\; \underbrace{\frac{m}{n+m}}_{\text{вес глобального}}\bar y_{\text{глоб}}$$
+<p class="fnote">Байесовская интерпретация: $m$ — число наблюдений в априорном распределении. Формула эквивалентна апостериорному среднему Beta-Bernoulli с $\alpha_0 = m\bar y_{\text{глоб}}$ и $\beta_0 = m(1-\bar y_{\text{глоб}})$ — то же, что в теме 6.3 при холодном старте.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: сглаживание по шагам</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Эффект на категориях разного размера</span></div>
+<div class="tstep-c">
+<div class="calc">
+Глобальное среднее ȳ = 0.583333, параметр m = 10
+
+<span class="lbl">Синглтон, ȳ_cat = 1.0</span>
+e = (1 × 1.0 + 10 × 0.583333) / (1 + 10)
+  = (1.000000 + 5.833333) / 11
+  = 6.833333 / 11 = <span class="res">0.621212</span>
+  <span class="dim">без сглаживания было 1.000000</span>
+  вес категории: 1/11 = <span class="hl">9.1%</span>
+
+<span class="lbl">n = 10, ȳ_cat = 0.90</span>
+e = (10 × 0.90 + 10 × 0.583333) / 20
+  = (9.000000 + 5.833333) / 20 = <span class="res">0.741667</span>
+  вес категории: 10/20 = <span class="hl">50.0%</span>
+
+<span class="lbl">n = 100, ȳ_cat = 0.80</span>
+e = (100 × 0.80 + 10 × 0.583333) / 110
+  = (80.000000 + 5.833333) / 110 = <span class="res">0.780303</span>
+  вес категории: 100/110 = <span class="hl">90.9%</span>
+
+<span class="lbl">n = 1000, ȳ_cat = 0.80</span>
+e = (800 + 5.833333) / 1010 = <span class="res">0.797855</span>
+  вес категории: 1000/1010 = <span class="hl">99.0%</span>
+</div>
+<div class="ct">
+<table>
+<caption>Как вес категории растёт с числом наблюдений (m = 10)</caption>
+<thead><tr><th>n</th><th>вес категории n/(n+m)</th><th>ȳ_cat = 1.00 → кодировка</th><th>ȳ_cat = 0.00 → кодировка</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="r">9.1%</td><td>0.6212</td><td>0.5303</td></tr>
+<tr><td>3</td><td class="r">23.1%</td><td>0.6795</td><td>0.4487</td></tr>
+<tr><td>10</td><td class="a">50.0%</td><td>0.7917</td><td>0.2917</td></tr>
+<tr><td>30</td><td class="g">75.0%</td><td>0.8958</td><td>0.1458</td></tr>
+<tr><td>100</td><td class="g">90.9%</td><td>0.9621</td><td>0.0530</td></tr>
+<tr><td>1000</td><td class="g">99.0%</td><td>0.9959</td><td>0.0058</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец «ȳ_cat = 1.00» — самый показательный.</strong> Категория из одного объекта с меткой 1 получает 0.621 вместо 1.000 — почти глобальное среднее. Категория из тысячи объектов, все с меткой 1, получает 0.996 — практически своё значение. Именно это и требуется.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Подбор m через эмпирический байес</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Идея</span>
+Если между категориями есть реальные различия,
+дисперсия их средних будет больше, чем объясняется
+одним биномиальным шумом. Избыток и даёт оценку m.
+
+<span class="lbl">Расчёт</span>
+ȳ = 0.583333 — глобальное среднее
+s² — наблюдаемая дисперсия средних по категориям
+     (по категориям с достаточным n)
+
+m = ȳ(1 − ȳ)/s² − 1
+
+Пример: ȳ = 0.12, s² = 0.0088
+m = 0.12 × 0.88 / 0.0088 − 1
+  = 0.1056 / 0.0088 − 1
+  = 12.0 − 1 = <span class="res">11.0</span>
+
+Пример: категории различаются слабо, s² = 0.0021
+m = 0.1056 / 0.0021 − 1 = 50.29 − 1 = <span class="res">49.3</span>
+  <span class="dim">слабые различия → сильное сглаживание</span>
+
+Пример: категории различаются сильно, s² = 0.0352
+m = 0.1056 / 0.0352 − 1 = 3.0 − 1 = <span class="res">2.0</span>
+  <span class="dim">сильные различия → почти без сглаживания</span>
+</div>
+<p><strong>Формула интерпретируется напрямую:</strong> чем сильнее категории реально различаются, тем меньше нужно сглаживать. При $s^2 \to \bar y(1-\bar y)$ (различия максимальны) $m \to 0$; при $s^2 \to 0$ (различий нет) $m \to \infty$ и все категории схлопываются в глобальное среднее.</p>
+<p><strong>Ровно тот же расчёт — в теме 6.3</strong> при подборе силы контентного априорного для холодного старта. Там $\kappa = m(1-m)/s^2 - 1$; здесь $m$ вместо $\kappa$, но математика идентична: это оценка концентрации бета-распределения по методу моментов.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Эффект на качестве</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>OOF-кодирование, 3 000 категорий, разное m</caption>
+<thead><tr><th>m</th><th>test AUC</th><th>кодировка синглтона (y=1)</th><th>дисперсия кодировки</th><th>комментарий</th></tr></thead>
+<tbody>
+<tr><td>0</td><td class="a">0.703</td><td class="r">1.000</td><td class="r">0.1841</td><td class="note">без сглаживания, шумно</td></tr>
+<tr><td>2</td><td>0.706</td><td>0.861</td><td class="a">0.1204</td><td class="note">слабое</td></tr>
+<tr><td>10</td><td class="g">0.709</td><td class="g">0.621</td><td class="g">0.0518</td><td class="note">оптимум</td></tr>
+<tr class="best"><td>11 (эмпирич. байес)</td><td class="g">0.709</td><td class="g">0.618</td><td class="g">0.0497</td><td class="note">подобрано формулой</td></tr>
+<tr><td>50</td><td>0.702</td><td>0.591</td><td>0.0141</td><td class="note">пересглажено</td></tr>
+<tr><td>500</td><td class="r">0.671</td><td class="r">0.584</td><td class="r">0.0019</td><td class="note">признак почти константа</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Вывод</span>
+Эмпирический байес дал m = 11 при оптимуме около 10 —
+попал без всякого перебора.
+
+Выигрыш от сглаживания: 0.703 → <span class="res">0.709</span> (+0.006)
+Потеря от пересглаживания при m = 500: <span class="bad">−0.032</span>
+
+Асимметрия: недосгладить дешевле, чем пересгладить.
+При сомнениях берите меньшее m.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Сглаживание не заменяет out-of-fold</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Частая ошибка: считать, что сглаживание решает проблему утечки</caption>
+<thead><tr><th>Схема</th><th>train AUC</th><th>test AUC</th><th>разрыв</th></tr></thead>
+<tbody>
+<tr><td>Наивная, без сглаживания</td><td class="r">0.994</td><td class="r">0.612</td><td class="r">0.382</td></tr>
+<tr class="best"><td>Наивная + сглаживание m=10</td><td class="r">0.891</td><td class="r">0.648</td><td class="r">0.243</td></tr>
+<tr><td>OOF, без сглаживания</td><td class="g">0.718</td><td class="g">0.703</td><td class="g">0.015</td></tr>
+<tr class="best"><td>OOF + сглаживание m=10</td><td class="g">0.716</td><td class="g">0.709</td><td class="g">0.007</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Сглаживание уменьшает утечку, но не устраняет её:</strong> разрыв упал с 0.382 до 0.243, но остался огромным. Причина в том, что при $n$ больше нескольких десятков вес категории близок к единице, и собственная метка объекта по-прежнему в неё входит.</p>
+<p><strong>Это два независимых лекарства от двух разных болезней.</strong> Out-of-fold лечит утечку, сглаживание — шум редких категорий. Нужны оба.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Вес категории в зависимости от числа наблюдений</div>
+<div class="chsub">При n = m ровно половина; синглтон получает 9% своего значения и 91% глобального</div>
+<div style="position:relative;height:330px;"><canvas id="c_smooth"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: сглаживание target encoding</label>
+  <label style="margin-top:2px;">Число наблюдений в категории n</label>
+  <input type="range" id="sl_n" min="1" max="300" step="1" value="10" oninput="updSmooth()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_n">10</span><span>300</span></div>
+  <label style="margin-top:14px;">Параметр сглаживания m</label>
+  <input type="range" id="sl_m" min="0" max="100" step="1" value="10" oninput="updSmooth()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0</span><span class="out" id="out_m">10</span><span>100</span></div>
+  <label style="margin-top:14px;">Среднее в категории ȳ_cat</label>
+  <input type="range" id="sl_yc" min="0" max="100" step="1" value="90" oninput="updSmooth()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.00</span><span class="out" id="out_yc">0.90</span><span>1.00</span></div>
+  <div class="res" id="out_smooth"></div>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Утечка через препроцессинг <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Самая распространённая и самая незаметная</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>fit на всех данных</dt>
+<dd>Обучение преобразователя (scaler, imputer, encoder, selector) на объединении обучающей и валидационной выборок. Валидационные данные влияют на преобразование — они «просочились».</dd>
+
+<dt>Pipeline</dt>
+<dd>Конструкция, связывающая препроцессинг и модель в один объект. При кросс-валидации весь pipeline переобучается внутри каждого фолда — единственный надёжный способ не ошибиться.</dd>
+
+<dt>Статистики, зависящие от данных</dt>
+<dd>Среднее, стандартное отклонение, медиана, квантили, границы бинов, словарь категорий, компоненты PCA, параметры Box-Cox. Все они должны считаться <em>только</em> по обучающей части.</dd>
+
+<dt>Безопасные преобразования</dt>
+<dd>Не зависящие от данных: логарифм, извлечение дня недели из даты, арифметика между признаками одной строки. Их можно применять до разбиения.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: цена каждого вида препроцессинга</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Ранжирование по опасности</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Один датасет, препроцессинг обучен на всех данных против правильного</caption>
+<thead><tr><th>Преобразование</th><th>CV AUC (утечка)</th><th>CV AUC (правильно)</th><th>завышение</th><th>опасность</th></tr></thead>
+<tbody>
+<tr class="best"><td>Отбор признаков по корреляции</td><td class="r">0.810</td><td class="g">0.503</td><td class="r">0.307</td><td class="r">критическая</td></tr>
+<tr class="best"><td>Target encoding</td><td class="r">0.994</td><td class="g">0.703</td><td class="r">0.291</td><td class="r">критическая</td></tr>
+<tr><td>Отбор по важности модели</td><td class="r">0.743</td><td class="a">0.688</td><td class="a">0.055</td><td class="a">высокая</td></tr>
+<tr><td>Импутация медианой</td><td>0.8471</td><td>0.8443</td><td class="g">0.0028</td><td class="a">низкая, но системная</td></tr>
+<tr><td>StandardScaler</td><td>0.8468</td><td>0.8455</td><td class="g">0.0013</td><td class="g">низкая</td></tr>
+<tr><td>PCA</td><td>0.8392</td><td>0.8301</td><td class="a">0.0091</td><td class="a">средняя</td></tr>
+<tr><td>Дискретизация по квантилям</td><td>0.8419</td><td>0.8377</td><td class="a">0.0042</td><td class="a">средняя</td></tr>
+<tr><td>SMOTE до разбиения</td><td class="r">0.921</td><td class="a">0.812</td><td class="r">0.109</td><td class="r">критическая</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Две группы</span>
+<b>Критические</b> (завышение &gt; 0.1):
+  всё, что использует ЦЕЛЕВУЮ переменную —
+  отбор признаков, target encoding, SMOTE.
+  Целевая валидационных объектов напрямую влияет
+  на то, что видит модель.
+
+<b>Умеренные</b> (завышение &lt; 0.01):
+  всё, что использует только X —
+  scaler, imputer, PCA.
+  Утечка есть, но она про распределение признаков,
+  а не про ответы.
+</div>
+<p><strong>Строка SMOTE заслуживает отдельного внимания.</strong> Синтетические объекты создаются интерполяцией между реальными. Если SMOTE применён до разбиения, синтетический объект в обучающей выборке может быть построен из объекта, попавшего в валидацию — это буквально копия валидационного объекта в трейне. Завышение 0.109. Разбор SMOTE — в теме 1.2.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Почему StandardScaler всё же опасен</span></div>
+<div class="tstep-c">
+<div class="calc">
+Завышение всего 0.0013 — казалось бы, можно игнорировать.
+
+<b>Но:</b> вы сравниваете модель A (AUC 0.8468) с моделью B
+(AUC 0.8455) и выбираете A. Разница 0.0013 —
+ровно порядка завышения от утечки.
+
+То есть <b>решения о выборе модели принимаются
+на уровне шума, создаваемого утечкой</b>.
+
+Плюс эффект накапливается:
+  scaler + imputer + дискретизация = 0.0083
+  при типичной разнице между кандидатами 0.005–0.015
+  это уже определяющая величина.
+
+Плюс на малых выборках завышение растёт:
+  N = 50 000: 0.0013
+  N = 5 000:  0.0071
+  N = 500:    <span class="bad">0.0384</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Правильная схема</span></div>
+<div class="tstep-c">
+<div class="folds">
+<div class="foldrow"><span class="foldlbl">Неправильно</span>
+<span class="foldcell fc-leak" style="flex:5">① fit_transform препроцессинга на ВСЕХ данных → ② cross_val_score</span></div>
+<div class="foldrow"><span class="foldlbl">Правильно</span>
+<span class="foldcell fc-hold" style="flex:5">① Pipeline(препроцессинг, модель) → ② cross_val_score(pipeline)</span></div>
+</div>
+<div class="calc"><span class="lbl">Что делает Pipeline внутри каждого фолда</span>
+для каждого фолда k:
+  ① scaler.fit(X_train_k)        <span class="dim">только обучающая часть</span>
+  ② X_train_k = scaler.transform(X_train_k)
+  ③ X_val_k   = scaler.transform(X_val_k)   <span class="dim">параметрами из ①</span>
+  ④ model.fit(X_train_k, y_train_k)
+  ⑤ score на X_val_k
+
+Пять фолдов → пять независимых scaler'ов.
+Валидационная часть никогда не участвует в fit.
+</div>
+<div class="calc"><span class="lbl">Что нельзя завернуть в Pipeline</span>
+① Разбиение на train/test — делается ДО всего
+② Удаление дубликатов — тоже до, но осторожно:
+   удаление дубликатов после разбиения может
+   оставить копии в разных частях
+③ Ресемплинг (SMOTE) — нужен imblearn.Pipeline,
+   обычный sklearn.Pipeline применит SMOTE
+   и к валидации тоже
+④ Target encoding — нужна реализация,
+   поддерживающая fit/transform раздельно
+   (category_encoders, а не ручной groupby)
+</div>
+<p><strong>Правило без исключений:</strong> любой шаг, у которого есть <code>fit</code>, должен быть внутри Pipeline. Если шаг написан вручную через <code>groupby</code> или <code>np.mean</code> — он почти наверняка течёт.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Завышение метрики по видам препроцессинга</div>
+<div class="chsub">Всё, что использует целевую, завышает на порядки сильнее того, что использует только признаки</div>
+<div style="position:relative;height:340px;"><canvas id="c_prep"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Временные и групповые утечки <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Когда случайное разбиение — уже ошибка</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Временная утечка</dt>
+<dd>Обучение на данных, идущих <em>после</em> валидационных по времени. Модель знает будущее. Возникает при случайном разбиении любых данных с временной структурой.</dd>
+
+<dt>TimeSeriesSplit</dt>
+<dd>Схема, где валидация всегда позже обучения. Обучающая часть растёт от фолда к фолду или скользит окном.</dd>
+
+<dt>Зазор <span class="en">(gap, embargo)</span></dt>
+<dd>Промежуток между концом обучения и началом валидации. Нужен, когда целевая определена на горизонте: при прогнозе оттока за 30 дней зазор должен быть не меньше 30 дней.</dd>
+
+<dt>Групповая утечка</dt>
+<dd>Один объект реального мира в обучении и валидации одновременно. Модель запоминает объект. Особенно опасно при повторяющихся записях на клиента.</dd>
+
+<dt>GroupKFold</dt>
+<dd>Разбиение, гарантирующее, что все записи одной группы попадают в один фолд.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: три схемы разбиения</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Случайное разбиение временных данных</span></div>
+<div class="tstep-c">
+<div class="folds">
+<div class="foldrow"><span class="foldlbl">янв…дек</span>
+<span class="foldcell fc-use">янв</span><span class="foldcell fc-hold">фев</span><span class="foldcell fc-use">мар</span><span class="foldcell fc-use">апр</span><span class="foldcell fc-hold">май</span><span class="foldcell fc-use">июн</span><span class="foldcell fc-hold">июл</span><span class="foldcell fc-use">авг</span></div>
+<div class="foldrow"><span class="foldlbl">Проблема</span>
+<span class="foldcell fc-leak" style="flex:8">Модель учится на марте–августе и предсказывает февраль</span></div>
+</div>
+<div class="calc"><span class="lbl">Замер: прогноз оттока, данные за 18 месяцев</span>
+Случайное разбиение, 5-fold:      AUC <span class="bad">0.892</span>
+TimeSeriesSplit:                  AUC <span class="res">0.734</span>
+Фактический результат в проде:    AUC <span class="res">0.729</span>
+
+Случайное разбиение завысило на <span class="bad">0.158</span>
+и полностью разошлось с реальностью.
+TimeSeriesSplit предсказал прод с точностью 0.005.
+</div>
+<p><strong>Механизм завышения.</strong> Сезонность, маркетинговые кампании, изменение продукта — всё это создаёт зависимость исхода от календарного периода. Обучившись на августе, модель «знает» специфику августа и применяет её к февралю, который тоже в обучении. В проде такой возможности нет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">TimeSeriesSplit и зазор</span></div>
+<div class="tstep-c">
+<div class="folds">
+<div class="foldrow"><span class="foldlbl">Фолд 1</span>
+<span class="foldcell fc-use">1</span><span class="foldcell fc-use">2</span><span class="foldcell fc-use">3</span><span class="foldcell fc-hold">вал</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span></div>
+<div class="foldrow"><span class="foldlbl">Фолд 2</span>
+<span class="foldcell fc-use">1</span><span class="foldcell fc-use">2</span><span class="foldcell fc-use">3</span><span class="foldcell fc-use">4</span><span class="foldcell fc-hold">вал</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span></div>
+<div class="foldrow"><span class="foldlbl">Фолд 3</span>
+<span class="foldcell fc-use">1</span><span class="foldcell fc-use">2</span><span class="foldcell fc-use">3</span><span class="foldcell fc-use">4</span><span class="foldcell fc-use">5</span><span class="foldcell fc-hold">вал</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span></div>
+<div class="foldrow"><span class="foldlbl">С зазором</span>
+<span class="foldcell fc-use">1</span><span class="foldcell fc-use">2</span><span class="foldcell fc-use">3</span><span class="foldcell fc-use" style="background:#fef3c7;color:#78350f;border-color:#fcd34d">зазор</span><span class="foldcell fc-hold">вал</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span><span class="foldcell fc-use" style="opacity:.25">—</span></div>
+</div>
+<div class="calc"><span class="lbl">Зачем зазор</span>
+Целевая: «уйдёт ли клиент в течение 30 дней».
+Для объекта с датой 1 марта метка становится известна
+только 31 марта.
+
+Без зазора: обучающая часть заканчивается 31 марта,
+валидация начинается 1 апреля. Но признаки объекта
+от 15 марта уже пересекаются с периодом,
+по которому считалась метка мартовских объектов
+из обучения.
+
+Правило: <b>зазор ≥ горизонт целевой</b>
+
+Замер:
+  без зазора:            AUC <span class="hl">0.761</span>
+  зазор 30 дней:         AUC <span class="res">0.734</span>
+  фактически в проде:    AUC <span class="res">0.729</span>
+
+Даже TimeSeriesSplit без зазора завышает на 0.027.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Групповая утечка</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Данные: 200 000 записей, 40 000 клиентов</span>
+В среднем 5 записей на клиента.
+
+Случайное KFold:
+  вероятность, что хотя бы одна запись клиента
+  попала в обучение при 5 записях и 5 фолдах:
+  1 − (1/5)⁵ = 1 − 0.00032 = <span class="bad">99.97%</span>
+
+То есть <b>практически для каждого валидационного
+объекта его же клиент есть в обучении</b>.
+
+Замер:
+  KFold:                AUC <span class="bad">0.881</span>
+  GroupKFold по клиенту: AUC <span class="res">0.752</span>
+  прод (новые клиенты):  AUC <span class="res">0.748</span>
+
+Завышение 0.129.
+</div>
+<div class="ct">
+<table>
+<caption>Как завышение зависит от числа записей на группу</caption>
+<thead><tr><th>Записей на клиента</th><th>P(клиент в обучении)</th><th>AUC KFold</th><th>AUC GroupKFold</th><th>завышение</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="g">0%</td><td>0.751</td><td>0.751</td><td class="g">0.000</td></tr>
+<tr><td>2</td><td class="a">80.0%</td><td>0.798</td><td>0.752</td><td class="a">0.046</td></tr>
+<tr><td>5</td><td class="r">99.97%</td><td>0.881</td><td>0.752</td><td class="r">0.129</td></tr>
+<tr class="best"><td>20</td><td class="r">≈100%</td><td class="r">0.934</td><td>0.753</td><td class="r">0.181</td></tr>
+<tr><td>100</td><td class="r">≈100%</td><td class="r">0.961</td><td>0.751</td><td class="r">0.210</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Столбец GroupKFold постоянен — 0.751–0.753.</strong> Реальное качество модели не зависит от того, сколько записей приходится на клиента. А KFold растёт с 0.751 до 0.961: чем больше записей, тем больше можно запомнить. Это чистое измерение памяти, а не обобщения.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Когда групп несколько уровней</span></div>
+<div class="tstep-c">
+<div class="calc">
+Часто групп несколько, и они вложены:
+  запись → клиент → домохозяйство → адрес
+  снимок → пациент → больница
+  транзакция → карта → клиент → организация
+
+<b>Группировать надо по самому крупному уровню,
+на котором возможна утечка.</b>
+
+Замер на медицинских данных:
+  KFold по снимкам:        AUC <span class="bad">0.943</span>
+  GroupKFold по пациенту:  AUC <span class="hl">0.812</span>
+  GroupKFold по больнице:  AUC <span class="res">0.734</span>
+  прод в новой больнице:   AUC <span class="res">0.729</span>
+
+Группировка по пациенту всё ещё завышает на 0.078:
+снимки из одной больницы имеют общие артефакты
+оборудования, и модель учит больницу, а не патологию.
+</div>
+<p><strong>Как понять, какой уровень нужен.</strong> Спросите: <em>«на каких данных модель будет работать в проде — те же клиенты, новые клиенты той же организации, или совсем новые организации?»</em> Валидация должна имитировать именно этот сценарий.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Групповая утечка: KFold меряет память, а не обобщение</div>
+<div class="chsub">GroupKFold даёт стабильные 0.751–0.753 независимо от числа записей на клиента</div>
+<div style="position:relative;height:340px;"><canvas id="c_group"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Permutation importance <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Механизм и три ловушки, одна из которых хуже, чем у SHAP</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Permutation importance</dt>
+<dd>Перемешать значения признака между объектами и замерить падение качества. Падение и есть важность: если модель зависела от признака, разрушение связи её ломает.</dd>
+
+<dt>Число повторов</dt>
+<dd>Перемешивание случайно, поэтому его повторяют $R$ раз и усредняют. При $R=1$ оценка настолько шумна, что порядок признаков меняется от запуска к запуску.</dd>
+
+<dt>Отрицательная важность</dt>
+<dd>Качество после перемешивания <em>выросло</em>. Означает, что признак вредил — обычно из-за переобучения на нём. Кандидат на удаление.</dd>
+
+<dt>Внемножественные точки</dt>
+<dd>Перемешивание создаёт невозможные комбинации признаков — та же проблема, что у interventional SHAP (тема 1.4, секция 5).</dd>
+
+<dt>Зануление при дублировании</dt>
+<dd><strong>Главное отличие от SHAP.</strong> При двух копиях признака перемешивание одной не вредит: модель берёт вторую. Обе получают нулевую важность, и суммарная важность <em>исчезает</em>, а не делится.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: механизм и ловушки</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Базовый расчёт</span></div>
+<div class="tstep-c">
+<div class="calc">
+Базовое качество на отложенной выборке: AUC = <span class="hl">0.8412</span>
+
+Для каждого признака j:
+  ① перемешать столбец j между строками
+  ② пересчитать AUC
+  ③ важность = базовое − полученное
+  ④ повторить R раз, усреднить
+</div>
+<div class="ct">
+<table>
+<caption>Пять признаков, R = 10 повторов</caption>
+<thead><tr><th>Признак</th><th>AUC после перемешивания</th><th>важность</th><th>станд. откл. по повторам</th></tr></thead>
+<tbody>
+<tr><td>доход</td><td>0.7134</td><td class="k">0.1278</td><td>0.0041</td></tr>
+<tr><td>просрочки</td><td>0.7621</td><td class="k">0.0791</td><td>0.0033</td></tr>
+<tr><td>стаж</td><td>0.8118</td><td>0.0294</td><td>0.0019</td></tr>
+<tr><td>возраст</td><td>0.8398</td><td class="a">0.0014</td><td class="a">0.0022</td></tr>
+<tr class="best"><td>случайный шум</td><td class="g">0.8419</td><td class="r">−0.0007</td><td>0.0018</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Как читать последние две строки</span>
+<b>Возраст:</b> важность 0.0014, станд. откл. 0.0022.
+Важность МЕНЬШЕ своей ошибки → неотличима от нуля.
+
+<b>Шум:</b> важность −0.0007, то есть перемешивание
+слегка УЛУЧШИЛО модель. Признак вредил.
+
+<b>Правило:</b> сравнивайте важность со стандартным
+отклонением. Признак значим, если важность
+превышает 2 станд. отклонения.
+  доход:      0.1278 / 0.0041 = <span class="res">31.2σ</span> ✓
+  просрочки:  0.0791 / 0.0033 = <span class="res">24.0σ</span> ✓
+  стаж:       0.0294 / 0.0019 = <span class="res">15.5σ</span> ✓
+  возраст:    0.0014 / 0.0022 = <span class="bad">0.6σ</span>  ✗
+  шум:       −0.0007 / 0.0018 = <span class="bad">−0.4σ</span> ✗
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Ловушка 1: зануление при дублировании</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Один признак X</span>
+permutation importance X: <span class="hl">0.0412</span>
+
+<span class="lbl">Тот же признак, продублированный в X1 и X2</span>
+перемешиваем X1 → модель берёт X2 → AUC почти не падает
+  importance X1: <span class="bad">0.0009</span>
+перемешиваем X2 → модель берёт X1 → то же
+  importance X2: <span class="bad">0.0011</span>
+
+Сумма: 0.0020 против 0.0412 у одиночного признака.
+<b>95.1% важности исчезло.</b>
+</div>
+<div class="ct">
+<table>
+<caption>SHAP делит, permutation уничтожает</caption>
+<thead><tr><th>Ситуация</th><th>SHAP X1</th><th>SHAP X2</th><th>сумма SHAP</th><th>perm X1</th><th>perm X2</th><th>сумма perm</th></tr></thead>
+<tbody>
+<tr><td>один признак X</td><td class="dim">—</td><td class="dim">—</td><td class="g">0.400</td><td class="dim">—</td><td class="dim">—</td><td class="g">0.0412</td></tr>
+<tr class="best"><td>две копии</td><td>0.205</td><td>0.195</td><td class="g">0.400</td><td class="r">0.0009</td><td class="r">0.0011</td><td class="r">0.0020</td></tr>
+<tr><td>шесть копий</td><td>≈0.067</td><td>≈0.067</td><td class="g">0.400</td><td class="r">≈0.0002</td><td class="r">≈0.0002</td><td class="r">0.0012</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Это принципиальное различие двух методов.</strong> У SHAP сумма по группе сохраняется — важность делится (тема 1.4, секция 11). У permutation она пропадает: обе копии страхуют друг друга, и ни одна не выглядит нужной.</p>
+<p><strong>Практическое следствие.</strong> Permutation importance <em>нельзя</em> использовать для отбора признаков при наличии коррелированных групп — он выбросит всю группу целиком. Лекарство: групповое перемешивание — перемешивать всю коррелированную группу одновременно. Тогда важность группы возвращается к 0.0409.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Ловушка 2: трейн против отложенной</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна модель, permutation importance на разных выборках</caption>
+<thead><tr><th>Признак</th><th>на трейне</th><th>на отложенной</th><th>интерпретация</th></tr></thead>
+<tbody>
+<tr><td>доход</td><td>0.1341</td><td class="g">0.1278</td><td class="note">реальный сигнал</td></tr>
+<tr><td>просрочки</td><td>0.0812</td><td class="g">0.0791</td><td class="note">реальный сигнал</td></tr>
+<tr class="best"><td>ID клиента</td><td class="r">0.0894</td><td class="r">0.0003</td><td class="note">чистое запоминание</td></tr>
+<tr class="best"><td>случайный шум</td><td class="r">0.0341</td><td class="r">−0.0007</td><td class="note">переобучение на шуме</td></tr>
+<tr><td>редкая категория</td><td class="a">0.0217</td><td>0.0021</td><td class="note">в основном запоминание</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Диагностика по разнице</span>
+Признак с высокой важностью на трейне
+и нулевой на отложенной = <b>модель его запомнила</b>.
+
+Это готовый детектор:
+  отношение важность_трейн / важность_отложенная
+  ID клиента:     0.0894 / 0.0003 = <span class="bad">298×</span>
+  случайный шум:  0.0341 / −0.0007 = <span class="bad">н/о</span>
+  доход:          0.1341 / 0.1278 = <span class="res">1.05×</span>
+
+Отношение &gt; 3 — признак кандидат на удаление.
+</div>
+<p><strong>При этом обе версии полезны.</strong> Важность на отложенной отвечает «насколько признак нужен для обобщения». Важность на трейне отвечает «насколько модель на него опирается». Их <em>разница</em> — прямая мера переобучения на конкретном признаке, и это самый полезный из трёх сигналов.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Ловушка 3: невозможные комбинации</span></div>
+<div class="tstep-c">
+<div class="calc">
+Перемешивание разрывает связь признака с ОСТАЛЬНЫМИ
+признаками, а не только с целевой.
+
+Признаки «возраст» и «стаж», корреляция 0.88.
+После перемешивания возраста появляются строки:
+  возраст = 19, стаж = 31 год
+
+Модель на таких строках экстраполирует произвольно,
+и падение качества отражает не важность признака,
+а поведение модели вне области данных.
+
+Доля невозможных комбинаций после перемешивания
+при корреляции 0.88: до <span class="bad">62%</span> строк.
+
+Это ровно проблема interventional SHAP
+из темы 1.4, секция 5.
+</div>
+<div class="ct">
+<table>
+<caption>Три метода важности: сильные и слабые стороны</caption>
+<thead><tr><th>Свойство</th><th>Permutation</th><th>SHAP</th><th>Gain (встроенная)</th></tr></thead>
+<tbody>
+<tr><td>Локальные объяснения</td><td class="r">нет</td><td class="g">да</td><td class="r">нет</td></tr>
+<tr><td>Связь с качеством модели</td><td class="g">прямая</td><td class="a">косвенная</td><td class="r">нет</td></tr>
+<tr class="best"><td>При дублировании признака</td><td class="r">зануляет</td><td class="a">делит</td><td class="a">делит</td></tr>
+<tr><td>Смещение по кардинальности</td><td class="g">нет</td><td class="g">нет</td><td class="r">сильное</td></tr>
+<tr><td>Невозможные комбинации</td><td class="r">создаёт</td><td class="a">зависит от режима</td><td class="g">не создаёт</td></tr>
+<tr><td>Стоимость</td><td class="a">R × число признаков прогонов</td><td class="g">один проход TreeSHAP</td><td class="g">бесплатно</td></tr>
+<tr><td>Работает с любой моделью</td><td class="g">да</td><td class="a">TreeSHAP только деревья</td><td class="r">только деревья</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Permutation importance: трейн против отложенной выборки</div>
+<div class="chsub">Разница между столбцами — прямая мера переобучения на конкретном признаке</div>
+<div style="position:relative;height:340px;"><canvas id="c_perm"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">При дублировании SHAP делит важность, permutation её уничтожает</div>
+<div class="chsub">Сумма SHAP остаётся 0.400; сумма permutation падает с 0.0412 до 0.0020</div>
+<div style="position:relative;height:330px;"><canvas id="c_dup"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Boruta <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Отбор со статистическим тестом вместо произвольного порога</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Boruta</dt>
+<dd>Метод отбора «всех релевантных» признаков. Создаёт теневые копии, сравнивает с ними реальные признаки и применяет биномиальный тест.</dd>
+
+<dt>Теневой признак <span class="en">(shadow feature)</span></dt>
+<dd>Случайно перемешанная копия реального признака. По построению не содержит связи с целевой — эталон «шума с тем же распределением».</dd>
+
+<dt>Попадание <span class="en">(hit)</span></dt>
+<dd>Реальный признак получил важность выше, чем <em>максимальная</em> среди всех теневых, в данной итерации.</dd>
+
+<dt>Биномиальный тест</dt>
+<dd>При нулевой гипотезе «признак — шум» вероятность попадания равна 0.5. Число попаданий за $N$ итераций сравнивается с $\text{Binom}(N, 0.5)$.</dd>
+
+<dt>Все релевантные против минимально достаточных</dt>
+<dd><strong>Ключевое отличие Boruta.</strong> Он ищет <em>все</em> признаки, связанные с целевой, включая избыточные. Большинство методов ищут минимальный достаточный набор. Это разные задачи.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: эталон шума</div>
+<p>Проблема любого отбора: где порог? Важность 0.03 — это много или мало? Ответ зависит от задачи, и произвольный порог даёт произвольный результат.</p>
+<p><strong>Идея Boruta:</strong> создать признак, про который точно известно, что он шум — перемешанную копию реального. Тогда «важнее шума» становится проверяемым утверждением, а не вопросом вкуса.</p>
+<p>Берётся <em>максимум</em> среди всех теневых, а не среднее: это автоматически даёт поправку на множественные сравнения, потому что случайно превысить максимум из пятнадцати гораздо труднее, чем среднее.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: Boruta с точным биномиальным тестом</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Одна итерация</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Шаги итерации</span>
+① Для каждого из 15 реальных признаков создать
+   теневую копию: те же значения, перемешанные
+   между строками. Матрица становится 15 + 15 = 30 столбцов.
+② Обучить модель на всех 30.
+③ Посчитать важность всех 30.
+④ maxShadow = максимум важности среди 15 теневых.
+⑤ Каждый реальный признак с важностью &gt; maxShadow
+   получает «попадание».
+⑥ Перемешать теневые заново и повторить.
+</div>
+<div class="ct">
+<table>
+<caption>Итерация 1: важности (нормированные)</caption>
+<thead><tr><th>Признак</th><th>важность</th><th>&gt; maxShadow?</th></tr></thead>
+<tbody>
+<tr><td>доход</td><td class="g">0.2841</td><td class="g">попадание</td></tr>
+<tr><td>просрочки</td><td class="g">0.1912</td><td class="g">попадание</td></tr>
+<tr><td>стаж</td><td class="g">0.0834</td><td class="g">попадание</td></tr>
+<tr><td>возраст</td><td class="a">0.0412</td><td class="g">попадание</td></tr>
+<tr class="best"><td><b>maxShadow</b></td><td class="k">0.0391</td><td class="note">порог этой итерации</td></tr>
+<tr><td>регион</td><td class="r">0.0287</td><td class="r">нет</td></tr>
+<tr><td>канал</td><td class="r">0.0203</td><td class="r">нет</td></tr>
+<tr><td>прочие 9</td><td class="r">&lt; 0.02</td><td class="r">нет</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Порог не задан вручную — он вычислен.</strong> maxShadow = 0.0391 в этой итерации; в следующей теневые перемешаются заново, и порог будет другим. Признак должен превышать порог стабильно, а не один раз.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Двадцать итераций и биномиальный тест</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Нулевая гипотеза</span>
+Признак — шум, неотличим от теневых.
+Тогда вероятность попадания p = 0.5,
+число попаданий ~ Binom(20, 0.5).
+
+<span class="lbl">Признак «доход»: 20 попаданий из 20</span>
+P(X ≥ 20) = C(20,20)/2²⁰ = 1/1048576 = <span class="res">0.00000095</span>
+С поправкой Бонферрони (×15): <span class="res">0.0000143</span> &lt; 0.05
+→ <b>ПОДТВЕРЖДЁН</b>
+
+<span class="lbl">Признак «возраст»: 17 попаданий</span>
+P(X ≥ 17) = [C(20,17) + C(20,18) + C(20,19) + C(20,20)] / 2²⁰
+          = [1140 + 190 + 20 + 1] / 1048576
+          = 1351 / 1048576 = <span class="hl">0.00128841</span>
+Бонферрони ×15: 0.0193 &lt; 0.05
+→ <b>ПОДТВЕРЖДЁН</b>
+
+<span class="lbl">Признак «регион»: 12 попаданий</span>
+P(X ≥ 12) = [125970+77520+38760+15504+4845+1140+190+20+1] / 2²⁰
+          = 263950 / 1048576 = <span class="hl">0.25172</span>
+Бонферрони ×15: 3.776 &gt; 0.05
+→ <b>НЕ РЕШЕНО</b> (tentative)
+
+<span class="lbl">Признак «канал»: 3 попадания</span>
+P(X ≤ 3) = [1 + 20 + 190 + 1140] / 2²⁰
+         = 1351 / 1048576 = <span class="hl">0.00128841</span>
+Бонферрони ×15: 0.0193 &lt; 0.05
+→ <b>ОТВЕРГНУТ</b>
+</div>
+<p><strong>Обратите внимание на симметрию:</strong> 17 попаданий подтверждают, 3 попадания отвергают — с одинаковым $p$-значением 0.00128841, потому что $C(20,17)=C(20,3)=1140$. Биномиальное распределение симметрично при $p=0.5$, и тест двусторонний по построению.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Итог по всем признакам</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>20 итераций, 15 признаков, поправка Бонферрони</caption>
+<thead><tr><th>Признак</th><th>попаданий</th><th>p-значение</th><th>p × 15</th><th>решение</th></tr></thead>
+<tbody>
+<tr><td>доход</td><td>20</td><td>0.00000095</td><td class="g">0.0000143</td><td class="g">подтверждён</td></tr>
+<tr><td>просрочки</td><td>20</td><td>0.00000095</td><td class="g">0.0000143</td><td class="g">подтверждён</td></tr>
+<tr><td>стаж</td><td>19</td><td>0.00002003</td><td class="g">0.000301</td><td class="g">подтверждён</td></tr>
+<tr class="best"><td>возраст</td><td>17</td><td>0.00128841</td><td class="g">0.019326</td><td class="g">подтверждён</td></tr>
+<tr><td>сумма кредита</td><td>16</td><td>0.00590706</td><td class="a">0.088606</td><td class="a">не решено</td></tr>
+<tr class="best"><td>регион</td><td>12</td><td>0.25172424</td><td class="r">3.775864</td><td class="a">не решено</td></tr>
+<tr><td>тип занятости</td><td>8</td><td>0.86841202</td><td class="r">13.026</td><td class="a">не решено</td></tr>
+<tr class="best"><td>канал</td><td>3</td><td>0.00128841</td><td class="g">0.019326</td><td class="r">отвергнут</td></tr>
+<tr><td>прочие 7</td><td>0–2</td><td>&lt; 0.0002</td><td class="g">&lt; 0.003</td><td class="r">отвергнуты</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Три исхода вместо двух</span>
+<b>Подтверждён</b> — статистически лучше шума
+<b>Отвергнут</b> — статистически хуже шума
+<b>Не решено</b> — данных не хватило для вывода
+
+Это честнее бинарного «важен / неважен».
+Признаки «регион» и «сумма кредита» требуют
+больше итераций для решения.
+
+Что делать с «не решено»:
+  ① увеличить число итераций (100 вместо 20)
+  ② оставить в модели (консервативно)
+  ③ проверить отдельным экспериментом с удалением
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Сколько итераций нужно</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Разрешающая способность при разном числе итераций (Бонферрони на 15 признаков)</caption>
+<thead><tr><th>Итераций N</th><th>минимум попаданий для подтверждения</th><th>доля от N</th><th>«не решено» после теста</th></tr></thead>
+<tbody>
+<tr><td>20</td><td>17</td><td class="r">85%</td><td class="r">3 признака</td></tr>
+<tr><td>50</td><td>36</td><td class="a">72%</td><td class="a">2 признака</td></tr>
+<tr class="best"><td>100</td><td>66</td><td class="g">66%</td><td class="g">1 признак</td></tr>
+<tr><td>200</td><td>124</td><td class="g">62%</td><td class="g">0 признаков</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Цена</span>
+Каждая итерация — одно обучение модели на удвоенном
+числе признаков.
+
+  20 итераций,  500 деревьев, 15 признаков: <span class="res">~40 с</span>
+  100 итераций: <span class="hl">~3.5 мин</span>
+  200 итераций: <span class="a">~7 мин</span>
+
+При 200 признаках вместо 15:
+  100 итераций: <span class="a">~45 мин</span>
+
+<b>Boruta дорог.</b> Это его основной недостаток:
+на сотнях признаков он занимает часы,
+тогда как SHAP считается за секунды.
+</div>
+<p><strong>Когда Boruta оправдан.</strong> Когда нужны <em>все</em> релевантные признаки, а не минимальный набор — например, в научном анализе, где важно установить, какие переменные вообще связаны с исходом. Для инженерной задачи «сократить число признаков без потери качества» дешевле и правильнее использовать SHAP с проверкой удалением.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Boruta: попадания и порог биномиального теста</div>
+<div class="chsub">17 попаданий подтверждают, 3 отвергают — одинаковое p-значение 0.00129 по симметрии</div>
+<div style="position:relative;height:340px;"><canvas id="c_boruta"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Сравнение методов отбора <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Четыре метода на одной задаче с известным ответом</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: синтетика, где правда известна</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Конструкция задачи</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">50 признаков, 20 000 объектов</span>
+① <b>8 информативных</b> — реально влияют на целевую
+② <b>6 дубликатов</b> — копии информативных с шумом (r ≈ 0.93)
+③ <b>4 взаимодействия</b> — влияют только парами,
+   по отдельности связи с целевой нет
+④ <b>12 высококардинальных</b> — категории с 500+ значений,
+   связи с целевой нет
+⑤ <b>20 чистого шума</b>
+
+Правильный ответ: должны быть отобраны 8 + 4 = <b>12</b>
+Дубликаты избыточны (но не вредны).
+Всё остальное — мусор.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Результаты</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что каждый метод нашёл (топ-12 по своей метрике)</caption>
+<thead><tr><th>Метод</th><th>информативных из 8</th><th>взаимодействий из 4</th><th>дубликатов</th><th>мусора</th><th>время</th></tr></thead>
+<tbody>
+<tr><td>Корреляция с целевой</td><td class="a">7</td><td class="r">0</td><td class="a">5</td><td class="r">0</td><td class="g">0.2 с</td></tr>
+<tr><td>Gain (встроенная)</td><td class="a">6</td><td class="a">2</td><td>2</td><td class="r">2</td><td class="g">0 с</td></tr>
+<tr class="best"><td>SHAP (interventional)</td><td class="g">8</td><td class="g">4</td><td>0</td><td class="g">0</td><td class="g">4 с</td></tr>
+<tr><td>Permutation</td><td class="a">6</td><td class="g">4</td><td class="r">0</td><td class="g">0</td><td class="a">92 с</td></tr>
+<tr class="best"><td>Boruta (100 итер.)</td><td class="g">8</td><td class="g">4</td><td class="a">6</td><td class="g">0</td><td class="r">41 мин</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Разбор по строкам</span>
+<b>Корреляция</b> — провалила взаимодействия полностью (0 из 4).
+  Она меряет парную связь, а взаимодействующие
+  признаки по отдельности с целевой не связаны.
+  Плюс набрала 5 дубликатов, вытеснив полезное.
+
+<b>Gain</b> — набрал 2 мусорных признака: оба
+  высококардинальные. Классическое смещение
+  по числу уникальных значений (тема 1.4, секция 1).
+
+<b>SHAP</b> — единственный, кто взял ровно нужное:
+  8 информативных + 4 взаимодействия, ноль мусора.
+  Дубликаты не попали, потому что их важность
+  <b>разделилась</b> и они опустились ниже топ-12.
+
+<b>Permutation</b> — потерял 2 информативных признака.
+  Причина: у них есть дубликаты, и перемешивание
+  одного не вредит. <b>Зануление</b> из секции 6.
+
+<b>Boruta</b> — нашёл всё, включая дубликаты.
+  Это не ошибка: он ищет ВСЕ релевантные признаки,
+  а дубликаты релевантны. Просто задача другая.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Качество после отбора</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Модель на отобранных признаках</caption>
+<thead><tr><th>Набор</th><th>признаков</th><th>test AUC</th><th>время обучения</th><th>время инференса</th></tr></thead>
+<tbody>
+<tr><td>Все признаки</td><td>50</td><td class="g">0.8412</td><td>18.4 с</td><td>1.00×</td></tr>
+<tr><td>По корреляции</td><td>12</td><td class="r">0.7891</td><td class="g">5.1 с</td><td class="g">0.31×</td></tr>
+<tr><td>По gain</td><td>12</td><td class="a">0.8203</td><td class="g">5.0 с</td><td class="g">0.31×</td></tr>
+<tr class="best"><td>По SHAP</td><td>12</td><td class="g">0.8408</td><td class="g">5.0 с</td><td class="g">0.31×</td></tr>
+<tr><td>По permutation</td><td>12</td><td class="a">0.8271</td><td class="g">5.1 с</td><td class="g">0.31×</td></tr>
+<tr><td>По Boruta</td><td>18</td><td class="g">0.8411</td><td>7.2 с</td><td>0.44×</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Главный вывод</span>
+SHAP: 50 → 12 признаков, AUC <span class="res">0.8412 → 0.8408</span>
+  потеря <span class="res">0.0004</span>, инференс быстрее в <span class="res">3.2 раза</span>
+
+Boruta: 50 → 18, AUC 0.8411
+  тоже отлично, но 6 лишних признаков (дубликаты)
+  и 41 минута против 4 секунд
+
+Корреляция: потеря <span class="bad">0.052</span> — недопустимо.
+  Причина одна: пропущены все взаимодействия.
+</div>
+<p><strong>Практическая рекомендация:</strong> SHAP в режиме interventional (тема 1.4, секция 6) для отбора, с обязательной проверкой удалением. Boruta — когда нужен научный ответ «какие переменные связаны с исходом». Permutation — только с групповым перемешиванием, иначе он выбросит нужное. Корреляция — никогда как единственный метод.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Пять методов отбора: что нашли и качество после</div>
+<div class="chsub">Корреляция пропускает все взаимодействия; permutation теряет признаки с дубликатами</div>
+<div style="position:relative;height:340px;"><canvas id="c_sel"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Высококардинальные категории <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Где утечка и переобучение особенно тесно переплетены</div>
+
+<div class="def">
+<div class="def-t">📖 Способы кодирования</div>
+<dl>
+<dt>One-hot</dt>
+<dd>Отдельный бинарный столбец на категорию. При 100 000 значений — неприменимо: матрица разреженная, память и время растут линейно.</dd>
+
+<dt>Ordinal / label encoding</dt>
+<dd>Замена на произвольное целое. Для деревьев работает, но порядок случаен: дерево вынуждено дробить диапазон на много разбиений.</dd>
+
+<dt>Frequency encoding</dt>
+<dd>Замена на частоту категории. <strong>Не использует целевую — утечка невозможна.</strong> Работает удивительно часто, потому что редкость сама по себе информативна.</dd>
+
+<dt>Target encoding</dt>
+<dd>Разбор в секциях 2–3. Мощнее всех, опаснее всех.</dd>
+
+<dt>Hashing trick</dt>
+<dd>Хеш категории по модулю $K$. Фиксированная размерность, коллизии смешивают несвязанные категории. Утечки нет.</dd>
+
+<dt>Обучаемые эмбеддинги</dt>
+<dd>Вектор на категорию, обучаемый вместе с моделью. Для табличного DL и для CatBoost косвенно. Требует много данных на категорию.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: признак user_id со 180 000 значений</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Предельный случай</span></div>
+<div class="tstep-c">
+<div class="calc">
+200 000 строк, признак user_id, 180 000 уникальных значений.
+Среднее число строк на пользователя: 1.11
+
+<span class="lbl">Наивный target encoding</span>
+Для 165 000 пользователей (91.7%) в данных ровно одна строка
+→ кодировка = собственная метка
+
+train AUC: <span class="bad">0.998</span>
+test AUC:  <span class="bad">0.501</span>
+
+Модель выучила «читать ответ из признака» и в проде
+получает бесполезное число.
+
+<span class="lbl">Out-of-fold, K = 5</span>
+Для пользователя с одной строкой: в остальных фолдах
+его нет → fallback на глобальное среднее.
+Кодировка одинакова для 91.7% строк — <b>константа</b>.
+
+train AUC: <span class="res">0.7231</span>
+test AUC:  <span class="res">0.7228</span>
+
+Утечки нет. И признак почти ничего не даёт:
+без него AUC 0.7219, вклад <span class="hl">+0.0009</span>.
+</div>
+<p><strong>Второй результат честнее и полезнее первого.</strong> OOF сообщает правду: <em>user_id как категория бесполезен</em>, потому что каждый пользователь встречается один раз и обобщать не с чего. Наивная схема скрывала это за AUC 0.998.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Что работает вместо</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Признак «город» с 4 200 значениями, 200 000 строк</caption>
+<thead><tr><th>Кодирование</th><th>столбцов</th><th>train AUC</th><th>test AUC</th><th>разрыв</th><th>риск утечки</th></tr></thead>
+<tbody>
+<tr><td>One-hot</td><td class="r">4 200</td><td>0.8391</td><td>0.8118</td><td class="a">0.027</td><td class="g">нет</td></tr>
+<tr><td>Ordinal</td><td class="g">1</td><td>0.8302</td><td>0.8134</td><td class="g">0.017</td><td class="g">нет</td></tr>
+<tr><td>Frequency</td><td class="g">1</td><td>0.8281</td><td>0.8207</td><td class="g">0.007</td><td class="g">нет</td></tr>
+<tr><td>Hashing (K=256)</td><td class="g">256</td><td>0.8334</td><td>0.8161</td><td class="g">0.017</td><td class="g">нет</td></tr>
+<tr><td>Target naive</td><td class="g">1</td><td class="r">0.9412</td><td class="r">0.7891</td><td class="r">0.152</td><td class="r">высокий</td></tr>
+<tr class="best"><td>Target OOF + сглаж.</td><td class="g">1</td><td class="g">0.8368</td><td class="g">0.8312</td><td class="g">0.006</td><td class="g">нет</td></tr>
+<tr class="best"><td>Frequency + Target OOF</td><td class="g">2</td><td class="g">0.8391</td><td class="g">0.8341</td><td class="g">0.005</td><td class="g">нет</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Два наблюдения</span>
+① <b>Frequency encoding недооценивают.</b>
+   Один столбец, ноль риска, test AUC 0.8207 —
+   лучше one-hot с его 4200 столбцами (0.8118).
+   Редкость категории информативна сама по себе.
+
+② <b>Комбинация лучше любого одиночного кодирования.</b>
+   Frequency + Target OOF: 0.8341
+   Они несут разную информацию:
+   частота — «насколько категория типична»
+   target  — «каков исход в этой категории»
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Как понять, стоит ли target encoding риска</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Диагностика по распределению размеров категорий</span>
+Посчитайте долю строк, попадающих в категории
+размером менее 20 наблюдений.
+
+  &lt; 10%:  target encoding безопасен и полезен
+  10–40%: нужно сглаживание с m ≥ 20
+  40–70%: сомнительно, комбинируйте с frequency
+  &gt; 70%:  <b>не используйте</b> — сигнала нет,
+          будет только шум и риск
+
+Замеры:
+  город (4 200 знач.):    доля мелких <span class="res">12%</span> → полезен, +0.011 AUC
+  товар (28 000 знач.):   доля мелких <span class="hl">48%</span> → +0.004 AUC
+  user_id (180 000):      доля мелких <span class="bad">96%</span> → +0.0009 AUC
+</div>
+<div class="calc"><span class="lbl">Дополнительная проверка: сколько категорий новых на тесте</span>
+Доля строк теста с категорией, отсутствующей в трейне:
+
+  город:   <span class="res">0.8%</span>   fallback работает редко
+  товар:   <span class="hl">7.3%</span>
+  user_id: <span class="bad">71.2%</span>  fallback работает для большинства
+
+Если доля новых категорий выше 20%, признак
+в основном будет заменён константой fallback —
+это и есть предел его полезности.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Кодирование высококардинальной категории</div>
+<div class="chsub">Frequency encoding: один столбец, ноль риска и лучше one-hot с 4200 столбцами</div>
+<div style="position:relative;height:340px;"><canvas id="c_card"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Отбор признаков внутри кросс-валидации <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">CV AUC 0.81 на чистом шуме — самая известная катастрофа в отборе</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Смещение отбора <span class="en">(selection bias)</span></dt>
+<dd>Если признаки отобраны с использованием целевой на всех данных, любая последующая валидация оптимистично смещена — валидационные объекты уже повлияли на то, какие признаки видит модель.</dd>
+
+<dt>Вложенная кросс-валидация <span class="en">(nested CV)</span></dt>
+<dd>Два уровня: внешний оценивает качество, внутренний отбирает признаки и подбирает гиперпараметры. Внутренний работает <em>только</em> на обучающей части внешнего фолда.</dd>
+
+<dt>Множественное тестирование</dt>
+<dd>При 10 000 случайных признаков и 1 000 объектов максимальная выборочная корреляция достигает 0.12 чисто случайно. Отбор двадцати лучших даёт двадцать «сильных» признаков из чистого шума.</dd>
+
+<dt>Стабильность отбора</dt>
+<dd>Доля признаков, попадающих в отобранный набор во всех фолдах. Низкая стабильность означает, что отбор ловит шум.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: двадцать лучших из десяти тысяч случайных</div>
+<p>Возьмём 1 000 объектов и 10 000 признаков, заполненных случайными числами. Целевая тоже случайна. Связи нет никакой.</p>
+<p><strong>Но выборочная корреляция каждого признака с целевой — случайная величина</strong> со стандартным отклонением $1/\sqrt{1000} \approx 0.032$. Максимум из десяти тысяч таких величин будет около $3.9\sigma \approx 0.12$.</p>
+<p>Отберём двадцать признаков с наибольшей корреляцией. Все они имеют $|r| \approx 0.11$–$0.12$ — выглядят как сильный сигнал.</p>
+<p><strong>Теперь кросс-валидируем модель на этих двадцати признаках.</strong> И получаем AUC 0.81 — на данных, где нет вообще ничего. Потому что отбор использовал целевую <em>всех</em> объектов, включая те, что попадут в валидационные фолды.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🚨</span> Трассировка: CV на чистом шуме</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Неправильная схема</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Данные</span>
+X: 1 000 × 10 000, все значения ~ N(0, 1)
+y: 1 000 бинарных меток, случайные, доля единиц 0.5
+<b>Связи между X и y не существует.</b>
+
+<span class="lbl">Схема (неправильная)</span>
+① Посчитать корреляцию каждого признака с y
+   НА ВСЕХ 1000 объектах
+② Отобрать топ-20 по модулю корреляции
+③ cross_val_score(модель, X[:, топ20], y, cv=5)
+</div>
+<div class="calc"><span class="lbl">Ожидаемые корреляции при чистом шуме</span>
+σ выборочной корреляции ≈ 1/√1000 = <span class="hl">0.0316</span>
+
+Максимум из 10 000 независимых ~ N(0, 0.0316):
+  E[max] ≈ σ·√(2 ln 10000) = 0.0316 × √18.42
+         = 0.0316 × 4.292 = <span class="hl">0.1357</span>
+
+Топ-20 будут в диапазоне |r| ≈ 0.11 … 0.14
+
+<span class="lbl">Результат</span>
+CV AUC = <span class="bad">0.810</span>
+На данных, где нет никакого сигнала.
+</div>
+<p><strong>Механизм.</strong> Признак попал в топ-20 потому, что случайно совпал с метками — <em>включая метки объектов из валидационных фолдов</em>. Когда модель обучается на четырёх фолдах и проверяется на пятом, признак уже «настроен» под пятый: он был выбран за то, что там совпадает.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Правильная схема</span></div>
+<div class="tstep-c">
+<div class="folds">
+<div class="foldrow"><span class="foldlbl">Неправильно</span>
+<span class="foldcell fc-leak" style="flex:5">① отбор на всех данных → ② CV на отобранных → AUC 0.810</span></div>
+<div class="foldrow"><span class="foldlbl">Правильно</span>
+<span class="foldcell fc-hold" style="flex:5">для каждого фолда: ① отбор на train_k → ② обучение → ③ оценка на val_k → AUC 0.501</span></div>
+</div>
+<div class="calc"><span class="lbl">Внутри каждого фолда заново</span>
+для k = 1..5:
+  ① corr = корреляция признаков с y НА train_k
+  ② top20_k = топ-20 по |corr|
+  ③ model.fit(X_train_k[:, top20_k], y_train_k)
+  ④ score на X_val_k[:, top20_k]
+
+Топ-20 в каждом фолде РАЗНЫЕ.
+Пересечение наборов между фолдами:
+  при чистом шуме: <span class="bad">0.4</span> признака в среднем
+  при реальном сигнале: <span class="res">14–17</span> признаков
+
+<b>Пересечение — готовый тест на наличие сигнала.</b>
+</div>
+<div class="ct">
+<table>
+<caption>Три схемы на чистом шуме и на реальных данных</caption>
+<thead><tr><th>Схема</th><th>шум: CV AUC</th><th>шум: честный AUC</th><th>реальные данные: CV AUC</th><th>реальные: честный</th></tr></thead>
+<tbody>
+<tr class="best"><td>Отбор на всех данных</td><td class="r">0.810</td><td class="r">0.503</td><td class="r">0.891</td><td class="a">0.812</td></tr>
+<tr><td>Отбор в фолде, тюнинг снаружи</td><td class="a">0.580</td><td class="a">0.502</td><td class="a">0.834</td><td class="a">0.816</td></tr>
+<tr class="best"><td>Полная вложенная CV</td><td class="g">0.501</td><td class="g">0.501</td><td class="g">0.818</td><td class="g">0.815</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Средняя строка важна.</strong> Отбор внутри фолда, но подбор гиперпараметров на всех данных — частая полумера. Она снижает завышение с 0.310 до 0.078, но не убирает его. Утечка возвращается через гиперпараметры.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">3</span><span class="tstep-t">Как сильно завышение зависит от числа признаков</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Чистый шум, 1 000 объектов, отбор топ-20</caption>
+<thead><tr><th>Всего признаков</th><th>ожид. max |r|</th><th>CV AUC (отбор на всех)</th><th>CV AUC (вложенная)</th><th>завышение</th></tr></thead>
+<tbody>
+<tr><td>50</td><td>0.083</td><td class="a">0.561</td><td class="g">0.499</td><td class="a">0.062</td></tr>
+<tr><td>500</td><td>0.111</td><td class="a">0.672</td><td class="g">0.502</td><td class="r">0.170</td></tr>
+<tr><td>5 000</td><td>0.128</td><td class="r">0.783</td><td class="g">0.500</td><td class="r">0.283</td></tr>
+<tr class="best"><td>10 000</td><td>0.136</td><td class="r">0.810</td><td class="g">0.501</td><td class="r">0.309</td></tr>
+<tr><td>100 000</td><td>0.152</td><td class="r">0.874</td><td class="g">0.499</td><td class="r">0.375</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Столбец вложенной CV — константа около 0.500</span>
+Правильная схема неизменно сообщает «сигнала нет»,
+сколько бы признаков ни было.
+
+Неправильная схема тем оптимистичнее, чем больше
+признаков — <b>ровно наоборот</b> здравому смыслу:
+чем выше риск случайных совпадений,
+тем лучше выглядит результат.
+
+Отношение объектов к признакам:
+  1000 объектов / 100 000 признаков = 0.01
+  При таком отношении отбор без вложенной CV
+  бессмысленен полностью.
+</div>
+<p><strong>Где это встречается в реальности.</strong> Геномика (десятки тысяч генов, сотни пациентов), текстовые признаки без ограничения словаря, автоматическая генерация признаков (featuretools и подобные), большие наборы агрегатов. Везде, где признаков сравнимо с числом объектов или больше.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Стабильность отбора как диагностика</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Метрика: доля признаков, отобранных во всех K фолдах</span>
+
+Чистый шум, 10 000 признаков, топ-20:
+  отобрано во всех 5 фолдах: <span class="bad">0 признаков</span>
+  средний размер пересечения пар: <span class="bad">0.4</span>
+
+Реальные данные, 200 признаков, топ-20:
+  отобрано во всех 5 фолдах: <span class="res">16 признаков</span>
+  средний размер пересечения пар: <span class="res">18.2</span>
+
+<b>Правило:</b> если пересечение наборов между фолдами
+меньше половины размера набора — отбор ловит шум,
+а не сигнал. Никакая схема валидации это не исправит:
+данных просто недостаточно.
+</div>
+<p><strong>Это самая дешёвая проверка в теме.</strong> Отберите признаки отдельно в каждом фолде и посчитайте пересечение. Тридцать строк кода и мгновенный ответ на вопрос «есть ли вообще что отбирать».</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Отбор на всех данных: CV AUC растёт с числом признаков — на чистом шуме</div>
+<div class="chsub">Вложенная CV неизменно сообщает 0.50; неправильная схема тем оптимистичнее, чем выше риск</div>
+<div style="position:relative;height:340px;"><canvas id="c_nested"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Жадные схемы отбора <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">RFE, forward, backward и почему пошаговое удаление опасно</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Backward elimination</dt>
+<dd>Начать со всех признаков, на каждом шаге удалять наименее полезный. Дорого, но учитывает взаимодействия.</dd>
+
+<dt>Forward selection</dt>
+<dd>Начать с пустого набора, добавлять наиболее полезный. Дешевле, но может не найти признаки, полезные только в паре.</dd>
+
+<dt>RFE <span class="en">(Recursive Feature Elimination)</span></dt>
+<dd>Backward, но удаляется сразу группа признаков по важности модели, а не по одному. Компромисс между качеством и стоимостью.</dd>
+
+<dt>Ловушка пошагового удаления</dt>
+<dd>Каждый шаг безопасен по отдельности, потому что коррелированные признаки страхуют друг друга; обвал происходит на последнем из группы. Подробно — в теме 1.4, секция 11.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: четыре схемы на 50 признаках</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Стоимость</span></div>
+<div class="tstep-c">
+<div class="calc">
+50 признаков, одно обучение = 18 секунд.
+
+<span class="lbl">Backward по одному до 12 признаков</span>
+шагов: 38 удалений
+на каждом шаге пробуем удалить каждый оставшийся:
+  50 + 49 + 48 + ... + 13 = <span class="bad">1 197 обучений</span>
+время: 1197 × 18 с = <span class="bad">5 ч 59 мин</span>
+
+<span class="lbl">Forward по одному до 12</span>
+  50 + 49 + ... + 39 = <span class="hl">534 обучения</span>
+время: <span class="hl">2 ч 40 мин</span>
+
+<span class="lbl">RFE, шаг 10%</span>
+удаляем по 5 признаков за раз: 8 шагов
+  8 обучений (важность берётся из модели)
+время: <span class="res">2 мин 24 с</span>
+
+<span class="lbl">SHAP + проверка удалением</span>
+  1 обучение + SHAP + 3 проверочных обучения
+время: <span class="res">1 мин 16 с</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Результаты</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одна задача, четыре схемы, отбор до 12 признаков</caption>
+<thead><tr><th>Схема</th><th>обучений</th><th>время</th><th>test AUC</th><th>нашёл взаимодействия?</th></tr></thead>
+<tbody>
+<tr><td>Backward по одному</td><td class="r">1 197</td><td class="r">5 ч 59 мин</td><td class="g">0.8411</td><td class="g">да, 4 из 4</td></tr>
+<tr><td>Forward по одному</td><td class="r">534</td><td class="r">2 ч 40 мин</td><td class="a">0.8287</td><td class="r">2 из 4</td></tr>
+<tr><td>RFE, шаг 10%</td><td class="g">8</td><td class="g">2 мин 24 с</td><td class="g">0.8395</td><td class="g">4 из 4</td></tr>
+<tr class="best"><td>SHAP + проверка</td><td class="g">4</td><td class="g">1 мин 16 с</td><td class="g">0.8408</td><td class="g">4 из 4</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Разбор</span>
+Backward даёт лучший результат — и стоит шесть часов.
+Разница с SHAP: <span class="hl">0.0003</span> AUC.
+
+Forward провалил взаимодействия (2 из 4).
+Причина: признак, полезный только в паре,
+по отдельности не улучшает модель и не добавляется.
+Он никогда не получит шанс попасть в набор,
+потому что его партнёр тоже не добавлен.
+
+RFE и SHAP дают почти то же за минуты.
+</div>
+<p><strong>Вывод по стоимости.</strong> Жадный перебор — метод из времён, когда признаков было двадцать. При современных объёмах SHAP или RFE дают тот же результат на три порядка дешевле. Backward имеет смысл только при очень малом числе признаков и очень дорогой цене ошибки.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Ловушка последовательного удаления</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Шесть коррелированных копий одного сигнала</span>
+Удаляем по одному, проверяя качество на каждом шаге:
+
+исходное AUC:                    <span class="hl">0.8412</span>
+удалили копию 1 → 0.8411   (−0.0001)  <span class="dim">безопасно</span>
+удалили копию 2 → 0.8410   (−0.0001)  <span class="dim">безопасно</span>
+удалили копию 3 → 0.8407   (−0.0003)  <span class="dim">безопасно</span>
+удалили копию 4 → 0.8401   (−0.0006)  <span class="dim">безопасно</span>
+удалили копию 5 → 0.8373   (−0.0028)  <span class="dim">ещё терпимо</span>
+удалили копию 6 → <span class="bad">0.7924</span>   (<span class="bad">−0.0449</span>)  <span class="bad">обвал</span>
+
+Пошаговая проверка смотрит на один шаг вперёд
+и не видит, что удаляется вся группа.
+
+<span class="lbl">Лекарство</span>
+① кластеризовать признаки по корреляции (|r| &gt; 0.8)
+② удалять и проверять ГРУППАМИ целиком
+③ либо оставлять по одному представителю кластера
+
+С группировкой:
+  удалили группу целиком → AUC 0.7924
+  обвал виден СРАЗУ, на первом же шаге
+</div>
+<p><strong>Та же ловушка разобрана в теме 1.4, секция 11</strong> применительно к SHAP. Она универсальна для любой схемы отбора, работающей по одному признаку за раз, и лечится одинаково — кластеризацией признаков по корреляции перед отбором.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Стоимость и результат четырёх схем отбора</div>
+<div class="chsub">Backward выигрывает 0.0003 AUC за шесть часов против минуты у SHAP</div>
+<div style="position:relative;height:330px;"><canvas id="c_greedy"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Диагностика: как найти утечку <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Шесть тестов, каждый занимает минуты</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔎</span> Трассировка: чек-лист поиска утечки</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Тест 1: слишком хорошо, чтобы быть правдой</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Сравните с реалистичным потолком задачи</span>
+Прогноз оттока:            обычно AUC 0.70–0.82
+Кредитный скоринг:         0.72–0.85
+Клик по рекламе:           0.72–0.80
+Мошенничество:             0.90–0.98  <span class="dim">(здесь высокий — норма)</span>
+Прогноз спроса, R²:        0.60–0.85
+Медицинская диагностика:   0.80–0.95
+
+Ваша модель существенно выше диапазона
+→ <b>сначала ищите утечку</b>
+
+Замер, с которого началось расследование:
+  заявленный AUC оттока: <span class="bad">0.974</span>
+  реалистичный потолок:  0.82
+  превышение:            <span class="bad">0.154</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Тест 2: одиночная важность</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Какую долю прогноза объясняет один признак</span>
+Посчитайте SHAP, найдите долю топ-1 признака
+в суммарном среднем модуле.
+
+  &lt; 25%:  нормально
+  25–40%: присмотреться
+  40–60%: подозрительно
+  &gt; 60%:  <b>почти наверняка утечка</b>
+
+Замер:
+  days_since_last_contact: <span class="bad">71%</span> вклада
+  следующий признак:       9%
+
+Один признак объясняет больше, чем все остальные
+вместе взятые — так реальные признаки себя не ведут.
+</div>
+<div class="calc"><span class="lbl">Тест 2b: обучите модель на ОДНОМ признаке</span>
+Только подозреваемый признак, больше ничего.
+
+  AUC модели из одного признака: <span class="bad">0.951</span>
+  AUC полной модели:             0.974
+
+Один признак даёт 97.6% качества полной модели.
+Это невозможно для честного признака.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Тест 3: форма зависимости</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Постройте SHAP dependence plot для подозреваемого</span>
+Признаки-утечки имеют характерную форму:
+  ✗ резкая ступенька в одной точке
+  ✗ два плотных кластера без промежуточных значений
+  ✗ разрыв ровно на нуле или на «магическом» значении
+
+Замер по days_since_last_contact:
+  значения 0–30:    средний SHAP <span class="bad">−1.84</span>
+  значения 31–60:   средний SHAP <span class="bad">+2.71</span>
+  промежуточных значений между кластерами: <span class="bad">0.3%</span>
+
+Резкая ступенька на 30 — это граница
+периода определения целевой. Признак
+буквально кодирует «наступило ли событие».
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Тест 4: разрыв train–test</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что означает разрыв между обучением и валидацией</caption>
+<thead><tr><th>Разрыв AUC</th><th>Интерпретация</th><th>Действие</th></tr></thead>
+<tbody>
+<tr><td>&lt; 0.02</td><td class="g">норма</td><td class="note">ничего</td></tr>
+<tr><td>0.02 – 0.05</td><td class="g">умеренное переобучение</td><td class="note">усилить регуляризацию</td></tr>
+<tr><td>0.05 – 0.15</td><td class="a">сильное переобучение или утечка</td><td class="note">проверить препроцессинг</td></tr>
+<tr class="best"><td>&gt; 0.15</td><td class="r">почти наверняка утечка</td><td class="note">искать источник целенаправленно</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Важное уточнение</span>
+Разрыв ловит утечки в ПРЕПРОЦЕССИНГЕ
+(target encoding, отбор, SMOTE).
+
+Он НЕ ловит утечку целевой в самом признаке:
+там разрыв нормальный (0.003 в нашем примере),
+потому что утечка одинакова в обучении и валидации.
+
+Для неё работают тесты 1, 2, 3 и 6.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">5</span><span class="tstep-t">Тест 5: перемешать целевую</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Самый мощный тест на утечку в пайплайне</span>
+① Перемешать y случайным образом
+② Прогнать ВЕСЬ пайплайн без изменений
+③ Посмотреть на метрику
+
+Правильный пайплайн даст AUC ≈ 0.50.
+Всё, что существенно выше, — утечка в процессе.
+
+Замеры:
+  правильный Pipeline:              <span class="res">0.502</span> ✓
+  отбор признаков вне Pipeline:     <span class="bad">0.810</span> ✗
+  target encoding вне Pipeline:     <span class="bad">0.688</span> ✗
+  SMOTE до разбиения:               <span class="bad">0.751</span> ✗
+  scaler вне Pipeline:              <span class="res">0.504</span> ✓ <span class="dim">(не использует y)</span>
+  GroupKFold забыт:                 <span class="res">0.501</span> ✓ <span class="dim">(y перемешан — групп нет)</span>
+
+<b>Тест ловит всё, что использует целевую
+не по правилам.</b> Он не ловит групповые
+и временные утечки — для них тесты 6 и 1.
+</div>
+<p><strong>Это должно быть автоматическим тестом в CI.</strong> Тридцать строк: перемешать целевую, прогнать пайплайн, проверить, что метрика в пределах $0.5 \pm 3\sigma$. Ловит целый класс ошибок раз и навсегда, включая те, что будут внесены позже.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">6</span><span class="tstep-t">Тест 6: сравнить схемы валидации</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Прогнать одну модель разными схемами разбиения</caption>
+<thead><tr><th>Схема</th><th>AUC</th><th>разница с KFold</th><th>что означает</th></tr></thead>
+<tbody>
+<tr><td>KFold (случайно)</td><td class="r">0.881</td><td class="dim">—</td><td class="note">базовая линия</td></tr>
+<tr class="best"><td>GroupKFold по клиенту</td><td class="a">0.752</td><td class="r">−0.129</td><td class="note">есть групповая утечка</td></tr>
+<tr class="best"><td>TimeSeriesSplit</td><td class="a">0.734</td><td class="r">−0.147</td><td class="note">есть временная утечка</td></tr>
+<tr><td>Group + Time</td><td class="g">0.729</td><td class="r">−0.152</td><td class="note">реалистичная оценка</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Как читать</span>
+Если результат СУЩЕСТВЕННО падает при переходе
+к более строгой схеме — утечка соответствующего типа есть.
+
+Если не падает — этого типа утечки нет,
+и можно пользоваться более простой схемой.
+
+Стоимость теста: три дополнительных прогона CV.
+На типичной задаче — 15 минут.
+
+<b>Всегда берите самую строгую схему как основную</b>,
+даже если разница мала. Она соответствует
+тому, как модель будет работать в проде.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">7</span><span class="tstep-t">Итоговый чек-лист</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Шесть тестов и что каждый ловит</caption>
+<thead><tr><th>Тест</th><th>Время</th><th>Утечка целевой</th><th>Препроцессинг</th><th>Группы</th><th>Время</th></tr></thead>
+<tbody>
+<tr><td>1. Сравнить с потолком задачи</td><td class="g">1 мин</td><td class="g">да</td><td class="a">частично</td><td class="a">частично</td><td class="a">частично</td></tr>
+<tr><td>2. Доля топ-1 признака</td><td class="g">5 мин</td><td class="g">да</td><td class="r">нет</td><td class="r">нет</td><td class="r">нет</td></tr>
+<tr><td>3. Форма зависимости</td><td class="g">10 мин</td><td class="g">да</td><td class="r">нет</td><td class="r">нет</td><td class="r">нет</td></tr>
+<tr><td>4. Разрыв train–test</td><td class="g">2 мин</td><td class="r">нет</td><td class="g">да</td><td class="a">частично</td><td class="r">нет</td></tr>
+<tr class="best"><td>5. Перемешать целевую</td><td class="g">10 мин</td><td class="r">нет</td><td class="g">ДА</td><td class="r">нет</td><td class="r">нет</td></tr>
+<tr class="best"><td>6. Сравнить схемы валидации</td><td class="a">15 мин</td><td class="r">нет</td><td class="r">нет</td><td class="g">ДА</td><td class="g">ДА</td></tr>
+<tr><td>0. Разбор признаков по времени</td><td class="a">1 час</td><td class="g">ДА</td><td class="r">нет</td><td class="r">нет</td><td class="g">да</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Ни один тест не покрывает всё.</strong> Минимальный набор: тест 5 (в CI, автоматически), тест 6 (при первой сборке валидации) и тест 0 — ручной разбор признаков по времени появления. Первые три — реакция на подозрительно хороший результат.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Тест с перемешанной целевой: что показывает каждый пайплайн</div>
+<div class="chsub">Правильный пайплайн даёт 0.50; всё выше — утечка через использование целевой</div>
+<div style="position:relative;height:330px;"><canvas id="c_shuffle"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пятнадцать ошибок</div>
+
+<div class="pitfalls">
+<div class="pf"><span class="pfn">1</span><span class="pfc"><b>Использовать leave-one-out target encoding.</b> Формула $e_i = (\Sigma - y_i)/(n-1)$ даёт внутри категории корреляцию ровно $-1$ с собственной меткой. На нашем примере общая корреляция $-0.439$, test AUC на большой выборке <b>0.508</b> — хуже случайного угадывания.</span></div>
+
+<div class="pf"><span class="pfn">2</span><span class="pfc"><b>Считать, что сглаживание решает проблему утечки.</b> Разрыв train–test упал с 0.382 до 0.243 — всё ещё катастрофа. Сглаживание лечит шум редких категорий, out-of-fold лечит утечку. Нужны оба.</span></div>
+
+<div class="pf"><span class="pfn">3</span><span class="pfc"><b>Отбирать признаки на всех данных перед CV.</b> На чистом шуме из 10 000 признаков CV даёт AUC <b>0.810</b>. Правильная вложенная схема даёт 0.501. Завышение растёт с числом признаков — ровно наоборот здравому смыслу.</span></div>
+
+<div class="pf"><span class="pfn">4</span><span class="pfc"><b>Отбирать внутри фолда, но тюнить гиперпараметры снаружи.</b> Полумера снижает завышение с 0.310 до 0.078, не убирая его. Утечка возвращается через выбор гиперпараметров.</span></div>
+
+<div class="pf"><span class="pfn">5</span><span class="pfc"><b>Не заворачивать препроцессинг в Pipeline.</b> Правило: любой шаг с методом <code>fit</code> должен быть внутри. Шаг, написанный вручную через <code>groupby</code> или <code>np.mean</code>, почти наверняка течёт.</span></div>
+
+<div class="pf"><span class="pfn">6</span><span class="pfc"><b>Применять SMOTE до разбиения.</b> Синтетический объект в обучении может быть интерполяцией объекта, попавшего в валидацию — фактически его копия. Завышение 0.109. Нужен <code>imblearn.Pipeline</code>, а не обычный.</span></div>
+
+<div class="pf"><span class="pfn">7</span><span class="pfc"><b>Игнорировать «безобидную» утечку через scaler.</b> Завышение 0.0013 при N = 50 000, но <b>0.0384</b> при N = 500. И на большой выборке оно того же порядка, что разница между сравниваемыми моделями — то есть выбор модели делается на уровне шума от утечки.</span></div>
+
+<div class="pf"><span class="pfn">8</span><span class="pfc"><b>Случайно разбивать данные с временной структурой.</b> Прогноз оттока: KFold 0.892, TimeSeriesSplit 0.734, прод 0.729. TimeSeriesSplit предсказал реальность с точностью 0.005, KFold ошибся на 0.158.</span></div>
+
+<div class="pf"><span class="pfn">9</span><span class="pfc"><b>Забыть зазор при TimeSeriesSplit.</b> Если целевая определена на горизонте 30 дней, зазор должен быть не меньше 30 дней. Без него завышение 0.027 даже при правильном по времени разбиении.</span></div>
+
+<div class="pf"><span class="pfn">10</span><span class="pfc"><b>Не группировать по сущности.</b> При пяти записях на клиента вероятность, что клиент есть и в обучении, и в валидации, равна <b>99.97%</b>. KFold растёт с 0.751 до 0.961 с числом записей — это измерение памяти, а не обобщения.</span></div>
+
+<div class="pf"><span class="pfn">11</span><span class="pfc"><b>Группировать не на том уровне.</b> Медицинские снимки: KFold 0.943, по пациенту 0.812, по больнице 0.734, прод в новой больнице 0.729. Группировка по пациенту всё ещё завышает на 0.078 из-за артефактов оборудования.</span></div>
+
+<div class="pf"><span class="pfn">12</span><span class="pfc"><b>Отбирать признаки по permutation importance при коррелированных группах.</b> Две копии признака дают важности 0.0009 и 0.0011 против 0.0412 у одиночного — <b>95% важности исчезает</b>. SHAP хотя бы делит; permutation уничтожает. Лекарство — групповое перемешивание.</span></div>
+
+<div class="pf"><span class="pfn">13</span><span class="pfc"><b>Удалять признаки по одному до обвала.</b> Шесть коррелированных копий: пять удалений дают суммарно $-0.004$, шестое $-0.045$. Пошаговая проверка смотрит на шаг вперёд и не видит, что уходит вся группа. Кластеризуйте признаки перед отбором.</span></div>
+
+<div class="pf"><span class="pfn">14</span><span class="pfc"><b>Отбирать по корреляции с целевой.</b> В синтетике с известным ответом корреляция нашла <b>0 из 4</b> взаимодействующих признаков — они по отдельности с целевой не связаны. Потеря 0.052 AUC против SHAP.</span></div>
+
+<div class="pf"><span class="pfn">15</span><span class="pfc"><b>Применять target encoding к признаку, где почти все категории уникальны.</b> При 96% строк в категориях меньше 20 наблюдений вклад составил <b>+0.0009</b> AUC при полном риске утечки. Проверьте долю мелких категорий до, а не после.</span></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять сценариев, где утечка стоила денег</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🔒</span><div><div class="sysname">Гейт на утечки в CI пайплайна обучения</div><div class="syssub">Автоматическая проверка перед каждым выкатом</div></div></div>
+<div class="sysbody">
+<p><strong>Мотив.</strong> За полтора года три модели ушли в прод с утечками, каждая обнаружена через 4–8 недель после выката. Суммарные потери — не столько деньги, сколько доверие к команде.</p>
+<p><strong>Гейт из четырёх автоматических тестов.</strong> Первый — перемешивание целевой: весь пайплайн прогоняется на случайных метках, метрика должна лежать в $0.5 \pm 3\sigma$. Второй — разрыв train–test выше 0.15 блокирует выкат. Третий — доля топ-1 признака в суммарном SHAP выше 0.55 требует ручного подтверждения. Четвёртый — сравнение AUC при KFold и при GroupKFold: расхождение выше 0.05 блокирует.</p>
+<p><strong>Первый прогон нашёл две утечки в уже работавших моделях.</strong> В одной target encoding считался вне Pipeline — тест с перемешанной целевой дал 0.688 вместо 0.50. Во второй забыли GroupKFold на данных с несколькими заявками от одного клиента.</p>
+<p><strong>Стоимость гейта — 11 минут на прогон</strong>, из них 9 занимает перемешивание целевой (полное переобучение). <em>Это оказалось приемлемой ценой за то, чтобы класс ошибок закрылся окончательно</em>.</p>
+<p><strong>Ложные срабатывания были.</strong> Антифрод-модель законно имеет AUC 0.96 и топ-1 признак с долей 0.58. Для неё пороги вынесены в конфигурацию модели с обязательным комментарием, почему они изменены — так исключение остаётся видимым при ревью.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🧬</span><div><div class="sysname">Геномика: 40 000 признаков, 900 пациентов</div><div class="syssub">Классический режим, где отбор без вложенной CV бессмысленен</div></div></div>
+<div class="sysbody">
+<p><strong>Постановка.</strong> Экспрессия 40 000 генов, 900 пациентов, бинарный исход. Отношение объектов к признакам — 0.0225.</p>
+<p><strong>Первая версия исследования сообщала AUC 0.89.</strong> Схема: отобрать 50 генов с наибольшей разницей между группами, затем 10-кратная CV. Классическая ошибка из секции 10.</p>
+<p><strong>Пересчёт с вложенной CV дал 0.61.</strong> Отбор внутри каждого фолда, пересечение наборов между фолдами — 4 гена из 50. Низкое пересечение само по себе означало, что отбор ловит шум.</p>
+<p><strong>Что осталось после честной оценки.</strong> Четыре гена, попавшие во все десять фолдов, дали AUC 0.61 — скромно, но воспроизводимо. <em>Это и был реальный результат</em>. Публикация с 0.89 не воспроизвелась бы на независимой когорте и стоила бы репутации.</p>
+<p><strong>Отдельная проблема — партии обработки образцов.</strong> Образцы обрабатывались партиями по 90 штук, и партия коррелировала с исходом (больных набирали позже). GroupKFold по партии снизил AUC ещё до 0.57. Финальная оценка — по независимой когорте из другого центра: <em>0.58</em>.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🏪</span><div><div class="sysname">Target encoding для 60 000 товаров</div><div class="syssub">Где OOF и сглаживание дают реальный прирост</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Прогноз вероятности возврата товара. Признак «артикул» с 60 000 значений, 2.1 млн строк, в среднем 35 строк на артикул.</p>
+<p><strong>Диагностика до внедрения.</strong> Доля строк в категориях меньше 20 наблюдений — 31%. По правилу из секции 9 это зона «нужно сглаживание с $m \ge 20$». Доля новых артикулов на тесте — 6.4%, fallback сработает редко. Признак стоит риска.</p>
+<p><strong>Схема.</strong> OOF с $K=5$, разбиение по <em>времени</em>, а не случайное: возвраты сезонны, и случайные фолды дали бы временную утечку поверх всего остального. Сглаживание $m = 24$, подобрано эмпирическим байесом ($\bar y = 0.083$, $s^2 = 0.00304$).</p>
+<p><strong>Результат.</strong> Test AUC 0.7812 против 0.7614 без признака — прирост 0.0198, крупнейший из всех фич за квартал. Наивная версия давала train AUC 0.94 и test 0.71, то есть <em>ухудшала</em> модель на 0.05 при выдающихся цифрах на обучении.</p>
+<p><strong>В проде — отдельная тонкость.</strong> Кодировка для инференса считается по <em>всей</em> обучающей выборке, а не по фолдам: фолды нужны только при обучении. Это два разных артефакта, и путаница между ними — источник расхождения между офлайн и онлайн метриками. Таблица кодировок версионируется вместе с моделью.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">⏱️</span><div><div class="sysname">Feature store и утечка через агрегаты</div><div class="syssub">Самая трудноуловимая форма временной утечки</div></div></div>
+<div class="sysbody">
+<p><strong>Проблема.</strong> Признак «средний чек клиента» считался в витрине как среднее по всем транзакциям. При обучении на исторических данных это среднее включало транзакции, произошедшие <em>после</em> момента, на который делался прогноз.</p>
+<p><strong>Почему это не заметили полгода.</strong> Разрыв train–test был нормальным — 0.014. Утечка одинаково присутствовала в обучении и валидации. Тест с перемешанной целевой тоже проходил: агрегат не использует целевую. Ни один автоматический тест не срабатывал.</p>
+<p><strong>Нашли тестом 6 — сравнением схем валидации.</strong> TimeSeriesSplit дал AUC 0.771 против 0.864 у KFold. Расхождение 0.093 при том, что временной структуры в модели формально не было, указало прямо на агрегаты.</p>
+<p><strong>Решение — point-in-time корректность.</strong> Витрина перестроена так, что каждый агрегат считается с явным ограничением по времени: <code>AS OF timestamp</code>. Для обучающего объекта с датой 15 марта средний чек считается только по транзакциям до 15 марта. <em>Это дороже в вычислении примерно вдвое и является обязательным требованием к любому feature store</em>.</p>
+<p><strong>Проверка после исправления.</strong> KFold 0.774, TimeSeriesSplit 0.771 — расхождение 0.003. Прод показал 0.769. Модель стала «хуже» на 0.09 AUC на бумаге и не изменилась в реальности: раньше цифра просто была неправдой.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">📉</span><div><div class="sysname">Сокращение признаков ради латентности</div><div class="syssub">Где отбор нужен не для качества, а для инфраструктуры</div></div></div>
+<div class="sysbody">
+<p><strong>Постановка.</strong> 340 признаков, из них 190 требуют онлайн-запросов к четырём разным сервисам. p99 сбора признаков — 140 мс при бюджете 60 мс.</p>
+<p><strong>Отбор оптимизирует не качество, а стоимость.</strong> Каждому признаку приписана цена в миллисекундах и в рублях за запрос. Задача: минимизировать суммарную цену при падении AUC не более 0.005.</p>
+<p><strong>Метод — SHAP (interventional) с кластеризацией.</strong> Сначала признаки кластеризованы по корреляции $|r| > 0.85$ — получилось 214 кластеров из 340 признаков. Внутри кластера оставлен <em>самый дешёвый</em> представитель, а не самый важный. Это дало сокращение до 214 признаков с потерей 0.0011 AUC.</p>
+<p><strong>Дальше — жадное удаление по отношению «важность / стоимость».</strong> Не по важности: признак с важностью 0.02 и ценой 40 мс хуже признака с важностью 0.01 и ценой 2 мс. Удаление по этому отношению довело набор до 96 признаков при потере 0.0043.</p>
+<p><strong>Итог.</strong> p99 сбора 38 мс вместо 140, три из четырёх сервисов перестали вызываться синхронно. AUC 0.8412 → 0.8369. <em>Ключевое решение — оставлять в кластере дешёвого, а не важного</em>: внутри кластера корреляция 0.85+, и разница в важности между представителями меньше шума отбора.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы</div>
+<div class="sdesc">Тридцать вопросов</div>
+
+<h3>Утечки: основы</h3>
+
+<div class="qa"><div class="q">1. Что такое утечка одним предложением?</div><div class="a">Модель при обучении получает информацию, недоступную в момент реального применения. Метрики валидации завышены, в проде модель проваливается.</div></div>
+
+<div class="qa"><div class="q">2. Почему кросс-валидация не ловит утечку?</div><div class="a">CV проверяет одно — работает ли модель на невиданных данных. Она слепа к тому, существует ли признак в момент прогноза, честно ли считался препроцессинг и не встречались ли те же клиенты в других фолдах. Утечка присутствует во всех фолдах одинаково.</div></div>
+
+<div class="qa"><div class="q">3. Какой самый надёжный способ найти утечку?</div><div class="a">Ручной разбор признаков по времени: <em>«в какой момент это значение становится известным, и будет ли оно известно при реальном прогнозе?»</em> Час на пятьдесят признаков, находит больше, чем любая автоматика.</div></div>
+
+<div class="qa"><div class="q">4. Первый признак того, что что-то не так?</div><div class="a">Качество существенно выше реалистичного потолка задачи. AUC 0.974 в прогнозе оттока физически невозможен — если бы отток был так предсказуем, его бы предотвращали.</div></div>
+
+<h3>Target encoding</h3>
+
+<div class="qa"><div class="q">5. Чем плоха наивная схема?</div><div class="a">Для категории из одного объекта кодировка равна его собственной метке. В реальных данных с тысячами категорий половина встречается 1–2 раза, то есть половина строк получает ответ в явном виде.</div></div>
+
+<div class="qa"><div class="q">6. Почему leave-one-out хуже наивной?</div><div class="a">Формула $e_i = (\Sigma - y_i)/(n-1)$ линейно убывает по $y_i$, значит внутри категории корреляция ровно $-1$. Модель учит перевёрнутую зависимость; на тесте знак переворачивается. Test AUC <b>0.508</b> против 0.612 у наивной.</div></div>
+
+<div class="qa"><div class="q">7. Как устроено out-of-fold кодирование?</div><div class="a">Данные разбиваются на $K$ фолдов; кодировка для объектов фолда $k$ считается по остальным фолдам. Категория, отсутствующая в остальных, получает глобальное среднее <em>тех же</em> фолдов — fallback обязателен.</div></div>
+
+<div class="qa"><div class="q">8. Заменяет ли сглаживание out-of-fold?</div><div class="a">Нет. Наивная схема со сглаживанием $m=10$ даёт разрыв train–test 0.243 вместо 0.382 — всё ещё катастрофа. Это два лекарства от разных болезней: OOF от утечки, сглаживание от шума редких категорий.</div></div>
+
+<div class="qa"><div class="q">9. Как подобрать параметр сглаживания $m$?</div><div class="a">Эмпирический байес: $m = \bar y(1-\bar y)/s^2 - 1$, где $s^2$ — дисперсия средних по категориям. В замере формула дала $m=11$ при оптимуме перебором около 10. Тот же расчёт, что при подборе априорного в теме 6.3.</div></div>
+
+<div class="qa"><div class="q">10. Как понять, стоит ли target encoding риска?</div><div class="a">Доля строк в категориях меньше 20 наблюдений. Меньше 10% — безопасно; 10–40% — нужно сглаживание; больше 70% — не использовать. При 96% мелких категорий вклад составил $+0.0009$ AUC при полном риске.</div></div>
+
+<h3>Препроцессинг и разбиение</h3>
+
+<div class="qa"><div class="q">11. Какой препроцессинг опаснее всего?</div><div class="a">Всё, что использует целевую: отбор признаков (завышение 0.307), target encoding (0.291), SMOTE до разбиения (0.109). Всё, что использует только $X$ — scaler, imputer, PCA — завышает на 0.001–0.01.</div></div>
+
+<div class="qa"><div class="q">12. Почему SMOTE до разбиения — критическая ошибка?</div><div class="a">Синтетический объект строится интерполяцией реальных. Если он создан из объекта, попавшего в валидацию, это фактически его копия в обучающей выборке. Нужен <code>imblearn.Pipeline</code>: обычный <code>sklearn.Pipeline</code> применит SMOTE и к валидации.</div></div>
+
+<div class="qa"><div class="q">13. Если утечка через scaler даёт всего 0.0013, стоит ли беспокоиться?</div><div class="a">Да. Это того же порядка, что разница между сравниваемыми моделями — то есть решения принимаются на уровне шума от утечки. Плюс эффект накапливается по шагам и растёт до 0.0384 при $N=500$.</div></div>
+
+<div class="qa"><div class="q">14. Как правильно организовать препроцессинг?</div><div class="a">Всё, у чего есть <code>fit</code>, — внутри Pipeline. Тогда при CV каждый фолд получает свой независимый препроцессор, обученный только на обучающей части. Шаг, написанный вручную через <code>groupby</code>, почти наверняка течёт.</div></div>
+
+<div class="qa"><div class="q">15. Когда нужен TimeSeriesSplit?</div><div class="a">Всегда, когда у данных есть временная структура. Замер: KFold 0.892, TimeSeriesSplit 0.734, прод 0.729 — вторая схема предсказала реальность с точностью 0.005.</div></div>
+
+<div class="qa"><div class="q">16. Зачем зазор между обучением и валидацией?</div><div class="a">Если целевая определена на горизонте (например, «уйдёт за 30 дней»), метка обучающего объекта считается по периоду, пересекающемуся с валидационным. Зазор должен быть не меньше горизонта; без него завышение 0.027.</div></div>
+
+<div class="qa"><div class="q">17. Насколько опасна групповая утечка?</div><div class="a">При пяти записях на клиента вероятность, что клиент есть и в обучении, и в валидации — <b>99.97%</b>. AUC KFold растёт с 0.751 до 0.961 с числом записей, тогда как GroupKFold стабильно даёт 0.751–0.753.</div></div>
+
+<div class="qa"><div class="q">18. По какому уровню группировать, если групп несколько?</div><div class="a">По самому крупному, на котором возможна утечка. Медицинские снимки: по пациенту 0.812, по больнице 0.734, прод в новой больнице 0.729. Вопрос: <em>на каких данных модель будет работать в проде?</em></div></div>
+
+<h3>Методы отбора</h3>
+
+<div class="qa"><div class="q">19. Чем permutation importance принципиально отличается от SHAP?</div><div class="a">Поведением при дублировании. SHAP делит важность (сумма по группе сохраняется: 0.400). Permutation её <b>уничтожает</b>: две копии дают 0.0009 и 0.0011 против 0.0412 у одиночного признака — исчезает 95%.</div></div>
+
+<div class="qa"><div class="q">20. Как понять, значима ли permutation importance?</div><div class="a">Сравнить со стандартным отклонением по повторам. Доход: $0.1278/0.0041 = 31.2\sigma$ — значим. Возраст: $0.0014/0.0022 = 0.6\sigma$ — неотличим от нуля. Отрицательная важность означает, что признак вредил.</div></div>
+
+<div class="qa"><div class="q">21. Permutation на трейне или на отложенной?</div><div class="a">Обе полезны. На отложенной — «нужен ли признак для обобщения». На трейне — «насколько модель на него опирается». Их отношение — прямая мера переобучения: у ID клиента оно 298×, у дохода 1.05×.</div></div>
+
+<div class="qa"><div class="q">22. Как устроена Boruta?</div><div class="a">Создаёт перемешанные копии всех признаков, обучает модель на реальных + теневых, засчитывает «попадание», если реальный признак важнее <em>максимума</em> теневых. Число попаданий за $N$ итераций проверяется биномиальным тестом с $p=0.5$.</div></div>
+
+<div class="qa"><div class="q">23. Почему берётся максимум теневых, а не среднее?</div><div class="a">Максимум даёт автоматическую поправку на множественные сравнения: случайно превысить максимум из пятнадцати гораздо труднее, чем среднее.</div></div>
+
+<div class="qa"><div class="q">24. Что означают три исхода Boruta?</div><div class="a">Подтверждён — статистически лучше шума; отвергнут — хуже шума; не решено — данных не хватило. При 20 итерациях и Бонферрони на 15 признаков подтверждают 17 попаданий, отвергают 3 — с одинаковым $p = 0.00129$ по симметрии биномиального распределения.</div></div>
+
+<div class="qa"><div class="q">25. Какой метод отбора выбрать?</div><div class="a">SHAP interventional с проверкой удалением: в синтетике с известным ответом он единственный нашёл ровно нужное (8 информативных + 4 взаимодействия, ноль мусора) за 4 секунды. Boruta — когда нужны <em>все</em> релевантные признаки, а не минимальный набор.</div></div>
+
+<div class="qa"><div class="q">26. Почему отбор по корреляции плох?</div><div class="a">Он меряет парную связь и пропускает взаимодействия — признаки, полезные только вместе, по отдельности с целевой не связаны. В замере: <b>0 из 4</b> взаимодействий, потеря 0.052 AUC.</div></div>
+
+<h3>Валидация отбора</h3>
+
+<div class="qa"><div class="q">27. Что даёт отбор признаков на всех данных перед CV?</div><div class="a">На <em>чистом шуме</em> из 10 000 признаков — CV AUC <b>0.810</b>. Правильная вложенная схема даёт 0.501. Причина: признак попал в топ за то, что случайно совпал с метками валидационных объектов.</div></div>
+
+<div class="qa"><div class="q">28. Как быстро проверить, есть ли вообще что отбирать?</div><div class="a">Отобрать признаки отдельно в каждом фолде и посчитать пересечение наборов. Чистый шум: 0 признаков во всех фолдах. Реальный сигнал: 16 из 20. Если пересечение меньше половины — отбор ловит шум.</div></div>
+
+<div class="qa"><div class="q">29. Какой тест на утечку самый мощный?</div><div class="a">Перемешать целевую и прогнать весь пайплайн. Правильный даёт $\approx 0.50$; отбор вне Pipeline — 0.810, target encoding вне Pipeline — 0.688, SMOTE до разбиения — 0.751. <em>Тридцать строк кода в CI закрывают целый класс ошибок.</em></div></div>
+
+<div class="qa"><div class="q">30. Что этот тест не ловит?</div><div class="a">Групповые и временные утечки — при перемешанной целевой групп и времени фактически нет. Для них нужен тест 6: прогнать одну модель KFold, GroupKFold и TimeSeriesSplit и сравнить. Расхождение выше 0.05 указывает на соответствующий тип утечки.</div></div>
+</div>
+
+<div class="pnav">
+  <a href="block1_08_conformal.html">← 1.8 · Conformal prediction</a>
+  <a href="index_roadmap.html" class="next">К содержанию курса →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---- 1. Типы утечек ---- */
+mk('c_types', {type:'bar', data:{
+  labels:['Target encoding\nнаивный','Отбор на всех\nданных','Утечка\nцелевой','Временная','Групповая','Нормализация\nна всех данных'],
+  datasets:[
+   {label:'AUC валидации', data:[0.994,0.810,0.974,0.892,0.881,0.847], backgroundColor:'#fca5a5'},
+   {label:'AUC в проде', data:[0.612,0.503,0.681,0.734,0.752,0.831], backgroundColor:'#0e7490'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.4,max:1.05,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'разрыв 0.382 у худшего; нормализация течёт мало и оттого живёт годами',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 2. Target encoding: корреляция ---- */
+mk('c_te', {type:'bar', data:{
+  labels:['Наивная','Leave-one-out','Out-of-fold (K=3)'],
+  datasets:[{label:'корреляция кодировки с целевой',
+    data:[0.5855,-0.4389,-0.0897],
+    backgroundColor:['#dc2626','#7f1d1d','#16a34a']}]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:-0.6,max:0.7,title:{display:true,text:'corr(кодировка, y)'}},GRID)},
+  plugins:{legend:{display:false},
+   title:{display:true,text:'LOO даёт отрицательную корреляцию: внутри категории связь ровно −1 по построению формулы',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 3. Разрыв train-test ---- */
+mk('c_gap', {type:'bar', data:{
+  labels:['Наивная','Leave-one-out','OOF K=5','OOF + сглаж.','One-hot'],
+  datasets:[
+   {label:'train AUC', data:[0.994,0.981,0.718,0.716,0.681], backgroundColor:'#fca5a5'},
+   {label:'test AUC', data:[0.612,0.508,0.703,0.709,0.664], backgroundColor:'#0e7490'},
+   {label:'случайное угадывание', data:[0.5,0.5,0.5,0.5,0.5], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.4,max:1.05,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'LOO даёт test AUC 0.508 — модель применяет выученную обратную зависимость',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 4. Сглаживание ---- */
+mk('c_smooth', {type:'line', data:{
+  labels:['1','3','10','30','100','300','1000'],
+  datasets:[
+   {label:'вес категории, m = 2', data:[33.3,60.0,83.3,93.8,98.0,99.3,99.8],
+    borderColor:'#86efac', backgroundColor:'transparent', borderWidth:2.5, tension:.25, pointRadius:4},
+   {label:'вес категории, m = 10', data:[9.1,23.1,50.0,75.0,90.9,96.8,99.0],
+    borderColor:'#0e7490', backgroundColor:'rgba(14,116,144,.10)', borderWidth:3, tension:.25, pointRadius:5, fill:true},
+   {label:'вес категории, m = 50', data:[2.0,5.7,16.7,37.5,66.7,85.7,95.2],
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.5, tension:.25, pointRadius:4},
+   {label:'50%', data:[50,50,50,50,50,50,50],
+    borderColor:'#94a3b8', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'число наблюдений в категории n'}},NOG),
+          y:Object.assign({min:0,max:105,title:{display:true,text:'вес категории n/(n+m), %'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'при n = m ровно половина веса — это и есть смысл параметра m',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 5. Препроцессинг ---- */
+mk('c_prep', {type:'bar', data:{
+  labels:['Отбор\nпризнаков','Target\nencoding','SMOTE до\nразбиения','Отбор по\nважности','PCA','Дискрет.\nпо квант.','Импутация','Scaler'],
+  datasets:[{label:'завышение CV AUC',
+    data:[0.307,0.291,0.109,0.055,0.0091,0.0042,0.0028,0.0013],
+    backgroundColor:['#7f1d1d','#7f1d1d','#dc2626','#d97706','#fcd34d','#fcd34d','#a7f3d0','#a7f3d0']}]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({type:'logarithmic',title:{display:true,text:'завышение AUC (лог. шкала)'}},GRID)},
+  plugins:{legend:{display:false},
+   title:{display:true,text:'первые четыре используют целевую — завышение на два порядка выше',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 6. Групповая утечка ---- */
+mk('c_group', {type:'line', data:{
+  labels:['1','2','5','20','100'],
+  datasets:[
+   {label:'AUC при KFold', data:[0.751,0.798,0.881,0.934,0.961],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.25, pointRadius:6, fill:true},
+   {label:'AUC при GroupKFold', data:[0.751,0.752,0.752,0.753,0.751],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:3, tension:0, pointRadius:6}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'записей на клиента'}},NOG),
+          y:Object.assign({min:0.7,max:1.0,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'зелёная линия плоская: реальное качество не зависит от числа записей',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 7. Permutation train vs test ---- */
+mk('c_perm', {type:'bar', data:{
+  labels:['доход','просрочки','ID клиента','случайный шум','редкая категория'],
+  datasets:[
+   {label:'importance на трейне', data:[0.1341,0.0812,0.0894,0.0341,0.0217], backgroundColor:'#fca5a5'},
+   {label:'importance на отложенной', data:[0.1278,0.0791,0.0003,-0.0007,0.0021], backgroundColor:'#0e7490'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'permutation importance'}},GRID)},
+  plugins:{legend:{position:'bottom'},title:{display:true,text:'разница между столбцами — прямая мера переобучения на признаке',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 8. Дублирование ---- */
+mk('c_dup', {type:'bar', data:{
+  labels:['один признак','две копии','шесть копий'],
+  datasets:[
+   {label:'сумма SHAP по группе', data:[0.400,0.400,0.400], backgroundColor:'#0e7490', yAxisID:'y'},
+   {label:'сумма permutation ×10', data:[0.412,0.020,0.012], backgroundColor:'#dc2626', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'важность'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'SHAP сохраняет сумму; permutation теряет 95% при двух копиях',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 9. Boruta ---- */
+mk('c_boruta', {type:'bar', data:{
+  labels:['доход','просрочки','стаж','возраст','сумма кредита','регион','тип занятости','канал','прочие'],
+  datasets:[
+   {label:'попаданий из 20', data:[20,20,19,17,16,12,8,3,1],
+    backgroundColor:['#16a34a','#16a34a','#16a34a','#16a34a','#d97706','#d97706','#d97706','#dc2626','#dc2626']},
+   {label:'порог подтверждения (17)', data:[17,17,17,17,17,17,17,17,17], type:'line',
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:2.5, borderDash:[6,4], tension:0, pointRadius:0},
+   {label:'порог отвержения (3)', data:[3,3,3,3,3,3,3,3,3], type:'line',
+    borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2.5, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0,max:21,title:{display:true,text:'число попаданий'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'между порогами — зона «не решено»: данных не хватило для вывода',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 10. Сравнение методов отбора ---- */
+mk('c_sel', {type:'bar', data:{
+  labels:['Корреляция','Gain','SHAP','Permutation','Boruta'],
+  datasets:[
+   {label:'информативных из 8', data:[7,6,8,6,8], backgroundColor:'#0e7490', yAxisID:'y'},
+   {label:'взаимодействий из 4', data:[0,2,4,4,4], backgroundColor:'#67e8f9', yAxisID:'y'},
+   {label:'мусора отобрано', data:[0,2,0,0,0], backgroundColor:'#dc2626', yAxisID:'y'},
+   {label:'test AUC × 10 − 7.5', data:[0.391,0.703,0.908,0.771,0.911], backgroundColor:'#16a34a', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'корреляция нашла 0 из 4 взаимодействий; permutation потерял 2 признака с дубликатами',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 11. Кардинальность ---- */
+mk('c_card', {type:'bar', data:{
+  labels:['One-hot\n(4200 стб.)','Ordinal','Frequency','Hashing\n(256)','Target\nnaive','Target OOF\n+ сглаж.','Freq +\nTarget OOF'],
+  datasets:[
+   {label:'train AUC', data:[0.8391,0.8302,0.8281,0.8334,0.9412,0.8368,0.8391], backgroundColor:'#fca5a5'},
+   {label:'test AUC', data:[0.8118,0.8134,0.8207,0.8161,0.7891,0.8312,0.8341], backgroundColor:'#0e7490'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.75,max:0.96,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'frequency encoding — один столбец, ноль риска, лучше one-hot с 4200 столбцами',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 12. Вложенная CV ---- */
+mk('c_nested', {type:'line', data:{
+  labels:['50','500','5000','10000','100000'],
+  datasets:[
+   {label:'CV AUC: отбор на всех данных', data:[0.561,0.672,0.783,0.810,0.874],
+    borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.10)', borderWidth:3, tension:.25, pointRadius:6, fill:true},
+   {label:'CV AUC: вложенная CV', data:[0.499,0.502,0.500,0.501,0.499],
+    borderColor:'#16a34a', backgroundColor:'transparent', borderWidth:3, tension:0, pointRadius:6},
+   {label:'истина (сигнала нет)', data:[0.5,0.5,0.5,0.5,0.5],
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:Object.assign({title:{display:true,text:'число признаков (данные — чистый шум, 1000 объектов)'}},NOG),
+          y:Object.assign({min:0.45,max:0.95,title:{display:true,text:'CV AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'чем выше риск случайных совпадений, тем оптимистичнее неправильная схема',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 13. Жадные схемы ---- */
+mk('c_greedy', {type:'bar', data:{
+  labels:['Backward\nпо одному','Forward\nпо одному','RFE\nшаг 10%','SHAP +\nпроверка'],
+  datasets:[
+   {label:'log10(обучений)', data:[3.078,2.727,0.903,0.602], backgroundColor:'#dc2626', yAxisID:'y'},
+   {label:'test AUC × 10 − 7.5', data:[0.911,0.787,0.895,0.908], backgroundColor:'#16a34a', yAxisID:'y'},
+   {label:'взаимодействий из 4', data:[4,2,4,4], backgroundColor:'#0e7490', yAxisID:'y'}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({title:{display:true,text:'значение'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'backward выигрывает 0.0003 AUC за шесть часов против минуты у SHAP',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- 14. Перемешивание целевой ---- */
+mk('c_shuffle', {type:'bar', data:{
+  labels:['Правильный\nPipeline','Scaler вне\nPipeline','GroupKFold\nзабыт','Target enc.\nвне Pipeline','SMOTE до\nразбиения','Отбор вне\nPipeline'],
+  datasets:[
+   {label:'AUC на перемешанной целевой', data:[0.502,0.504,0.501,0.688,0.751,0.810],
+    backgroundColor:['#16a34a','#16a34a','#16a34a','#d97706','#dc2626','#7f1d1d']},
+   {label:'ожидаемое 0.50', data:[0.5,0.5,0.5,0.5,0.5,0.5], type:'line',
+    borderColor:'#0f172a', backgroundColor:'transparent', borderWidth:2.5, borderDash:[6,4], tension:0, pointRadius:0}
+  ]},
+ options:{responsive:true,maintainAspectRatio:false,
+  scales:{x:NOG, y:Object.assign({min:0.45,max:0.9,title:{display:true,text:'AUC'}},GRID)},
+  plugins:{legend:{position:'bottom'},
+   title:{display:true,text:'тест ловит всё, что использует целевую не по правилам; групповые утечки — нет',font:{size:11},color:'#6b7280'}}}});
+
+/* ---- Интерактив: сглаживание ---- */
+function updSmooth(){
+  var n = parseInt(document.getElementById('sl_n').value, 10);
+  var m = parseInt(document.getElementById('sl_m').value, 10);
+  var yc = parseFloat(document.getElementById('sl_yc').value)/100;
+  var yg = 0.583333;
+  document.getElementById('out_n').textContent = n;
+  document.getElementById('out_m').textContent = m;
+  document.getElementById('out_yc').textContent = yc.toFixed(2);
+  var w = n/(n+m);
+  var e = (n*yc + m*yg)/(n+m);
+  var shift = Math.abs(yc - e);
+  var verdict;
+  if (n <= 3 && w > 0.5) verdict = '<b style="color:#dc2626">Категория из ' + n + ' наблюдений получает ' + (w*100).toFixed(1) + '% собственного веса — это переобучение на шуме. Увеличьте m.</b>';
+  else if (w < 0.15 && n > 50) verdict = '<b style="color:#dc2626">Категория из ' + n + ' наблюдений — это реальное свидетельство, а ей дают всего ' + (w*100).toFixed(1) + '%. Пересглажено, уменьшите m.</b>';
+  else if (n >= 10 && w >= 0.4 && w <= 0.95) verdict = '<b style="color:#16a34a">Разумный баланс: данных достаточно, и вес соответствует.</b>';
+  else verdict = '<span style="color:#6b7280">Ориентир: при n = m вес ровно 50%.</span>';
+  document.getElementById('out_smooth').innerHTML =
+    '<div style="font-family:SF Mono,monospace;font-size:12.5px;line-height:1.9">' +
+    'e = (' + n + ' × ' + yc.toFixed(2) + ' + ' + m + ' × ' + yg.toFixed(4) + ') / (' + n + ' + ' + m + ')<br>' +
+    '&nbsp;&nbsp;= (' + (n*yc).toFixed(4) + ' + ' + (m*yg).toFixed(4) + ') / ' + (n+m) + ' = <b style="color:#0e7490">' + e.toFixed(6) + '</b><br>' +
+    'вес категории: ' + n + '/' + (n+m) + ' = <b>' + (w*100).toFixed(1) + '%</b> &nbsp;·&nbsp; ' +
+    'вес глобального: <b>' + ((1-w)*100).toFixed(1) + '%</b><br>' +
+    'сдвиг от ȳ_cat: <b>' + shift.toFixed(4) + '</b></div>' +
+    '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #a5f3fc">' + verdict + '</div>';
+}
+updSmooth();
+
+/* ---- Подсветка секции в навигации ---- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

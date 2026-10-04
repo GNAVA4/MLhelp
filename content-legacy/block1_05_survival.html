@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.5 · Анализ выживаемости</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --sv:#0d9488;--sv-l:#f0fdfa;--sv-b:#99f6e4;--sv-d:#042f2e;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#042f2e,#0d9488 50%,#2dd4bf);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.88;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--sv);border-bottom-color:var(--sv);}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--sv);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);} .fbox.pk{border-left-color:var(--pk);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--sv);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);} .fbox.pk .flabel{color:var(--pk);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--sv-l);border:1px solid var(--sv-b);border-left:4px solid var(--sv);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--sv);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#042f2e;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--sv-l)!important;color:#042f2e!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--sv);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);} .nb.pur{background:var(--pur);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.72;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#042f2e;border:1px solid #0d9488;border-radius:8px;padding:9px 13px;font-size:12px;color:#99f6e4;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--sv-l),#ccfbf1);border:1px solid var(--sv-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--sv);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#042f2e;margin:0 0 8px;}
+.casebox p,.casebox li{color:#134e4a;font-size:14px;line-height:1.72;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.sv{border-top:3px solid var(--sv);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--sv-l);color:#042f2e;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.76;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--sv);margin:26px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;} .tbase{background:#f1f5f9;color:#334155;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--sv);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0f766e;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--sv);border:2px solid var(--sv);}
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+/* ---------- Диаграмма цензурирования ---------- */
+.censor{margin:18px 0;}
+.crow{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.clbl{font-size:11.5px;font-weight:700;color:var(--text3);min-width:78px;}
+.ctrack{flex:1;height:26px;background:#f1f5f9;border-radius:6px;position:relative;border:1px solid var(--border);}
+.cbar{position:absolute;left:0;top:0;bottom:0;border-radius:5px;display:flex;align-items:center;
+      padding-left:9px;font-size:10.5px;font-weight:700;color:#fff;}
+.cend{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:15px;font-weight:900;}
+.ctype{font-size:11px;min-width:104px;font-weight:700;}
+/* ---------- Ступенчатая KM ---------- */
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--sv);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--sv);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--sv-l);border-radius:9px;font-size:13.5px;color:#042f2e;line-height:1.72;}
+/* ---------- Анимации ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+@keyframes growW{from{width:0;}}
+.cbar{animation:growW 1.1s cubic-bezier(.22,1,.36,1) both;}
+.crow:nth-child(2) .cbar{animation-delay:.08s;} .crow:nth-child(3) .cbar{animation-delay:.16s;}
+.crow:nth-child(4) .cbar{animation-delay:.24s;} .crow:nth-child(5) .cbar{animation-delay:.32s;}
+.crow:nth-child(6) .cbar{animation-delay:.4s;}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;margin:18px 0;}
+.fn{border-radius:11px;padding:11px 14px;font-size:12.5px;text-align:center;min-width:98px;line-height:1.5;border:1.5px solid;}
+.fn strong{display:block;font-size:13px;margin-bottom:2px;}
+.fn.a{background:var(--sv-l);border-color:var(--sv-b);color:#042f2e;animation:floatY 3.2s ease-in-out infinite;}
+.fn.b{background:var(--cy-l);border-color:var(--cy-b);color:#083344;animation:floatY 3.2s ease-in-out .5s infinite;}
+.fn.c{background:var(--grn-l);border-color:var(--grn-b);color:#14532d;animation:floatY 3.2s ease-in-out 1s infinite;}
+.fn.d{background:var(--amber-l);border-color:var(--amber-b);color:#78350f;}
+.farr{font-size:18px;color:var(--sv);animation:blink 2.4s infinite;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.roadmini ol{margin:0 0 0 18px;} .roadmini li{font-size:13.5px;margin-bottom:5px;}
+@media(max-width:680px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:24px 16px;}.main{padding:20px 13px 48px;}
+  .clbl{min-width:52px;font-size:10px;}.ctype{min-width:66px;font-size:9.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 1 · Классический ML для бизнеса · Тема 5 из 6 · расширенная</div>
+  <h1>Анализ выживаемости</h1>
+  <p class="sub">Как предсказывать не «уйдёт ли клиент», а «когда именно» — и почему обычная классификация
+     здесь систематически врёт. От цензурирования до Random Survival Forest и DeepSurv, с расчётами вручную.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–5</span>
+    <span>🔵 средний — секции 6–10</span>
+    <span>🟣 продвинутый — секции 11–15</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем это нужно</a>
+  <a href="#s2">2. Цензурирование</a>
+  <a href="#s3">3. Четыре функции</a>
+  <a href="#s4">4. Каплан–Мейер</a>
+  <a href="#s5">5. Log-rank тест</a>
+  <a href="#s6">6. Модель Кокса</a>
+  <a href="#s7">7. Пропорциональность</a>
+  <a href="#s8">8. AFT-модели</a>
+  <a href="#s9">9. Деревья и RSF</a>
+  <a href="#s10">10. Нейросети</a>
+  <a href="#s11">11. Конкурирующие риски</a>
+  <a href="#s12">12. Метрики</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#qa">15. Q&A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+<h3>🗺 Как читать эту тему</h3>
+<ol>
+<li><strong>Секции 1–5</strong> — почему классификация не подходит, что такое цензурирование, четыре взаимосвязанные функции и непараметрическая оценка Каплана–Мейера с расчётом вручную.</li>
+<li><strong>Секции 6–10</strong> — модели: Кокс с частичным правдоподобием, проверка пропорциональности, AFT, survival-деревья, Random Survival Forest, DeepSurv и дискретные подходы.</li>
+<li><strong>Секции 11–12</strong> — конкурирующие риски (то, что забывают почти все) и метрики: C-index, Brier, IBS, time-dependent AUC.</li>
+<li><strong>Секции 13–15</strong> — подводные камни, System Design и 30 вопросов.</li>
+</ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Почему классификация здесь врёт <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Три разных ошибки, каждая из которых портит результат</div>
+
+<p>Стандартная постановка задачи оттока: «предскажи, уйдёт ли клиент в ближайшие 3 месяца». Берём признаки, размечаем ушедших единицей, обучаем бустинг. Кажется, что всё честно.</p>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Три ошибки, встроенные в эту постановку.</strong> ① <strong>Выбрасываем время.</strong> Клиент, ушедший через неделю, и клиент, ушедший через 89 дней, получают одинаковую метку — а это совершенно разные ситуации с точки зрения бизнеса. ② <strong>Теряем данные о цензурированных.</strong> Клиент, пришедший месяц назад и пока активный, обычно попадает в класс 0 — но мы не знаем, уйдёт ли он на втором месяце. ③ <strong>Горизонт задан произвольно.</strong> Почему 3 месяца, а не 1 или 12? Ответ меняется вместе с горизонтом, и модели несравнимы.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чем survival отличается по постановке</div>
+<p><strong>Классификация</strong> отвечает: «уйдёт ли в течение $T$?» — одно число, один горизонт.</p>
+<p><strong>Анализ выживаемости</strong> отвечает: «какова вероятность, что клиент ещё будет с нами через $t$ месяцев» — <em>для любого $t$ сразу</em>. Это функция, а не число.</p>
+<p>Из одной survival-модели можно получить ответ и на 1 месяц, и на 6, и на 24, и медианное время жизни, и ожидаемый LTV — всё из одной обученной модели. Классификатор пришлось бы обучать заново под каждый горизонт.</p>
+<p><strong>И главное:</strong> survival-модель корректно использует <em>частичную</em> информацию о клиентах, которые ещё не ушли. Классификация либо выбрасывает их, либо ошибочно помечает нулём.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько сильно смещается оценка от неправильной обработки цензурирования</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>База:</strong> 10 000 клиентов. Наблюдение ведётся 12 месяцев, но клиенты приходили в разное время: 4000 наблюдаются 12 месяцев, 3000 — 6 месяцев, 3000 — только 2 месяца.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Факт:</strong> истинная доля ушедших за 12 месяцев — <strong>40%</strong>. Отток равномерен: около 4.2% в месяц от оставшихся.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Наивная классификация «ушёл за 12 мес.»:</strong> среди 3000 новичков с 2 месяцами наблюдения ушли только $\approx8\%$, остальные помечены нулём. Наблюдаемая доля оттока по всей базе: $\frac{0.40\cdot4000 + 0.23\cdot3000 + 0.08\cdot3000}{10000} = \frac{1600+690+240}{10000} = \mathbf{25.3\%}$.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Смещение: 25.3% вместо 40%</strong> — оценка занижена в 1.6 раза. Модель, обученная на таких метках, будет систематически недооценивать риск для новых клиентов.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Каплан–Мейер</strong> использует каждого клиента ровно столько, сколько он наблюдался, и даёт $\hat S(12) = 0.60$, то есть <strong>40% оттока</strong> — правильно.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Второй вариант наивного подхода</strong> — «выбросим тех, кто наблюдался меньше 12 месяцев» — даёт правильную оценку 40%, но <em>выбрасывает 60% данных</em> и вносит selection bias: остаются только «старые» клиенты, которые систематически отличаются от новых.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Три подхода к одним данным: во что превращается оценка оттока</div>
+<div class="chsub">Наивная классификация занижает, отбрасывание данных теряет 60% выборки, KM корректен</div>
+<div style="position:relative;height:300px;"><canvas id="c_bias"></canvas></div>
+</div>
+
+<h3>Где применяется</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Домен</th><th>«Событие»</th><th>Что даёт survival-подход</th></tr></thead>
+<tbody>
+<tr class="trh"><td>Отток клиентов</td><td>уход, отписка</td><td><strong>Время до ухода, а не факт; корректный учёт новичков</strong></td></tr>
+<tr><td>Кредитный риск</td><td>дефолт</td><td>Профиль риска по месяцам, PD на любой горизонт</td></tr>
+<tr><td>Прогноз LTV</td><td>уход</td><td>$\text{LTV} = \sum_t S(t)\cdot\text{ARPU}\cdot d^t$ — интеграл выживаемости</td></tr>
+<tr><td>Предиктивное обслуживание</td><td>отказ оборудования</td><td>Оптимальный момент ТО</td></tr>
+<tr><td>Медицина</td><td>смерть, рецидив</td><td>Историческая родина метода</td></tr>
+<tr><td>HR-аналитика</td><td>увольнение</td><td>Время до ухода сотрудника</td></tr>
+<tr><td>Конверсия в воронке</td><td>покупка</td><td>Время до конверсии; «не купил ещё» ≠ «не купит»</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Самое недооценённое применение — расчёт LTV.</strong> $\text{LTV} = \sum_{t=1}^{\infty} S(t)\cdot\text{ARPU}(t)\cdot\frac{1}{(1+r)^t}$. Здесь $S(t)$ — функция выживаемости, то есть вероятность, что клиент ещё с нами в момент $t$. Survival-модель даёт $S(t)$ напрямую и <em>индивидуально для каждого клиента</em>. Классификатор оттока такого не даёт в принципе — из вероятности «уйдёт за 3 месяца» нельзя восстановить всю кривую.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Цензурирование: центральное понятие <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Что делать с наблюдениями, где событие ещё не произошло</div>
+
+<div class="censor">
+  <div class="crow"><span class="clbl">Клиент A</span>
+    <div class="ctrack"><div class="cbar" style="width:62%;background:var(--red);">наблюдался 7 мес.</div>
+      <span class="cend" style="left:62%;color:var(--red);">✕</span></div>
+    <span class="ctype" style="color:var(--red);">событие<br>(ушёл)</span></div>
+  <div class="crow"><span class="clbl">Клиент B</span>
+    <div class="ctrack"><div class="cbar" style="width:100%;background:var(--sv);">наблюдался 12 мес.</div>
+      <span class="cend" style="left:100%;color:var(--sv);">→</span></div>
+    <span class="ctype" style="color:var(--sv);">цензурирован<br>(конец окна)</span></div>
+  <div class="crow"><span class="clbl">Клиент C</span>
+    <div class="ctrack"><div class="cbar" style="width:28%;background:var(--red);">3 мес.</div>
+      <span class="cend" style="left:28%;color:var(--red);">✕</span></div>
+    <span class="ctype" style="color:var(--red);">событие</span></div>
+  <div class="crow"><span class="clbl">Клиент D</span>
+    <div class="ctrack"><div class="cbar" style="width:45%;background:var(--amber);">5 мес.</div>
+      <span class="cend" style="left:45%;color:var(--amber);">→</span></div>
+    <span class="ctype" style="color:var(--amber);">цензурирован<br>(сменил регион)</span></div>
+  <div class="crow"><span class="clbl">Клиент E</span>
+    <div class="ctrack"><div class="cbar" style="width:18%;background:var(--sv);">2 мес.</div>
+      <span class="cend" style="left:18%;color:var(--sv);">→</span></div>
+    <span class="ctype" style="color:var(--sv);">цензурирован<br>(новичок)</span></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что означает цензурирование</div>
+<p><strong>Цензурированное наблюдение</strong> — это не «событие не произошло». Это «<em>событие не произошло к моменту, когда мы перестали смотреть</em>».</p>
+<p>Клиент B был с нами все 12 месяцев наблюдения. Он не «остался навсегда» — он просто ещё не ушёл <em>на момент среза данных</em>. Может уйти на 13-м месяце.</p>
+<p><strong>Ключевая мысль:</strong> цензурированное наблюдение несёт <em>частичную</em> информацию. Мы знаем, что время жизни клиента B <strong>больше 12</strong>. Это не полное знание, но и не отсутствие знания — и survival-методы умеют использовать именно такую частичную информацию.</p>
+<p>Классификация умеет работать только с полными метками, поэтому вынуждена либо выбросить B, либо соврать, назвав его «не ушедшим».</p>
+</div>
+
+<h3>Типы цензурирования</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Тип</th><th>Что знаем</th><th>Пример</th><th>Частота</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Правое (right)</b></td><td>$T > C$ — событие после момента наблюдения</td><td>Клиент активен на момент среза данных</td><td><strong>99% случаев в бизнесе</strong></td></tr>
+<tr><td>Левое (left)</td><td>$T < C$ — событие произошло до начала наблюдения</td><td>Клиент уже был неактивен, когда мы начали смотреть</td><td>Редко</td></tr>
+<tr><td>Интервальное</td><td>$T \in (C_1, C_2)$</td><td>Проверки раз в квартал: знаем только, что событие между проверками</td><td>Медицина, оборудование</td></tr>
+<tr><td>Усечение (truncation)</td><td>Объект вообще не попал в выборку</td><td>Клиенты, ушедшие до начала сбора данных, отсутствуют в базе</td><td><strong>Опасно — незаметно</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Ключевое допущение: неинформативное цензурирование</div>
+$$T \perp\!\!\!\perp C \;\big|\; X$$
+<p class="fnote">Момент цензурирования должен быть <strong>независим</strong> от момента события при фиксированных признаках. То есть причина, по которой мы перестали наблюдать, не связана с риском события.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: когда это допущение нарушается</div>
+<p><strong>Выполняется:</strong> цензурирование из-за конца окна наблюдения. Дата среза данных не связана с тем, собирался ли клиент уходить. Это самый частый и самый безобидный случай.</p>
+<p><strong>Нарушается:</strong> клиент «сменил регион» и выпал из выборки — но переезд часто <em>предшествует</em> отказу от услуги. Мы цензурируем именно тех, кто и так собирался уйти → <strong>выживаемость завышена</strong>.</p>
+<p><strong>Ещё пример нарушения:</strong> в медицине пациентов исключают из исследования при ухудшении состояния — а это ровно те, у кого событие вот-вот произойдёт.</p>
+<p><strong>Как проверить:</strong> сравни распределение признаков у цензурированных и у тех, с кем событие произошло. Если они систематически различаются по признакам, связанным с риском — допущение под вопросом. Полностью проверить невозможно (та же ситуация, что с ненаблюдаемыми конфаундерами в блоке 1.3), поэтому нужна доменная экспертиза.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая коварная проблема — левое усечение (left truncation).</strong> Ты выгружаешь «всех активных клиентов на 1 января» и смотришь их дальнейшую судьбу. Но клиенты, ушедшие в декабре, в выгрузку не попали — <em>их вообще нет в данных</em>. Значит выборка смещена в сторону «долгожителей», и оценка выживаемости завышена. Это невозможно заметить по самим данным — только понимая, как они собирались. <strong>Лечение:</strong> строить когорты по дате прихода, а не по дате среза, и явно учитывать момент входа в риск через <code>entry</code>-время (все библиотеки это поддерживают).</div></div>
+
+<div class="play">
+  <label>Поиграй: доля цензурированных и смещение наивной оценки</label>
+  <input type="range" id="sl_cens" min="0" max="90" step="5" value="45" oninput="updCens()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0% цензурировано</span><span class="out" id="out_cens">45%</span><span>90%</span></div>
+  <label style="margin-top:14px;">Истинная доля события за период</label>
+  <input type="range" id="sl_true" min="5" max="80" step="5" value="40" oninput="updCens()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>5%</span><span class="out" id="out_true">40%</span><span>80%</span></div>
+  <div class="res" id="out_censres"></div>
+</div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Четыре функции, описывающие одно и то же <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">S(t), f(t), h(t), H(t) — и переходы между ними</div>
+
+<div class="fbox">
+<div class="flabel">📐 Четыре эквивалентных описания</div>
+$$S(t) = P(T > t) \qquad\text{— функция выживаемости}$$
+$$f(t) = -\frac{dS(t)}{dt} \qquad\text{— плотность времени события}$$
+$$h(t) = \lim_{\Delta\to0}\frac{P(t \le T < t+\Delta \mid T \ge t)}{\Delta} = \frac{f(t)}{S(t)} \qquad\text{— интенсивность (hazard)}$$
+$$H(t) = \int_0^t h(u)\,du = -\ln S(t) \qquad\text{— кумулятивная интенсивность}$$
+<p class="fnote">Зная одну, можно восстановить все остальные. Ключевое соотношение: $\;S(t) = \exp\big(-H(t)\big)$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: чем hazard отличается от вероятности</div>
+<p><strong>$S(t)$</strong> — «какая доля клиентов ещё с нами через $t$ месяцев». Убывает от 1 до 0. Самая интуитивная функция.</p>
+<p><strong>$f(t)$</strong> — «какая доля от <em>исходной</em> когорты уйдёт именно в момент $t$». Это безусловная плотность.</p>
+<p><strong>$h(t)$</strong> — самое важное и самое непонятное. Это «какая доля от <em>оставшихся к моменту $t$</em> уйдёт прямо сейчас». <strong>Условная</strong> интенсивность.</p>
+<p><strong>Разница на примере.</strong> Из 1000 клиентов к 10-му месяцу осталось 200. В 10-м месяце ушли 20. Тогда $f(10) = 20/1000 = 0.02$ (2% от исходных), а $h(10) = 20/200 = 0.10$ (<strong>10% от оставшихся</strong>).</p>
+<p>Именно $h(t)$ отвечает на бизнес-вопрос «насколько опасен этот момент для тех, кто до него дожил» — и именно её моделирует Кокс.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Четыре функции на одних данных</div>
+<div class="chsub">Обрати внимание: f(t) падает к концу (мало кто остался), а h(t) растёт (оставшиеся уходят чаще)</div>
+<div style="position:relative;height:320px;"><canvas id="c_four"></canvas></div>
+</div>
+
+<h3>Типичные формы hazard-функции и что они означают</h3>
+<div class="grid3">
+<div class="card rd"><h5>📉 Убывающая</h5><p>Риск высок в начале, потом падает. <strong>«Детская смертность»</strong>: новые клиенты уходят быстро, выжившие остаются надолго.</p><p><em>Где:</em> подписки, мобильные приложения, найм сотрудников.</p></div>
+<div class="card am"><h5>📈 Возрастающая</h5><p>Риск растёт со временем. <strong>Износ</strong>: чем дольше служит оборудование, тем выше шанс отказа.</p><p><em>Где:</em> техника, биологическое старение.</p></div>
+<div class="card sv"><h5>🛁 U-образная (bathtub)</h5><p>Высоко в начале, низко в середине, высоко в конце. Комбинация приработки и износа.</p><p><em>Где:</em> оборудование, продукты с длинным жизненным циклом.</p></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Форма hazard — это диагностика бизнеса.</strong> Убывающий hazard в подписке означает проблему <em>онбординга</em>: люди не понимают ценность в первый месяц. Возрастающий — проблему <em>удержания интереса</em>: продукт приедается. Всплеск hazard на 12-м месяце — почти наверняка окончание годового тарифа. <strong>Просто посмотрев на график $h(t)$, можно понять, куда направить продуктовые усилия</strong> — и это до всякого моделирования.</div></div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Полезные производные величины</div>
+<p><strong>Медианное время жизни:</strong> $\;t_{0.5}$ такое, что $S(t_{0.5}) = 0.5$.</p>
+<p><strong>Ожидаемое время жизни (RMST до горизонта $\tau$):</strong></p>
+$$\text{RMST}(\tau) = \int_0^{\tau} S(t)\,dt$$
+<p><strong>LTV через выживаемость:</strong></p>
+$$\text{LTV} = \sum_{t=1}^{T} S(t)\cdot\text{ARPU}\cdot\frac{1}{(1+r)^t}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему RMST лучше медианы</div>
+<p><strong>Медиана</strong> не определена, если к концу наблюдения выжило больше половины — а это частая ситуация. Плюс она игнорирует форму кривой: две группы могут иметь одинаковую медиану при совершенно разной динамике.</p>
+<p><strong>RMST</strong> (Restricted Mean Survival Time) — это <em>площадь под кривой выживаемости</em> до горизонта $\tau$. Интерпретируется буквально: «в среднем клиент проживёт с нами $X$ месяцев из первых $\tau$».</p>
+<p>Определена всегда, учитывает всю форму кривой, и разность RMST между группами напрямую переводится в деньги: $\Delta\text{RMST}\times\text{ARPU}$ = дополнительная выручка на клиента. Именно поэтому RMST всё чаще предпочитают hazard ratio при коммуникации с бизнесом.</p>
+</div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Оценка Каплана–Мейера: считаем вручную <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Непараметрическая оценка S(t), работающая с цензурированием</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Оценка Каплана–Мейера (1958)</div>
+$$\hat S(t) = \prod_{t_i \le t}\left(1 - \frac{d_i}{n_i}\right)$$
+<p class="fnote">$t_i$ — моменты, когда произошли события; $d_i$ — число событий в момент $t_i$; $n_i$ — число объектов <strong>под риском</strong> непосредственно перед $t_i$ (ещё не ушедшие и не цензурированные).</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему произведение, а не сумма</div>
+<p>$\left(1-\frac{d_i}{n_i}\right)$ — это вероятность <strong>пережить конкретный момент $t_i$</strong>, при условии что дожил до него.</p>
+<p>Чтобы дожить до момента $t$, нужно пережить <em>все</em> моменты событий до него — а вероятности последовательных независимых «испытаний» перемножаются. Отсюда произведение.</p>
+<p><strong>Как обрабатывается цензурирование — вот вся суть метода.</strong> Цензурированный объект <em>участвует</em> в знаменателе $n_i$ во все моменты до своего выбывания (он был под риском!), а потом просто исчезает из $n_i$. Он никогда не попадает в числитель $d_i$, потому что события с ним не было.</p>
+<p>Так частичная информация используется полностью: клиент, наблюдавшийся 5 месяцев, вносит вклад в оценку выживаемости для месяцев 1–5 и не искажает оценку для месяцев 6+.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Каплан–Мейер вручную: 10 клиентов</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные (месяц, событие):</strong> (2, ушёл), (3, цензур.), (4, ушёл), (4, ушёл), (6, цензур.), (7, ушёл), (9, цензур.), (10, ушёл), (12, цензур.), (12, цензур.).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>$t=2$:</strong> под риском $n=10$, событий $d=1$. Множитель $1 - \tfrac{1}{10} = 0.900$. &nbsp;$\hat S(2) = \mathbf{0.900}$.</div></div>
+<div class="numex-step"><span class="nb sl">3</span><div><strong>$t=3$:</strong> цензурирование. Событий нет — $\hat S$ <em>не меняется</em>, но число под риском падает до 8.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>$t=4$:</strong> под риском $n=8$, событий $d=2$ (двое сразу). Множитель $1-\tfrac{2}{8} = 0.750$. &nbsp;$\hat S(4) = 0.900\times0.750 = \mathbf{0.675}$.</div></div>
+<div class="numex-step"><span class="nb sl">5</span><div><strong>$t=6$:</strong> цензурирование. $\hat S$ не меняется, под риском становится 5.</div></div>
+<div class="numex-step"><span class="nb">6</span><div><strong>$t=7$:</strong> под риском $n=5$, $d=1$. Множитель $1-\tfrac15 = 0.800$. &nbsp;$\hat S(7) = 0.675\times0.800 = \mathbf{0.540}$.</div></div>
+<div class="numex-step"><span class="nb sl">7</span><div><strong>$t=9$:</strong> цензурирование, под риском 3.</div></div>
+<div class="numex-step"><span class="nb">8</span><div><strong>$t=10$:</strong> под риском $n=3$, $d=1$. Множитель $1-\tfrac13 = 0.667$. &nbsp;$\hat S(10) = 0.540\times0.667 = \mathbf{0.360}$.</div></div>
+<div class="numex-step"><span class="nb grn">9</span><div><strong>$t=12$:</strong> два цензурирования, событий нет. $\hat S$ остаётся <strong>0.360</strong> и дальше не определена.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Что важно заметить.</strong> ① Кривая — <em>ступенчатая</em>: падает только в моменты событий. ② Цензурирования «не видны» на кривой, но <strong>меняют знаменатель</strong>, поэтому каждое следующее событие даёт более крупную ступеньку. ③ При $t=10$ под риском всего 3 человека — оценка $0.360$ крайне ненадёжна. Именно поэтому <strong>хвост KM-кривой всегда смотрят с недоверием</strong>.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Кривая Каплана–Мейера с доверительным интервалом</div>
+<div class="chsub">Крестики — цензурирования. Интервал расширяется к концу: под риском мало объектов</div>
+<div style="position:relative;height:320px;"><canvas id="c_km"></canvas></div>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Дисперсия: формула Гринвуда</div>
+$$\widehat{\operatorname{Var}}\big(\hat S(t)\big) = \hat S(t)^2 \sum_{t_i \le t}\frac{d_i}{n_i\,(n_i - d_i)}$$
+<p class="fnote">Отсюда видно, почему интервал расширяется: с уменьшением $n_i$ каждое слагаемое растёт. При $n_i - d_i = 0$ формула вырождается — оценка в хвосте не определена.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Правило хвоста.</strong> Никогда не интерпретируй KM-кривую там, где под риском осталось меньше 10–20 объектов. Стандартная практика — <strong>обрезать график</strong> на моменте, где под риском остаётся 10% исходной когорты, и обязательно рисовать <em>таблицу числа под риском</em> под графиком (number at risk table). Без неё читатель не может оценить надёжность хвоста, и это одна из самых частых ошибок в презентациях.</div></div>
+
+<pre><code># Каплан-Мейер на практике
+from lifelines import KaplanMeierFitter
+import matplotlib.pyplot as plt
+
+kmf = KaplanMeierFitter()
+kmf.fit(durations=df["tenure_months"], event_observed=df["churned"])
+
+kmf.plot_survival_function(ci_show=True)
+print("Медиана:", kmf.median_survival_time_)
+print("S(6) =", kmf.survival_function_at_times(6).values[0])
+
+# Сравнение групп + таблица числа под риском
+from lifelines.plotting import add_at_risk_counts
+ax = None
+fitters = []
+for grp in df["segment"].unique():
+    m = df["segment"] == grp
+    k = KaplanMeierFitter(label=grp).fit(df.loc[m,"tenure_months"], df.loc[m,"churned"])
+    ax = k.plot_survival_function(ax=ax)
+    fitters.append(k)
+add_at_risk_counts(*fitters, ax=ax)      # ← обязательно!
+</code></pre>
+
+<div class="play">
+  <label>Поиграй: считаем KM пошагово</label>
+  <input type="range" id="sl_n0" min="10" max="1000" step="10" value="100" oninput="updKM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>10 объектов</span><span class="out" id="out_n0">100</span><span>1000</span></div>
+  <label style="margin-top:14px;">Событий в каждый из 5 моментов (% от под риском)</label>
+  <input type="range" id="sl_hz" min="1" max="40" step="1" value="10" oninput="updKM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1%</span><span class="out" id="out_hz">10%</span><span>40%</span></div>
+  <label style="margin-top:14px;">Цензурирований между моментами (% от под риском)</label>
+  <input type="range" id="sl_cz" min="0" max="40" step="1" value="10" oninput="updKM()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0%</span><span class="out" id="out_cz">10%</span><span>40%</span></div>
+  <div class="res" id="out_km"></div>
+</div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Log-rank тест: сравнение кривых <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Значимо ли различаются две группы</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Log-rank статистика</div>
+<p>В каждый момент события $t_i$ считаем ожидаемое число событий в группе 1 при гипотезе «различий нет»:</p>
+$$E_{1i} = d_i\cdot\frac{n_{1i}}{n_i}$$
+<p>Статистика — стандартизованная сумма отклонений:</p>
+$$\chi^2 = \frac{\Big(\sum_i (O_{1i} - E_{1i})\Big)^2}{\sum_i V_i}, \qquad V_i = \frac{n_{1i}n_{2i}\,d_i(n_i - d_i)}{n_i^2(n_i-1)}$$
+<p class="fnote">При $H_0$ распределена как $\chi^2$ с 1 степенью свободы.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Логика как в тесте хи-квадрат, но применённая <strong>в каждый момент события отдельно</strong>, а потом просуммированная.</p>
+<p>В момент $t_i$ под риском 60 человек в группе A и 40 в группе B, произошло 5 событий. Если группы одинаковы, события должны распределиться пропорционально: $5\times\frac{60}{100} = 3$ в A и 2 в B. Если наблюдаем 5 в A и 0 в B — отклонение $+2$.</p>
+<p>Суммируем отклонения по всем моментам и сравниваем с накопленной дисперсией. Большая сумма → группы различаются.</p>
+<p><strong>Важное свойство:</strong> log-rank даёт равный вес всем моментам времени. Он <em>наиболее мощен</em>, когда hazard-функции пропорциональны — то есть при том же допущении, что у модели Кокса. При пересекающихся кривых он теряет мощность.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Log-rank вручную на трёх моментах</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>$t=3$:</strong> $n_1 = 50$, $n_2 = 50$, всего событий $d=4$, из них в группе 1: $O_1 = 3$.<br>$E_1 = 4\times\frac{50}{100} = 2.0$. Отклонение $+1.0$. &nbsp;$V = \frac{50\cdot50\cdot4\cdot96}{100^2\cdot99} = \frac{960000}{990000} = 0.970$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>$t=7$:</strong> $n_1 = 44$, $n_2 = 40$, $d=6$, $O_1 = 5$.<br>$E_1 = 6\times\frac{44}{84} = 3.143$. Отклонение $+1.857$. &nbsp;$V = \frac{44\cdot40\cdot6\cdot78}{84^2\cdot83} = \frac{823680}{585648} = 1.406$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>$t=11$:</strong> $n_1 = 33$, $n_2 = 32$, $d=5$, $O_1 = 4$.<br>$E_1 = 5\times\frac{33}{65} = 2.538$. Отклонение $+1.462$. &nbsp;$V = \frac{33\cdot32\cdot5\cdot60}{65^2\cdot64} = \frac{316800}{270400} = 1.172$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Суммируем:</strong> $\sum(O-E) = 1.0 + 1.857 + 1.462 = 4.319$. &nbsp;$\sum V = 0.970 + 1.406 + 1.172 = 3.548$.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div>$\chi^2 = \dfrac{4.319^2}{3.548} = \dfrac{18.65}{3.548} = \mathbf{5.26}$. Критическое значение $\chi^2_{0.05,1} = 3.84$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>$5.26 > 3.84$ → <strong>различия значимы</strong>, $p \approx 0.022$. Группа 1 теряет клиентов быстрее ожидаемого.</div></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Когда log-rank обманывает: пересекающиеся кривые.</strong> Если группа A теряет клиентов быстро в начале, но потом стабилизируется, а B наоборот — кривые пересекутся. Отклонения в первой половине будут положительными, во второй отрицательными, и <strong>в сумме дадут почти ноль</strong>. Log-rank скажет «различий нет», хотя они огромны — просто разнонаправленные. <strong>Всегда сначала рисуй кривые, потом считай тест.</strong> При пересечении используй взвешенные варианты (Wilcoxon/Breslow даёт больший вес ранним моментам, Peto-Peto — средним) или сравнивай RMST.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Тест</th><th>Веса</th><th>Наиболее мощен при</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Log-rank</b></td><td>равные (1)</td><td><strong>Пропорциональных hazard — дефолт</strong></td></tr>
+<tr><td>Wilcoxon / Gehan-Breslow</td><td>$n_i$</td><td>Ранних различиях (много объектов под риском в начале)</td></tr>
+<tr><td>Tarone-Ware</td><td>$\sqrt{n_i}$</td><td>Компромисс между log-rank и Wilcoxon</td></tr>
+<tr><td>Peto-Peto</td><td>$\hat S(t_i)$</td><td>Ранних различиях, устойчив к разным паттернам цензурирования</td></tr>
+<tr><td>Fleming-Harrington $(p,q)$</td><td>$\hat S^p(1-\hat S)^q$</td><td>Настраиваемый: $(1,0)$ — ранние, $(0,1)$ — поздние различия</td></tr>
+<tr><td><b>Разность RMST</b></td><td>—</td><td><strong>Работает при пересечении кривых, интерпретируем в месяцах</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический протокол сравнения групп.</strong> ① Нарисуй KM-кривые с доверительными интервалами и таблицей числа под риском. ② Посмотри, пересекаются ли они. ③ Если нет — log-rank. ④ Если да — не используй log-rank, бери разность RMST или Fleming-Harrington с подходящими весами. ⑤ Всегда сообщай не только p-value, но и <em>размер эффекта</em>: разность медиан, разность RMST, hazard ratio. p-value без размера эффекта бесполезно (та же логика, что в блоке 4).</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Модель Кокса: почему она так популярна <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Полупараметрическая модель и трюк с частичным правдоподобием</div>
+
+<div class="fbox">
+<div class="flabel">📐 Cox Proportional Hazards (1972)</div>
+$$h(t \mid x) = \underbrace{h_0(t)}_{\text{базовая интенсивность}}\cdot\underbrace{\exp\big(\beta^\top x\big)}_{\text{множитель от признаков}}$$
+<p>Эквивалентно: $\;\ln h(t|x) = \ln h_0(t) + \beta^\top x$ — <strong>аддитивно в лог-шкале</strong>.</p>
+<p class="fnote">$h_0(t)$ — <em>произвольная</em> функция времени, никак не параметризуется. Отсюда «полупараметрическая»: параметрическая по признакам, непараметрическая по времени.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: главная идея модели</div>
+<p>Кокс разделил задачу на две независимые части.</p>
+<p><strong>«Форма риска во времени»</strong> $h_0(t)$ — общая для всех: когда именно опасно уходить (первый месяц? двенадцатый?). Эту форму модель <em>не пытается угадать</em> — она остаётся произвольной.</p>
+<p><strong>«Насколько данный клиент рискованнее среднего»</strong> $\exp(\beta^\top x)$ — множитель, не зависящий от времени. Клиент с $\exp(\beta^\top x) = 2$ имеет вдвое больший риск, чем базовый, <em>в любой момент времени</em>.</p>
+<p><strong>Почему это гениально:</strong> нам почти никогда не нужна форма $h_0(t)$ — нужно ранжировать клиентов по риску. А коэффициенты $\beta$ можно оценить, вообще не зная $h_0$. Именно это делает частичное правдоподобие.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Частичное правдоподобие — центральный трюк</div>
+$$L(\beta) = \prod_{i:\,\delta_i=1}\frac{\exp\big(\beta^\top x_i\big)}{\sum_{j \in R(t_i)}\exp\big(\beta^\top x_j\big)}$$
+<p class="fnote">$R(t_i)$ — множество риска: все, кто ещё под наблюдением в момент $t_i$. Заметь: <strong>$h_0(t)$ полностью сократилась</strong> — она была и в числителе, и в знаменателе.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что означает каждый множитель</div>
+<p>Читай так: «в момент $t_i$ событие произошло именно с объектом $i$. Какова вероятность этого, <em>при условии что событие с кем-то произошло</em>?»</p>
+<p>Ответ — доля «риска» объекта $i$ в суммарном риске всех, кто был под наблюдением. Это буквально <strong>softmax по множеству риска</strong>.</p>
+<p><strong>Ключевое следствие:</strong> модель Кокса — это по сути задача <em>ранжирования</em>. Она учится расставлять объекты по риску, а не предсказывать абсолютное время. Отсюда две вещи: ① модель отлично работает для приоритизации («кому звонить первым»); ② для получения абсолютных вероятностей нужен дополнительный шаг — оценка $\hat h_0(t)$ по Бреслоу.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Частичное правдоподобие на трёх событиях</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>5 клиентов</strong> с одним признаком $x$ (скажем, число жалоб): $x = [3, 0, 1, 4, 2]$. Пусть $\beta = 0.4$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Риск-скоры</strong> $\exp(0.4x)$: $[3.32,\;1.00,\;1.49,\;4.95,\;2.23]$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>$t=2$, событие с клиентом 4</strong> ($x=4$). Под риском все пятеро. Сумма скоров $= 12.99$.<br>Вклад: $\dfrac{4.95}{12.99} = \mathbf{0.381}$.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>$t=5$, событие с клиентом 1</strong> ($x=3$). Под риском 1,2,3,5. Сумма $= 3.32+1.00+1.49+2.23 = 8.04$.<br>Вклад: $\dfrac{3.32}{8.04} = \mathbf{0.413}$.</div></div>
+<div class="numex-step"><span class="nb">5</span><div><strong>$t=9$, событие с клиентом 5</strong> ($x=2$). Под риском 2,3,5. Сумма $= 1.00+1.49+2.23 = 4.72$.<br>Вклад: $\dfrac{2.23}{4.72} = \mathbf{0.472}$.</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div>$L(0.4) = 0.381\times0.413\times0.472 = \mathbf{0.0743}$. Лог-правдоподобие $\ln L = -2.60$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Проверим $\beta = 0$</strong> (признак не влияет): все скоры равны 1, вклады $\tfrac15, \tfrac14, \tfrac13$, $L = 0.0167$, $\ln L = -4.09$. <strong>При $\beta=0.4$ правдоподобие в 4.5 раза выше</strong> — данные подтверждают, что жалобы повышают риск. Оптимизатор переберёт $\beta$ и найдёт максимум.</div></div>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Hazard Ratio — как интерпретировать коэффициенты</div>
+$$\text{HR} = \exp(\beta_k)$$
+<p class="fnote">Изменение признака $x_k$ на единицу умножает интенсивность на $\exp(\beta_k)$ — <strong>в любой момент времени</strong>. HR = 1.5 означает «риск выше на 50%».</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как правильно и неправильно читать HR</div>
+<p><strong>Правильно:</strong> «клиенты с $x_k$ на единицу больше имеют в 1.5 раза более высокую <em>мгновенную интенсивность</em> ухода в каждый момент».</p>
+<p><strong>Неправильно:</strong> «они уходят в 1.5 раза чаще» или «их вероятность ухода на 50% выше». HR — это отношение <em>hazard</em>, а не вероятностей и не времён.</p>
+<p><strong>Почему разница существенна:</strong> при HR = 2 вероятность события за период вырастет <em>не</em> вдвое. Если $S_0(12) = 0.80$, то $S_1(12) = 0.80^2 = 0.64$ — отток вырос с 20% до 36%, то есть в 1.8 раза, а не в 2.</p>
+<p>Соотношение: $S_1(t) = S_0(t)^{\text{HR}}$. Это прямое следствие $H_1(t) = \text{HR}\cdot H_0(t)$ и $S = e^{-H}$.</p>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Обработка совпадающих времён (ties).</strong> В бизнес-данных время часто дискретно (месяцы, дни), и десятки клиентов уходят «в один момент». Точная формула частичного правдоподобия для ties вычислительно тяжела, поэтому используют приближения: <strong>Breslow</strong> (быстрое, смещено при многих ties), <strong>Efron</strong> (точнее, чуть медленнее — <em>дефолт и рекомендация</em>), <strong>Exact</strong> (точное, но $O(n!)$ в худшем случае). При гранулярности «месяц» и тысячах клиентов ties будут массовыми — <strong>обязательно ставь Efron</strong>, разница в коэффициентах может достигать 10–15%.</div></div>
+
+<pre><code># Cox в lifelines
+from lifelines import CoxPHFitter
+
+cph = CoxPHFitter(penalizer=0.1, l1_ratio=0.0)   # регуляризация полезна
+cph.fit(df, duration_col="tenure", event_col="churned",
+        formula="age + n_complaints + monthly_spend + C(plan)")
+
+cph.print_summary()          # коэффициенты, HR, p-values, доверительные интервалы
+cph.plot()                   # forest plot с HR
+
+# Индивидуальные кривые выживаемости
+surv = cph.predict_survival_function(df_new)      # S(t) для каждого клиента
+risk = cph.predict_partial_hazard(df_new)         # exp(βx) — риск-скор для ранжирования
+median = cph.predict_median(df_new)               # медианное время жизни
+</code></pre>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Проверка пропорциональности: главное допущение <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что делать, когда оно нарушено — а нарушается оно часто</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Допущение Кокса в одном предложении:</strong> отношение интенсивностей между любыми двумя объектами <strong>постоянно во времени</strong>. Если клиент A вдвое рискованнее B на первом месяце, он должен быть вдвое рискованнее и на двадцатом. <strong>В бизнес-данных это нарушается регулярно</strong>, и модель без проверки даёт неверные выводы.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: как выглядит нарушение</div>
+<p><strong>Типичный пример из телекома.</strong> Признак «пришёл по акции». В первые 3 месяца такие клиенты уходят гораздо чаще (HR ≈ 3) — акционный трафик низкого качества. Но те, кто пережил 3 месяца, оказываются <em>лояльнее</em> обычных (HR ≈ 0.8) — они прошли естественный отбор.</p>
+<p>Модель Кокса вынуждена выдать <strong>одно число</strong> — усреднённый HR около 1.4. Этот HR не описывает ни ранний период, ни поздний, и решения на его основе будут неверными в обоих.</p>
+<p><strong>Второй классический пример:</strong> эффект скидки. Он силён сразу после получения и затухает — HR меняется со временем по построению.</p>
+</div>
+
+<h3>Три способа проверить</h3>
+
+<div class="fbox blue">
+<div class="flabel">📐 ① Тест Шёнфельда (Schoenfeld residuals)</div>
+<p>Остатки Шёнфельда для признака $k$ и события $i$:</p>
+$$r_{ik} = x_{ik} - \frac{\sum_{j\in R(t_i)} x_{jk}\exp(\beta^\top x_j)}{\sum_{j\in R(t_i)}\exp(\beta^\top x_j)}$$
+<p>Проверяем корреляцию $r_{ik}$ со временем. При выполнении PH корреляция должна быть <strong>нулевой</strong>.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Остаток Шёнфельда — это «насколько признак у объекта, с которым произошло событие, отличался от <em>ожидаемого</em> среднего по группе риска».</p>
+<p>Если PH выполняется, коэффициент $\beta$ одинаков во все моменты, и эти отклонения не должны систематически меняться со временем — облако точек горизонтально.</p>
+<p><strong>Если облако имеет наклон</strong> — значит влияние признака усиливается или ослабевает, и постоянного $\beta$ не существует. Наклон вверх = HR растёт со временем, вниз = убывает.</p>
+<p>Практически: <code>cph.check_assumptions(df, p_value_threshold=0.05)</code> в lifelines делает тест и рисует графики автоматически.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Остатки Шёнфельда: выполнение и нарушение PH</div>
+<div class="chsub">Горизонтальное облако — допущение выполнено. Наклон — нарушено</div>
+<div style="position:relative;height:300px;"><canvas id="c_schoen"></canvas></div>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 ② Графический тест: log-log plot</div>
+$$\ln\big(-\ln S_g(t)\big) = \ln H_0(t) + \beta^\top x_g$$
+<p class="fnote">При выполнении PH кривые $\ln(-\ln \hat S)$ для разных групп должны быть <strong>параллельны</strong> — они отличаются только вертикальным сдвигом $\beta^\top x_g$.</p>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>③ Простейшая проверка — сами KM-кривые.</strong> Если кривые выживаемости двух групп <strong>пересекаются</strong>, PH заведомо нарушено: отношение hazard меняет знак. Это видно за секунду и не требует никаких тестов. <strong>Всегда начинай с картинки.</strong></div></div>
+
+<h3>Что делать при нарушении</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Идея</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>Стратификация</b></td><td>Своя базовая $h_{0g}(t)$ для каждой группы; $\beta$ общие</td><td><strong>Проблемный признак категориальный и сам по себе не интересен</strong></td></tr>
+<tr><td>Взаимодействие со временем</td><td>Добавить $x\cdot\ln t$ или $x\cdot t$ — HR становится функцией времени</td><td>Нужно оценить, как меняется эффект</td></tr>
+<tr><td>Разбиение по периодам</td><td>Отдельные модели для $t<3$, $3\le t<12$, $t\ge12$</td><td>Есть естественные фазы жизненного цикла</td></tr>
+<tr><td>AFT-модели</td><td>Другое допущение — ускорение времени вместо пропорциональности</td><td>PH не выполняется, но эффект «растягивает» время</td></tr>
+<tr><td>Survival-деревья и RSF</td><td>Никаких допущений вообще</td><td><strong>Много данных, нужна предсказательная сила</strong></td></tr>
+<tr><td>Time-varying covariates</td><td>Признак меняется во времени, модель это учитывает</td><td>Есть история изменений (тариф, активность)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: стратификация — самый недооценённый приём</div>
+<p>Признак «канал привлечения» нарушает PH. Ты не хочешь оценивать его эффект — тебе нужны корректные коэффициенты <em>остальных</em> признаков.</p>
+<p><strong>Стратификация:</strong> каждой категории канала даётся <em>своя</em> базовая функция $h_{0g}(t)$, произвольная и разная. Частичное правдоподобие считается внутри страт и перемножается.</p>
+<p>Результат: проблемный признак «поглощён» базовой функцией, PH для него больше не требуется, а коэффициенты остальных признаков оцениваются корректно.</p>
+<p><strong>Цена:</strong> нельзя получить HR для стратифицирующего признака — он вышел из модели. Плюс страты не должны быть мелкими: при 20 стратах по 30 наблюдений оценки развалятся.</p>
+</div>
+
+<pre><code># Три способа обработать нарушение PH
+# 1. Проверка
+cph.check_assumptions(df, p_value_threshold=0.05, show_plots=True)
+
+# 2. Стратификация по проблемному признаку
+cph_strat = CoxPHFitter()
+cph_strat.fit(df, "tenure", "churned", strata=["acquisition_channel"])
+
+# 3. Взаимодействие со временем — нужен long-формат
+from lifelines.utils import to_episodic_format
+long_df = to_episodic_format(df, duration_col="tenure", event_col="churned", time_gaps=1)
+long_df["promo_x_logt"] = long_df["is_promo"] * np.log(long_df["stop"] + 1)
+
+from lifelines import CoxTimeVaryingFitter
+ctv = CoxTimeVaryingFitter()
+ctv.fit(long_df, id_col="id", event_col="churned",
+        start_col="start", stop_col="stop")
+</code></pre>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. AFT-модели: другое допущение <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Признаки не умножают риск, а растягивают время</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Accelerated Failure Time</div>
+$$\ln T = \beta^\top x + \sigma\varepsilon \qquad\Longleftrightarrow\qquad S(t \mid x) = S_0\!\left(\frac{t}{\exp(\beta^\top x)}\right)$$
+<p class="fnote">Признаки действуют как <strong>множитель времени</strong>. $\exp(\beta_k) = 1.5$ означает «время жизни увеличивается в 1.5 раза».</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: PH против AFT</div>
+<p><strong>Cox PH:</strong> «этот клиент рискует уйти в 2 раза интенсивнее в каждый момент». Умножается <em>риск</em>.</p>
+<p><strong>AFT:</strong> «для этого клиента время течёт в 2 раза быстрее — он проживёт вдвое меньше». Умножается <em>время</em>.</p>
+<p><strong>Почему AFT часто удобнее для бизнеса:</strong> его коэффициенты интерпретируются напрямую. «Подключение второго продукта увеличивает ожидаемое время жизни на 40%» — это понятная фраза для продакта. «Hazard ratio 0.71» требует объяснения.</p>
+<p><strong>Важный факт:</strong> для распределения Вейбулла (и только для него) PH и AFT — <em>одно и то же</em> с точностью до перепараметризации. Для остальных распределений это принципиально разные модели.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Распределение</th><th>Форма hazard</th><th>Когда подходит</th></tr></thead>
+<tbody>
+<tr><td><b>Экспоненциальное</b></td><td>постоянная</td><td>Риск не зависит от возраста — редко реалистично</td></tr>
+<tr class="trh"><td><b>Weibull</b></td><td>монотонная (растёт или убывает)</td><td><strong>Универсальный первый выбор; единственное и PH, и AFT</strong></td></tr>
+<tr><td>Log-normal</td><td>растёт, потом убывает</td><td>Пик риска в середине жизненного цикла</td></tr>
+<tr><td>Log-logistic</td><td>растёт, потом убывает</td><td>Похоже на log-normal, тяжелее хвост</td></tr>
+<tr><td>Generalized Gamma</td><td>гибкая, включает все выше</td><td>Когда форма неизвестна; много параметров</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Weibull AFT: от коэффициентов к прогнозу</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Модель:</strong> Weibull AFT, форма $\rho = 1.4$ (растущий hazard), базовый масштаб $\lambda_0 = 18$ месяцев.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Коэффициенты:</strong> «второй продукт» $\beta = 0.34$, «жалоба за квартал» $\beta = -0.29$.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Клиент со вторым продуктом, без жалоб:</strong> множитель $\exp(0.34) = 1.405$. Масштаб $\lambda = 18\times1.405 = \mathbf{25.3}$ мес.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Клиент с жалобой, без второго продукта:</strong> $\exp(-0.29) = 0.748$. Масштаб $\lambda = 18\times0.748 = \mathbf{13.5}$ мес.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Вероятность дожить до 12 месяцев:</strong> $S(t) = \exp\big(-(t/\lambda)^{\rho}\big)$.<br>Первый: $\exp(-(12/25.3)^{1.4}) = \exp(-0.353) = \mathbf{0.703}$.<br>Второй: $\exp(-(12/13.5)^{1.4}) = \exp(-0.850) = \mathbf{0.427}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Интерпретация для бизнеса:</strong> «второй продукт увеличивает ожидаемое время жизни на 40%», «жалоба сокращает на 25%». И сразу конкретика: до года доживут 70% против 43%. Из PH-модели такие фразы получить сложнее.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">PH и AFT: как признак меняет кривую выживаемости</div>
+<div class="chsub">PH «прижимает» кривую вниз степенью, AFT «сжимает» её по горизонтали</div>
+<div style="position:relative;height:310px;"><canvas id="c_aft"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Когда выбирать AFT вместо Кокса.</strong> ① <strong>PH нарушено, но кривые не пересекаются</strong> — часто это признак того, что эффект «ускоряет время», а не умножает риск. ② <strong>Нужны абсолютные прогнозы времени жизни</strong>, а не ранжирование — AFT даёт их напрямую из параметрической формы. ③ <strong>Много цензурирования</strong> — параметрические модели используют информацию эффективнее непараметрических. ④ <strong>Нужна интерпретация для бизнеса</strong> в терминах «на сколько дольше проживёт». <strong>Проверка выбора:</strong> сравни AIC разных распределений и Кокса, посмотри на QQ-график остатков.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Survival-деревья и Random Survival Forest <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Никаких допущений о форме — только данные</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: в чём отличие от обычного дерева</div>
+<p>Обычное дерево при выборе сплита максимизирует чистоту классов. Survival-дерево максимизирует <strong>различие кривых выживаемости</strong> между ветками.</p>
+<p>Самый распространённый критерий — <strong>log-rank статистика</strong> из секции 5: выбираем сплит, дающий максимальное $\chi^2$ при сравнении левой и правой ветки.</p>
+<p>В листе хранится не класс и не число, а <strong>целая кривая Каплана–Мейера</strong>, построенная по попавшим туда объектам. Предсказание для нового клиента — это KM-кривая его листа.</p>
+<p>Никаких допущений о пропорциональности, о форме hazard, о линейности — дерево само найдёт нужные разбиения. Плата: нужно существенно больше данных.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Random Survival Forest (Ishwaran et al., 2008)</div>
+<p>Ансамбль survival-деревьев. Предсказание — усреднённая <strong>кумулятивная интенсивность</strong> по деревьям (оценка Нельсона–Аалена в листьях):</p>
+$$\hat H(t \mid x) = \frac{1}{B}\sum_{b=1}^{B}\hat H_b\big(t \mid L_b(x)\big), \qquad \hat H_b(t) = \sum_{t_i \le t}\frac{d_i}{n_i}$$
+<p>Отсюда $\hat S(t|x) = \exp\big(-\hat H(t|x)\big)$.</p>
+<p class="fnote">Усредняют именно $H$, а не $S$ — потому что $H$ аддитивна, а усреднение $S$ по деревьям даёт смещённую оценку.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Почему усредняют H, а не S</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Дерево 1</strong> для клиента даёт $S_1(12) = 0.90$, значит $H_1(12) = -\ln 0.90 = 0.105$.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Дерево 2</strong> даёт $S_2(12) = 0.30$, значит $H_2(12) = -\ln 0.30 = 1.204$.</div></div>
+<div class="numex-step"><span class="nb red">3</span><div><strong>Усреднение $S$:</strong> $\frac{0.90+0.30}{2} = 0.600$.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div><strong>Усреднение $H$:</strong> $\frac{0.105+1.204}{2} = 0.655$, откуда $S = e^{-0.655} = \mathbf{0.519}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Разница 0.60 против 0.52 — восемь процентных пунктов.</strong> Усреднение $S$ систематически завышает выживаемость из-за выпуклости экспоненты (неравенство Йенсена). При большом разбросе между деревьями смещение растёт. Все качественные реализации усредняют $H$.</div></div>
+</div>
+
+<h3>Как оценивать важность признаков</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Как работает</th><th>Замечание</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>VIMP (permutation)</b></td><td>Перемешать признак, измерить падение C-index на OOB</td><td><strong>Дефолт; учитывает взаимодействия, но дорог</strong></td></tr>
+<tr><td>Minimal depth</td><td>Средняя глубина, на которой признак впервые использован</td><td>Дёшево, устойчиво; малая глубина = важный признак</td></tr>
+<tr><td>Log-rank gain</td><td>Суммарный прирост критерия по всем сплитам</td><td>Смещён к признакам высокой мощности</td></tr>
+<tr><td>SHAP для survival</td><td>Значения Шепли для риск-скора или для $S(t)$ в фиксированный момент</td><td>Работает, но интерпретация зависит от выбора $t$</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Минимальный размер листа в survival-деревьях критичнее, чем в обычных.</strong> В листе строится KM-кривая; при 20 объектах она будет ступенчатой ерундой с огромными доверительными интервалами. Практическое правило: <strong>минимум 30–50 объектов И минимум 10–15 событий</strong> в листе. Второе условие важнее — при 5% оттока лист из 100 объектов содержит всего 5 событий, и кривая бессмысленна. В <code>sksurv</code> это <code>min_samples_leaf</code> плюс проверка вручную.</div></div>
+
+<pre><code># Random Survival Forest в scikit-survival
+from sksurv.ensemble import RandomSurvivalForest
+from sksurv.util import Surv
+from sksurv.metrics import concordance_index_censored
+
+y = Surv.from_arrays(event=df["churned"].astype(bool), time=df["tenure"])
+
+rsf = RandomSurvivalForest(
+    n_estimators=500,
+    min_samples_leaf=50,          # критично — в листе строится KM-кривая
+    max_features="sqrt",
+    n_jobs=-1, random_state=42,
+)
+rsf.fit(X_train, y_train)
+
+surv_fns = rsf.predict_survival_function(X_test)     # список функций S(t)
+risk     = rsf.predict(X_test)                        # риск-скор для ранжирования
+
+c_idx = concordance_index_censored(
+    y_test["event"], y_test["time"], risk)[0]
+print("C-index:", round(c_idx, 4))
+</code></pre>
+
+<h3>Градиентный бустинг для survival</h3>
+<div class="grid2">
+<div class="card sv"><h5>XGBoost / LightGBM с Cox-objective</h5><p><code>objective="survival:cox"</code> в XGBoost, <code>objective="cox"</code> в LightGBM. Оптимизируют частичное правдоподобие Кокса.</p><p><strong>Плюс:</strong> знакомый стек, скорость. <strong>Минус:</strong> наследует допущение PH и выдаёт только риск-скор, не кривую.</p></div>
+<div class="card gr"><h5>XGBoost AFT</h5><p><code>objective="survival:aft"</code> с параметрами распределения. Работает с интервальным цензурированием.</p><p><strong>Плюс:</strong> даёт абсолютные прогнозы времени, нет допущения PH. <strong>Минус:</strong> требует выбора распределения.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический порядок выбора модели.</strong> ① <strong>Каплан–Мейер</strong> для понимания формы и сравнения сегментов — всегда первым, до всякого моделирования. ② <strong>Кокс</strong> как интерпретируемый бейзлайн с проверкой PH. ③ Если PH нарушено и нужна интерпретация — <strong>AFT</strong> или стратифицированный Кокс. ④ Если нужна максимальная предсказательная сила и данных много — <strong>RSF или бустинг</strong>. ⑤ Мультимодальные данные, огромная выборка, конкурирующие риски — <strong>нейросети</strong>. Не начинай с пятого пункта.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Нейросети для survival <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">DeepSurv, дискретное время, DeepHit</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 DeepSurv (Katzman et al., 2018)</div>
+<p>Заменяем линейную часть Кокса на нейросеть:</p>
+$$h(t|x) = h_0(t)\cdot\exp\big(g_\theta(x)\big), \qquad g_\theta - \text{MLP}$$
+<p>Лосс — отрицательное частичное правдоподобие:</p>
+$$\mathcal{L}(\theta) = -\sum_{i:\delta_i=1}\left[g_\theta(x_i) - \ln\sum_{j\in R(t_i)}\exp\big(g_\theta(x_j)\big)\right]$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: DeepSurv — это Кокс с нелинейностью</div>
+<p>Модель Кокса предполагает, что лог-риск <em>линеен</em> по признакам: $\beta^\top x$. DeepSurv снимает только это ограничение — теперь лог-риск это произвольная функция $g_\theta(x)$.</p>
+<p><strong>Что осталось от Кокса:</strong> допущение пропорциональности. Риск по-прежнему раскладывается на «форму во времени» × «множитель от признаков». DeepSurv <em>не решает</em> проблему нарушения PH.</p>
+<p><strong>Практическая деталь реализации:</strong> знаменатель лосса требует суммирования по всему множеству риска. В минибатче множество риска обрезано — это смещает оценку. Решения: большие батчи, сортировка по времени внутри батча, или сэмплирование пар. Это главная техническая сложность DeepSurv.</p>
+<p><strong>Когда оправдан:</strong> сильные нелинейности и взаимодействия, мультимодальные данные (текст, изображения плюс таблица), очень большая выборка. На обычной таблице <strong>проигрывает RSF и бустингу</strong> — ровно по причинам из блока 7.2.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Дискретное время: survival как последовательность классификаций</div>
+<p>Разбиваем время на интервалы $[0,t_1), [t_1,t_2), \dots$ Модель предсказывает <strong>условную вероятность события</strong> в каждом интервале:</p>
+$$\hat p_k = P\big(T \in [t_{k-1}, t_k) \mid T \ge t_{k-1}, x\big)$$
+$$\hat S(t_k \mid x) = \prod_{j\le k}\big(1 - \hat p_j\big)$$
+<p class="fnote">Лосс — сумма бинарных кросс-энтропий по интервалам, где объект был под риском. Цензурированный объект вносит вклад только до момента цензурирования.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему это самый практичный подход</div>
+<p>Заметь структуру: $\hat S = \prod(1 - \hat p_j)$ — <strong>это в точности формула Каплана–Мейера</strong>, только вероятности не считаются по частотам, а предсказываются моделью индивидуально.</p>
+<p><strong>Три больших плюса:</strong></p>
+<p>① <strong>Никаких допущений</strong> — ни PH, ни формы распределения. Каждый интервал независим.</p>
+<p>② <strong>Работает любой классификатор.</strong> Можно взять CatBoost, обучить на «длинных» данных (одна строка = клиент × месяц), и получить survival-модель. Никаких специальных библиотек.</p>
+<p>③ <strong>Естественно поддерживает time-varying признаки</strong> — в каждой строке свои значения на этот месяц.</p>
+<p><strong>Цена:</strong> выборка раздувается в $K$ раз (клиент с 24 месяцами даёт 24 строки). При миллионе клиентов и 36 интервалах это 36 млн строк — терпимо для бустинга, тяжело для нейросети.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Дискретное время: как разворачивать данные</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Клиент A:</strong> tenure 3 месяца, ушёл. → строки: (мес.1, $y{=}0$), (мес.2, $y{=}0$), (мес.3, $y{=}1$). <strong>Три строки.</strong></div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Клиент B:</strong> tenure 5 месяцев, цензурирован. → строки: (мес.1, 0), (мес.2, 0), (мес.3, 0), (мес.4, 0), (мес.5, 0). <strong>Пять строк, все нули.</strong></div></div>
+<div class="numex-step"><span class="nb">3</span><div>Добавляем признак «номер интервала» — модель выучит форму hazard во времени автоматически.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>Обучаем обычный бинарный классификатор</strong> на этой длинной таблице. Предсказание $\hat p_k$ — вероятность уйти в интервале $k$ при условии дожития до него.</div></div>
+<div class="numex-step"><span class="nb grn">5</span><div><strong>Собираем кривую:</strong> клиент с $\hat p = [0.04, 0.03, 0.025, 0.02, 0.018]$ даёт<br>$\hat S(5) = 0.96\times0.97\times0.975\times0.98\times0.982 = \mathbf{0.874}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Ключевая проверка корректности:</strong> цензурированный клиент вносит нули только до момента цензурирования и <em>ни одной строки после</em>. Если случайно добавить строки после — модель решит, что он «не ушёл» и в будущем, и оценка выживаемости будет завышена.</div></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Подход</th><th>Допущения</th><th>Даёт</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr><td><b>DeepSurv</b></td><td>PH сохраняется</td><td>риск-скор + кривая через $h_0$</td><td>Нелинейности при выполнении PH</td></tr>
+<tr class="trh"><td><b>Дискретное время</b></td><td><strong>никаких</strong></td><td>полная кривая $S(t)$</td><td><strong>Практичный дефолт; работает с любым классификатором</strong></td></tr>
+<tr><td>DeepHit</td><td>никаких</td><td>совместное распределение времени и типа события</td><td>Конкурирующие риски</td></tr>
+<tr><td>Nnet-survival</td><td>никаких</td><td>дискретная $S(t)$</td><td>То же, что дискретное время, но в виде нейросети</td></tr>
+<tr><td>Cox-Time</td><td>PH снято</td><td>$h(t|x)$ с зависимостью от $t$</td><td>PH нарушено, нужна нейросеть</td></tr>
+<tr><td>Survival Transformer</td><td>никаких</td><td>$S(t)$ по последовательности событий</td><td>Есть богатая история действий клиента</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Самый недооценённый вывод этой секции.</strong> Дискретное время сводит survival к обычной бинарной классификации на «длинных» данных. Это значит, что <strong>весь стек из блока 7 применим напрямую</strong>: AutoML, CatBoost, feature store, мониторинг дрейфа. Не нужно внедрять новые библиотеки и учить команду новому API. При этом сохраняется корректная обработка цензурирования и получается полная кривая $S(t)$. Для большинства бизнес-задач это оптимальный компромисс между строгостью и внедряемостью.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Конкурирующие риски: то, что забывают почти все <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Когда событий несколько типов и они исключают друг друга</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Проблема:</strong> клиент может уйти по разным причинам — перешёл к конкуренту, переехал, умер, перестал нуждаться в услуге. Эти события <strong>взаимно исключают</strong> друг друга: произошло одно — остальные уже не произойдут. Наивный подход «рассматриваем интересующее событие, остальные считаем цензурированием» даёт <strong>систематически завышенную оценку риска</strong>.</div></div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нельзя просто цензурировать</div>
+<p>Цензурирование означает «мы перестали смотреть, но событие ещё может произойти». Клиент, который переехал в другую страну, <em>никогда</em> не уйдёт к местному конкуренту — событие для него невозможно, а не отложено.</p>
+<p>Каплан–Мейер, обработав его как цензурированного, «размажет» его риск на оставшихся под наблюдением — как будто он мог бы уйти к конкуренту, но мы просто не увидели. Итог: <strong>оценка вероятности ухода к конкуренту завышена</strong>.</p>
+<p>Чем больше доля конкурирующих событий, тем сильнее смещение. При 30% конкурирующих событий завышение может достигать 10–15 процентных пунктов.</p>
+</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Cumulative Incidence Function (CIF)</div>
+<p>Правильная величина — вероятность, что <em>к моменту $t$ произошло событие типа $k$</em>, с учётом конкуренции:</p>
+$$F_k(t) = P\big(T \le t,\; K = k\big) = \int_0^t S(u^-)\,h_k(u)\,du$$
+<p>Оценка Аалена–Йохансена:</p>
+$$\hat F_k(t) = \sum_{t_i \le t} \hat S(t_{i-1})\cdot\frac{d_{ki}}{n_i}$$
+<p class="fnote">$\hat S$ здесь — <strong>общая</strong> выживаемость по всем типам событий вместе. Ключевое отличие от KM: множитель $\hat S(t_{i-1})$ учитывает, что до момента $t_i$ надо было дожить, не испытав никакого события.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Насколько сильно врёт наивный KM</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Когорта 1000 клиентов, 12 месяцев.</strong> Уход к конкуренту: 200 человек. Переезд/закрытие бизнеса (конкурирующее событие): 250. Цензурировано по концу окна: 550.</div></div>
+<div class="numex-step"><span class="nb red">2</span><div><strong>Наивный KM</strong> (переезды считаем цензурированием). Условная интенсивность ухода к конкуренту рассчитывается на уменьшающемся знаменателе, и $1 - \hat S_{\text{KM}}(12) \approx \mathbf{0.271}$.</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>Аален–Йохансен</strong> с учётом конкуренции: $\hat F_{\text{конкурент}}(12) \approx \mathbf{0.200}$ — ровно доля фактически ушедших к конкуренту.</div></div>
+<div class="numex-step"><span class="nb red">4</span><div><strong>Завышение на 7 процентных пунктов</strong>, то есть на 35% в относительном выражении.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Проверка на здравый смысл:</strong> сумма CIF по всем типам событий плюс выживаемость всегда равна 1: $F_1(t) + F_2(t) + S(t) = 1$. У наивных KM-оценок такого свойства нет — их сумма может превысить единицу, что физически бессмысленно и является признаком ошибки.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Наивный KM против Аалена–Йохансена при конкурирующих рисках</div>
+<div class="chsub">KM систематически завышает вероятность интересующего события</div>
+<div style="position:relative;height:310px;"><canvas id="c_cif"></canvas></div>
+</div>
+
+<h3>Модели для конкурирующих рисков</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Метод</th><th>Что моделирует</th><th>Интерпретация</th></tr></thead>
+<tbody>
+<tr><td><b>Cause-specific Cox</b></td><td>$h_k(t|x)$ — интенсивность события типа $k$</td><td>«Что <em>вызывает</em> уход к конкуренту» — для понимания механизма</td></tr>
+<tr class="trh"><td><b>Fine–Gray (subdistribution)</b></td><td>Напрямую $F_k(t|x)$</td><td><strong>«Какова вероятность события типа $k$» — для прогноза и решений</strong></td></tr>
+<tr><td>Аален–Йохансен</td><td>Непараметрическая CIF</td><td>Описательный анализ, сравнение групп</td></tr>
+<tr><td>DeepHit</td><td>Совместное распределение $(T, K)$</td><td>Много типов событий, сложные зависимости</td></tr>
+<tr><td>Multi-state models</td><td>Переходы между состояниями</td><td>Клиент может менять статус (активен → приостановлен → ушёл)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Cause-specific и Fine–Gray отвечают на разные вопросы — и коэффициенты у них разные.</strong> Признак может <em>увеличивать</em> cause-specific hazard ухода к конкуренту и одновременно <em>уменьшать</em> CIF — если он ещё сильнее увеличивает риск конкурирующего события (клиент раньше переедет, чем успеет уйти к конкуренту). Это не противоречие, а два разных вопроса. <strong>Правило:</strong> для этиологии («что влияет на механизм») — cause-specific; для прогноза и бизнес-решений («сколько клиентов уйдёт к конкуренту») — Fine–Gray.</div></div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Метрики качества <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Обычные метрики не работают — нужны специальные</div>
+
+<div class="fbox">
+<div class="flabel">📐 Concordance index (C-index)</div>
+$$C = \frac{\#\{\text{сравнимые пары, предсказанные верно}\}}{\#\{\text{сравнимые пары}\}}$$
+<p>Пара $(i,j)$ <strong>сравнима</strong>, если известно, кто испытал событие раньше. Пара предсказана верно, если тот, у кого событие раньше, имеет более высокий риск-скор.</p>
+<p class="fnote">$C = 0.5$ — случайное ранжирование, $C = 1.0$ — идеальное. Прямой аналог ROC-AUC для цензурированных данных.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: какие пары сравнимы</div>
+<p><strong>Сравнимы:</strong> оба испытали событие (знаем, кто раньше). Или один испытал событие в момент $t_1$, второй цензурирован позже $t_1$ — значит второй точно прожил дольше.</p>
+<p><strong>Не сравнимы:</strong> оба цензурированы (не знаем, у кого событие раньше). Или один цензурирован <em>раньше</em>, чем у второго произошло событие — цензурированный мог бы прожить и дольше, и меньше.</p>
+<p><strong>Практическое следствие:</strong> при высокой доле цензурирования сравнимых пар мало, и C-index оценивается по небольшой подвыборке — становится шумным и смещённым. При 80% цензурирования доля сравнимых пар может упасть ниже 20%.</p>
+<p><strong>Лечение:</strong> <em>C-index Uno</em> — взвешенная версия с поправкой на распределение цензурирования (IPCW). Она устойчивее к высокой доле цензурирования и должна быть дефолтом.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 C-index вручную на пяти клиентах</div>
+<div class="numex-step"><span class="nb">1</span><div><strong>Данные:</strong> A(3 мес., событие), B(5, событие), C(7, цензур.), D(9, событие), E(11, цензур.).<br><strong>Риск-скоры модели:</strong> A=0.9, B=0.6, C=0.7, D=0.4, E=0.2.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Перебираем пары.</strong> (A,B): оба события, A раньше. Сравнима. Скор A=0.9 &gt; B=0.6 → <strong>верно</strong> ✓</div></div>
+<div class="numex-step"><span class="nb">3</span><div>(A,C): A событие в 3, C цензур. в 7 &gt; 3 → сравнима. 0.9 &gt; 0.7 → <strong>верно</strong> ✓<br>(A,D): сравнима, 0.9 &gt; 0.4 → ✓ &nbsp; (A,E): сравнима, 0.9 &gt; 0.2 → ✓</div></div>
+<div class="numex-step"><span class="nb">4</span><div>(B,C): B событие в 5, C цензур. в 7 &gt; 5 → сравнима. 0.6 &lt; 0.7 → <strong>неверно</strong> ✗<br>(B,D): сравнима, 0.6 &gt; 0.4 → ✓ &nbsp; (B,E): сравнима, 0.6 &gt; 0.2 → ✓</div></div>
+<div class="numex-step"><span class="nb red">5</span><div>(C,D): C цензур. в 7, D событие в 9. C выбыл <em>раньше</em> события D → <strong>не сравнима</strong>.<br>(C,E): оба цензурированы → <strong>не сравнима</strong>. &nbsp; (D,E): D событие в 9, E цензур. в 11 → сравнима, 0.4 &gt; 0.2 → ✓</div></div>
+<div class="numex-step"><span class="nb grn">6</span><div><strong>Итог:</strong> сравнимых пар 8, верно предсказано 7. $C = \tfrac{7}{8} = \mathbf{0.875}$.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Из 10 возможных пар <strong>две оказались несравнимыми</strong> — уже при 40% цензурирования. При 80% цензурирования доля выброшенных пар превысит половину.</div></div>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Brier score и интегральная версия</div>
+<p>Ошибка предсказания $\hat S(t|x)$ в фиксированный момент $t$, с поправкой на цензурирование (IPCW):</p>
+$$\text{BS}(t) = \frac1n\sum_i\left[\frac{\hat S(t|x_i)^2\,\mathbb{1}(T_i\le t,\delta_i{=}1)}{\hat G(T_i)} + \frac{\big(1-\hat S(t|x_i)\big)^2\,\mathbb{1}(T_i > t)}{\hat G(t)}\right]$$
+<p>Интегральная версия по всему горизонту:</p>
+$$\text{IBS} = \frac{1}{t_{\max}}\int_0^{t_{\max}}\text{BS}(t)\,dt$$
+<p class="fnote">$\hat G$ — оценка Каплана–Мейера для <em>цензурирования</em> (событие и цензурирование меняются местами). Меньше = лучше; 0.25 соответствует бесполезному прогнозу 0.5.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему нужны обе метрики</div>
+<p><strong>C-index измеряет ранжирование</strong> — «правильно ли модель упорядочила клиентов по риску». Он не зависит от калибровки: умножь все риск-скоры на 100, C-index не изменится.</p>
+<p><strong>Brier измеряет калибровку и точность</strong> — «насколько верны абсолютные вероятности $\hat S(t)$».</p>
+<p><strong>Практическое различие.</strong> Для приоритизации обзвона нужен только C-index — важен порядок. Для расчёта LTV, резервов или ожидаемых потерь нужны <em>абсолютные</em> значения $S(t)$, и там решает Brier.</p>
+<p>Модель может иметь C-index 0.75 (хорошее ранжирование) и при этом систематически завышать выживаемость вдвое. Это ровно та же связка «AUC против калибровки», что в блоке 7.3.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Метрика</th><th>Что измеряет</th><th>Диапазон</th><th>Когда использовать</th></tr></thead>
+<tbody>
+<tr class="trh"><td><b>C-index (Harrell)</b></td><td>Ранжирование по риску</td><td>0.5–1.0</td><td><strong>Дефолт; смещён при сильном цензурировании</strong></td></tr>
+<tr><td>C-index (Uno, IPCW)</td><td>То же, с поправкой</td><td>0.5–1.0</td><td>Цензурирования больше 50% — предпочтительнее Harrell</td></tr>
+<tr><td>Time-dependent AUC</td><td>Разделение в момент $t$</td><td>0.5–1.0</td><td>Важен конкретный горизонт (например, 12 мес.)</td></tr>
+<tr class="trh"><td><b>Brier score / IBS</b></td><td>Точность абсолютных вероятностей</td><td>0–0.25</td><td><strong>Нужны калиброванные $S(t)$: LTV, резервы</strong></td></tr>
+<tr><td>Калибровочный график</td><td>Предсказанная vs фактическая $S(t)$</td><td>—</td><td>Визуальная проверка перед продом</td></tr>
+<tr><td>D-calibration</td><td>Равномерность распределения $\hat S(T_i)$</td><td>p-value</td><td>Строгая проверка калибровки всей кривой</td></tr>
+<tr><td>RMST-разность</td><td>Разница ожидаемого времени жизни</td><td>месяцы</td><td>Коммуникация с бизнесом</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="play">
+  <label>Поиграй: доля цензурирования и надёжность C-index</label>
+  <input type="range" id="sl_cshare" min="0" max="95" step="5" value="50" oninput="updCidx()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0% цензурировано</span><span class="out" id="out_cshare">50%</span><span>95%</span></div>
+  <label style="margin-top:14px;">Размер выборки</label>
+  <input type="range" id="sl_nn" min="100" max="20000" step="100" value="2000" oninput="updCidx()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>100</span><span class="out" id="out_nn">2000</span><span>20 000</span></div>
+  <div class="res" id="out_cidx"></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Валидация в survival требует особой аккуратности.</strong> ① <strong>Стратифицируй по событию</strong> при разбиении — иначе в фолде может оказаться слишком мало событий. ② <strong>Не разбивай по времени наивно</strong>: если обучаешь на первых 12 месяцах, а валидируешь на следующих, распределение цензурирования различается, и метрики несравнимы. ③ <strong>Не используй признаки, зафиксированные после начала наблюдения</strong> — это тот же point-in-time из блока 7. ④ <strong>Проверяй число событий в фолде</strong>: правило «минимум 10 событий на признак» (EPV) остаётся в силе для Кокса.</div></div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни</div>
+<div class="sdesc">Ошибки, из-за которых survival-модель даёт неверные выводы</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Левое усечение</h5><p>Выгрузили «активных на дату X» — ушедшие раньше в данные не попали. Выборка смещена к долгожителям, выживаемость завышена.</p><p><em>Решение:</em> когорты по дате прихода, явный <code>entry</code>-момент.</p></div>
+<div class="card rd"><h5>Информативное цензурирование</h5><p>Цензурируем тех, кто и так собирался уйти (сменил регион, ушёл в «спящий» режим). Выживаемость завышена.</p><p><em>Решение:</em> сравнить признаки цензурированных и событийных; доменная экспертиза.</p></div>
+<div class="card rd"><h5>Интерпретация хвоста KM</h5><p>При 5 объектах под риском кривая — шум. Презентуют «через 3 года останется 40%» на основе трёх наблюдений.</p><p><em>Решение:</em> таблица числа под риском, обрезка графика.</p></div>
+<div class="card rd"><h5>PH не проверено</h5><p>Коэффициент Кокса усредняет разнонаправленные эффекты и не описывает ни один период.</p><p><em>Решение:</em> <code>check_assumptions</code>, стратификация, AFT.</p></div>
+<div class="card rd"><h5>Ties обработаны по Breslow</h5><p>При месячной гранулярности ties массовые; Breslow смещает коэффициенты на 10–15%.</p><p><em>Решение:</em> <code>ties="efron"</code>.</p></div>
+<div class="card rd"><h5>Конкурирующие события как цензурирование</h5><p>Завышение вероятности целевого события на 30%+ в относительном выражении.</p><p><em>Решение:</em> Аален–Йохансен, Fine–Gray.</p></div>
+<div class="card rd"><h5>Признаки после начала наблюдения</h5><p>«Число жалоб за весь период» включает жалобы, поданные перед уходом — прямая утечка.</p><p><em>Решение:</em> все признаки на момент входа или time-varying формат.</p></div>
+<div class="card rd"><h5>Усреднение S вместо H в ансамбле</h5><p>Систематическое завышение выживаемости из-за выпуклости экспоненты.</p><p><em>Решение:</em> усреднять кумулятивный hazard.</p></div>
+<div class="card rd"><h5>Мало событий на признак</h5><p>Правило EPV: минимум 10 событий на каждый параметр Кокса. При 50 событиях и 20 признаках модель переобучится.</p><p><em>Решение:</em> регуляризация, отбор признаков.</p></div>
+<div class="card rd"><h5>C-index при 85% цензурирования</h5><p>Сравнимых пар мало, метрика шумит и смещена.</p><p><em>Решение:</em> C-index Uno с IPCW, плюс Brier.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Самая частая ошибка на практике — неправильное определение «нулевого момента».</strong> От чего отсчитывать время: от регистрации? от первой покупки? от начала подписки? Разные определения дают разные кривые и разные выводы. Хуже: если часть клиентов начинает наблюдаться позже (например, данные есть только с момента внедрения системы), возникает левое усечение. <strong>Правило:</strong> зафиксируй нулевой момент явно, проверь, что все клиенты входят в риск именно с него, и что нет когорт, «появившихся из ниоткуда».</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Чек-лист перед моделированием.</strong> ① Нарисуй KM для всей выборки и по ключевым сегментам — с таблицей числа под риском. ② Посмотри на форму hazard: убывающая, растущая, U-образная? Это уже даёт продуктовые инсайты. ③ Оцени долю цензурирования и проверь, не информативно ли оно. ④ Проверь наличие конкурирующих событий. ⑤ Посчитай число событий и сравни с числом признаков (EPV ≥ 10). ⑥ И только потом обучай модель.</div></div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design: survival в продуктовом контуре</div>
+<div class="sdesc">Как это живёт в проде</div>
+
+<div class="sysbox">
+<h4>🏗 Survival-модель как источник нескольких продуктовых метрик</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Событийный лог</strong>подписки, платежи,<br>отмены</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Формирование</strong>tenure + событие +<br>признаки на момент входа</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Survival-модель</strong>RSF или дискретное<br>время на бустинге</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Ŝ(t | x)</strong>кривая для каждого<br>клиента</div>
+</div>
+<div class="sys-row">
+  <div class="syshighlight"><strong>LTV</strong>Σ S(t)·ARPU·d<sup>t</sup></div>
+  <div class="sysblock"><strong>Риск-скор</strong>приоритет обзвона</div>
+  <div class="sysblock"><strong>Момент вмешательства</strong>где h(t) пиковый</div>
+  <div class="sysblock"><strong>Прогноз базы</strong>Σ S(t) по когортам</div>
+</div>
+<div class="sysnote"><strong>Главное архитектурное преимущество:</strong> одна модель питает четыре разных продуктовых процесса. Классификатор оттока даёт только риск-скор на фиксированный горизонт — из него нельзя получить ни LTV, ни оптимальный момент вмешательства, ни прогноз численности базы.<br><br>
+<strong>Что критично в реализации:</strong><br>
+① <strong>Признаки на момент входа в риск</strong>, а не на дату скоринга — иначе утечка. Для динамических признаков переходить на time-varying формат.<br>
+② <strong>Пересчёт кривых по расписанию</strong> — клиент, проживший ещё месяц, имеет уже другую условную кривую $S(t | T > t_0)$. Формула: $S(t | T > t_0) = S(t)/S(t_0)$.<br>
+③ <strong>Мониторинг дрейфа формы hazard</strong> — если пик риска сместился с 3-го месяца на 1-й, это продуктовая проблема, а не проблема модели.<br>
+④ <strong>Калибровка важнее ранжирования</strong>, если кривые идут в расчёт LTV и финансовых резервов.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Выбор момента вмешательства по hazard-функции</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>h(t) по когорте</strong>пики риска</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Найти пики</strong>месяц 1, месяц 12<br>(конец тарифа)</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Индивидуальный риск</strong>кто попадёт в пик</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Uplift-модель</strong>кого вмешательство<br>реально удержит</div>
+</div>
+<div class="sysnote"><strong>Связка survival + uplift — самый сильный паттерн в retention.</strong><br>
+Survival отвечает на вопросы <em>«кто»</em> и <em>«когда»</em>: у кого высокий риск и в какой именно момент он материализуется. Uplift (блок 1.3) отвечает на вопрос <em>«поможет ли»</em>: изменит ли вмешательство исход именно для этого клиента.<br><br>
+Без uplift мы будем звонить всем с высоким риском — включая тех, кого звонок оттолкнёт (sleeping dogs), и тех, кто уйдёт в любом случае (lost causes). Без survival мы не будем знать, <em>когда</em> звонить — а вмешательство за месяц до пика риска и через месяц после дают совершенно разный результат.<br><br>
+<strong>Практическая реализация:</strong> survival даёт список «риск выше порога в ближайшие $k$ месяцев», uplift фильтрует его по $\hat\tau(x) > C/M$, hazard-функция определяет тайминг контакта.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Подписочный сервис</div>
+<h4>Что даёт форма hazard-кривой до всякого моделирования</h4>
+<p><strong>Наблюдение:</strong> hazard имеет два выраженных пика — на 1-м месяце (14% от оставшихся) и на 12-м (9%), при фоновом уровне 2–3%.</p>
+<p><strong>Интерпретация без моделей:</strong></p>
+<ul>
+<li><strong>Пик 1-го месяца</strong> — проблема онбординга. Пользователи не доходят до момента ценности. Решение продуктовое, а не CRM-ное: упростить первый сценарий, добавить подсказки.</li>
+<li><strong>Пик 12-го месяца</strong> — окончание годовой скидки, автоматическое повышение цены. Решение — заранее предложить продление на других условиях, за 1–2 месяца до пика.</li>
+<li><strong>Низкий фон между пиками</strong> — те, кто прошёл онбординг, стабильны. Тратить на них ретеншн-бюджет бессмысленно.</li>
+</ul>
+<p><strong>Экономический вывод:</strong> ретеншн-бюджет нужно концентрировать в двух узких окнах, а не размазывать по всей базе. Это решение принимается по одному графику $h(t)$ — до обучения любой модели.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Связь с курсом</div>
+<h4>Где survival пересекается с остальными темами</h4>
+<ul>
+<li><strong>Блок 1.3 (uplift)</strong> — связка «кто и когда» + «поможет ли»; общая проблема ненаблюдаемых контрфактов.</li>
+<li><strong>Блок 2.2–2.3</strong> — отток как классификация против оттока как survival; там же расчёт LTV через $S(t)$.</li>
+<li><strong>Блок 3.4</strong> — LTV: интеграл выживаемости — основа BG/NBD и её ML-альтернатив.</li>
+<li><strong>Блок 7.3</strong> — point-in-time correctness признаков, калибровка, мониторинг дрейфа применяются один в один.</li>
+<li><strong>Блок 8.6</strong> — цензурированные наблюдения формально эквивалентны частично размеченным данным; та же логика «использовать неполную информацию, а не выбрасывать».</li>
+</ul>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">15. Вопросы и ответы</div>
+<div class="sdesc">30 вопросов — от цензурирования до конкурирующих рисков</div>
+
+<div class="qah">🟢 База: постановка и цензурирование</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Назови три ошибки, встроенные в постановку «классификация оттока за 3 месяца».<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p><strong>① Выбрасываем время.</strong> Ушедший через неделю и через 89 дней получают одинаковую метку — а это разные бизнес-ситуации.</p><p><strong>② Теряем цензурированных.</strong> Клиент, пришедший месяц назад и пока активный, помечается нулём — но мы не знаем, уйдёт ли он на втором месяце.</p><p><strong>③ Горизонт произволен.</strong> Почему 3 месяца, а не 12? Ответ меняется вместе с горизонтом, модели несравнимы.</p><p>Survival-модель даёт $S(t)$ <em>для любого $t$ сразу</em>: и медиану жизни, и LTV, и вероятность на любой горизонт — из одной обученной модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Насколько сильно смещается оценка оттока при наивной обработке цензурирования?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Из примера секции 1: истинный отток за 12 месяцев 40%, наивная классификация даёт <strong>25.3%</strong> — занижение в 1.6 раза.</p><p>Причина: 3000 клиентов наблюдались всего 2 месяца, у них наблюдаемый отток ~8%, и все они помечены как «не ушедшие».</p><p>Альтернатива «выбросим тех, кто наблюдался меньше 12 месяцев» даёт правильные 40%, но <strong>теряет 60% данных</strong> и вносит selection bias — остаются только «старые» клиенты, систематически отличающиеся от новых.</p><p>Каплан–Мейер использует каждого ровно столько, сколько он наблюдался, и даёт корректные 40%.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Что означает цензурированное наблюдение и какую информацию оно несёт?<span class="tag tbase">База</span></span></summary>
+<div class="qa"><p>Это <strong>не</strong> «событие не произошло». Это «событие не произошло <em>к моменту, когда мы перестали смотреть</em>».</p><p>Клиент, наблюдавшийся 12 месяцев без ухода, не «остался навсегда» — он может уйти на 13-м месяце.</p><p><strong>Ключевое:</strong> цензурированное наблюдение несёт <em>частичную</em> информацию — мы знаем, что $T > 12$. Это не полное знание, но и не отсутствие знания.</p><p>Survival-методы умеют использовать именно такую частичную информацию. Классификация работает только с полными метками и вынуждена либо выбросить объект, либо соврать.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Что такое неинформативное цензурирование и когда оно нарушается?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$T \perp C \mid X$ — момент цензурирования независим от момента события при фиксированных признаках.</p><p><strong>Выполняется:</strong> цензурирование по концу окна наблюдения. Дата среза не связана с намерением уйти.</p><p><strong>Нарушается:</strong> клиент «сменил регион» и выпал — но переезд часто предшествует отказу от услуги. Мы цензурируем именно тех, кто и так собирался уйти → <strong>выживаемость завышена</strong>.</p><p><strong>Как проверить:</strong> сравнить распределение признаков у цензурированных и событийных. Полностью проверить невозможно — та же ситуация, что с ненаблюдаемыми конфаундерами в uplift.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Что такое левое усечение и почему его так трудно заметить?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Ты выгружаешь «всех активных клиентов на 1 января» и смотришь дальнейшую судьбу. Но клиенты, ушедшие в декабре, <strong>в выгрузку не попали вообще</strong> — их нет в данных.</p><p>Выборка смещена в сторону «долгожителей», оценка выживаемости завышена.</p><p><strong>Почему трудно заметить:</strong> по самим данным это невозможно увидеть — отсутствующие наблюдения не оставляют следа. Только понимая, как данные собирались.</p><p><strong>Лечение:</strong> строить когорты по дате прихода, а не по дате среза, и явно указывать момент входа в риск через <code>entry</code>-время. Все библиотеки это поддерживают.</p></div></details>
+
+<div class="qah">🔵 Средний: функции и оценки</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Чем hazard h(t) отличается от плотности f(t)? Приведи числа.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$f(t)$ — доля от <em>исходной</em> когорты, у кого событие в момент $t$. $h(t)$ — доля от <em>оставшихся</em> к моменту $t$.</p><p><strong>Пример:</strong> из 1000 клиентов к 10-му месяцу осталось 200, в 10-м месяце ушли 20.<br>$f(10) = 20/1000 = 0.02$ &nbsp;·&nbsp; $h(10) = 20/200 = \mathbf{0.10}$.</p><p>Связь: $h(t) = f(t)/S(t)$.</p><p>Именно $h(t)$ отвечает на бизнес-вопрос «насколько опасен этот момент для дошедших до него» — и именно её моделирует Кокс. Это объясняет, почему $f(t)$ падает к концу (мало кто остался), а $h(t)$ может расти.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Что означают убывающая, растущая и U-образная hazard-функции для бизнеса?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p><strong>Убывающая</strong> («детская смертность») — новые клиенты уходят быстро, выжившие остаются надолго. Это проблема <em>онбординга</em>: люди не доходят до момента ценности.</p><p><strong>Растущая</strong> (износ) — риск растёт со временем. Проблема <em>удержания интереса</em>: продукт приедается.</p><p><strong>U-образная</strong> — комбинация приработки и износа.</p><p><strong>Всплеск на 12-м месяце</strong> — почти наверняка окончание годового тарифа или скидки.</p><p><strong>Главная мысль:</strong> просто посмотрев на график $h(t)$, можно понять, куда направить продуктовые усилия — до обучения любой модели.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Почему RMST предпочтительнее медианы выживаемости?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Медиана <strong>не определена</strong>, если к концу наблюдения выжило больше половины — частая ситуация. Плюс она игнорирует форму кривой: две группы могут иметь одинаковую медиану при разной динамике.</p><p><strong>RMST</strong> $= \int_0^{\tau} S(t)dt$ — площадь под кривой до горизонта $\tau$. Интерпретируется буквально: «в среднем клиент проживёт $X$ месяцев из первых $\tau$».</p><p>Определена всегда, учитывает всю форму, и разность RMST напрямую переводится в деньги: $\Delta\text{RMST}\times\text{ARPU}$ = дополнительная выручка на клиента.</p><p>Именно поэтому RMST всё чаще предпочитают hazard ratio при коммуникации с бизнесом.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Почему в формуле Каплана–Мейера произведение, а не сумма?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$(1 - d_i/n_i)$ — вероятность пережить конкретный момент $t_i$ <em>при условии</em> дожития до него.</p><p>Чтобы дожить до $t$, нужно пережить <strong>все</strong> моменты событий до него. Вероятности последовательных условных «испытаний» перемножаются.</p><p><strong>Как обрабатывается цензурирование — вся суть метода:</strong> цензурированный объект участвует в знаменателе $n_i$ во все моменты до выбывания (он был под риском!), а потом исчезает. В числитель $d_i$ он не попадает никогда.</p><p>Так частичная информация используется полностью: клиент, наблюдавшийся 5 месяцев, вносит вклад для месяцев 1–5 и не искажает оценку для месяцев 6+.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Посчитай KM для данных: (2,ушёл), (3,цензур.), (4,ушёл), (4,ушёл), (6,цензур.).<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Пусть всего 10 объектов.</p><p><strong>$t=2$:</strong> $n=10$, $d=1$ → множитель $0.900$, $\hat S(2) = 0.900$.</p><p><strong>$t=3$:</strong> цензурирование — $\hat S$ <em>не меняется</em>, но под риском становится 8.</p><p><strong>$t=4$:</strong> $n=8$, $d=2$ → множитель $1 - 2/8 = 0.750$, $\hat S(4) = 0.900\times0.750 = \mathbf{0.675}$.</p><p><strong>$t=6$:</strong> цензурирование — $\hat S$ не меняется, под риском 5.</p><p><strong>Что важно:</strong> кривая ступенчатая (падает только в моменты событий); цензурирования не видны на кривой, но <em>меняют знаменатель</em>, поэтому следующие ступеньки крупнее.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Почему нельзя интерпретировать хвост KM-кривой?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>По формуле Гринвуда дисперсия $\propto \sum \frac{d_i}{n_i(n_i-d_i)}$ — с уменьшением $n_i$ каждое слагаемое растёт, и доверительный интервал расширяется.</p><p>При 3 объектах под риском одно событие меняет оценку на треть. Утверждение «через 3 года останется 40%» может быть основано на трёх наблюдениях.</p><p><strong>Правило:</strong> не интерпретируй там, где под риском меньше 10–20 объектов. Стандартная практика — обрезать график на моменте, где остаётся 10% исходной когорты, и <strong>обязательно рисовать таблицу числа под риском</strong> (number at risk table). Без неё читатель не может оценить надёжность.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Как работает log-rank тест и когда он обманывает?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>В каждый момент события считаем ожидаемое число событий в группе 1 при $H_0$: $E_{1i} = d_i\frac{n_{1i}}{n_i}$. Суммируем отклонения $O-E$ по всем моментам, делим на накопленную дисперсию.</p><p><strong>Обманывает при пересекающихся кривых.</strong> Если группа A теряет клиентов быстро в начале, а B — в конце, отклонения в первой половине положительные, во второй отрицательные, и <strong>в сумме дают почти ноль</strong>. Тест скажет «различий нет», хотя они огромны — просто разнонаправленные.</p><p><strong>Правило:</strong> всегда сначала рисуй кривые. При пересечении используй Fleming-Harrington с подходящими весами или сравнивай RMST.</p></div></details>
+
+<div class="qah">🟣 Продвинутый: модели</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. В чём главная идея модели Кокса и почему её называют полупараметрической?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$h(t|x) = h_0(t)\exp(\beta^\top x)$ — риск раскладывается на <strong>форму во времени</strong> (общую для всех) и <strong>множитель от признаков</strong> (не зависящий от времени).</p><p><strong>Полупараметрическая:</strong> параметрическая по признакам ($\beta$), непараметрическая по времени ($h_0$ произвольна и не оценивается).</p><p><strong>Почему это гениально:</strong> форма $h_0(t)$ обычно не нужна — нужно ранжировать клиентов по риску. А $\beta$ можно оценить, вообще не зная $h_0$ — через частичное правдоподобие, где $h_0$ сокращается.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Как устроено частичное правдоподобие и что оно на самом деле оптимизирует?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>$L(\beta) = \prod_{i:\delta_i=1}\frac{\exp(\beta^\top x_i)}{\sum_{j\in R(t_i)}\exp(\beta^\top x_j)}$.</p><p>Читается: «в момент $t_i$ событие произошло именно с объектом $i$; какова вероятность этого при условии, что событие с кем-то произошло?» Ответ — доля риска объекта $i$ в суммарном риске множества риска.</p><p><strong>Это буквально softmax по множеству риска.</strong></p><p><strong>Ключевое следствие:</strong> Кокс — это задача <em>ранжирования</em>. Он учится расставлять объекты по риску, а не предсказывать абсолютное время. Отсюда: отлично работает для приоритизации; для абсолютных вероятностей нужен дополнительный шаг — оценка $\hat h_0$ по Бреслоу.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Как правильно интерпретировать hazard ratio? Приведи расчёт.<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Правильно:</strong> «в 1.5 раза более высокая <em>мгновенная интенсивность</em> в каждый момент».</p><p><strong>Неправильно:</strong> «уходят в 1.5 раза чаще» или «вероятность выше на 50%».</p><p><strong>Почему разница существенна.</strong> При HR = 2, если $S_0(12) = 0.80$, то $S_1(12) = 0.80^2 = \mathbf{0.64}$ — отток вырос с 20% до 36%, то есть в <em>1.8</em> раза, а не в 2.</p><p>Соотношение: $S_1(t) = S_0(t)^{\text{HR}}$ — прямое следствие $H_1 = \text{HR}\cdot H_0$ и $S = e^{-H}$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Почему при месячной гранулярности обязателен Efron вместо Breslow?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>В бизнес-данных время дискретно, и десятки клиентов уходят «в один момент» — совпадающие времена (ties) массовые.</p><p>Точная формула частичного правдоподобия для ties вычислительно тяжела ($O(n!)$), поэтому используют приближения.</p><p><strong>Breslow</strong> — быстрое, но смещено при многих ties. <strong>Efron</strong> — точнее, чуть медленнее, <em>дефолт и рекомендация</em>.</p><p>При тысячах клиентов и месячной гранулярности разница в коэффициентах достигает <strong>10–15%</strong>. Это не косметика.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Что означает нарушение PH и как оно выглядит на реальных данных?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>PH требует, чтобы отношение интенсивностей между объектами было <strong>постоянным во времени</strong>.</p><p><strong>Типичный пример:</strong> признак «пришёл по акции». Первые 3 месяца такие клиенты уходят чаще (HR ≈ 3) — низкое качество трафика. Пережившие 3 месяца оказываются <em>лояльнее</em> обычных (HR ≈ 0.8) — естественный отбор.</p><p>Кокс выдаст <strong>одно число</strong> — усреднённый HR около 1.4, который не описывает ни ранний период, ни поздний.</p><p><strong>Второй пример:</strong> эффект скидки силён сразу и затухает — HR меняется по построению.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Три способа проверить пропорциональность.<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>① Остатки Шёнфельда.</strong> Проверяем корреляцию остатков со временем — при выполнении PH она должна быть нулевой, облако горизонтально. Наклон вверх = HR растёт, вниз = убывает. В lifelines: <code>cph.check_assumptions()</code>.</p><p><strong>② Log-log plot.</strong> При PH кривые $\ln(-\ln\hat S)$ для групп должны быть <strong>параллельны</strong> — они отличаются только вертикальным сдвигом $\beta^\top x_g$.</p><p><strong>③ Сами KM-кривые.</strong> Если они <strong>пересекаются</strong>, PH заведомо нарушено — отношение hazard меняет знак. Видно за секунду, тестов не требует. <strong>Всегда начинай с картинки.</strong></p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Что такое стратификация в модели Кокса и когда она — лучшее решение?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Каждой категории проблемного признака даётся <strong>своя</strong> базовая функция $h_{0g}(t)$, произвольная и разная. Частичное правдоподобие считается внутри страт и перемножается. Коэффициенты $\beta$ остаются общими.</p><p><strong>Когда это лучший выбор:</strong> проблемный признак категориальный, нарушает PH, и <em>сам по себе не интересен</em> — тебе нужны корректные коэффициенты остальных признаков.</p><p>Проблемный признак «поглощается» базовой функцией, PH для него больше не требуется.</p><p><strong>Цена:</strong> нельзя получить HR для стратифицирующего признака. Плюс страты не должны быть мелкими — при 20 стратах по 30 наблюдений оценки развалятся.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Чем AFT отличается от PH и когда AFT удобнее?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>PH:</strong> умножается <em>риск</em> — «рискует уйти в 2 раза интенсивнее». <strong>AFT:</strong> умножается <em>время</em> — «для него время течёт вдвое быстрее, проживёт вдвое меньше».</p><p>$\ln T = \beta^\top x + \sigma\varepsilon$, эквивалентно $S(t|x) = S_0(t/e^{\beta^\top x})$.</p><p><strong>Почему AFT удобнее для бизнеса:</strong> коэффициенты интерпретируются напрямую — «второй продукт увеличивает время жизни на 40%». Понятно продакту без объяснений, в отличие от «HR = 0.71».</p><p><strong>Важный факт:</strong> для Вейбулла (и только для него) PH и AFT — одно и то же с точностью до перепараметризации.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Чем survival-дерево отличается от обычного и что хранится в листе?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Критерием сплита:</strong> максимизируется различие кривых выживаемости между ветками, чаще всего через <strong>log-rank статистику</strong> — выбираем сплит с максимальным $\chi^2$.</p><p><strong>В листе хранится целая кривая Каплана–Мейера</strong>, построенная по попавшим туда объектам. Предсказание для нового клиента — это KM-кривая его листа.</p><p>Никаких допущений о PH, форме hazard или линейности.</p><p><strong>Критично:</strong> минимальный размер листа. Правило — минимум 30–50 объектов <em>и</em> 10–15 событий. Второе важнее: при 5% оттока лист из 100 объектов содержит 5 событий, и кривая бессмысленна.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>22. Почему в RSF усредняют кумулятивный hazard, а не выживаемость?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Из-за выпуклости экспоненты (неравенство Йенсена) усреднение $S$ даёт смещённую оценку.</p><p><strong>Расчёт:</strong> дерево 1 даёт $S_1 = 0.90$ ($H_1 = 0.105$), дерево 2 даёт $S_2 = 0.30$ ($H_2 = 1.204$).</p><p>Усреднение $S$: $\frac{0.90+0.30}{2} = \mathbf{0.600}$.<br>Усреднение $H$: $\frac{0.105+1.204}{2} = 0.655$ → $S = e^{-0.655} = \mathbf{0.519}$.</p><p><strong>Разница восемь процентных пунктов.</strong> При большом разбросе между деревьями смещение растёт. Все качественные реализации усредняют $H$, потому что он аддитивен.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>23. Что такое подход дискретного времени и почему он самый практичный?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Разбиваем время на интервалы, модель предсказывает <em>условную</em> вероятность события в каждом: $\hat p_k = P(T\in[t_{k-1},t_k) \mid T\ge t_{k-1}, x)$. Затем $\hat S(t_k) = \prod_{j\le k}(1-\hat p_j)$ — <strong>формула Каплана–Мейера</strong>, только вероятности предсказаны индивидуально.</p><p><strong>Три плюса:</strong> ① никаких допущений (ни PH, ни формы); ② работает <em>любой классификатор</em> — CatBoost на «длинных» данных даёт survival-модель; ③ естественно поддерживает time-varying признаки.</p><p><strong>Цена:</strong> выборка раздувается в $K$ раз.</p><p><strong>Главное следствие:</strong> весь стек из блока 7 применим напрямую — AutoML, feature store, мониторинг. Не нужно внедрять новые библиотеки.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>24. Как правильно разворачивать данные для дискретного времени?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Клиент A</strong> (tenure 3, ушёл) → три строки: (мес.1, $y{=}0$), (мес.2, $y{=}0$), (мес.3, $y{=}1$).</p><p><strong>Клиент B</strong> (tenure 5, цензурирован) → пять строк, все с $y=0$.</p><p>Добавляем признак «номер интервала» — модель выучит форму hazard автоматически.</p><p><strong>Ключевая проверка корректности:</strong> цензурированный клиент вносит строки только до момента цензурирования и <strong>ни одной после</strong>. Если случайно добавить строки после — модель решит, что он «не ушёл» и в будущем, и выживаемость будет завышена.</p><p>Сборка кривой: при $\hat p = [0.04, 0.03, 0.025, 0.02, 0.018]$ получаем $\hat S(5) = 0.874$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>25. Что такое конкурирующие риски и почему нельзя просто цензурировать?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>События нескольких типов, <strong>взаимно исключающих</strong> друг друга: произошло одно — остальные уже не произойдут.</p><p>Цензурирование означает «событие ещё может произойти». Но клиент, переехавший в другую страну, <em>никогда</em> не уйдёт к местному конкуренту — событие невозможно, а не отложено.</p><p>KM «размажет» его риск на оставшихся, как будто он мог бы уйти. Итог: <strong>оценка завышена</strong>.</p><p><strong>Масштаб:</strong> в примере секции 11 наивный KM дал 27.1% вместо фактических 20.0% — завышение на 7 п.п., то есть 35% в относительном выражении.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>26. Как проверить корректность оценки при конкурирующих рисках?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p><strong>Проверка на здравый смысл:</strong> сумма CIF по всем типам событий плюс выживаемость всегда равна единице:</p><p>$$F_1(t) + F_2(t) + \dots + S(t) = 1$$</p><p>У наивных KM-оценок такого свойства нет — их сумма может превысить единицу, что физически бессмысленно и является прямым признаком ошибки.</p><p>Правильная оценка — <strong>Аален–Йохансен</strong>: $\hat F_k(t) = \sum_{t_i\le t}\hat S(t_{i-1})\frac{d_{ki}}{n_i}$, где $\hat S$ — <em>общая</em> выживаемость по всем типам событий.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>27. Чем cause-specific Cox отличается от Fine–Gray и когда что брать?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>Cause-specific</strong> моделирует $h_k(t|x)$ — интенсивность события типа $k$. Отвечает на вопрос «что <em>вызывает</em> уход к конкуренту» — для понимания механизма.</p><p><strong>Fine–Gray</strong> моделирует напрямую $F_k(t|x)$. Отвечает «какова <em>вероятность</em> события типа $k$» — для прогноза и решений.</p><p><strong>Важно:</strong> коэффициенты у них разные, и это не противоречие. Признак может увеличивать cause-specific hazard и одновременно уменьшать CIF — если он ещё сильнее увеличивает риск конкурирующего события.</p><p><strong>Правило:</strong> этиология → cause-specific; прогноз и бизнес-решения → Fine–Gray.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>28. Какие пары сравнимы при расчёте C-index?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p><strong>Сравнимы:</strong> оба испытали событие (знаем, кто раньше). Или один испытал событие в $t_1$, второй цензурирован <em>позже</em> $t_1$ — значит второй точно прожил дольше.</p><p><strong>Не сравнимы:</strong> оба цензурированы. Или один цензурирован <em>раньше</em>, чем у второго произошло событие.</p><p><strong>Практическое следствие:</strong> при высокой доле цензурирования сравнимых пар мало — при 80% цензурирования их доля может упасть ниже 20%, и C-index становится шумным и смещённым.</p><p><strong>Лечение:</strong> C-index Uno с IPCW-поправкой на распределение цензурирования.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>29. Зачем нужен Brier score, если есть C-index?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Они измеряют разные вещи.</p><p><strong>C-index — ранжирование.</strong> Не зависит от калибровки: умножь все риск-скоры на 100, C-index не изменится.</p><p><strong>Brier — калибровка и точность абсолютных вероятностей.</strong></p><p><strong>Практическое различие:</strong> для приоритизации обзвона нужен только C-index — важен порядок. Для расчёта LTV, финансовых резервов или ожидаемых потерь нужны <em>абсолютные</em> $S(t)$, и там решает Brier.</p><p>Модель может иметь C-index 0.75 и при этом систематически завышать выживаемость вдвое. Это та же связка «AUC против калибровки», что в блоке 7.3.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>30. Какой чек-лист пройти перед моделированием?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>① <strong>Нарисуй KM</strong> для всей выборки и ключевых сегментов — с таблицей числа под риском.</p><p>② <strong>Посмотри на форму hazard</strong> — убывающая, растущая, U-образная? Это уже даёт продуктовые инсайты до всякого моделирования.</p><p>③ <strong>Оцени долю цензурирования</strong> и проверь, не информативно ли оно.</p><p>④ <strong>Проверь конкурирующие события</strong> — есть ли типы выбытия, исключающие целевое.</p><p>⑤ <strong>Посчитай EPV</strong> — минимум 10 событий на каждый параметр модели.</p><p>⑥ <strong>Зафиксируй нулевой момент</strong> явно и проверь отсутствие левого усечения.</p><p>И только после этого обучай модель. Большая часть провалов survival-проектов происходит на этих шести пунктах, а не в выборе алгоритма.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block1_04_shap.html" class="btn prev">← Интерпретируемость: SHAP</a>
+  <a href="block1_06_anomaly.html" class="btn">Поиск аномалий →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Смещение трёх подходов ---
+new Chart(document.getElementById('c_bias'), {
+  type:'bar',
+  data:{labels:['Наивная классификация','Отбросить неполные','Каплан–Мейер','Истина'],
+    datasets:[{label:'оценка оттока за 12 мес., %',data:[25.3,40.0,40.0,40.0],
+      backgroundColor:['#dc2626','#d97706','#0d9488','#111827'],borderRadius:6}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{y:{title:{display:true,text:'оценка оттока, %'},max:48}},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{afterLabel:c=>['Занижена в 1.6 раза','Верна, но потеряно 60% данных + selection bias','Верна, использованы все данные','Истинное значение'][c.dataIndex]}}}}
+});
+
+// --- Четыре функции ---
+(function(){
+  const xs=[]; for(let t=0;t<=24;t++) xs.push(t);
+  const rho=1.5, lam=14;
+  const S = xs.map(t=>Math.exp(-Math.pow(t/lam,rho)));
+  const H = xs.map(t=>Math.pow(t/lam,rho));
+  const h = xs.map(t=>t===0?0:(rho/lam)*Math.pow(t/lam,rho-1));
+  const f = xs.map((t,i)=>h[i]*S[i]);
+  new Chart(document.getElementById('c_four'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'S(t) — выживаемость',data:S,borderColor:'#0d9488',pointRadius:0,borderWidth:3,tension:.3,yAxisID:'y'},
+      {label:'H(t) — кумулятивный hazard',data:H,borderColor:'#7c3aed',pointRadius:0,borderWidth:2.5,tension:.3,yAxisID:'y'},
+      {label:'h(t) — интенсивность (правая ось)',data:h,borderColor:'#dc2626',pointRadius:0,borderWidth:2.5,tension:.3,yAxisID:'y1'},
+      {label:'f(t) — плотность (правая ось)',data:f,borderColor:'#d97706',pointRadius:0,borderWidth:2.5,tension:.3,yAxisID:'y1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'месяцы'},ticks:{maxTicksLimit:13}},
+              y:{title:{display:true,text:'S(t), H(t)'},min:0,max:2.2,position:'left'},
+              y1:{title:{display:true,text:'h(t), f(t)'},min:0,max:0.2,position:'right',grid:{drawOnChartArea:false}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- KM с доверительным интервалом ---
+(function(){
+  const t=[0,2,3,4,6,7,9,10,12];
+  const S=[1,0.900,0.900,0.675,0.675,0.540,0.540,0.360,0.360];
+  const se=[0,0.095,0.095,0.152,0.152,0.176,0.176,0.192,0.192];
+  new Chart(document.getElementById('c_km'), {
+    type:'line',
+    data:{labels:t,datasets:[
+      {label:'Ŝ(t) — Каплан–Мейер',data:S,borderColor:'#0d9488',pointRadius:0,borderWidth:3,stepped:'after'},
+      {label:'верх 95%',data:S.map((v,i)=>Math.min(1,v+1.96*se[i])),borderColor:'#99f6e4',
+       pointRadius:0,borderWidth:1.5,stepped:'after',fill:'+1',backgroundColor:'rgba(13,148,136,.13)'},
+      {label:'низ 95%',data:S.map((v,i)=>Math.max(0,v-1.96*se[i])),borderColor:'#99f6e4',
+       pointRadius:0,borderWidth:1.5,stepped:'after'},
+      {label:'✕ цензурирования',data:t.map((v,i)=>[3,6,9,12].includes(v)?S[i]:null),
+       borderColor:'#dc2626',pointRadius:8,pointStyle:'crossRot',borderWidth:2.5,showLine:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'месяцы'}},
+              y:{title:{display:true,text:'S(t)'},min:0,max:1.05}},
+      plugins:{legend:{position:'bottom',labels:{filter:i=>!/^(верх|низ)/.test(i.text)}},
+        tooltip:{callbacks:{afterBody:i=>i[0].dataIndex>=6?'⚠️ под риском мало объектов — оценка ненадёжна':''}}}}
+  });
+})();
+
+// --- Остатки Шёнфельда ---
+(function(){
+  const pts_ok=[], pts_bad=[];
+  let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647-0.5;};
+  for(let i=0;i<45;i++){
+    const t=1+i*0.5;
+    pts_ok.push({x:t, y:rnd()*1.6});
+    pts_bad.push({x:t, y:rnd()*1.2 + (t-11)*0.11});
+  }
+  new Chart(document.getElementById('c_schoen'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'PH выполнено — облако горизонтально',data:pts_ok,backgroundColor:'rgba(13,148,136,.6)',pointRadius:4},
+      {label:'PH нарушено — есть наклон',data:pts_bad,backgroundColor:'rgba(220,38,38,.6)',pointRadius:4},
+      {label:'нулевая линия',data:[{x:1,y:0},{x:23,y:0}],borderColor:'#94a3b8',borderDash:[5,4],
+       showLine:true,pointRadius:0,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'время события'}},
+              y:{title:{display:true,text:'остаток Шёнфельда'},min:-2.2,max:2.2}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- PH vs AFT ---
+(function(){
+  const xs=[]; for(let t=0;t<=30;t++) xs.push(t);
+  const rho=1.5, lam=14;
+  const S0=xs.map(t=>Math.exp(-Math.pow(t/lam,rho)));
+  const Sph=S0.map(v=>Math.pow(v,2));                                  // HR = 2
+  const Saft=xs.map(t=>Math.exp(-Math.pow(t/(lam*0.6),rho)));          // время ×0.6
+  new Chart(document.getElementById('c_aft'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'базовая S₀(t)',data:S0,borderColor:'#0d9488',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'PH: S₀(t)^HR при HR=2',data:Sph,borderColor:'#7c3aed',pointRadius:0,borderWidth:2.8,tension:.3},
+      {label:'AFT: S₀(t/0.6) — время сжато',data:Saft,borderColor:'#d97706',pointRadius:0,borderWidth:2.8,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'месяцы'},ticks:{maxTicksLimit:11}},
+              y:{title:{display:true,text:'S(t)'},min:0,max:1.05}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- CIF: наивный KM vs Аален-Йохансен ---
+(function(){
+  const xs=[]; for(let t=0;t<=12;t++) xs.push(t);
+  const naive=xs.map(t=>1-Math.exp(-Math.pow(t/22,1.25)*1.35));
+  const aj   =xs.map(t=>(1-Math.exp(-Math.pow(t/22,1.25)*1.35))*0.738);
+  const comp =xs.map(t=>(1-Math.exp(-Math.pow(t/20,1.2)*1.30))*0.90);
+  new Chart(document.getElementById('c_cif'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'Наивный KM (переезды как цензурирование) — ЗАВЫШЕНО',data:naive,
+       borderColor:'#dc2626',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'Аален–Йохансен: CIF ухода к конкуренту',data:aj,
+       borderColor:'#0d9488',pointRadius:0,borderWidth:3,tension:.3},
+      {label:'CIF конкурирующего события (переезд)',data:comp,
+       borderColor:'#94a3b8',pointRadius:0,borderWidth:2.3,tension:.3,borderDash:[5,4]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'месяцы'}},
+              y:{title:{display:true,text:'вероятность события'},min:0,max:0.4}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{afterBody:i=>i[0].dataIndex===12?'Разрыв 27.1% vs 20.0% — завышение на 35% относительно':''}}}}
+  });
+})();
+
+// --- Интерактив: цензурирование и смещение ---
+function updCens(){
+  const c = +document.getElementById('sl_cens').value / 100;
+  const p = +document.getElementById('sl_true').value / 100;
+  document.getElementById('out_cens').textContent = (c*100).toFixed(0)+'%';
+  document.getElementById('out_true').textContent = (p*100).toFixed(0)+'%';
+  // цензурированные наблюдались в среднем половину периода → у них видно ~половину событий
+  const observed = p*(1-c) + p*c*0.42;
+  const bias = (p - observed)/p*100;
+  let verdict;
+  if (c < 0.15) verdict = '✅ Цензурирования мало — наивный подход почти не смещён.';
+  else if (c < 0.45) verdict = '⚠️ Заметное смещение — классификация систематически занижает риск.';
+  else if (c < 0.75) verdict = '🚨 Сильное смещение — наивная оценка непригодна, нужен KM.';
+  else verdict = '🚨 Критично: большинство наблюдений неполные. Без survival-методов задача не решается.';
+  document.getElementById('out_censres').innerHTML =
+    'Наивная классификация покажет отток <strong>' + (observed*100).toFixed(1) + '%</strong> вместо истинных <strong>' + (p*100).toFixed(0) + '%</strong>' +
+    '<br>Занижение на <strong>' + bias.toFixed(0) + '%</strong> в относительном выражении' +
+    '<br>' + verdict;
+}
+updCens();
+
+// --- Интерактив: KM пошагово ---
+function updKM(){
+  const n0 = +document.getElementById('sl_n0').value;
+  const hz = +document.getElementById('sl_hz').value / 100;
+  const cz = +document.getElementById('sl_cz').value / 100;
+  document.getElementById('out_n0').textContent = n0;
+  document.getElementById('out_hz').textContent = (hz*100).toFixed(0)+'%';
+  document.getElementById('out_cz').textContent = (cz*100).toFixed(0)+'%';
+  let n = n0, S = 1; const rows = [];
+  for (let k=1;k<=5;k++){
+    const d = Math.max(1, Math.round(n*hz));
+    const mult = 1 - d/n;
+    S *= mult;
+    rows.push({k, n, d, mult, S});
+    n = n - d - Math.round(n*cz);
+    if (n < 2) { n = 2; }
+  }
+  const last = rows[rows.length-1];
+  let verdict;
+  if (last.n >= 30) verdict = '✅ Под риском достаточно объектов — оценка надёжна на всём горизонте.';
+  else if (last.n >= 10) verdict = '⚠️ К концу под риском мало объектов — хвост кривой уже ненадёжен.';
+  else verdict = '🚨 К пятому моменту почти никого не осталось — интерпретировать хвост нельзя.';
+  document.getElementById('out_km').innerHTML =
+    rows.map(r=>'t'+r.k+': под риском <strong>'+r.n+'</strong>, событий '+r.d+
+      ' → ×'+r.mult.toFixed(3)+' → Ŝ = <strong>'+r.S.toFixed(3)+'</strong>').join('<br>') +
+    '<br>' + verdict;
+}
+updKM();
+
+// --- Интерактив: надёжность C-index ---
+function updCidx(){
+  const c = +document.getElementById('sl_cshare').value / 100;
+  const n = +document.getElementById('sl_nn').value;
+  document.getElementById('out_cshare').textContent = (c*100).toFixed(0)+'%';
+  document.getElementById('out_nn').textContent = n.toLocaleString('ru-RU');
+  const totalPairs = n*(n-1)/2;
+  // доля сравнимых пар: примерно 1 - c^2 - (доля пар, где цензур раньше события)
+  const share = Math.max(0.01, (1-c)*(1-c) + 2*(1-c)*c*0.5);
+  const comparable = totalPairs*share;
+  const se = 0.5/Math.sqrt(Math.max(1, comparable/n));    // грубая оценка
+  let verdict;
+  if (c < 0.4) verdict = '✅ Сравнимых пар много — C-index (Harrell) надёжен.';
+  else if (c < 0.7) verdict = '⚠️ Существенная доля пар выброшена — предпочтителен C-index Uno с IPCW.';
+  else verdict = '🚨 Больше половины пар несравнимы — Harrell смещён, обязательно Uno + Brier score.';
+  document.getElementById('out_cidx').innerHTML =
+    'Доля сравнимых пар: <strong>' + (share*100).toFixed(1) + '%</strong>' +
+    ' &nbsp;·&nbsp; всего сравнимых пар: <strong>' + Math.round(comparable).toLocaleString('ru-RU') + '</strong>' +
+    '<br>Ориентировочная стандартная ошибка C-index: <strong>±' + se.toFixed(3) + '</strong>' +
+    '<br>' + verdict;
+}
+updCidx();
+</script>
+</body>
+</html>

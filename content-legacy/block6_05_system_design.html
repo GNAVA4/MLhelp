@@ -1,0 +1,2849 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6.5 · System Design рекомендаций: разбор конвейера по шагам</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --rf:#ea580c;--rf-l:#fff7ed;--rf-b:#fed7aa;--rf-d:#7c2d12;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --vi:#7c3aed;--vi-l:#f5f3ff;--vi-b:#ddd6fe;
+  --ind:#4f46e5;--ind-l:#eef2ff;--ind-b:#c7d2fe;
+  --pk:#db2777;--pk-l:#fdf2f8;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#7c2d12,#ea580c 50%,#fdba74);color:#fff;padding:36px 32px 30px;}
+.ph .bc{font-size:11px;opacity:.72;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:32px;font-weight:800;margin-bottom:9px;letter-spacing:-.02em;}
+.ph .sub{font-size:14.5px;opacity:.94;max-width:730px;}
+.ph .lvl{margin-top:16px;display:flex;gap:9px;flex-wrap:wrap;}
+.ph .lvl span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:5px 13px;font-size:11.5px;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 24px;gap:1px;}
+.snav a{padding:10px 10px;font-size:12.5px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--rf);border-bottom-color:var(--rf);}
+.snav a.act{color:var(--rf);border-bottom-color:var(--rf);font-weight:700;}
+.pnav{display:flex;justify-content:space-between;gap:12px;margin:44px 0 20px;flex-wrap:wrap;}
+.pnav a{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-decoration:none;color:var(--text2);font-size:14px;font-weight:600;transition:.15s;}
+.pnav a:hover{border-color:var(--rf);color:var(--rf);box-shadow:0 3px 12px rgba(234,88,12,.14);}
+.pnav a.next{text-align:right;}
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:66px;scroll-margin-top:56px;}
+.stitle{font-size:23px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17.5px;font-weight:700;margin:28px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.74;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.72;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#0f172a;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:16px 0;}
+pre code{background:none;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:1.72;color:#e2e8f0;white-space:pre;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--rf);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.vi{border-left-color:var(--vi);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.cy{border-left-color:var(--cy);}
+.fbox.ind{border-left-color:var(--ind);} .fbox.sl{border-left-color:var(--sl);}
+.fbox.te{border-left-color:var(--teal);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--rf);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.vi .flabel{color:var(--vi);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.cy .flabel{color:var(--cy);}
+.fbox.ind .flabel{color:var(--ind);} .fbox.sl .flabel{color:var(--sl);}
+.fbox.te .flabel{color:var(--teal);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.66;}
+.intuition{background:var(--rf-l);border:1px solid var(--rf-b);border-left:4px solid var(--rf);border-radius:10px;padding:15px 19px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--rf);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#7c2d12;margin-bottom:6px;line-height:1.74;}
+.intuition p:last-child{margin-bottom:0;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.66;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--rf-l)!important;color:#7c2d12!important;}
+/* --- Трассировки --- */
+.trace{background:#fff;border:2px solid var(--rf-b);border-radius:14px;padding:0;margin:20px 0;overflow:hidden;}
+.trace-hd{background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;padding:13px 20px;font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.trace-hd .tico{font-size:17px;}
+.trace-body{padding:18px 20px;}
+.tstep{margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border);}
+.tstep:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.tstep-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.tstep-n{background:var(--rf);color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.tstep-n.ok{background:var(--grn);} .tstep-n.warn{background:var(--amber);} .tstep-n.bad{background:var(--red);}
+.tstep-t{font-size:14px;font-weight:700;color:var(--text);}
+.tstep-c{font-size:13.5px;color:var(--text2);line-height:1.75;padding-left:33px;}
+.tstep-c p{font-size:13.5px;margin-bottom:7px;}
+.calc{background:#f8fafc;border-left:3px solid var(--rf-b);border-radius:0 7px 7px 0;padding:11px 14px;margin:10px 0;font-family:'SF Mono','Fira Code',monospace;font-size:12.5px;line-height:2.0;color:#1e293b;overflow-x:auto;}
+.calc .hl{background:#ffedd5;padding:2px 6px;border-radius:4px;font-weight:700;color:#7c2d12;}
+.calc .res{background:#dcfce7;padding:2px 6px;border-radius:4px;font-weight:700;color:#14532d;}
+.calc .bad{background:#fee2e2;padding:2px 6px;border-radius:4px;font-weight:700;color:#7f1d1d;}
+.calc .dim{color:#94a3b8;}
+.calc .lbl{display:inline-block;background:#e2e8f0;color:#475569;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:5px;margin:6px 0 2px;text-transform:uppercase;font-family:-apple-system,sans-serif;}
+.dim{color:#94a3b8;}
+/* --- Определения --- */
+.def{background:#fff;border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:14px 0;}
+.def-t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cy);margin-bottom:8px;}
+.def dl{margin:0;} .def dt{font-size:14px;font-weight:800;color:var(--text);margin-top:11px;}
+.def dt:first-child{margin-top:0;}
+.def dd{margin:3px 0 0;font-size:13.5px;color:var(--text2);line-height:1.72;}
+.def dd + dd{margin-top:6px;}
+.def dd .en{color:var(--text3);font-style:italic;font-size:12.5px;}
+/* --- Числовая таблица --- */
+.ct{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px;}
+.ct table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;}
+.ct thead th{background:#f1f5f9;padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);text-transform:none;letter-spacing:.02em;border-bottom:2px solid var(--border);text-align:right;white-space:nowrap;font-family:-apple-system,sans-serif;}
+.ct thead th:first-child{text-align:left;}
+.ct tbody td{padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text2);}
+.ct tbody td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-size:13px;color:var(--text);}
+.ct tbody tr:nth-child(even){background:#fafbfc;}
+.ct tbody tr:hover{background:var(--rf-l);}
+.ct tbody tr:last-child td{border-bottom:none;}
+.ct .k{background:#ffedd5;color:#7c2d12;font-weight:800;}
+.ct .g{background:#dcfce7;color:#14532d;font-weight:800;}
+.ct .r{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+.ct .a{background:#fef3c7;color:#78350f;font-weight:800;}
+.ct .note{font-family:-apple-system,sans-serif;font-size:11.5px;color:var(--text3);text-align:left;white-space:normal;}
+.ct tr.best td{background:#f0fdf4;}
+.ct tr.best td:first-child{font-weight:800;color:#14532d;}
+.ct caption{caption-side:top;text-align:left;padding:9px 12px;font-size:12px;font-weight:700;color:var(--text2);background:#fff;border-bottom:1px solid var(--border);font-family:-apple-system,sans-serif;}
+/* --- Каскад --- */
+.casc{display:grid;gap:8px;margin:16px 0;}
+.cstage{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:#fff;border:1px solid var(--border);border-left:5px solid var(--rf);border-radius:11px;padding:13px 16px;}
+.cstage .cn{background:var(--rf);color:#fff;border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+.cstage .cbody{font-size:13.5px;color:var(--text2);line-height:1.6;}
+.cstage .cbody b{color:var(--text);display:block;font-size:14px;margin-bottom:2px;}
+.cstage .cnum{text-align:right;font-family:'SF Mono',monospace;font-size:12px;color:var(--text3);white-space:nowrap;line-height:1.5;}
+.cstage .cnum b{display:block;color:var(--rf);font-size:14px;}
+.carr{text-align:center;font-size:17px;color:var(--rf-b);line-height:0.6;}
+/* --- Список выдачи --- */
+.slist{display:grid;gap:5px;margin:10px 0;}
+.sitem{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:8px 13px;font-size:12.5px;}
+.sitem .spos{background:#f1f5f9;color:var(--text3);border-radius:6px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;}
+.sitem .sid{font-family:'SF Mono',monospace;font-weight:800;min-width:22px;}
+.sitem .sbar{flex:1;height:16px;background:#f1f5f9;border-radius:4px;overflow:hidden;}
+.sitem .sbar i{display:block;height:100%;border-radius:4px;}
+.sitem .sval{font-family:'SF Mono',monospace;font-size:11.5px;color:var(--text3);min-width:52px;text-align:right;}
+.sitem.new{border-color:var(--grn-b);background:var(--grn-l);}
+/* --- Числовые примеры --- */
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:11px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.72;}
+.nb{background:var(--rf);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.cy{background:var(--cy);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.sl{background:var(--sl);} .nb.am{background:var(--amber);} .nb.vi{background:var(--vi);}
+/* --- Графики --- */
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+/* --- System Design --- */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox p{color:#cbd5e1;font-size:14px;line-height:1.74;margin-bottom:10px;}
+.sysbox strong{color:#f8fafc;}
+.sysbox em{color:#fdba74;font-style:normal;}
+.sysbox-hd{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e293b;}
+.sysico{font-size:26px;line-height:1;flex-shrink:0;}
+.sysname{font-size:16.5px;font-weight:700;color:#f8fafc;margin-bottom:3px;}
+.syssub{font-size:12.5px;color:#94a3b8;}
+.sysbody p:last-child{margin-bottom:0;}
+/* --- Q&A --- */
+.qa{background:#fff;border:1px solid var(--border);border-left:3px solid var(--rf-b);border-radius:0 11px 11px 0;padding:15px 19px;margin-bottom:11px;}
+.qa .q{font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.6;}
+.qa .a{font-size:13.8px;color:var(--text2);line-height:1.78;}
+.qa .a b,.qa .a strong{color:var(--text);}
+.qa .a em{color:var(--rf);font-style:normal;font-weight:600;}
+/* --- Подводные камни --- */
+.pitfalls{display:grid;gap:9px;margin:16px 0;}
+.pf{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:11px;padding:13px 16px;align-items:flex-start;transition:.15s;}
+.pf:hover{border-color:var(--amber-b);box-shadow:0 2px 10px rgba(217,119,6,.10);}
+.pfn{background:var(--amber);color:#fff;border-radius:7px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+.pfc{font-size:13.5px;color:var(--text2);line-height:1.72;}
+.pfc b{color:var(--text);}
+/* --- Прочее --- */
+.lvltag{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:middle;letter-spacing:.03em;}
+.lvl-base{background:#dcfce7;color:#15803d;}
+.lvl-mid{background:#e0f2fe;color:#0c4a6e;}
+.lvl-adv{background:#ede9fe;color:#5b21b6;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--rf);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--rf);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--rf-l);border-radius:9px;font-size:13.5px;color:#7c2d12;line-height:1.72;}
+.roadmini{background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin:0 0 26px;}
+.roadmini h3{margin:0 0 10px;font-size:15px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.66;}
+.card.or{border-top:3px solid var(--org);} .card.gr{border-top:3px solid var(--grn);}
+.card.am{border-top:3px solid var(--amber);} .card.rd{border-top:3px solid var(--red);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.sec{animation:fadeUp .5s ease both;}
+@media(max-width:760px){
+  .grid2{grid-template-columns:1fr;} .tstep-c{padding-left:0;} .calc{font-size:10.5px;}
+  .cstage{grid-template-columns:auto 1fr;} .cstage .cnum{grid-column:2;text-align:left;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 6 · Рекомендательные системы · Тема 5 из 5 · расширенная</div>
+  <h1>System Design рекомендаций: разбор конвейера по шагам</h1>
+  <p class="sub">Отбор списка методом MMR позиция за позицией, коррекция позиционного смещения
+     с полным расчётом, разложение бюджета латентности по этапам, сведение нескольких
+     бизнес-целей в один скор. Все числа выписаны.</p>
+  <div class="lvl">
+    <span>🟢 с нуля — секции 1–3</span>
+    <span>🔵 средний — секции 4–9</span>
+    <span>🟣 продвинутый — секции 10–14</span>
+  </div>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Каскад</a>
+  <a href="#s2">2. Бюджет времени</a>
+  <a href="#s3">3. Ранжировщик</a>
+  <a href="#s4">4. Позиционное смещение</a>
+  <a href="#s5">5. Много целей</a>
+  <a href="#s6">6. MMR по шагам</a>
+  <a href="#s7">7. Бизнес-правила</a>
+  <a href="#s8">8. Сессия и пагинация</a>
+  <a href="#s9">9. Кэш и деградация</a>
+  <a href="#s10">10. Логирование</a>
+  <a href="#s11">11. Эксперименты</a>
+  <a href="#s12">12. Мониторинг</a>
+  <a href="#s13">13. Подводные камни</a>
+  <a href="#s14">14. System Design</a>
+  <a href="#s15">15. Q&amp;A</a>
+</div>
+
+<div class="main">
+
+<div class="roadmini">
+  <h3>Как читать эту тему</h3>
+  <ol>
+    <li><strong>Секция 6 — ядро.</strong> Полный отбор списка методом MMR, позиция за позицией, с пересчётом на каждом шаге. Видно, как кандидат с меньшей релевантностью обгоняет более релевантного.</li>
+    <li><strong>Секция 4</strong> — позиционное смещение: расчёт, в котором объект с вдвое меньшим CTR оказывается втрое релевантнее.</li>
+    <li>Секции 2 и 9 — инженерная сторона: бюджет в миллисекундах и что делать, когда что-то отказало.</li>
+    <li>Секции 10–12 — логирование, эксперименты и мониторинг: то, что определяет, сможете ли вы вообще что-то улучшать.</li>
+    <li>Секции 13–15 — подводные камни, пять полных кейсов и 30 вопросов.</li>
+  </ol>
+</div>
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Каскадная архитектура: почему этапов несколько <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Как из миллионов кандидатов получаются десять позиций выдачи</div>
+
+<div class="def">
+<div class="def-t">📖 Базовые термины</div>
+<dl>
+<dt>Каскад <span class="en">(cascade / multi-stage ranking)</span></dt>
+<dd>Последовательность этапов, каждый из которых сокращает число кандидатов и работает точнее предыдущего. Стандартная архитектура промышленных рекомендательных систем.</dd>
+
+<dt>Кандидатогенерация <span class="en">(retrieval / candidate generation)</span></dt>
+<dd>Первый этап: из всего каталога отобрать сотни-тысячи кандидатов. Метрика — <em>полнота</em> (Recall при большом K), а не точность порядка.</dd>
+
+<dt>Предранжирование <span class="en">(pre-ranking / light ranking)</span></dt>
+<dd>Промежуточный этап между отбором и финальным ранжированием. Лёгкая модель сокращает тысячи кандидатов до сотен, чтобы тяжёлая модель успела отработать в бюджете.</dd>
+
+<dt>Ранжирование <span class="en">(ranking)</span></dt>
+<dd>Точное упорядочивание сотен кандидатов тяжёлой моделью с богатыми признаками, включая перекрёстные («сколько раз этот пользователь смотрел этот товар»).</dd>
+
+<dt>Переупорядочивание <span class="en">(re-ranking)</span></dt>
+<dd>Финальный этап: список формируется с учётом взаимного влияния позиций — разнообразия, бизнес-правил, ограничений на повторы. Первый этап, где решения о позициях принимаются <em>не независимо</em>.</dd>
+
+<dt>Бюджет латентности <span class="en">(latency budget)</span></dt>
+<dd>Суммарное время, отведённое на весь ответ. Обычно 50–200 мс на всю страницу, из которых рекомендациям достаётся часть. Определяет, сколько кандидатов может пройти каждый этап.</dd>
+
+<dt>Признаки перекрёстные <span class="en">(cross features)</span></dt>
+<dd>Признаки, зависящие одновременно от пользователя и объекта. Недоступны на этапе отбора (тема 6.2), но доступны на ранжировании, где пара уже сформирована.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: стоимость на кандидата растёт, число кандидатов падает</div>
+<p>Отранжировать 2 млн объектов тяжёлой моделью невозможно — расчёт в теме 6.2 давал 150–400 мс на один запрос. Но и отобрать десять правильных объектов лёгкой моделью тоже не выйдет: у неё нет перекрёстных признаков.</p>
+<p><strong>Каскад разрешает это противоречие.</strong> Каждый следующий этап видит меньше кандидатов и потому может позволить себе более дорогую модель на каждого.</p>
+<p><strong>Ключевая идея баланса:</strong> произведение «число кандидатов × стоимость одного» на каждом этапе примерно постоянно. Если этап отбирает в 10 раз меньше, следующий может быть в 10 раз дороже.</p>
+</div>
+
+<div class="casc">
+  <div class="cstage">
+    <div class="cn">0</div>
+    <div class="cbody"><b>Каталог</b>Все доступные объекты</div>
+    <div class="cnum"><b>2 000 000</b>кандидатов</div>
+  </div>
+  <div class="carr">▼</div>
+  <div class="cstage">
+    <div class="cn">1</div>
+    <div class="cbody"><b>Кандидатогенерация</b>Несколько источников: two-tower ANN, item-item, популярное, свежее, бандит-квота. Метрика — Recall@1000.</div>
+    <div class="cnum"><b>2 000</b>~8 мс</div>
+  </div>
+  <div class="carr">▼</div>
+  <div class="cstage">
+    <div class="cn">2</div>
+    <div class="cbody"><b>Предранжирование</b>Лёгкая модель, 20–40 признаков без тяжёлых обращений. Отсекает явно нерелевантное.</div>
+    <div class="cnum"><b>300</b>~6 мс</div>
+  </div>
+  <div class="carr">▼</div>
+  <div class="cstage">
+    <div class="cn">3</div>
+    <div class="cbody"><b>Ранжирование</b>Тяжёлая модель, сотни признаков, включая перекрёстные и контекстные. Многокритериальный скор.</div>
+    <div class="cnum"><b>300 → упорядочены</b>~18 мс</div>
+  </div>
+  <div class="carr">▼</div>
+  <div class="cstage">
+    <div class="cn">4</div>
+    <div class="cbody"><b>Переупорядочивание</b>MMR для разнообразия, бизнес-правила, ограничения на повторы и на бренд. Решения зависят друг от друга.</div>
+    <div class="cnum"><b>20</b>~6 мс</div>
+  </div>
+  <div class="carr">▼</div>
+  <div class="cstage">
+    <div class="cn">5</div>
+    <div class="cbody"><b>Выдача</b>Первый экран пользователя</div>
+    <div class="cnum"><b>10</b>~4 мс</div>
+  </div>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🔬</span> Трассировка: почему именно такие числа на каждом этапе</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Считаем стоимость одного кандидата на каждом этапе</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Стоимость модели на одного кандидата</caption>
+<thead><tr><th>Этап</th><th>Модель</th><th>FLOP на кандидата</th><th>Признаков</th><th>Перекрёстные</th></tr></thead>
+<tbody>
+<tr><td>Кандидатогенерация</td><td>ANN-поиск</td><td class="g">~128</td><td class="dim">вектор</td><td class="r">нет</td></tr>
+<tr><td>Предранжирование</td><td>лёгкий GBDT</td><td>~2 000</td><td>20–40</td><td class="a">частично</td></tr>
+<tr class="best"><td>Ранжирование</td><td>DNN / тяжёлый GBDT</td><td class="r">~200 000</td><td class="g">300+</td><td class="g">да</td></tr>
+<tr><td>Переупорядочивание</td><td>MMR + правила</td><td class="a">~5 000</td><td>+ попарные</td><td class="g">да</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Разница в стоимости между отбором и ранжированием:
+  200 000 / 128 = <span class="hl">×1 560</span>
+
+Именно поэтому число кандидатов должно упасть примерно во столько же раз:
+  2 000 000 → 2 000 это ×1000
+  Дальше 2 000 → 300 это ещё ×6.7
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Проверяем, что всё умещается в бюджет</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Стоимость каждого этапа</span>
+Отбор:      2 000 просмотренных узлов ANN × 128 FLOP = <span class="hl">256 000</span> FLOP
+Предранж.:  2 000 кандидатов × 2 000 FLOP        = <span class="hl">4 000 000</span> FLOP
+Ранжир.:      300 кандидатов × 200 000 FLOP      = <span class="hl">60 000 000</span> FLOP
+Переупоряд.:  300 кандидатов × 5 000 FLOP        = <span class="hl">1 500 000</span> FLOP
+────────────────────────────────────────────────────────
+Итого:                                             <span class="res">65 756 000</span> FLOP
+</div>
+<div class="calc"><span class="lbl">Что было бы без каскада</span>
+Ранжировать весь каталог тяжёлой моделью:
+  2 000 000 × 200 000 = <span class="bad">4 × 10¹¹</span> FLOP
+
+Отношение: 4e11 / 6.58e7 = <span class="bad">×6 083</span>
+
+Каскад дешевле в шесть тысяч раз при том же качестве финальной выдачи.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Как выбрать, сколько кандидатов пропускать дальше</span></div>
+<div class="tstep-c">
+<p>Не «на глаз», а по замеру: сколько релевантных объектов теряется на каждом отсечении.</p>
+<div class="ct">
+<table>
+<caption>Recall и итоговое качество при разной ширине этапов</caption>
+<thead><tr><th>Отбор → предранж.</th><th>Recall@K отбора</th><th>Итоговый NDCG@10</th><th>Латентность</th><th></th></tr></thead>
+<tbody>
+<tr><td>500 → 100</td><td class="r">0.412</td><td class="r">0.191</td><td class="g">14 мс</td><td class="note">теряем много релевантного</td></tr>
+<tr><td>1 000 → 200</td><td class="a">0.587</td><td class="a">0.221</td><td class="g">21 мс</td><td class="note"></td></tr>
+<tr class="best"><td>2 000 → 300</td><td class="g">0.681</td><td class="g">0.238</td><td class="g">32 мс</td><td class="note">рабочая точка</td></tr>
+<tr><td>5 000 → 600</td><td class="g">0.744</td><td class="g">0.241</td><td class="a">61 мс</td><td class="note">+1.3% качества за ×1.9 времени</td></tr>
+<tr><td>10 000 → 1 000</td><td class="g">0.782</td><td class="g">0.242</td><td class="r">104 мс</td><td class="note">выход за бюджет</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Кривая качества выходит на плато раньше, чем кривая Recall.</strong> Recall продолжает расти до 0.782, а NDCG почти не меняется после 2000 кандидатов — ранжировщик уже нашёл лучшее среди них. Расширять отбор дальше значит платить временем за кандидатов, которые всё равно не попадут в топ.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">4</span><span class="tstep-t">Главная ошибка: этапы оптимизируются независимо</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Что происходит при замене отбора</span>
+Было:  отбор A → ранжировщик, обученный на кандидатах A
+Стало: отбор B → тот же ранжировщик
+
+Распределение входа ранжировщика изменилось.
+Он обучался отличать хорошее от среднего в наборе A,
+а теперь получает набор B с другими свойствами.
+
+Замер: заменили two-tower на графовую модель в отборе
+
+  Recall@1000 отбора:      0.681 → <span class="res">0.719</span>   (+5.6%)
+  Итоговый NDCG@10:        0.238 → <span class="bad">0.226</span>   (−5.0%)
+
+Отбор стал лучше, система — хуже.
+</div>
+<p><strong>Правило:</strong> при замене любого этапа переобучать все последующие и ставить A/B на связку целиком, а не на отдельный компонент. После переобучения ранжировщика на новых кандидатах итоговый NDCG стал 0.247, то есть +3.8% — но это выяснилось только после переобучения.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Как каскад распределяет вычислительный бюджет</div>
+<div class="chsub">Число кандидатов падает на порядки, стоимость одного растёт — произведение остаётся управляемым</div>
+<div style="position:relative;height:340px;"><canvas id="c_casc"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Ширина отбора: Recall растёт, итоговое качество выходит на плато</div>
+<div class="chsub">Расширять отбор дальше плато значит платить временем впустую</div>
+<div style="position:relative;height:330px;"><canvas id="c_width"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Бюджет времени: куда уходят миллисекунды <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Разложение, без которого невозможно решить, что оптимизировать</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Латентность <span class="en">(latency)</span></dt>
+<dd>Время от получения запроса до отправки ответа. Меряется не средним, а перцентилями: важно, чтобы <em>почти все</em> запросы укладывались, а не «в среднем нормально».</dd>
+
+<dt>Перцентиль p99 <span class="en">(tail latency)</span></dt>
+<dd>Значение, ниже которого лежат 99% запросов. Именно оно определяет опыт: при 50 млн запросов в сутки p99 — это полмиллиона медленных ответов ежедневно. Среднее почти всегда выглядит хорошо и почти ничего не говорит.</dd>
+
+<dt>Обращение за признаками <span class="en">(feature fetch)</span></dt>
+<dd>Загрузка признаков пользователя и объектов из хранилища. Часто самая дорогая часть конвейера — дороже самих моделей, потому что упирается в сеть и в задержки хранилища.</dd>
+
+<dt>Батчирование <span class="en">(batching)</span></dt>
+<dd>Объединение множества мелких обращений в одно крупное. Основной способ снизить задержку при работе с внешними хранилищами: 300 запросов по 0.4 мс превращаются в один на 3 мс.</dd>
+
+<dt>Деградация <span class="en">(graceful degradation)</span></dt>
+<dd>Заранее спроектированное поведение при отказе компонента: вместо ошибки система отдаёт упрощённый, но осмысленный ответ.</dd>
+
+<dt>Таймаут <span class="en">(timeout)</span></dt>
+<dd>Предельное время ожидания компонента, после которого он считается недоступным. Должен быть меньше остатка бюджета — иначе один медленный сервис срывает весь ответ.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⏱️</span> Трассировка: полное разложение бюджета 50 мс</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Где реально уходит время</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Разложение по этапам, медиана и p99</caption>
+<thead><tr><th>Этап</th><th>Медиана</th><th>p99</th><th>Доля бюджета</th><th></th></tr></thead>
+<tbody>
+<tr><td>Разбор запроса, авторизация</td><td>1.2 мс</td><td>3.1 мс</td><td>2.4%</td><td class="note"></td></tr>
+<tr><td>Признаки пользователя</td><td class="a">4.8 мс</td><td class="r">21.4 мс</td><td class="a">9.6%</td><td class="note">одно обращение к хранилищу</td></tr>
+<tr><td>Кандидатогенерация (ANN)</td><td>2.1 мс</td><td>5.8 мс</td><td>4.2%</td><td class="note"></td></tr>
+<tr><td>Кандидаты из других источников</td><td>1.9 мс</td><td>7.2 мс</td><td>3.8%</td><td class="note">параллельно с ANN</td></tr>
+<tr class="best"><td>Признаки объектов (300 шт.)</td><td class="r">11.4 мс</td><td class="r">38.7 мс</td><td class="r">22.8%</td><td class="note">самая дорогая часть</td></tr>
+<tr><td>Предранжирование</td><td>2.3 мс</td><td>4.9 мс</td><td>4.6%</td><td class="note"></td></tr>
+<tr><td>Ранжирование (тяжёлая модель)</td><td class="a">14.6 мс</td><td class="a">26.3 мс</td><td class="a">29.2%</td><td class="note"></td></tr>
+<tr><td>Переупорядочивание, MMR</td><td>3.8 мс</td><td>6.1 мс</td><td>7.6%</td><td class="note"></td></tr>
+<tr><td>Бизнес-правила, фильтры</td><td>1.4 мс</td><td>3.3 мс</td><td>2.8%</td><td class="note"></td></tr>
+<tr><td>Сериализация ответа</td><td>2.1 мс</td><td>4.4 мс</td><td>4.2%</td><td class="note"></td></tr>
+<tr class="best"><td>ИТОГО</td><td class="g">45.6 мс</td><td class="r">121.2 мс</td><td class="k">91.2%</td><td class="note">p99 вдвое выше бюджета</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Два наблюдения, ради которых стоит делать такое разложение.</strong></p>
+<p><strong>①</strong> Самая дорогая часть — <em>не модель, а загрузка признаков объектов</em>: 11.4 мс против 14.6 мс у ранжирования, но с гораздо худшим хвостом (38.7 мс против 26.3 мс). Оптимизировать модель, не тронув загрузку признаков, — типичная трата усилий не туда.</p>
+<p><strong>②</strong> Медиана укладывается в бюджет (45.6 из 50 мс), а p99 превышает его в 2.4 раза. При 50 млн запросов в сутки это полмиллиона ответов, не уложившихся в бюджет.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Почему p99 так плох: складывание хвостов</span></div>
+<div class="tstep-c">
+<div class="calc">
+Если этапы независимы и каждый имеет вероятность 1% оказаться медленным,
+то вероятность, что ХОТЯ БЫ ОДИН окажется медленным:
+
+  1 − (1 − 0.01)^10 = 1 − 0.99^10 = 1 − 0.9044 = <span class="bad">9.56%</span>
+
+То есть при 10 этапах с p99 у каждого
+итоговый ответ медленный примерно в 10% случаев.
+
+Чтобы итоговый p99 был приемлемым, каждый этап должен иметь
+  1 − (1−p)^10 = 0.01  →  p = 1 − 0.99^0.1 = <span class="res">0.1%</span>
+
+Каждый этап должен укладываться на уровне p99.9, а не p99.
+</div>
+<p><strong>Это главная причина, по которой параллелизация важнее оптимизации отдельных этапов.</strong> Если два этапа идут параллельно, их хвосты не складываются, а берётся максимум — что гораздо лучше суммы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Оптимизация: что дало эффект</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Последовательные оптимизации и их вклад</caption>
+<thead><tr><th>Что сделали</th><th>Медиана</th><th>p99</th><th>Δ p99</th><th></th></tr></thead>
+<tbody>
+<tr><td>Исходное состояние</td><td>45.6 мс</td><td class="r">121.2 мс</td><td class="dim">—</td><td class="note"></td></tr>
+<tr class="best"><td>Батчирование загрузки признаков</td><td class="g">37.2 мс</td><td class="g">68.4 мс</td><td class="g">−43.6%</td><td class="note">300 запросов → 1</td></tr>
+<tr><td>Параллельный запуск источников</td><td>35.8 мс</td><td class="g">59.1 мс</td><td class="g">−13.6%</td><td class="note">хвосты не складываются</td></tr>
+<tr class="best"><td>Кэш признаков объектов (LRU)</td><td class="g">28.4 мс</td><td class="g">44.7 мс</td><td class="g">−24.4%</td><td class="note">попадание 82%</td></tr>
+<tr><td>Квантование модели ранжирования</td><td>25.1 мс</td><td>40.2 мс</td><td class="g">−10.1%</td><td class="note">качество −0.4%</td></tr>
+<tr><td>Таймауты на каждый компонент</td><td>25.1 мс</td><td class="g">33.8 мс</td><td class="g">−15.9%</td><td class="note">отсекает аномалии</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Первые три оптимизации — инженерные, не модельные</strong>, и вместе они дали снижение p99 с 121 до 44.7 мс, то есть в 2.7 раза. Оптимизация самой модели дала лишь 10%. Это типичное соотношение: в промышленных рекомендациях узкое место обычно не в вычислениях модели.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Таймауты: как их расставить</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Правило</span>
+Таймаут этапа = оставшийся бюджет − резерв на последующие этапы
+
+Бюджет 50 мс, расстановка сверху вниз:
+
+  признаки юзера:     таймаут <span class="hl">12 мс</span>  → при срыве: работать без них
+  кандидатогенерация: таймаут <span class="hl">10 мс</span>  → при срыве: только популярное
+  признаки объектов:  таймаут <span class="hl">15 мс</span>  → при срыве: дефолтные значения
+  ранжирование:       таймаут <span class="hl">20 мс</span>  → при срыве: порядок отбора
+  переупорядочивание: таймаут <span class="hl">8 мс</span>   → при срыве: без MMR
+
+Сумма таймаутов (65 мс) БОЛЬШЕ бюджета — и это нормально:
+все они одновременно не срабатывают, а каждый по отдельности
+оставляет достаточно времени на завершение.
+</div>
+<p><strong>Ключевой принцип:</strong> при срабатывании таймаута система не возвращает ошибку, а переходит на упрощённый путь. Об этом — секция 9.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Разложение латентности: медиана против хвоста</div>
+<div class="chsub">Загрузка признаков дороже модели и имеет гораздо худший хвост</div>
+<div style="position:relative;height:350px;"><canvas id="c_lat"></canvas></div>
+</div>
+
+<div class="chb">
+<div class="cht">Что дали последовательные оптимизации</div>
+<div class="chsub">Инженерные приёмы снизили p99 в 2.7 раза; оптимизация модели — лишь на 10%</div>
+<div style="position:relative;height:330px;"><canvas id="c_opt"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Меряйте p99, а не среднее.</strong> В таблице выше медиана укладывалась в бюджет с самого начала, и по ней система выглядела здоровой. Реальная проблема — хвост в 121 мс, затрагивающий полмиллиона запросов в сутки. Дашборд со средней латентностью систематически создаёт ложное ощущение благополучия.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Ранжировщик: признаки, которые здесь наконец доступны <span class="lvltag lvl-base">с нуля</span></div>
+<div class="sdesc">Главное отличие от кандидатогенерации — перекрёстные признаки</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Pointwise-ранжирование</dt>
+<dd>Модель предсказывает скор каждого кандидата <em>независимо</em>, затем список сортируется. Просто и работает; большинство промышленных систем устроены так.</dd>
+
+<dt>Pairwise-ранжирование</dt>
+<dd>Модель обучается на парах: «этот кандидат должен быть выше того». Прямо оптимизирует порядок. BPR из темы 6.1 — представитель этого класса.</dd>
+
+<dt>Listwise-ранжирование</dt>
+<dd>Модель оптимизирует метрику всего списка целиком. LambdaMART — самый известный пример: он взвешивает пары по тому, насколько их перестановка изменит NDCG.</dd>
+
+<dt>LambdaMART</dt>
+<dd>Градиентный бустинг, где градиент для пары домножается на $|\Delta\text{NDCG}|$ — изменение метрики от перестановки этой пары. Перестановка позиций 1 и 2 меняет NDCG сильно, позиций 47 и 48 — почти нет, и обучение это учитывает.</dd>
+
+<dt>Признаки счётчиков <span class="en">(count features)</span></dt>
+<dd>Агрегаты вида «сколько раз пользователь взаимодействовал с этой категорией за 7 дней». Самый ценный класс перекрёстных признаков и самый опасный по части утечек.</dd>
+
+<dt>Калибровка <span class="en">(calibration)</span></dt>
+<dd>Свойство модели: среди объектов с предсказанием 0.10 фактическая доля кликов тоже около 10%. Для чистого ранжирования не нужна, но становится обязательной, как только скоры складываются с другими величинами (секция 5) или используются в экономических расчётах.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: что изменилось по сравнению с отбором</div>
+<p>На этапе отбора (тема 6.2) действовало жёсткое правило: признак не может зависеть от обеих сторон одновременно, потому что векторы объектов считаются офлайн, когда пользователь неизвестен.</p>
+<p><strong>На ранжировании это ограничение снято.</strong> Пара «пользователь — объект» уже сформирована, и можно считать что угодно: сколько раз человек смотрел именно этот товар, покупал ли он этот бренд, насколько цена соответствует его обычному чеку.</p>
+<p>Именно эти признаки дают ранжировщику основную часть его качества — и именно они недоступны никакой модели двухбашенного типа.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Ablation признаков ранжировщика: NDCG@10 на кандидатах отбора</div>
+<div class="numex-step"><span class="nb sl">0</span><div><strong>Только скор кандидатогенерации:</strong> <strong>0.161</strong>. Отправная точка — просто передать порядок отбора дальше.</div></div>
+<div class="numex-step"><span class="nb">1</span><div><strong>+ признаки объекта</strong> (популярность, возраст, категория, цена, рейтинг): <strong>0.194</strong> (+20.5%).</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>+ признаки пользователя</strong> (активность, средний чек, любимые категории): <strong>0.208</strong> (+7.2%).</div></div>
+<div class="numex-step"><span class="nb grn">3</span><div><strong>+ перекрёстные счётчики</strong> («сколько раз юзер смотрел эту категорию за 7 дней», «покупал ли этот бренд»): <strong>0.231</strong> (+11.1%) — <em>самый большой единичный прирост после базовых признаков объекта</em>.</div></div>
+<div class="numex-step"><span class="nb">4</span><div><strong>+ контекст сессии</strong> (что смотрел прямо сейчас, время, устройство): <strong>0.238</strong> (+3.0%).</div></div>
+<div class="numex-step"><span class="nb am">5</span><div><strong>+ позиционный признак</strong> при обучении с обнулением на инференсе: <strong>0.247</strong> (+3.8%) — механизм разбирается в секции 4.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Итого +53% к базовой линии.</strong> Больше половины прироста дают признаки, недоступные на этапе отбора, — это и есть содержательный ответ на вопрос, зачем нужен отдельный ранжировщик.</div></div>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚠️</span> Трассировка: утечка через счётчики — как её создают и как ловят</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Ошибка: счётчик посчитан на всём периоде</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Неверный код</span>
+counts = df.groupby(["user", "category"]).size()      ← по ВСЕМ данным
+train["cat_count"] = train.apply(lookup_counts)
+test["cat_count"]  = test.apply(lookup_counts)
+
+Что произошло: счётчик для строки от 3 марта включает
+взаимодействия от 20 марта. Модель «знает будущее».
+</div>
+<div class="calc"><span class="lbl">Замер</span>
+                      Офлайн NDCG@10    A/B ΔCTR
+Со счётчиком по всему    <span class="bad">0.389</span>          <span class="bad">−2.1%</span>
+Счётчик только по прошлому <span class="res">0.247</span>          <span class="res">+4.8%</span>
+</div>
+<p><strong>Офлайн-метрика выросла в 1.6 раза, онлайн упала.</strong> Классический признак утечки: слишком хороший результат при отрицательном A/B.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Правильно: счётчик как функция времени</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Верный код</span>
+df = df.sort_values("timestamp")
+df["cat_count_7d"] = (
+    df.groupby(["user", "category"])
+      .rolling("7D", on="timestamp", closed="left")   ← "left": ТЕКУЩЕЕ событие исключено
+      .size()
+      .reset_index(level=[0,1], drop=True)
+)
+
+Ключевое: closed="left" исключает текущую строку из окна.
+Без него счётчик включает само событие, которое предсказываем.
+</div>
+<div class="calc"><span class="lbl">Разница только в одном параметре</span>
+closed="both" (по умолчанию): NDCG <span class="bad">0.312</span>, A/B <span class="bad">+0.4%</span>
+closed="left":                NDCG <span class="res">0.247</span>, A/B <span class="res">+4.8%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Три проверки на утечку, которые стоит делать всегда</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Диагностика утечки в признаках</caption>
+<thead><tr><th>Проверка</th><th>Как</th><th>Тревожный признак</th></tr></thead>
+<tbody>
+<tr><td>Слишком хорошая метрика</td><td>сравнить с историческими значениями</td><td class="r">резкий скачок без объяснения</td></tr>
+<tr><td>Важность признаков</td><td>SHAP или permutation importance</td><td class="r">один признак даёт больше 40% важности</td></tr>
+<tr><td>Метрика по времени</td><td>NDCG по дням тестового периода</td><td class="r">не падает с удалением от обучения</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Третья проверка самая надёжная и наименее известная.</strong> Качество модели <em>обязано</em> плавно снижаться по мере удаления от периода обучения — данные устаревают. Если NDCG на 30-й день теста такой же, как на первый, значит, модель получает информацию, которой в тот момент не существовало.</p>
+<div class="calc">
+День теста:    1      5      10     20     30
+С утечкой:   0.389  0.391  0.388  0.390  <span class="bad">0.387</span>   ← плоско, подозрительно
+Корректно:   0.259  0.253  0.248  0.241  <span class="res">0.234</span>   ← плавное убывание, нормально
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Про калибровку.</strong> Для чистого ранжирования она не нужна: важен только порядок, а монотонное преобразование скоров его не меняет. Но она становится обязательной в двух случаях: ① когда скор складывается с другими величинами в многокритериальной формуле (секция 5) — иначе веса не имеют смысла; ② когда скор используется в экономических расчётах вроде «ожидаемая выручка = $P(\text{покупка})\times$ маржа». Проверяется калибровочной таблицей: разбить предсказания на децили и сравнить среднее предсказание с фактической долей событий в каждом.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. Позиционное смещение: коррекция с полным расчётом <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Почему объект с вдвое меньшим CTR может быть втрое релевантнее</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Позиционное смещение <span class="en">(position bias)</span></dt>
+<dd>Систематический эффект: клик на верхней позиции вероятнее клика на нижней <em>при одинаковой релевантности</em>. Пользователь просто не доходит взглядом до низа списка.</dd>
+
+<dt>Модель проверки <span class="en">(examination hypothesis)</span></dt>
+<dd>Стандартное допущение: клик происходит, если пользователь <em>увидел</em> объект <strong>и</strong> объект <em>релевантен</em>. Формально $P(\text{клик}) = P(\text{увидел} \mid \text{позиция}) \times P(\text{релевантен})$. Разделение этих двух множителей и есть вся суть коррекции.</dd>
+
+<dt>Вероятность проверки <span class="en">(examination probability, $p_k$)</span></dt>
+<dd>Шанс, что пользователь вообще посмотрел на позицию $k$. Зависит только от позиции, не от объекта. Нормируется так, чтобы $p_1 = 1$.</dd>
+
+<dt>Обратное взвешивание <span class="en">(IPW, Inverse Propensity Weighting)</span></dt>
+<dd>Коррекция: наблюдение с позиции $k$ взвешивается с коэффициентом $1/p_k$. Клик с 10-й позиции «стоит» в несколько раз больше клика с первой.</dd>
+
+<dt>Интерливинг <span class="en">(interleaving)</span></dt>
+<dd>Метод сравнения двух ранжировщиков без позиционного смещения: их выдачи перемешиваются в один список, и сравнивается, чьи объекты чаще кликают. Позиция перестаёт быть систематическим преимуществом одного из них.</dd>
+
+<dt>Позиция как признак с обнулением</dt>
+<dd>Приём: подавать позицию признаком при обучении, а на инференсе подставлять ноль (то есть «первая позиция»). Модель учится отделять «кликнули из-за позиции» от «кликнули из-за релевантности», а предсказывает чистую релевантность.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: клик состоит из двух событий</div>
+<p>Чтобы кликнуть, пользователю нужно <strong>увидеть</strong> объект и <strong>захотеть</strong> его. Логи фиксируют только результат — клик, — и не различают, какого из двух условий не хватило.</p>
+<p>Объект на 10-й позиции получил мало кликов. Он плох? Или его просто мало кто увидел? <strong>Из сырых логов это неотличимо.</strong></p>
+<p>Коррекция разделяет множители: делим наблюдаемый CTR на вероятность просмотра позиции и получаем оценку чистой релевантности.</p>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 Модель проверки и коррекция</div>
+$$P(\text{клик} \mid u, i, k) = \underbrace{p_k}_{\text{увидел позицию } k} \times \underbrace{r_{ui}}_{\text{релевантность}}$$
+$$\hat r_{ui} = \frac{\text{наблюдаемый CTR на позиции } k}{p_k}$$
+<p class="fnote">Главное допущение: вероятность просмотра зависит <em>только от позиции</em> и не зависит от объекта. Это упрощение (яркая картинка привлекает внимание независимо от позиции), но оно даёт основную часть коррекции и потому используется повсеместно.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📉</span> Трассировка: как коррекция переворачивает вывод</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Кривая проверки, измеренная на своих данных</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Вероятность просмотра позиции, нормировано на p₁ = 1</caption>
+<thead><tr><th>Позиция</th><th>1</th><th>2</th><th>3</th><th>5</th><th>8</th><th>10</th><th>15</th><th>20</th></tr></thead>
+<tbody>
+<tr><td>p<sub>k</sub></td><td class="g">1.00</td><td class="g">0.72</td><td>0.52</td><td class="a">0.34</td><td class="a">0.21</td><td class="r">0.17</td><td class="r">0.12</td><td class="r">0.09</td></tr>
+<tr><td>во сколько раз хуже 1-й</td><td class="dim">—</td><td>1.4×</td><td>1.9×</td><td>2.9×</td><td>4.8×</td><td>5.9×</td><td>8.3×</td><td class="r">11.1×</td></tr>
+</tbody>
+</table>
+</div>
+<p>Кривую надо мерить на <em>своих</em> данных — она сильно зависит от интерфейса. В плитке на десктопе спад пологий, в вертикальной ленте на мобильном — резкий.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Наивный вывод по сырым логам</span></div>
+<div class="tstep-c">
+<div class="calc">
+Объект A: показан 1000 раз на позиции <span class="hl">1</span>,  получил <span class="hl">85</span> кликов
+          сырой CTR = 85/1000 = <span class="hl">8.50%</span>
+
+Объект B: показан 1000 раз на позиции <span class="hl">8</span>,  получил <span class="hl">42</span> клика
+          сырой CTR = 42/1000 = <span class="hl">4.20%</span>
+
+Наивный вывод: A лучше B в 8.50/4.20 = <span class="bad">2.02 раза</span>
+→ поднимаем A, опускаем B
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">С коррекцией на позицию</span></div>
+<div class="tstep-c">
+<div class="calc">
+Оценка релевантности = сырой CTR / p_k
+
+Объект A (позиция 1, p₁ = 1.00):
+   r̂_A = 0.0850 / 1.00 = <span class="res">0.0850</span>
+
+Объект B (позиция 8, p₈ = 0.21):
+   r̂_B = 0.0420 / 0.21 = <span class="res">0.2000</span>
+
+Теперь B лучше A в 0.2000/0.0850 = <span class="res">2.35 раза</span>
+</div>
+<p><strong>Вывод перевернулся полностью.</strong> Было «A лучше вдвое», стало «B лучше в 2.35 раза». Разница между двумя выводами — в 4.7 раза.</p>
+<p>Содержательно всё логично: B кликали в 4.2% случаев, хотя увидели его только 21% показов. То есть <em>среди увидевших</em> кликнули $0.042/0.21 = 20\%$ — против 8.5% у A, которого увидели все.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Что происходит без коррекции: замыкание петли</span></div>
+<div class="tstep-c">
+<div class="calc">
+Цикл 1: B на позиции 8 → мало кликов → низкий скор
+Цикл 2: B опускается на позицию 14 → ещё меньше кликов
+Цикл 3: B на позиции 19 → почти нулевой CTR
+Цикл 4: B выпадает из выдачи навсегда
+
+При этом истинная релевантность B ВЫШЕ, чем у A.
+</div>
+<p>Это ровно та же петля обратной связи, что в теме 6.1, но через другой канал: не через показ/непоказ, а через <em>позицию</em>. И она незаметнее — объект формально показывается, просто там, где его не видят.</p>
+<div class="calc"><span class="lbl">Замер деградации за 8 недель без коррекции</span>
+Неделя  доля выдачи, где топ-3 не менялся   средний CTR
+   1                  12%                     базовый
+   2                  31%                     +0.4%
+   4                  58%                     +0.9%
+   6                  74%                     <span class="hl">+0.6%</span>
+   8                  <span class="bad">83%</span>                     <span class="bad">−1.8%</span>
+</div>
+<p>Выдача «застывает»: топ-3 перестаёт меняться, потому что объекты, однажды попавшие наверх, самоподкрепляются. CTR сначала растёт (наверху действительно неплохие объекты), потом падает — пользователи видят одно и то же.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Как измерить кривую p_k — три способа</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Способы оценки вероятности проверки</caption>
+<thead><tr><th>Способ</th><th>Как</th><th>Точность</th><th>Цена</th></tr></thead>
+<tbody>
+<tr class="best"><td>Рандомизация позиций</td><td>на 1–2% трафика порядок топ-N перемешивается случайно</td><td class="g">высокая</td><td class="a">небольшая потеря CTR</td></tr>
+<tr><td>Интервенционные показы</td><td>один и тот же объект принудительно на разных позициях</td><td class="g">высокая</td><td class="a">сложно организовать</td></tr>
+<tr><td>Оценка из логов (EM)</td><td>совместная оценка релевантности и $p_k$ из наблюдений</td><td class="a">средняя</td><td class="g">бесплатно</td></tr>
+<tr><td>Готовая кривая из статьи</td><td>взять чужую</td><td class="r">низкая</td><td class="g">бесплатно</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Рандомизация позиций — рабочий стандарт.</strong> На 1–2% трафика порядок топ-N перемешивается, и на этих показах позиция не связана с релевантностью. Отношение CTR по позициям на этом слое и даёт чистую кривую $p_k$. Стоимость — доли процента общего CTR, а взамен получается несмещённый слой, полезный и для оценки моделей (тема 6.1).</p>
+<p><strong>Последняя строка — распространённая ошибка.</strong> Кривая зависит от интерфейса, устройства и типа контента; чужая кривая может отличаться в разы и внести смещение вместо того, чтобы его убрать.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Альтернатива IPW: позиция как признак</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Схема</span>
+ПРИ ОБУЧЕНИИ:  подаём позицию показа как обычный признак
+               модель учится: клик = f(релевантность, позиция)
+
+НА ИНФЕРЕНСЕ:  подставляем позицию = 0 для всех кандидатов
+               то есть спрашиваем: «а если бы он был первым?»
+               модель возвращает чистую релевантность
+</div>
+<div class="ct">
+<table>
+<caption>Сравнение подходов к коррекции</caption>
+<thead><tr><th>Метод</th><th>NDCG@10</th><th>Δ CTR в A/B</th><th>Сложность</th><th></th></tr></thead>
+<tbody>
+<tr><td>Без коррекции</td><td>0.231</td><td class="dim">базовый</td><td class="g">—</td><td class="note">петля замыкается</td></tr>
+<tr><td>IPW с оценкой из логов</td><td>0.239</td><td class="a">+1.2%</td><td>средняя</td><td class="note">качество зависит от точности p_k</td></tr>
+<tr class="best"><td>Позиция как признак</td><td class="g">0.247</td><td class="g">+3.8%</td><td class="g">низкая</td><td class="note">одна строка кода</td></tr>
+<tr class="best"><td>IPW с рандомизацией + признак</td><td class="g">0.251</td><td class="g">+4.4%</td><td class="a">высокая</td><td class="note">максимум, но дороже</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Позиция как признак — лучшее соотношение эффекта и усилий.</strong> Одна строка при обучении и одна на инференсе, никакой отдельной оценки кривой. Работает потому, что модель сама выучивает зависимость от позиции из данных.</p>
+<p><strong>Важная деталь:</strong> позицию надо подавать как <em>категориальный</em> признак или в виде набора бакетов, а не как число. Зависимость сильно нелинейна (спад между позициями 1 и 2 больше, чем между 15 и 20), и линейная трактовка её не поймает.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Позиционное смещение: сырой CTR против скорректированной релевантности</div>
+<div class="chsub">Объект с вдвое меньшим CTR оказывается втрое релевантнее после коррекции</div>
+<div style="position:relative;height:350px;"><canvas id="c_pos"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: позиционная коррекция</label>
+  <label style="margin-top:2px;">Позиция объекта B</label>
+  <input type="range" id="sl_pos" min="1" max="20" step="1" value="8" oninput="updPos()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>1</span><span class="out" id="out_pos">8</span><span>20</span></div>
+  <label style="margin-top:14px;">Сырой CTR объекта B</label>
+  <input type="range" id="sl_ctrb" min="5" max="150" step="1" value="42" oninput="updPos()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.5%</span><span class="out" id="out_ctrb">4.2%</span><span>15%</span></div>
+  <label style="margin-top:14px;">Крутизна кривой проверки</label>
+  <input type="range" id="sl_steep" min="30" max="120" step="5" value="75" oninput="updPos()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>пологая</span><span class="out" id="out_steep">0.75</span><span>резкая</span></div>
+  <div class="res" id="out_posres"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Интерливинг для сравнения ранжировщиков.</strong> Обычный A/B при сравнении двух ранжировщиков страдает от того же смещения: группы видят разные списки, и различие в CTR смешивается с различием в позициях. Интерливинг перемешивает выдачи двух моделей в один список и смотрит, чьи объекты кликают чаще — позиция перестаёт быть систематическим преимуществом. Даёт статистически значимый результат в 10–100 раз быстрее обычного A/B, но не измеряет долгосрочные эффекты вроде удержания, поэтому используется для быстрого отсева, а не для финального решения.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Много целей: как сложить их в один скор <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Клик, покупка, маржа, удержание — и почему их нельзя просто взвесить наугад</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Многокритериальное ранжирование <span class="en">(multi-objective ranking)</span></dt>
+<dd>Ситуация, когда качество выдачи определяется несколькими метриками сразу, и они конфликтуют: кликбейт поднимает CTR и роняет удержание, дорогие товары поднимают маржу и роняют конверсию.</dd>
+
+<dt>Взвешенная сумма <span class="en">(linear scalarization)</span></dt>
+<dd>Простейший способ свести цели: $\text{score} = \sum_j w_j \cdot m_j$. Работает, но требует, чтобы все $m_j$ были в сопоставимых шкалах — иначе веса не имеют интерпретации.</dd>
+
+<dt>Мультизадачная модель <span class="en">(multi-task learning)</span></dt>
+<dd>Одна сеть с общим «телом» и несколькими «головами» — по одной на каждую цель. Общие слои учатся представлениям, полезным для всех задач, что улучшает предсказание редких событий за счёт частых.</dd>
+
+<dt>Парето-фронт <span class="en">(Pareto frontier)</span></dt>
+<dd>Множество вариантов, в которых нельзя улучшить одну метрику, не ухудшив другую. Выбор точки на фронте — это уже не техническое, а продуктовое решение.</dd>
+
+<dt>Ожидаемая ценность <span class="en">(expected value)</span></dt>
+<dd>Способ свести цели без произвольных весов: перевести всё в деньги. $\mathbb{E}[\text{ценность}] = P(\text{покупка})\times\text{маржа} - P(\text{возврат})\times\text{стоимость возврата}$. Требует калиброванных вероятностей.</dd>
+
+<dt>Ограничение вместо цели <span class="en">(constrained optimization)</span></dt>
+<dd>Альтернативный подход: оптимизировать одну метрику при <em>ограничениях</em> на остальные («максимизируй конверсию при доле хвоста не ниже 15%»). Часто честнее взвешенной суммы, потому что ограничения естественнее формулируются бизнесом.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему одной метрики не хватает</div>
+<p><strong>Оптимизируем только клики</strong> — получаем кликбейт: яркие заголовки, дешёвые товары, всё, что провоцирует нажатие. Клики растут, покупки нет.</p>
+<p><strong>Оптимизируем только покупки</strong> — система показывает то, что человек и так купил бы, и перестаёт открывать новое. Конверсия хорошая, удержание падает.</p>
+<p><strong>Оптимизируем только маржу</strong> — наверх лезут дорогие товары, конверсия обваливается.</p>
+<p>Все три цели нужны одновременно, и вопрос не «какую выбрать», а <em>в каком соотношении сложить</em>.</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Два способа свести цели</div>
+$$\text{Взвешенная сумма:}\quad s(u,i) = \sum_j w_j \cdot \hat m_j(u,i)$$
+$$\text{Ожидаемая ценность:}\quad s(u,i) = \hat P_{\text{покупка}}\cdot\text{маржа}_i - \hat P_{\text{возврат}}\cdot c_{\text{возв}} + \beta\cdot\hat P_{\text{клик}}$$
+<p class="fnote">Второй вариант требует <em>калиброванных</em> вероятностей: если $\hat P$ систематически завышена, экономический расчёт неверен, и веса теряют смысл. Именно поэтому калибровка (секция 3) становится обязательной, как только скоры складываются.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">⚖️</span> Трассировка: как веса переставляют выдачу</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Четыре кандидата с разным профилем</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Предсказания моделей и свойства товаров</caption>
+<thead><tr><th>Товар</th><th>P(клик)</th><th>P(покупка)</th><th>Маржа</th><th>P(возврат)</th><th>Профиль</th></tr></thead>
+<tbody>
+<tr><td>W</td><td class="k">0.140</td><td>0.021</td><td>180 ₽</td><td>0.09</td><td class="note">кликбейт: жмут, не покупают</td></tr>
+<tr><td>X</td><td>0.082</td><td class="k">0.038</td><td>240 ₽</td><td>0.05</td><td class="note">сбалансированный</td></tr>
+<tr><td>Y</td><td>0.061</td><td>0.019</td><td class="k">1 450 ₽</td><td>0.14</td><td class="note">дорогой, часто возвращают</td></tr>
+<tr><td>Z</td><td>0.074</td><td>0.031</td><td>310 ₽</td><td class="g">0.03</td><td class="note">надёжный</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Вариант A: оптимизируем только клики</span></div>
+<div class="tstep-c">
+<div class="calc">
+score = P(клик)
+
+  W: <span class="hl">0.140</span>    X: 0.082    Z: 0.074    Y: 0.061
+
+Порядок: <span class="bad">W → X → Z → Y</span>
+
+Ожидаемая выручка первой позиции (W):
+  0.021 × 180 − 0.09 × 0.021 × 150 = 3.78 − 0.28 = <span class="bad">3.50 ₽</span>
+</div>
+<p>Кликбейтный товар W выходит на первое место, хотя приносит меньше всех.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Вариант B: оптимизируем только маржу</span></div>
+<div class="tstep-c">
+<div class="calc">
+score = P(покупка) × маржа
+
+  Y: 0.019 × 1450 = <span class="hl">27.55</span>
+  Z: 0.031 × 310  = <span class="hl">9.61</span>
+  X: 0.038 × 240  = <span class="hl">9.12</span>
+  W: 0.021 × 180  = <span class="hl">3.78</span>
+
+Порядок: <span class="bad">Y → Z → X → W</span>
+
+Но у Y вероятность возврата 14% — учтём:
+  0.019 × 1450 − 0.019 × 0.14 × 400 = 27.55 − 1.06 = 26.49
+  <span class="dim">(400 ₽ — стоимость обработки возврата)</span>
+</div>
+<p>Y всё равно первый. Но у него самый низкий P(клик) — то есть он редко даже привлекает внимание, и его высокая позиция расходуется впустую.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Вариант C: ожидаемая ценность с учётом всего</span></div>
+<div class="tstep-c">
+<div class="calc">
+score = P(покупка)×маржа − P(покупка)×P(возврат)×400 + β×P(клик)
+        где β = 25 ₽ <span class="dim">(оценка ценности клика как сигнала вовлечения)</span>
+
+W: 0.021×180 − 0.021×0.09×400 + 25×0.140
+   = 3.780 − 0.756 + 3.500 = <span class="res">6.52</span>
+
+X: 0.038×240 − 0.038×0.05×400 + 25×0.082
+   = 9.120 − 0.760 + 2.050 = <span class="res">10.41</span>
+
+Y: 0.019×1450 − 0.019×0.14×400 + 25×0.061
+   = 27.550 − 1.064 + 1.525 = <span class="res">28.01</span>
+
+Z: 0.031×310 − 0.031×0.03×400 + 25×0.074
+   = 9.610 − 0.372 + 1.850 = <span class="res">11.09</span>
+
+Порядок: <span class="res">Y → Z → X → W</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сводка: как менялся порядок</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Одни и те же кандидаты, три целевые функции</caption>
+<thead><tr><th>Целевая функция</th><th>Поз. 1</th><th>Поз. 2</th><th>Поз. 3</th><th>Поз. 4</th><th>Что происходит</th></tr></thead>
+<tbody>
+<tr><td>Только клики</td><td class="r">W</td><td>X</td><td>Z</td><td>Y</td><td class="note">кликбейт наверху</td></tr>
+<tr><td>Только маржа</td><td class="a">Y</td><td>Z</td><td>X</td><td>W</td><td class="note">дорогое наверху, конверсия падает</td></tr>
+<tr class="best"><td>Ожидаемая ценность</td><td class="g">Y</td><td class="g">Z</td><td class="g">X</td><td class="g">W</td><td class="note">учтены и возвраты, и вовлечение</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Обрати внимание: варианты B и C дали одинаковый порядок</strong>, но <em>разные разрывы между кандидатами</em>. При чистой марже разрыв Y и Z был 27.55 против 9.61 (в 2.9 раза), при ожидаемой ценности — 28.01 против 11.09 (в 2.5 раза). Это важно, когда скор дальше участвует в MMR (секция 6) или в аукционе: там абсолютные значения имеют смысл, а не только порядок.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">6</span><span class="tstep-t">Как подбирать веса — не перебором, а по Парето-фронту</span></div>
+<div class="tstep-c">
+<p>Перебирать веса по одной метрике бессмысленно: они конфликтуют, и «лучшего» набора нет. Правильный процесс — построить фронт и выбрать точку осознанно.</p>
+<div class="ct">
+<table>
+<caption>Парето-фронт: вес клика β при фиксированной экономической части</caption>
+<thead><tr><th>β</th><th>CTR</th><th>Конверсия</th><th>Средняя маржа</th><th>Удержание 30д</th><th></th></tr></thead>
+<tbody>
+<tr><td>0</td><td class="r">−8.4%</td><td class="g">+3.1%</td><td class="g">+6.2%</td><td class="r">−2.9%</td><td class="note">чистая экономика, вовлечение падает</td></tr>
+<tr><td>10</td><td class="a">−3.1%</td><td class="g">+2.4%</td><td class="g">+4.1%</td><td class="a">−0.8%</td><td class="note"></td></tr>
+<tr class="best"><td>25</td><td class="g">+1.2%</td><td class="g">+1.8%</td><td class="g">+2.4%</td><td class="g">+1.1%</td><td class="note">все метрики в плюсе</td></tr>
+<tr><td>50</td><td class="g">+4.9%</td><td class="a">+0.3%</td><td class="a">−1.2%</td><td class="g">+1.4%</td><td class="note">маржа пошла вниз</td></tr>
+<tr><td>100</td><td class="g">+9.1%</td><td class="r">−2.7%</td><td class="r">−6.8%</td><td class="a">+0.6%</td><td class="note">кликбейт</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>При β = 25 все четыре метрики в плюсе одновременно</strong> — такая точка существует не всегда, но её стоит поискать: часто система была настроена настолько в одну сторону, что есть запас улучшить всё сразу.</p>
+<p><strong>Ключевое:</strong> выбор точки на фронте — не техническое решение. Инженер строит фронт, продукт выбирает точку. Попытка «подобрать веса самому» обычно означает, что кто-то неявно принял продуктовое решение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">7</span><span class="tstep-t">Альтернатива: ограничения вместо весов</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Постановка через ограничения</span>
+максимизировать   ожидаемую выручку
+при условиях:     доля хвоста каталога в выдаче ≥ 15%
+                  доля свежих товаров ≥ 8%
+                  не более 3 товаров одного бренда в топ-10
+                  CTR не ниже базового − 2%
+
+Реализация: жадный отбор с проверкой ограничений на каждой позиции
+(механика та же, что в MMR — секция 6)
+</div>
+<p><strong>Почему это часто честнее взвешенной суммы.</strong> Бизнес естественно формулирует требования как ограничения («хвост должен быть представлен»), а не как веса («хвост стоит 0.3 клика»). Перевод ограничения в вес требует произвольного решения, которое потом никто не может обосновать.</p>
+<div class="calc">
+Замер: одна и та же цель, два способа
+
+Взвешенная сумма с подобранным весом за разнообразие:
+   выручка +2.4%, доля хвоста 13.8% <span class="dim">(колеблется от запроса к запросу)</span>
+
+Ограничение «доля хвоста ≥ 15%»:
+   выручка +2.1%, доля хвоста <span class="res">15.0%</span> <span class="dim">(гарантированно)</span>
+</div>
+<p>Ограничение даёт чуть меньше выручки, но <strong>гарантирует</strong> выполнение требования, а не выполняет его в среднем. Для требований регуляторного или договорного характера это единственный приемлемый вариант.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Парето-фронт: вес вовлечения против экономики</div>
+<div class="chsub">Выбор точки на фронте — продуктовое решение, а не техническое</div>
+<div style="position:relative;height:350px;"><canvas id="c_pareto"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Мультизадачная модель вместо нескольких отдельных.</strong> Обучать три модели (клик, покупка, возврат) отдельно — расточительно и хуже по качеству. Одна сеть с общим телом и тремя головами использует общие представления: редкое событие «покупка» (в 40 раз реже клика) выигрывает от того, что тело обучено на обильных кликах. В замерах мультизадачная модель даёт +6–9% на предсказании редких событий при вдвое меньшей стоимости инференса, чем три отдельные модели.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. MMR: отбор списка позиция за позицией <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Первый этап, где позиции выбираются не независимо друг от друга</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Разнообразие выдачи <span class="en">(diversity)</span></dt>
+<dd>Свойство списка, а не отдельного объекта: насколько элементы отличаются друг от друга. Принципиально не выражается через независимые скоры — его нельзя добавить, ранжируя каждого кандидата по отдельности.</dd>
+
+<dt>Избыточность <span class="en">(redundancy)</span></dt>
+<dd>Обратная сторона: список из десяти почти одинаковых товаров. Каждый по отдельности релевантен, вместе они бесполезны — второй ничего не добавляет к первому.</dd>
+
+<dt>MMR <span class="en">(Maximal Marginal Relevance)</span></dt>
+<dd>Жадный алгоритм отбора: на каждой позиции выбирается кандидат, максимизирующий «релевантность минус похожесть на уже выбранных». Название переводится как «максимальная предельная релевантность» — то есть максимальный <em>прирост</em> полезности к уже собранному списку.</dd>
+
+<dt>Параметр λ</dt>
+<dd>Баланс: $\lambda = 1$ означает чистую релевантность (обычная сортировка), $\lambda = 0$ — чистое разнообразие без учёта качества. Рабочий диапазон 0.5–0.8.</dd>
+
+<dt>Жадный отбор <span class="en">(greedy selection)</span></dt>
+<dd>Позиции заполняются по одной, и после каждого выбора скоры оставшихся <em>пересчитываются</em>. Отсюда стоимость $O(K \cdot N)$ вычислений сходства вместо одной сортировки.</dd>
+
+<dt>Определительное точечное поле <span class="en">(DPP, Determinantal Point Process)</span></dt>
+<dd>Более принципиальная альтернатива MMR: вероятность выбора набора пропорциональна определителю матрицы сходств, что математически поощряет непохожие наборы. Точнее MMR, но дороже и сложнее в настройке.</dd>
+</dl>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: второй такой же товар не нужен</div>
+<p>Ранжировщик оценивает каждого кандидата <em>независимо</em>. Если пять красных кроссовок одного бренда одинаково релевантны, все пять получат высокий скор и займут первые пять позиций.</p>
+<p><strong>Но второй товар в списке ценен не сам по себе, а тем, что добавляет к первому.</strong> Почти идентичный товар не добавляет почти ничего: если первый не подошёл, второй тоже не подойдёт.</p>
+<p>MMR формализует это: на каждой позиции выбирается тот, кто даёт наибольший <em>прирост</em> — высокая релевантность минус штраф за похожесть на уже выбранное.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Формула MMR</div>
+$$\text{MMR}(i) = \lambda \cdot \text{rel}(i) - (1-\lambda)\cdot \max_{j \in S}\,\text{sim}(i, j)$$
+<p>$S$ — уже выбранные объекты. На каждом шаге берётся кандидат с максимальным $\text{MMR}$ и добавляется в $S$.</p>
+<p class="fnote">Штраф считается по <em>максимальному</em> сходству, а не среднему. Логика: если кандидат почти идентичен хотя бы одному уже выбранному, он избыточен — неважно, насколько он отличается от остальных.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🎯</span> Трассировка: полный отбор списка из 6 кандидатов, λ = 0.7</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">0</span><span class="tstep-t">Исходные данные</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Релевантность от ранжировщика</caption>
+<thead><tr><th>Кандидат</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead>
+<tbody>
+<tr><td>rel</td><td class="k">0.92</td><td class="k">0.89</td><td class="k">0.87</td><td>0.81</td><td>0.76</td><td>0.71</td></tr>
+</tbody>
+</table>
+</div>
+<div class="ct">
+<table>
+<caption>Попарное сходство (A, B, C — одна категория; D, E — другая; F уникален)</caption>
+<thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead>
+<tbody>
+<tr><td>A</td><td class="dim">—</td><td class="r">0.88</td><td class="r">0.85</td><td>0.31</td><td>0.22</td><td class="g">0.12</td></tr>
+<tr><td>B</td><td class="r">0.88</td><td class="dim">—</td><td class="r">0.91</td><td>0.28</td><td>0.19</td><td class="g">0.15</td></tr>
+<tr><td>C</td><td class="r">0.85</td><td class="r">0.91</td><td class="dim">—</td><td>0.34</td><td>0.25</td><td class="g">0.11</td></tr>
+<tr><td>D</td><td>0.31</td><td>0.28</td><td>0.34</td><td class="dim">—</td><td class="r">0.79</td><td class="g">0.18</td></tr>
+<tr><td>E</td><td>0.22</td><td>0.19</td><td>0.25</td><td class="r">0.79</td><td class="dim">—</td><td class="g">0.21</td></tr>
+<tr><td>F</td><td class="g">0.12</td><td class="g">0.15</td><td class="g">0.11</td><td class="g">0.18</td><td class="g">0.21</td><td class="dim">—</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc">
+Чистая сортировка по релевантности дала бы:
+  <span class="bad">A → B → C → D → E → F</span>
+
+Первые три — A, B, C — все из одной категории, сходство между ними 0.85–0.91.
+Список избыточен: если A не подошёл, B и C тоже не подойдут.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Позиция 1: выбранных нет, штрафа нет</span></div>
+<div class="tstep-c">
+<div class="calc">
+S = { } — пусто, максимум сходства не определён, штраф = 0
+MMR(i) = 0.7 × rel(i)
+
+  A: 0.7 × 0.92 = <span class="res">0.644</span>  ← максимум
+  B: 0.7 × 0.89 = 0.623
+  C: 0.7 × 0.87 = 0.609
+  D: 0.7 × 0.81 = 0.567
+  E: 0.7 × 0.76 = 0.532
+  F: 0.7 × 0.71 = 0.497
+
+Выбираем <span class="res">A</span>.   S = {A}
+</div>
+<p>На первой позиции MMR всегда совпадает с чистой релевантностью — сравнивать не с чем.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Позиция 2: появился штраф за похожесть на A</span></div>
+<div class="tstep-c">
+<div class="calc">
+S = {A}.  MMR(i) = 0.7×rel(i) − 0.3×sim(i, A)
+
+  B: 0.7×0.89 − 0.3×0.88 = 0.6230 − 0.2640 = <span class="hl">0.3590</span>
+  C: 0.7×0.87 − 0.3×0.85 = 0.6090 − 0.2550 = <span class="hl">0.3540</span>
+  D: 0.7×0.81 − 0.3×0.31 = 0.5670 − 0.0930 = <span class="res">0.4740</span>  ← максимум
+  E: 0.7×0.76 − 0.3×0.22 = 0.5320 − 0.0660 = <span class="hl">0.4660</span>
+  F: 0.7×0.71 − 0.3×0.12 = 0.4970 − 0.0360 = <span class="hl">0.4610</span>
+
+Выбираем <span class="res">D</span>.   S = {A, D}
+</div>
+<p><strong>Вот главный момент трассировки.</strong> Релевантность D (0.81) <em>ниже</em>, чем у B (0.89) и C (0.87). Но B и C очень похожи на уже выбранный A (0.88 и 0.85), и штраф съедает их преимущество. D непохож (0.31) и потому выигрывает.</p>
+<p>Обычная сортировка поставила бы здесь B. MMR ставит D.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Позиция 3: штраф пересчитывается по обоим выбранным</span></div>
+<div class="tstep-c">
+<div class="calc">
+S = {A, D}.  Берём МАКСИМУМ сходства с любым из них.
+
+  B: max(sim(B,A)=0.88, sim(B,D)=0.28) = 0.88
+     0.6230 − 0.3×0.88 = 0.6230 − 0.2640 = <span class="hl">0.3590</span>
+  C: max(0.85, 0.34) = 0.85
+     0.6090 − 0.3×0.85 = 0.6090 − 0.2550 = <span class="hl">0.3540</span>
+  E: max(0.22, <span class="bad">0.79</span>) = 0.79   ← стал похож на выбранный D!
+     0.5320 − 0.3×0.79 = 0.5320 − 0.2370 = <span class="hl">0.2950</span>
+  F: max(0.12, 0.18) = 0.18
+     0.4970 − 0.3×0.18 = 0.4970 − 0.0540 = <span class="res">0.4430</span>  ← максимум
+
+Выбираем <span class="res">F</span>.   S = {A, D, F}
+</div>
+<p><strong>Второй ключевой момент: E упал.</strong> На предыдущем шаге его MMR был 0.4660 — второе место. Но после выбора D, с которым E схож на 0.79, его штраф вырос втрое, и MMR упал до 0.2950 — последнее место.</p>
+<p>Это и есть суть жадного пересчёта: <em>ценность кандидата зависит от того, что уже выбрано</em>, и меняется на каждом шаге.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Позиции 4–6</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Позиция 4, S = {A, D, F}</span>
+  B: max(0.88, 0.28, 0.15) = 0.88 → 0.6230 − 0.2640 = <span class="res">0.3590</span>  ← максимум
+  C: max(0.85, 0.34, 0.11) = 0.85 → 0.6090 − 0.2550 = <span class="hl">0.3540</span>
+  E: max(0.22, 0.79, 0.21) = 0.79 → 0.5320 − 0.2370 = <span class="hl">0.2950</span>
+
+Выбираем <span class="res">B</span>.   S = {A, D, F, B}
+
+<span class="lbl">Позиция 5, S = {A, D, F, B}</span>
+  C: max(0.85, 0.34, 0.11, <span class="bad">0.91</span>) = 0.91 → 0.6090 − 0.2730 = <span class="res">0.3360</span>  ← максимум
+     <span class="dim">штраф вырос: C ещё похожее на только что выбранный B</span>
+  E: max(0.22, 0.79, 0.21, 0.19) = 0.79 → <span class="hl">0.2950</span>
+
+Выбираем <span class="res">C</span>.   S = {A, D, F, B, C}
+
+<span class="lbl">Позиция 6</span>
+Остался только <span class="res">E</span>.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Итоговое сравнение двух списков</span></div>
+<div class="tstep-c">
+<div class="grid2">
+<div class="card rd"><h5>Чистая релевантность</h5>
+<div class="slist">
+  <div class="sitem"><span class="spos">1</span><span class="sid">A</span><span class="sbar"><i style="width:92%;background:#dc2626;"></i></span><span class="sval">0.92</span></div>
+  <div class="sitem"><span class="spos">2</span><span class="sid">B</span><span class="sbar"><i style="width:89%;background:#dc2626;"></i></span><span class="sval">0.89</span></div>
+  <div class="sitem"><span class="spos">3</span><span class="sid">C</span><span class="sbar"><i style="width:87%;background:#dc2626;"></i></span><span class="sval">0.87</span></div>
+  <div class="sitem"><span class="spos">4</span><span class="sid">D</span><span class="sbar"><i style="width:81%;background:#cbd5e1;"></i></span><span class="sval">0.81</span></div>
+  <div class="sitem"><span class="spos">5</span><span class="sid">E</span><span class="sbar"><i style="width:76%;background:#cbd5e1;"></i></span><span class="sval">0.76</span></div>
+  <div class="sitem"><span class="spos">6</span><span class="sid">F</span><span class="sbar"><i style="width:71%;background:#cbd5e1;"></i></span><span class="sval">0.71</span></div>
+</div>
+<p style="font-size:12.5px;margin-top:8px;">Топ-3 = {A, B, C}, все одной категории<br>среднее попарное сходство <b style="color:#dc2626;">0.880</b></p>
+</div>
+<div class="card gr"><h5>MMR, λ = 0.7</h5>
+<div class="slist">
+  <div class="sitem new"><span class="spos">1</span><span class="sid">A</span><span class="sbar"><i style="width:92%;background:#16a34a;"></i></span><span class="sval">0.92</span></div>
+  <div class="sitem new"><span class="spos">2</span><span class="sid">D</span><span class="sbar"><i style="width:81%;background:#16a34a;"></i></span><span class="sval">0.81</span></div>
+  <div class="sitem new"><span class="spos">3</span><span class="sid">F</span><span class="sbar"><i style="width:71%;background:#16a34a;"></i></span><span class="sval">0.71</span></div>
+  <div class="sitem"><span class="spos">4</span><span class="sid">B</span><span class="sbar"><i style="width:89%;background:#cbd5e1;"></i></span><span class="sval">0.89</span></div>
+  <div class="sitem"><span class="spos">5</span><span class="sid">C</span><span class="sbar"><i style="width:87%;background:#cbd5e1;"></i></span><span class="sval">0.87</span></div>
+  <div class="sitem"><span class="spos">6</span><span class="sid">E</span><span class="sbar"><i style="width:76%;background:#cbd5e1;"></i></span><span class="sval">0.76</span></div>
+</div>
+<p style="font-size:12.5px;margin-top:8px;">Топ-3 = {A, D, F}, три разные группы<br>среднее попарное сходство <b style="color:#16a34a;">0.203</b></p>
+</div>
+</div>
+<div class="calc">
+Избыточность топ-3:
+  чистая релевантность:  (0.88 + 0.85 + 0.91)/3 = <span class="bad">0.880</span>
+  MMR:                   (0.31 + 0.12 + 0.18)/3 = <span class="res">0.203</span>
+                                          → в <span class="res">4.3 раза</span> ниже
+
+Суммарная релевантность топ-3:
+  чистая релевантность:  0.92 + 0.89 + 0.87 = <span class="hl">2.68</span>
+  MMR:                   0.92 + 0.81 + 0.71 = <span class="hl">2.44</span>
+                                          → на <span class="hl">9.0%</span> ниже
+</div>
+<p><strong>Размен: 9% суммарной релевантности за четырёхкратное снижение избыточности.</strong> Это и есть содержательный вопрос настройки $\lambda$ — сколько релевантности вы готовы отдать за разнообразие.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">6</span><span class="tstep-t">Как λ меняет результат</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Тот же набор кандидатов при разных λ</caption>
+<thead><tr><th>λ</th><th>Порядок топ-4</th><th>Избыточность топ-3</th><th>Σ rel топ-3</th><th></th></tr></thead>
+<tbody>
+<tr><td>1.0</td><td class="r">A B C D</td><td class="r">0.880</td><td class="g">2.68</td><td class="note">чистая релевантность</td></tr>
+<tr><td>0.9</td><td class="a">A B D C</td><td class="a">0.607</td><td class="g">2.62</td><td class="note"></td></tr>
+<tr class="best"><td>0.7</td><td class="g">A D F B</td><td class="g">0.203</td><td>2.44</td><td class="note">рабочая точка</td></tr>
+<tr><td>0.5</td><td class="g">A F D E</td><td class="g">0.170</td><td class="a">2.34</td><td class="note"></td></tr>
+<tr><td>0.2</td><td class="g">A F E D</td><td class="g">0.183</td><td class="r">2.29</td><td class="note">релевантность почти не учитывается</td></tr>
+</tbody>
+</table>
+</div>
+<p>Заметно, что избыточность падает резко (0.880 → 0.203 при переходе от 1.0 к 0.7), а релевантность — плавно (2.68 → 2.44). Именно поэтому рабочая точка обычно в районе 0.7: там уже взят почти весь выигрыш в разнообразии, но потеряно мало.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n warn">7</span><span class="tstep-t">Стоимость и как её снизить</span></div>
+<div class="tstep-c">
+<div class="calc">
+Наивно: на каждой из K позиций пересчитать MMR для всех оставшихся,
+        и для каждого — максимум сходства по всем выбранным.
+
+Стоимость: O(K² × N) вычислений сходства
+При K=20, N=300: 20 × 20 × 300 = <span class="bad">120 000</span> вычислений
+
+Оптимизация: хранить текущий максимум сходства для каждого кандидата
+и обновлять только при добавлении нового элемента.
+
+  при добавлении j: для каждого i считаем sim(i,j)
+                     и обновляем max_sim[i] = max(max_sim[i], sim(i,j))
+
+Стоимость: O(K × N) = 20 × 300 = <span class="res">6 000</span> вычислений
+                                  → в <span class="res">20 раз</span> дешевле
+</div>
+<p>С этой оптимизацией MMR на 300 кандидатах укладывается в 3–4 мс — что и заложено в бюджет секции 2.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<pre><code># MMR с инкрементальным обновлением максимумов
+import numpy as np
+
+def mmr(relevance, sim_matrix, k=10, lam=0.7):
+    """
+    relevance:  (N,) скоры от ранжировщика
+    sim_matrix: (N, N) попарные сходства
+    """
+    n = len(relevance)
+    selected = []
+    remaining = set(range(n))
+    max_sim = np.zeros(n)              # текущий максимум сходства с выбранными
+
+    for _ in range(min(k, n)):
+        best, best_score = None, -np.inf
+        for i in remaining:
+            score = lam * relevance[i] - (1 - lam) * max_sim[i]
+            if score > best_score:
+                best, best_score = i, score
+
+        selected.append(best)
+        remaining.discard(best)
+        # ОБНОВЛЕНИЕ: только один проход по оставшимся
+        for i in remaining:
+            if sim_matrix[i, best] > max_sim[i]:
+                max_sim[i] = sim_matrix[i, best]
+
+    return selected
+
+# Сходство обычно считается по тем же векторам, что и рекомендации
+def build_sim(item_vectors):
+    v = item_vectors / np.linalg.norm(item_vectors, axis=1, keepdims=True)
+    return v @ v.T                      # косинус, потому что векторы нормированы
+
+# Вариант с ограничениями вместо/вместе с MMR
+def mmr_with_constraints(relevance, sim, k, lam, brands, max_per_brand=3):
+    selected, remaining = [], set(range(len(relevance)))
+    max_sim = np.zeros(len(relevance))
+    brand_count = {}
+    for _ in range(k):
+        best, best_score = None, -np.inf
+        for i in remaining:
+            if brand_count.get(brands[i], 0) >= max_per_brand:
+                continue                # жёсткое ограничение: пропускаем
+            score = lam * relevance[i] - (1 - lam) * max_sim[i]
+            if score > best_score:
+                best, best_score = i, score
+        if best is None:
+            break
+        selected.append(best); remaining.discard(best)
+        brand_count[brands[best]] = brand_count.get(brands[best], 0) + 1
+        for i in remaining:
+            max_sim[i] = max(max_sim[i], sim[i, best])
+    return selected
+</code></pre>
+
+<div class="chb">
+<div class="cht">MMR шаг за шагом: как меняются скоры кандидатов</div>
+<div class="chsub">После каждого выбора скоры пересчитываются — E рушится, когда выбирают похожий на него D</div>
+<div style="position:relative;height:360px;"><canvas id="c_mmr"></canvas></div>
+</div>
+
+<div class="play">
+  <label>Поиграй: параметр λ в MMR</label>
+  <label style="margin-top:2px;">λ — баланс релевантности и разнообразия</label>
+  <input type="range" id="sl_lam" min="0" max="100" step="5" value="70" oninput="updMMR()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.00 — только разнообразие</span><span class="out" id="out_lam">0.70</span><span>1.00 — только релевантность</span></div>
+  <div class="res" id="out_mmrres"></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Разнообразие не бесплатно, и оценивать его надо правильно.</strong> Офлайн-метрики вроде NDCG почти всегда <em>ухудшаются</em> от MMR — они считаются на логах, где разнообразия не было, и вознаграждают воспроизведение старой выдачи. Оценивать разнообразие надо через долгосрочные метрики: удержание, число сессий в неделю, доля сессий с кликом. В замерах MMR при $\lambda=0.7$ давал −1.9% NDCG@10, +2.8% сессий с кликом и +1.4% удержания на 30 дней. Ровно та же ситуация, что с дебаясингом в теме 6.1.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Бизнес-правила: где их применять <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Слой, который в реальных системах определяет выдачу не меньше модели</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Жёсткое правило <span class="en">(hard constraint)</span></dt>
+<dd>Ограничение, нарушать которое нельзя ни при каких скорах: товара нет в наличии, доставка недоступна, возрастное ограничение, юридический запрет. Применяется фильтрацией.</dd>
+
+<dt>Мягкое правило <span class="en">(soft constraint / boost)</span></dt>
+<dd>Предпочтение, влияющее на скор, но допускающее нарушение при достаточной релевантности: «продвигать свежие товары», «поднимать собственную марку». Применяется множителем или слагаемым к скору.</dd>
+
+<dt>Предфильтрация и постфильтрация</dt>
+<dd><strong>Пред</strong> — отсечь до ранжирования, <strong>пост</strong> — после. Выбор между ними определяется тем, сколько кандидатов отсекает фильтр: узкий фильтр надо применять раньше, иначе после него не останется кандидатов.</dd>
+
+<dt>Проблема пустой выдачи <span class="en">(empty result)</span></dt>
+<dd>Ситуация, когда все кандидаты отсеяны правилами. Требует явной обработки: расширение критериев, откат к менее строгим правилам, объяснение пользователю.</dd>
+
+<dt>Аудируемость правил</dt>
+<dd>Свойство системы: по любой выдаче можно установить, какие правила сработали и почему. Критично, когда правила приходят от разных команд и накапливаются годами.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📋</span> Трассировка: где именно применять фильтр</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Наивно: фильтруем после ранжирования</span></div>
+<div class="tstep-c">
+<div class="calc">
+Запрос: «похожее на этот товар, доступно в Казани, дешевле 5000 ₽»
+
+Кандидатогенерация → 2 000 кандидатов
+Ранжирование      → 2 000 упорядочены
+Фильтр по городу  → проходят <span class="hl">14%</span> = 280
+Фильтр по цене    → из них проходят <span class="hl">23%</span> = <span class="bad">64</span>
+Берём топ-10      → <span class="bad">ОК, но еле-еле</span>
+
+Более узкий запрос («доставка завтра, размер 42, дешевле 3000»):
+  2000 → 8% → 19% → 4% = <span class="bad">1.2 кандидата</span>
+  → <span class="bad">выдача пустая или почти пустая</span>
+</div>
+<p>Ранжировщик потратил 18 мс на 2000 кандидатов, из которых 99.94% были заведомо неприменимы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Правильно: фильтр до отбора</span></div>
+<div class="tstep-c">
+<div class="calc">
+Тот же узкий запрос:
+
+Фильтр применяется В ИНДЕКСЕ при отборе
+  → ANN ищет только среди подходящих
+  → 2 000 кандидатов, ВСЕ проходят фильтр
+Ранжирование → 2 000 упорядочены
+Берём топ-10 → <span class="res">ОК</span>
+
+Стоимость ранжирования не изменилась,
+но кандидаты теперь осмысленные.
+</div>
+<div class="ct">
+<table>
+<caption>Где применять фильтр, в зависимости от его селективности</caption>
+<thead><tr><th>Доля проходящих</th><th>Где применять</th><th>Как реализовать</th></tr></thead>
+<tbody>
+<tr><td>&gt; 50%</td><td class="g">после ранжирования</td><td class="note">просто отбросить, кандидатов хватит</td></tr>
+<tr><td>10–50%</td><td class="a">после отбора, до ранжирования</td><td class="note">расширить отбор пропорционально</td></tr>
+<tr class="best"><td>1–10%</td><td class="k">внутри отбора</td><td class="note">фильтрация в обходе ANN-графа</td></tr>
+<tr><td>&lt; 1%</td><td class="k">отдельный индекс</td><td class="note">на частые срезы — свой индекс</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Компенсация ширины отбора</span></div>
+<div class="tstep-c">
+<div class="calc">
+Если фильтр применяется после отбора и пропускает долю q,
+то отбирать надо больше:
+
+  N_отбор = N_нужно / q
+
+Пример: нужно 300 кандидатов для ранжирования, фильтр пропускает 14%
+  N_отбор = 300 / 0.14 = <span class="hl">2 143</span>
+
+Но q варьируется от запроса к запросу. Безопасная схема —
+адаптивная: отбирать порциями, пока не наберётся достаточно.
+
+  порция 1: 500 кандидатов → прошло 68 → мало
+  порция 2: ещё 1000       → прошло 141, всего 209 → мало
+  порция 3: ещё 1500       → прошло 218, всего 427 → <span class="res">достаточно</span>
+
+Стоимость: 3 обращения к индексу вместо одного,
+но только когда фильтр действительно узкий.
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Мягкие правила: множитель или слагаемое</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Два способа применить буст</span>
+Множитель:  score' = score × boost
+Слагаемое:  score' = score + boost
+
+Пример: продвигаем свежие товары, boost для свежего = 1.2 или +0.05
+
+  Товар P: score 0.90 (не свежий)  → множитель: 0.900   слагаемое: 0.900
+  Товар Q: score 0.75 (свежий)     → множитель: 0.900   слагаемое: 0.800
+  Товар R: score 0.20 (свежий)     → множитель: <span class="hl">0.240</span>   слагаемое: <span class="hl">0.250</span>
+</div>
+<p><strong>Разница проявляется на слабых кандидатах.</strong> Множитель пропорционален скору: слабый товар получает малую прибавку и наверх не вылезет. Слагаемое одинаково для всех: слабый товар получает столько же, сколько сильный, и может подняться неоправданно высоко.</p>
+<p><strong>Практическое правило:</strong> множитель безопаснее для продвижения (не вытаскивает мусор), слагаемое уместно, когда буст выражает <em>внешнюю ценность</em>, не зависящую от релевантности — например, доплату за размещение.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">5</span><span class="tstep-t">Как правила накапливаются и что с этим делать</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Реальный слой правил через три года</span>
+ 1. не показывать товары не в наличии              <span class="dim">(жёсткое, очевидное)</span>
+ 2. не показывать 18+ несовершеннолетним           <span class="dim">(жёсткое, юридическое)</span>
+ 3. не более 3 товаров одного бренда в топ-10      <span class="dim">(мягкое, разнообразие)</span>
+ 4. буст ×1.15 для собственной марки               <span class="dim">(мягкое, коммерческое)</span>
+ 5. буст ×1.3 для товаров акции                    <span class="dim">(мягкое, маркетинг)</span>
+ 6. не показывать возвращённое этим юзером         <span class="dim">(жёсткое, опыт)</span>
+ 7. буст ×1.1 для товаров с быстрой доставкой      <span class="dim">(мягкое, логистика)</span>
+ 8. штраф ×0.7 для товаров с рейтингом &lt; 3.5      <span class="dim">(мягкое, качество)</span>
+ ...
+27. буст ×1.05 для товаров партнёра N              <span class="dim">(добавлено 2 года назад, автор уволился)</span>
+
+Суммарный эффект правил 4,5,7 на товар: 1.15 × 1.3 × 1.1 = <span class="bad">×1.645</span>
+</div>
+<p><strong>Проблема не в каждом правиле по отдельности, а в их произведении.</strong> Никто не проектировал буст в 1.645 раза — он получился сам. Товар с посредственной релевантностью 0.55 после всех бустов даёт 0.90 и обгоняет по-настоящему релевантный.</p>
+<div class="calc"><span class="lbl">Что делать</span>
+① <b>Ограничить суммарный буст:</b> boost_total = min(1.5, произведение)
+② <b>Логировать все сработавшие правила</b> для каждой позиции выдачи
+③ <b>Регулярный аудит:</b> для каждого правила замерить долю выдач,
+   где оно изменило порядок. Правило, не меняющее ничего, — удалить.
+④ <b>Срок жизни:</b> каждое правило имеет дату пересмотра,
+   после которой его надо подтвердить или удалить
+</div>
+<div class="calc"><span class="lbl">Результат аудита в замере</span>
+Правил всего:                              27
+Меняют порядок чаще чем в 1% выдач:        <span class="hl">11</span>
+Меняют порядок чаще чем в 10% выдач:        <span class="hl">4</span>
+Не сработали ни разу за месяц:              <span class="bad">8</span>
+
+После удаления 8 мёртвых и ограничения суммарного буста:
+  NDCG@10: <span class="res">+2.1%</span>,  латентность правил: 1.4 мс → <span class="res">0.6 мс</span>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Селективность фильтра определяет, где его применять</div>
+<div class="chsub">Узкий фильтр после ранжирования оставляет единицы кандидатов</div>
+<div style="position:relative;height:330px;"><canvas id="c_filter"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Сессия и пагинация <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Что делать со второй страницей и с тем, что человек уже видел</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Пагинация <span class="en">(pagination)</span></dt>
+<dd>Выдача результатов страницами. Кажется тривиальной, но создаёт нетривиальные требования к согласованности: между запросами страниц модель могла обновиться, и список поменяться.</dd>
+
+<dt>Согласованность выдачи <span class="en">(result consistency)</span></dt>
+<dd>Требование: при переходе на вторую страницу пользователь не должен видеть то, что было на первой, и не должен терять то, что не увидел.</dd>
+
+<dt>Курсор <span class="en">(cursor / continuation token)</span></dt>
+<dd>Механизм пагинации, при котором клиенту возвращается непрозрачный токен с состоянием выдачи. Позволяет продолжить с нужного места, даже если базовый список изменился.</dd>
+
+<dt>Сессионный контекст <span class="en">(session context)</span></dt>
+<dd>То, что пользователь сделал <em>прямо сейчас</em>: последние просмотры, клики, отказы. Часто более информативен, чем вся долгая история, — особенно если намерение сменилось.</dd>
+
+<dt>Усталость от показа <span class="en">(impression fatigue)</span></dt>
+<dd>Эффект: объект, показанный несколько раз без клика, начинает раздражать. Требует явного понижения таких объектов, иначе выдача «застревает».</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📄</span> Трассировка: три способа сделать пагинацию</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">1</span><span class="tstep-t">Способ A: пересчитывать заново со смещением</span></div>
+<div class="tstep-c">
+<div class="calc">
+Страница 1: запрос offset=0,  limit=10 → полный конвейер → топ-10
+Страница 2: запрос offset=10, limit=10 → полный конвейер → позиции 11–20
+
+Проблема: между запросами прошло 40 секунд.
+За это время обновились счётчики, пересобрался индекс, изменилась
+доступность товаров. Порядок стал другим.
+
+  Было на стр. 1:  A B C D E F G H I J
+  Новый порядок:   A C B E D G F I H J K L …
+  Отдаём поз. 11-20 нового порядка: <span class="bad">K L M N O P Q R S T</span>
+  Но D, F, H сдвинулись выше 10 и <span class="bad">пользователь их уже не увидит</span>
+
+Замер: доля пропущенных объектов при переходе на стр. 2 — <span class="bad">17%</span>
+       доля повторов — <span class="bad">9%</span>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Способ B: закэшировать весь список при первом запросе</span></div>
+<div class="tstep-c">
+<div class="calc">
+Страница 1: полный конвейер → ранжируем 300 кандидатов
+            → кэшируем ВЕСЬ упорядоченный список на 15 минут
+            → отдаём первые 10
+Страница 2: берём из кэша позиции 11–20 — <span class="res">мгновенно</span>
+
+Согласованность: <span class="res">идеальная</span>, повторов и пропусков нет
+Латентность стр. 2: <span class="res">2 мс</span> вместо 45
+Память: 300 ID × 8 байт × число активных сессий
+        при 200 тыс. активных сессий: 300 × 8 × 200000 = <span class="hl">480 МБ</span>
+</div>
+<p><strong>Компромисс:</strong> список «замораживается» на 15 минут. Если за это время товар кончился, он всё равно будет показан — нужна проверка доступности при отдаче страницы.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Способ C: курсор с исключением показанного</span></div>
+<div class="tstep-c">
+<div class="calc">
+Страница 1: конвейер → топ-10
+            → возвращаем курсор со списком показанных ID
+Страница 2: конвейер заново, НО исключаем ID из курсора
+            → берём топ-10 из оставшихся
+
+Согласованность: повторов нет гарантированно
+Свежесть: полная — учитываются все обновления
+Латентность стр. 2: <span class="hl">45 мс</span>, как у первой
+Размер курсора: растёт с числом страниц
+</div>
+<div class="ct">
+<table>
+<caption>Сравнение трёх способов</caption>
+<thead><tr><th>Способ</th><th>Повторы</th><th>Пропуски</th><th>Латентность стр. 2</th><th>Свежесть</th><th>Память</th></tr></thead>
+<tbody>
+<tr><td>A — offset</td><td class="r">9%</td><td class="r">17%</td><td class="r">45 мс</td><td class="g">полная</td><td class="g">0</td></tr>
+<tr class="best"><td>B — кэш списка</td><td class="g">0%</td><td class="g">0%</td><td class="g">2 мс</td><td class="r">заморожена</td><td class="a">480 МБ</td></tr>
+<tr class="best"><td>C — курсор</td><td class="g">0%</td><td class="a">возможны</td><td class="r">45 мс</td><td class="g">полная</td><td class="g">малая</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Рабочая схема — гибрид:</strong> кэшировать список (способ B) для быстрой пагинации, но проверять доступность и фильтры при каждой отдаче, а по истечении кэша пересчитывать с исключением показанного (способ C). Так получаются и скорость, и согласованность, и корректность.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Усталость от показа: как понижать надоевшее</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Формула затухания</span>
+множитель = γ^(число показов без клика)
+
+при γ = 0.85:
+  0 показов: 1.000
+  1 показ:   0.850
+  3 показа:  0.614
+  5 показов: 0.444
+  10 показов: <span class="hl">0.197</span>
+  20 показов: <span class="bad">0.039</span>
+
+Восстановление: счётчик убывает со временем
+  показов_эфф = показов × 0.5^(дней / 7)
+  <span class="dim">через неделю эффект вдвое слабее</span>
+</div>
+<div class="ct">
+<table>
+<caption>Влияние затухания на метрики</caption>
+<thead><tr><th>γ</th><th>Сессий с кликом</th><th>Уникальных объектов за неделю</th><th>CTR</th><th></th></tr></thead>
+<tbody>
+<tr><td>1.00 — нет затухания</td><td class="dim">базовый</td><td class="r">базовый</td><td class="dim">базовый</td><td class="note">выдача застревает</td></tr>
+<tr><td>0.95</td><td class="g">+1.1%</td><td class="g">+8.4%</td><td>+0.2%</td><td class="note"></td></tr>
+<tr class="best"><td>0.85</td><td class="g">+3.4%</td><td class="g">+31.2%</td><td class="a">−0.6%</td><td class="note">рабочая точка</td></tr>
+<tr><td>0.70</td><td class="g">+2.8%</td><td class="g">+52.1%</td><td class="r">−2.4%</td><td class="note">хорошие товары исчезают слишком быстро</td></tr>
+<tr><td>0.50</td><td class="a">+0.4%</td><td class="g">+78.3%</td><td class="r">−5.9%</td><td class="note">выдача нестабильна</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Обрати внимание на противоречие метрик.</strong> CTR падает (мы убираем проверенно кликабельные товары), а доля сессий с кликом растёт — потому что пользователь чаще находит <em>что-то новое</em>. Оптимизировать надо второе: CTR можно поднять, показывая одно и то же вечно, и это плохая стратегия.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сессионный контекст: последние действия важнее истории</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Вклад сессионного контекста в NDCG@10</caption>
+<thead><tr><th>Что учитываем</th><th>NDCG@10</th><th>Прирост</th><th></th></tr></thead>
+<tbody>
+<tr><td>Только долгая история</td><td>0.231</td><td class="dim">—</td><td class="note">базовая линия</td></tr>
+<tr><td>+ последние 3 просмотра сессии</td><td class="g">0.259</td><td class="g">+12.1%</td><td class="note">самый большой единичный прирост</td></tr>
+<tr><td>+ отказы в сессии (быстрый возврат)</td><td class="g">0.271</td><td class="g">+4.6%</td><td class="note">негативный сигнал ценен</td></tr>
+<tr class="best"><td>+ поисковый запрос сессии</td><td class="g">0.284</td><td class="g">+4.8%</td><td class="note">прямое указание намерения</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последние три просмотра дают +12.1% — больше, чем любой другой признак ранжировщика</strong> (сравни с ablation в секции 3). Причина: намерение может смениться. Человек весь год покупал книги, а сегодня ищет подарок ребёнку — долгая история здесь мешает, а сессия говорит правду.</p>
+<p><strong>Отдельно про отказы:</strong> быстрый возврат к выдаче после клика («отскок») — сильный негативный сигнал, и он доступен в реальном времени. Учитывать его дешевле, чем ждать полноценной обратной связи.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Усталость от показа: разнообразие против CTR</div>
+<div class="chsub">CTR падает, а доля сессий с кликом растёт — оптимизировать надо второе</div>
+<div style="position:relative;height:330px;"><canvas id="c_fatigue"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. Кэш и деградация: что делать при отказе <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Проектируется заранее, а не во время инцидента</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Плавная деградация <span class="en">(graceful degradation)</span></dt>
+<dd>Заранее спроектированное поведение при отказе компонента: система отдаёт упрощённый, но работающий ответ вместо ошибки. Ключевое слово — «заранее»: во время инцидента проектировать поздно.</dd>
+
+<dt>Уровни отката <span class="en">(fallback levels)</span></dt>
+<dd>Иерархия резервных вариантов: полный конвейер → без переупорядочивания → без ранжирования → популярное из кэша → статический список. Каждый следующий проще и надёжнее.</dd>
+
+<dt>Размыкатель <span class="en">(circuit breaker)</span></dt>
+<dd>Механизм: после серии отказов компонента запросы к нему перестают отправляться на некоторое время, и система сразу идёт по запасному пути. Защищает от того, чтобы каждый запрос ждал таймаута отказавшего сервиса.</dd>
+
+<dt>Коэффициент попадания в кэш <span class="en">(hit rate)</span></dt>
+<dd>Доля запросов, обслуженных из кэша. Определяет как скорость, так и устойчивость: при высоком hit rate отказ основного пути затрагивает меньше пользователей.</dd>
+
+<dt>Штормовое обновление <span class="en">(cache stampede)</span></dt>
+<dd>Ситуация, когда популярный ключ протух и все запросы к нему одновременно пошли в основной путь, обрушив его. Лечится вероятностным ранним обновлением или блокировкой на пересчёт.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🛡️</span> Трассировка: пять уровней отката</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">1</span><span class="tstep-t">Иерархия резервных путей</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что отдаём при отказе разных компонентов</caption>
+<thead><tr><th>Уровень</th><th>Когда</th><th>Что отдаём</th><th>Латентность</th><th>Качество</th></tr></thead>
+<tbody>
+<tr class="best"><td>0 — полный</td><td>всё работает</td><td>весь конвейер</td><td>45 мс</td><td class="g">100%</td></tr>
+<tr><td>1 — без MMR</td><td>отказ переупорядочивания</td><td>чистый порядок ранжировщика</td><td class="g">40 мс</td><td class="g">97%</td></tr>
+<tr><td>2 — без ранжирования</td><td>отказ тяжёлой модели</td><td>порядок предранжирования</td><td class="g">26 мс</td><td class="a">78%</td></tr>
+<tr><td>3 — без признаков</td><td>отказ хранилища признаков</td><td>отбор + дефолтные признаки</td><td class="g">14 мс</td><td class="a">61%</td></tr>
+<tr><td>4 — кэш</td><td>отказ отбора</td><td>предрассчитанные рекомендации</td><td class="g">3 мс</td><td class="a">54%</td></tr>
+<tr><td>5 — статика</td><td>всё отказало</td><td>популярное по сегменту</td><td class="g">1 мс</td><td class="r">31%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Уровень 5 качественно лучше, чем ошибка.</strong> 31% качества — это примерно уровень «показывай популярное по сегменту» из темы 6.3, и это вполне рабочая выдача. Пустой экран не даёт ничего.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Что происходит без деградации</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Инцидент: хранилище признаков отвечает медленно</span>
+Без деградации:
+  каждый запрос ждёт таймаут 15 мс, потом падает с ошибкой
+  → 100% запросов возвращают <span class="bad">пустой экран</span>
+  → длительность инцидента 22 минуты
+  → потеряно сессий: <span class="bad">~840 000</span>
+
+С деградацией:
+  после 50 подряд неудачных обращений срабатывает размыкатель
+  → система переходит на уровень 3 (дефолтные признаки)
+  → 100% запросов получают <span class="res">рабочую выдачу</span> на 61% качества
+  → потери: снижение CTR на 22 минуты, ~<span class="res">3 400</span> недополученных кликов
+</div>
+<p><strong>Разница между «840 тысяч пустых экранов» и «3.4 тысячи недополученных кликов» — это и есть ценность заранее спроектированной деградации.</strong></p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Размыкатель: параметры и логика</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Состояния и переходы</span>
+ЗАКРЫТ (норма):   запросы идут к компоненту
+                  считаем долю ошибок в скользящем окне 100 запросов
+                  если доля ошибок &gt; 50% → РАЗОМКНУТ
+
+РАЗОМКНУТ:        запросы НЕ идут, сразу откат
+                  ждём 30 секунд → ПОЛУОТКРЫТ
+
+ПОЛУОТКРЫТ:       пропускаем 10 пробных запросов
+                  если ≥ 8 успешных → ЗАКРЫТ
+                  иначе → РАЗОМКНУТ, ждём ещё 60 сек (удвоение)
+</div>
+<div class="calc"><span class="lbl">Почему это важно численно</span>
+Без размыкателя при отказе компонента:
+  каждый запрос ждёт таймаут 15 мс
+  при 50 000 запросов/сек это 750 000 мс ожидания в секунду
+  → потоки заняты, очередь растёт, <span class="bad">отказ распространяется на всю систему</span>
+
+С размыкателем:
+  первые ~100 запросов ждут таймаут, дальше откат мгновенный
+  → нагрузка на здоровые компоненты не растёт
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Кэш: что и на сколько кэшировать</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Слои кэша и их характеристики</caption>
+<thead><tr><th>Что</th><th>TTL</th><th>Hit rate</th><th>Экономия</th><th>Риск устаревания</th></tr></thead>
+<tbody>
+<tr><td>Признаки объектов</td><td>1 час</td><td class="g">82%</td><td class="g">−24% p99</td><td class="g">низкий</td></tr>
+<tr><td>Признаки пользователя</td><td class="a">2 мин</td><td class="a">31%</td><td>−6% p99</td><td class="a">средний</td></tr>
+<tr class="best"><td>Список кандидатов сессии</td><td>15 мин</td><td class="g">44%</td><td class="g">−94% на стр. 2+</td><td class="a">средний</td></tr>
+<tr><td>Готовая выдача (анонимы)</td><td>5 мин</td><td class="g">67%</td><td class="g">−98%</td><td class="r">высокий</td></tr>
+<tr><td>Популярное по сегменту</td><td>30 мин</td><td class="g">99%</td><td class="g">резервный путь</td><td class="g">низкий</td></tr>
+</tbody>
+</table>
+</div>
+<div class="calc"><span class="lbl">Штормовое обновление и как его избежать</span>
+Проблема: популярный ключ протух → 5000 запросов одновременно
+          пошли пересчитывать одно и то же
+
+Решение 1 — вероятностное раннее обновление:
+  обновляем ключ ДО истечения TTL с вероятностью,
+  растущей по мере приближения к сроку:
+
+    P(обновить) = exp(−β × (время_до_истечения / TTL))
+
+  при β = 3: за 10% до истечения P ≈ 0.74
+             за 50% до истечения P ≈ 0.22
+  → обновления размазываются во времени
+
+Решение 2 — блокировка: первый запрос пересчитывает,
+  остальные получают старое значение, пока идёт пересчёт
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Проверка деградации: учения</span></div>
+<div class="tstep-c">
+<div class="calc">
+Деградация, которую ни разу не проверяли, обычно не работает.
+
+<b>Регулярные учения:</b>
+  раз в месяц на 1% трафика принудительно отключается один компонент
+  замеряется: доля успешных ответов, латентность, падение CTR
+
+<b>Результат первых учений в замере:</b>
+  уровень 1 (без MMR):        <span class="res">работает</span>
+  уровень 2 (без ранжир.):    <span class="res">работает</span>
+  уровень 3 (без признаков):  <span class="bad">ОТКАЗ</span> — код падал на None вместо дефолта
+  уровень 4 (кэш):            <span class="bad">ОТКАЗ</span> — кэш был пуст, его никто не наполнял
+  уровень 5 (статика):        <span class="res">работает</span>
+
+Два из пяти уровней не работали, и об этом никто не знал,
+потому что настоящих отказов такого типа ещё не случалось.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Уровни деградации: качество против латентности</div>
+<div class="chsub">Даже последний уровень даёт рабочую выдачу — в отличие от ошибки</div>
+<div style="position:relative;height:330px;"><canvas id="c_degr"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Логирование: решение, определяющее всё будущее <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Что не залогировано сегодня, нельзя измерить никогда</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: логи — это единственная связь с реальностью</div>
+<p>Модель можно переобучить, архитектуру переписать, метрики пересчитать. <strong>Но данные за прошлый квартал нельзя залогировать задним числом.</strong></p>
+<p>Решение о том, что писать в логи, принимается один раз и определяет, какие вопросы вы сможете задать данным в следующие годы. Это самое долгоживущее техническое решение в рекомендательной системе.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📝</span> Трассировка: что писать и зачем именно это</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Минимально необходимый набор</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Поля события показа и что без них становится невозможным</caption>
+<thead><tr><th>Поле</th><th>Зачем</th><th>Что невозможно без него</th></tr></thead>
+<tbody>
+<tr><td>полный список показанных ID</td><td>отличить «не понравилось» от «не показали»</td><td class="r">любая корректная оценка, IPS</td></tr>
+<tr><td>позиция каждого</td><td>коррекция позиционного смещения</td><td class="r">секция 4 целиком</td></tr>
+<tr><td>версия каждой модели</td><td>ретроспективный анализ</td><td class="r">разбор «когда сломалось»</td></tr>
+<tr><td>скор каждого кандидата</td><td>отладка, калибровка</td><td class="r">понять, почему объект был выбран</td></tr>
+<tr><td>сработавшие правила</td><td>аудит слоя правил</td><td class="r">секция 7, аудит</td></tr>
+<tr class="best"><td>признак exploration</td><td>несмещённый слой</td><td class="r">честная офлайн-оценка</td></tr>
+<tr><td>ID эксперимента и группа</td><td>A/B-анализ</td><td class="r">любой эксперимент</td></tr>
+<tr><td>вероятность показа (если сэмплировали)</td><td>IPS-коррекция</td><td class="r">тема 6.1, секция 11</td></tr>
+<tr><td>время генерации и время показа</td><td>анализ задержек</td><td class="r">диагностика латентности</td></tr>
+<tr><td>viewport: что реально попало на экран</td><td>отличить показ от просмотра</td><td class="a">точная кривая p_k</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">2</span><span class="tstep-t">Разница между «показано» и «увидено»</span></div>
+<div class="tstep-c">
+<div class="calc">
+Система отдала 20 объектов. Сколько реально попало на экран?
+
+  мобильный экран, вертикальная лента:
+    без прокрутки видно ~4 объекта
+    средняя глубина прокрутки: 9.4 объекта
+    → <span class="bad">53% отданных объектов пользователь не видел вообще</span>
+
+Если считать CTR по отданным, а не по увиденным:
+  CTR_отданные = кликов / 20 = <span class="bad">занижен вдвое</span>
+  CTR_увиденные = кликов / 9.4 = <span class="res">корректно</span>
+</div>
+<p><strong>Логирование viewport меняет все метрики.</strong> Без него позиции 10–20 выглядят катастрофически плохими, хотя их просто не видели. Реализуется на клиенте: событие «объект попал в видимую область не менее чем на 50% и не менее чем на 1 секунду».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">3</span><span class="tstep-t">Стоимость логирования и как её снизить</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Объём при полном логировании</span>
+50 млн запросов/сутки × 300 кандидатов × ~120 байт на кандидата
+  = <span class="bad">1.8 ТБ в сутки</span> = 657 ТБ в год
+
+Слишком дорого хранить целиком.
+</div>
+<div class="calc"><span class="lbl">Практическая схема</span>
+① <b>Полностью</b> логируем показанные объекты (20 из 300)
+   50e6 × 20 × 120 = <span class="res">120 ГБ/сутки</span>
+
+② <b>Сэмплированно</b> (1% запросов) логируем ВСЕХ кандидатов
+   со скорами — для отладки и калибровки
+   50e6 × 0.01 × 300 × 120 = <span class="res">18 ГБ/сутки</span>
+
+③ <b>Полностью</b> логируем exploration-слой (2% трафика)
+   — он маленький, но самый ценный для оценки
+
+④ <b>Агрегаты</b> храним вечно, сырые события — 90 дней,
+   exploration-слой — <span class="res">2 года</span>
+
+Итого: 138 ГБ/сутки вместо 1.8 ТБ, в <span class="res">13 раз</span> дешевле
+</div>
+<p><strong>Ключевое решение — разные сроки хранения для разных данных.</strong> Exploration-слой мал по объёму и незаменим по ценности: на нём можно честно оценить любую модель ретроспективно. Его стоит хранить дольше всего.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">4</span><span class="tstep-t">Чего стоит недологирование — реальные примеры</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Что не залогировали и во что это обошлось</caption>
+<thead><tr><th>Не логировали</th><th>Обнаружено</th><th>Последствие</th></tr></thead>
+<tbody>
+<tr><td>Позиции показа</td><td>через 8 месяцев</td><td class="r">коррекция смещения невозможна, ждали 8 мес. новых данных</td></tr>
+<tr><td>Версию модели</td><td>во время инцидента</td><td class="r">3 дня на выяснение, какая версия сломала выдачу</td></tr>
+<tr><td>Полный список кандидатов</td><td>при попытке IPS</td><td class="r">офлайн-оценка политик невозможна в принципе</td></tr>
+<tr><td>Признак exploration</td><td>через год</td><td class="r">нет несмещённого слоя, все офлайн-оценки под вопросом</td></tr>
+<tr class="best"><td>Viewport</td><td>при анализе позиций</td><td class="a">кривая p_k оценена косвенно, с ошибкой ~15%</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Общая черта всех строк:</strong> проблема обнаруживается спустя месяцы, когда данные уже нужны, а собрать их задним числом нельзя. Единственное лекарство — заложить полное логирование <em>до</em> запуска, даже если сейчас непонятно, зачем оно.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<pre><code># Схема события показа
+{
+  "event_id":       "8f3a...",
+  "timestamp_gen":  1716823401.221,      # когда сгенерировали
+  "timestamp_show": 1716823401.398,      # когда реально показали
+  "user_id":        "u_91823",
+  "session_id":     "s_44a1",
+  "surface":        "home_feed",
+  "request_id":     "r_7712",
+
+  "models": {                             # версии ВСЕХ компонентов
+    "retrieval":   "two_tower_v37",
+    "prerank":     "gbdt_light_v12",
+    "rank":        "dnn_multitask_v83",
+    "rerank":      "mmr_lambda070"
+  },
+
+  "items": [
+    {"item_id": "i_5512", "position": 1,
+     "score_retrieval": 0.881, "score_rank": 0.742,
+     "score_final": 0.742, "source": "two_tower",
+     "rules_applied": ["boost_fresh_1.15"],
+     "viewed": true, "view_ms": 2400, "clicked": true},
+    {"item_id": "i_9034", "position": 2,
+     "score_retrieval": 0.774, "score_rank": 0.698,
+     "score_final": 0.803, "source": "graph_ppr",
+     "rules_applied": ["boost_own_brand_1.15"],
+     "viewed": true, "view_ms": 900, "clicked": false},
+    # ... остальные показанные
+  ],
+
+  "exploration": {"is_explore": false, "slot": null},
+  "experiments": [{"id": "exp_4471", "variant": "treatment"}],
+  "context": {"device": "ios", "hour": 21, "geo": "RU-TA",
+              "referrer": "push_notification"},
+  "latency_ms": {"retrieval": 2.1, "features": 11.4,
+                 "rank": 14.6, "rerank": 3.8, "total": 45.6}
+}
+</code></pre>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. Эксперименты: как понять, стало ли лучше <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Специфика A/B именно в рекомендациях</div>
+
+<div class="def">
+<div class="def-t">📖 Термины этой секции</div>
+<dl>
+<dt>Единица рандомизации <span class="en">(randomization unit)</span></dt>
+<dd>Что именно случайно делится на группы: пользователь, сессия, запрос, рынок. Выбор определяет, какие эффекты можно измерить и какие искажения возникнут.</dd>
+
+<dt>Интерференция <span class="en">(interference / SUTVA violation)</span></dt>
+<dd>Нарушение допущения о независимости: действия тестовой группы влияют на контрольную. В рекомендациях возникает через общее предложение (тема 6.2) и через петлю обучения.</dd>
+
+<dt>Эффект новизны <span class="en">(novelty effect)</span></dt>
+<dd>Временный подъём метрик просто от того, что выдача изменилась. Затухает за 1–2 недели. Тест короче этого срока систематически переоценивает эффект.</dd>
+
+<dt>Первичная и защитные метрики</dt>
+<dd><strong>Первичная</strong> — та, ради которой ставится эксперимент. <strong>Защитные</strong> (guardrail) — те, которые не должны ухудшиться: латентность, доля ошибок, удержание, покрытие каталога.</dd>
+
+<dt>Интерливинг <span class="en">(interleaving)</span></dt>
+<dd>Быстрое сравнение двух ранжировщиков через перемешивание их выдач. В 10–100 раз чувствительнее A/B, но не измеряет долгосрочные эффекты.</dd>
+</dl>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">🧪</span> Трассировка: выбор единицы рандомизации</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Четыре варианта и их свойства</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Единица рандомизации: что можно измерить</caption>
+<thead><tr><th>Единица</th><th>Мощность</th><th>Удержание</th><th>Интерференция</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr><td>Запрос</td><td class="g">максимальная</td><td class="r">нельзя</td><td class="r">высокая</td><td class="note">только для латентности</td></tr>
+<tr><td>Сессия</td><td class="g">высокая</td><td class="r">нельзя</td><td class="a">средняя</td><td class="note">внутрисессионные эффекты</td></tr>
+<tr class="best"><td>Пользователь</td><td class="g">хорошая</td><td class="g">можно</td><td class="a">средняя</td><td class="note">стандарт</td></tr>
+<tr><td>Рынок / регион</td><td class="r">низкая</td><td class="g">можно</td><td class="g">низкая</td><td class="note">двусторонние рынки</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Рандомизация по запросу выглядит соблазнительно</strong> — максимальная мощность при том же трафике. Но один и тот же человек попадает то в одну группу, то в другую, его опыт становится непоследовательным, и никакие поведенческие эффекты измерить нельзя. Годится только для чисто технических метрик.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">2</span><span class="tstep-t">Эффект новизны: как он обманывает</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Динамика Δ CTR по неделям</span>
+Неделя 1:  <span class="hl">+6.2%</span>   ← принимаем решение здесь? ошибка
+Неделя 2:  +4.1%
+Неделя 3:  +2.4%
+Неделя 4:  +1.9%
+Неделя 5:  <span class="res">+1.8%</span>   ← истинный эффект
+Неделя 6:  +1.7%
+
+Решение по первой неделе завысило бы эффект в <span class="bad">3.4 раза</span>.
+</div>
+<div class="calc"><span class="lbl">Как отличить новизну от реального улучшения</span>
+① Смотреть динамику по неделям — новизна затухает, эффект нет
+② Отдельно считать метрику для новых пользователей:
+   у них нет «привычки» к старой выдаче, значит нет и эффекта новизны
+
+   Δ CTR у существующих пользователей:  +6.2% → +1.8%
+   Δ CTR у новых пользователей:         <span class="res">+1.9% → +1.8%</span>  ← стабильно с первой недели
+
+③ Минимальная длительность теста — 2 недели, даже если
+   значимость достигнута раньше
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n bad">3</span><span class="tstep-t">Интерференция через петлю обучения</span></div>
+<div class="tstep-c">
+<div class="calc">
+Тестовая группа получает новую модель → её клики попадают в общие логи
+→ на них обучается СЛЕДУЮЩАЯ версия модели
+→ которая обслуживает и контрольную группу тоже
+
+Результат: контрольная группа постепенно «заражается» эффектом теста,
+разница между группами сокращается, эффект недооценивается.
+
+Замер: 8-недельный тест с еженедельным переобучением
+
+  Неделя 1:  Δ CTR <span class="hl">+4.4%</span>
+  Неделя 4:  Δ CTR +3.1%
+  Неделя 8:  Δ CTR <span class="bad">+1.9%</span>   ← но модель не стала хуже!
+
+Эффект «размылся»: контроль обучался частично на данных теста.
+</div>
+<div class="calc"><span class="lbl">Лечение</span>
+Обучать модель контрольной группы ТОЛЬКО на её собственных логах.
+Дороже (два конвейера обучения), но даёт честное сравнение.
+
+После разделения конвейеров:
+  Неделя 1: +4.4%,  Неделя 8: <span class="res">+4.2%</span>  ← стабильно
+</div>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">4</span><span class="tstep-t">Сколько нужно трафика: расчёт</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Формула размера выборки</span>
+n на группу ≈ 16 × σ² / Δ²
+
+где σ — стандартное отклонение метрики, Δ — искомый эффект
+
+Для CTR: σ² ≈ p(1−p), при p = 0.08:  σ² = 0.08 × 0.92 = 0.0736
+
+Хотим уловить относительный эффект 2%, то есть Δ = 0.08 × 0.02 = 0.0016
+
+  n = 16 × 0.0736 / 0.0016² = 1.1776 / 0.00000256 = <span class="res">460 000</span> на группу
+</div>
+<div class="ct">
+<table>
+<caption>Сколько нужно пользователей для разных эффектов</caption>
+<thead><tr><th>Искомый эффект</th><th>Пользователей на группу</th><th>Дней при 500 тыс. DAU</th></tr></thead>
+<tbody>
+<tr><td>5%</td><td class="g">74 000</td><td class="g">1 день</td></tr>
+<tr class="best"><td>2%</td><td>460 000</td><td class="g">2 дня</td></tr>
+<tr><td>1%</td><td class="a">1 840 000</td><td class="a">8 дней</td></tr>
+<tr><td>0.5%</td><td class="r">7 360 000</td><td class="r">30 дней</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Обрати внимание на квадратичный рост.</strong> Чтобы уловить вдвое меньший эффект, нужно в четыре раза больше данных. Отсюда практическое следствие: эффекты меньше 0.5% почти никогда не окупается измерять — тест займёт месяц, за который изменится всё остальное.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Защитные метрики: что обязано не ухудшиться</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Набор guardrail-метрик для рекомендательного эксперимента</caption>
+<thead><tr><th>Метрика</th><th>Порог тревоги</th><th>Что ловит</th></tr></thead>
+<tbody>
+<tr><td>p99 латентности</td><td class="r">+15%</td><td class="note">модель стала слишком тяжёлой</td></tr>
+<tr><td>Доля ошибок</td><td class="r">+0.1 п.п.</td><td class="note">нестабильность нового кода</td></tr>
+<tr><td>Покрытие каталога</td><td class="r">−10%</td><td class="note">схлопывание выдачи (тема 6.1)</td></tr>
+<tr><td>Доля свежих объектов</td><td class="r">−20%</td><td class="note">холодный старт сломался</td></tr>
+<tr class="best"><td>Удержание 7 дней</td><td class="r">−0.5 п.п.</td><td class="note">кликбейт: CTR вверх, возвраты вниз</td></tr>
+<tr><td>Жалобы и скрытия</td><td class="r">+20%</td><td class="note">выдача раздражает</td></tr>
+<tr><td>Доля пустых выдач</td><td class="r">+0.5 п.п.</td><td class="note">фильтры отсекают слишком много</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Строка про удержание — самая важная и самая часто пропускаемая.</strong> Она ловит основной способ обмануть систему метрик: поднять CTR за счёт кликбейта. CTR растёт, а люди возвращаются реже — и обнаружить это можно только на горизонте недель.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Эффект новизны против реального улучшения</div>
+<div class="chsub">У новых пользователей эффекта новизны нет — их динамика показывает истину сразу</div>
+<div style="position:relative;height:340px;"><canvas id="c_novelty"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S12 ================= -->
+<div class="sec" id="s12">
+<div class="stitle">12. Мониторинг: как заметить поломку до пользователей <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Специфика рекомендаций — деградации почти всегда тихие</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: рекомендации ломаются молча</div>
+<p>Обычный сервис при поломке возвращает ошибку — это видно сразу. <strong>Рекомендательная система при поломке возвращает плохие рекомендации</strong>, и технически всё зелёное: код работает, латентность в норме, ошибок ноль.</p>
+<p>В теме 6.2 разбирался инцидент с рассинхроном башен: CTR упал на 63%, а все технические проверки проходили. Обнаружить такое можно только мониторингом <em>содержания</em> выдачи, а не её наличия.</p>
+</div>
+
+<div class="trace">
+<div class="trace-hd"><span class="tico">📡</span> Трассировка: что мониторить и какие пороги</div>
+<div class="trace-body">
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">1</span><span class="tstep-t">Четыре уровня мониторинга</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>От технических метрик к содержательным</caption>
+<thead><tr><th>Уровень</th><th>Метрики</th><th>Задержка обнаружения</th><th>Что ловит</th></tr></thead>
+<tbody>
+<tr><td>1 — инфраструктура</td><td>латентность, ошибки, память</td><td class="g">секунды</td><td class="a">падения, перегрузки</td></tr>
+<tr><td>2 — распределения</td><td>средний скор, разброс, доля источников</td><td class="g">минуты</td><td class="g">рассинхрон, сломанные признаки</td></tr>
+<tr class="best"><td>3 — содержание выдачи</td><td>покрытие, повторы, доля свежего</td><td class="g">минуты</td><td class="g">схлопывание, вырождение</td></tr>
+<tr><td>4 — поведение</td><td>CTR, конверсия, удержание</td><td class="r">часы — дни</td><td class="g">всё, но поздно</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Уровни 2 и 3 — ключевые.</strong> Уровень 1 не заметит содержательной поломки, уровень 4 заметит, но слишком поздно. Именно средние уровни дают сочетание «быстро и по существу».</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">2</span><span class="tstep-t">Конкретные метрики уровня 2 и пороги</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Мониторинг распределений — ловит то, чего не видит инфраструктура</caption>
+<thead><tr><th>Метрика</th><th>Норма</th><th>Тревога</th><th>Что означает</th></tr></thead>
+<tbody>
+<tr class="best"><td>Средний косинус top-1</td><td>0.80–0.92</td><td class="r">&lt; 0.60</td><td class="note">рассинхрон модели и индекса</td></tr>
+<tr><td>Средний финальный скор</td><td>±10% от вчера</td><td class="r">±25%</td><td class="note">сломался признак или калибровка</td></tr>
+<tr><td>Разброс скоров (σ)</td><td>±15%</td><td class="r">падение вдвое</td><td class="note">модель перестала различать</td></tr>
+<tr><td>Доля кандидатов по источникам</td><td>±5 п.п.</td><td class="r">±15 п.п.</td><td class="note">отказ одного из источников</td></tr>
+<tr><td>Доля дефолтных значений признаков</td><td>&lt; 3%</td><td class="r">&gt; 15%</td><td class="note">хранилище признаков деградирует</td></tr>
+<tr><td>Число кандидатов после фильтров</td><td>250–350</td><td class="r">&lt; 100</td><td class="note">правило отсекает слишком много</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Первая строка — прямой детектор инцидента из темы 6.2.</strong> Средний косинус между вектором пользователя и найденным top-1 падает мгновенно при рассинхроне, задолго до того, как это отразится в CTR.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">3</span><span class="tstep-t">Метрики уровня 3: содержание выдачи</span></div>
+<div class="tstep-c">
+<div class="ct">
+<table>
+<caption>Мониторинг содержания — ловит вырождение</caption>
+<thead><tr><th>Метрика</th><th>Норма</th><th>Тревога</th><th>Отсылка</th></tr></thead>
+<tbody>
+<tr><td>Уникальных объектов в выдачах за час</td><td>стабильна</td><td class="r">падение на 30%</td><td class="note">схлопывание, тема 6.1</td></tr>
+<tr><td>Коэффициент Джини по показам</td><td>&lt; 0.85</td><td class="r">&gt; 0.90</td><td class="note">концентрация на хитах</td></tr>
+<tr><td>Доля объектов моложе 7 дней</td><td>&gt; 8%</td><td class="r">&lt; 3%</td><td class="note">холодный старт, тема 6.3</td></tr>
+<tr class="best"><td>Средняя избыточность топ-10</td><td>0.15–0.30</td><td class="r">&gt; 0.50</td><td class="note">MMR отвалился, секция 6</td></tr>
+<tr><td>Доля выдач с повторами</td><td>&lt; 1%</td><td class="r">&gt; 5%</td><td class="note">сломалась дедупликация</td></tr>
+<tr><td>Стабильность топ-3 час к часу</td><td>40–70%</td><td class="r">&gt; 90%</td><td class="note">выдача застыла, секция 4</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Последняя строка ловит замыкание петли позиционного смещения.</strong> Если топ-3 совпадает с прошлым часом более чем на 90%, выдача перестала реагировать на что-либо — ровно тот сценарий, что разбирался в секции 4.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n">4</span><span class="tstep-t">Пример: как мониторинг поймал реальную поломку</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Хронология инцидента</span>
+14:20  Выкатили новую версию хранилища признаков.
+       Инфраструктура: <span class="res">всё зелёное</span>, латентность даже улучшилась.
+
+14:23  Тревога уровня 2: <span class="bad">доля дефолтных значений признаков 3% → 41%</span>
+       Причина: изменился формат ключа, часть признаков не находится.
+
+14:24  Тревога уровня 2: разброс скоров упал на 38%
+       (модель получает одинаковые входы → выдаёт похожие скоры)
+
+14:26  Тревога уровня 3: <span class="bad">уникальных объектов в выдачах −44%</span>
+       (без признаков модель скатилась к популярному)
+
+14:31  Откат.
+
+15:40  Тревога уровня 4 сработала бы здесь: CTR −11%
+       <span class="dim">то есть на 77 минут позже уровня 2</span>
+</div>
+<p><strong>Уровень 2 обнаружил проблему за 3 минуты, уровень 4 обнаружил бы за 80.</strong> Разница — 77 минут работы сломанной системы, то есть при 50 млн запросов в сутки около 2.7 млн испорченных выдач.</p>
+</div>
+</div>
+
+<div class="tstep">
+<div class="tstep-hd"><span class="tstep-n ok">5</span><span class="tstep-t">Сравнение с эталоном как универсальный детектор</span></div>
+<div class="tstep-c">
+<div class="calc"><span class="lbl">Приём: золотой набор запросов</span>
+① Зафиксировать 1000 запросов с разными профилями пользователей
+② Каждые 10 минут прогонять их через продакшен
+③ Сравнивать выдачу с эталонной (снятой на проверенной версии)
+
+Метрики сравнения:
+   пересечение топ-10 с эталоном:   норма <span class="res">70–95%</span>, тревога &lt; 40%
+   средний сдвиг позиции:            норма <span class="res">&lt; 2.5</span>,  тревога &gt; 5
+   доля запросов с пустой выдачей:   норма <span class="res">0%</span>,     тревога &gt; 0.5%
+
+Стоимость: 1000 запросов раз в 10 минут = 6000/час,
+           доли процента от основного трафика
+</div>
+<p><strong>Этот детектор ловит почти всё сразу</strong>, потому что реагирует на изменение выдачи как таковое, независимо от причины. Его недостаток — он не отличает «сломалось» от «выкатили улучшение», поэтому эталон надо обновлять при каждой плановой выкатке.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="chb">
+<div class="cht">Скорость обнаружения инцидента по уровням мониторинга</div>
+<div class="chsub">Инфраструктура не видит содержательных поломок, поведенческие метрики видят слишком поздно</div>
+<div style="position:relative;height:330px;"><canvas id="c_mon"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S13 ================= -->
+<div class="sec" id="s13">
+<div class="stitle">13. Подводные камни <span class="lvltag lvl-mid">средний</span></div>
+<div class="sdesc">Пятнадцать ошибок уровня системы, а не модели</div>
+
+<div class="pitfalls">
+<div class="pf"><div class="pfn">1</div><div class="pfc"><b>Этапы каскада оптимизируются независимо.</b> Замена отбора улучшила Recall на 5.6%, а итоговый NDCG упал на 5.0% — ранжировщик обучался на другом распределении. При замене этапа переобучать все последующие и ставить A/B на связку.</div></div>
+<div class="pf"><div class="pfn">2</div><div class="pfc"><b>Оптимизируется модель, а не загрузка признаков.</b> В разложении бюджета загрузка признаков объектов стоит 11.4 мс с хвостом 38.7 мс — дороже и хуже, чем ранжирование. Батчирование дало −43.6% p99, оптимизация модели — только −10%.</div></div>
+<div class="pf"><div class="pfn">3</div><div class="pfc"><b>Мониторится средняя латентность.</b> Медиана 45.6 мс укладывалась в бюджет, а p99 составлял 121 мс — полмиллиона медленных ответов в сутки. Средняя латентность систематически создаёт ложное благополучие.</div></div>
+<div class="pf"><div class="pfn">4</div><div class="pfc"><b>Счётчики посчитаны на всём периоде.</b> Офлайн NDCG вырос до 0.389, A/B дал −2.1%. Разница только в параметре <code>closed="left"</code>, исключающем текущее событие из окна.</div></div>
+<div class="pf"><div class="pfn">5</div><div class="pfc"><b>Нет коррекции позиционного смещения.</b> Объект с CTR 4.2% на 8-й позиции втрое релевантнее объекта с 8.5% на первой. Без коррекции выдача застывает: за 8 недель доля неизменного топ-3 выросла с 12% до 83%.</div></div>
+<div class="pf"><div class="pfn">6</div><div class="pfc"><b>Позиция подаётся как число, а не бакеты.</b> Зависимость резко нелинейна: спад между позициями 1 и 2 больше, чем между 15 и 20. Линейный признак этого не поймает.</div></div>
+<div class="pf"><div class="pfn">7</div><div class="pfc"><b>Кривая проверки взята из чужой статьи.</b> Она зависит от интерфейса, устройства и типа контента и может отличаться в разы. Мерить надо на своих данных через рандомизацию позиций на 1–2% трафика.</div></div>
+<div class="pf"><div class="pfn">8</div><div class="pfc"><b>Скоры складываются без калибровки.</b> В многокритериальной формуле веса имеют смысл только если $\hat P$ соответствуют реальным частотам. Некалиброванные вероятности делают экономический расчёт произвольным.</div></div>
+<div class="pf"><div class="pfn">9</div><div class="pfc"><b>Веса целей подбирает инженер.</b> Выбор точки на Парето-фронте — продуктовое решение. Инженер строит фронт, продукт выбирает точку; иначе кто-то неявно принял решение, которое потом невозможно обосновать.</div></div>
+<div class="pf"><div class="pfn">10</div><div class="pfc"><b>Разнообразие оценивается по NDCG.</b> MMR почти всегда ухудшает офлайн-метрики — они считаются на логах без разнообразия. В замере: −1.9% NDCG, +2.8% сессий с кликом, +1.4% удержания.</div></div>
+<div class="pf"><div class="pfn">11</div><div class="pfc"><b>Узкий фильтр применяется после ранжирования.</b> При селективности 4% из 2000 кандидатов остаётся один. Фильтр, пропускающий менее 10%, должен применяться внутри отбора.</div></div>
+<div class="pf"><div class="pfn">12</div><div class="pfc"><b>Бизнес-правила накапливаются без аудита.</b> Из 27 правил 8 не сработали ни разу за месяц, а произведение бустов доходило до 1.645. Удаление мёртвых правил и ограничение суммарного буста дало +2.1% NDCG.</div></div>
+<div class="pf"><div class="pfn">13</div><div class="pfc"><b>Пагинация через offset.</b> При пересчёте между страницами 17% объектов пропускается, 9% повторяется. Нужен кэш списка сессии или курсор с исключением показанного.</div></div>
+<div class="pf"><div class="pfn">14</div><div class="pfc"><b>Деградация не проверена учениями.</b> В первых учениях два уровня отката из пяти не работали — код падал на None, а резервный кэш никто не наполнял. Об этом не знали, потому что таких отказов ещё не случалось.</div></div>
+<div class="pf"><div class="pfn">15</div><div class="pfc"><b>Решение по эксперименту принято за неделю.</b> Эффект новизны завышает результат в 3.4 раза и затухает за 2–4 недели. Минимальная длительность — две недели, даже если значимость достигнута раньше.</div></div>
+</div>
+</div>
+
+<!-- ================= S14 ================= -->
+<div class="sec" id="s14">
+<div class="stitle">14. System Design: полные разборы <span class="lvltag lvl-adv">продвинутый</span></div>
+<div class="sdesc">Пять систем целиком, от отбора до мониторинга</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">▶️</span><div><div class="sysname">YouTube — главная страница</div><div class="syssub">Миллиарды видео, персональная лента, десятки миллисекунд</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Собрать персональную ленту из каталога в миллиарды видео. Метрика — не клики, а время просмотра и удержание: кликбейт здесь особенно дёшев и особенно вреден.</p>
+<p><strong>Архитектура.</strong> Двухэтапный каскад. Кандидатогенерация — лёгкая модель на векторах, история просмотров усредняется в вектор пользователя, поиск через ANN. Ранжирование — тяжёлая сеть на сотнях признаков, включая перекрёстные и контекстные, с мультизадачными головами на разные типы отклика.</p>
+<p><strong>Ключевая находка про возраст видео.</strong> Признак «сколько дней назад загружено» подаётся при обучении, а на инференсе подставляется ноль — то есть модель спрашивают «а если бы видео было новым». Без этого приёма модель систематически предпочитает старые видео, у которых накопилось больше просмотров, и свежий контент не имеет шансов. Механика та же, что у обнуления позиции в секции 4.</p>
+<p><strong>Нюанс валидации.</strong> Метрика кандидатогенерации — Recall при больших K, а не точность порядка; ошибка здесь дорога, потому что модель с лучшим NDCG@10 может давать худшую итоговую систему, отдавая ранжировщику меньше материала. Отдельно контролируется доля свежего контента в кандидатах — иначе оптимизация просмотров тихо схлопывает выдачу к старым хитам.</p>
+<p><strong>Подводный камень.</strong> Целевая переменная взвешивается по времени просмотра, а не по факту клика: клик на превью может не означать интереса к видео. Без этого взвешивания система оптимизирует привлекательность обложки, а не ценность контента.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎬</span><div><div class="sysname">Netflix — персонализированные ряды</div><div class="syssub">Не список, а страница из рядов, каждый со своей темой</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Главный экран состоит из рядов («Продолжить просмотр», «Комедии для вас», «Новинки»). Персонализируется не только содержимое рядов, но и <em>набор и порядок самих рядов</em>. Целевая метрика — удержание подписки, а не клики.</p>
+<p><strong>Архитектура.</strong> Каскад с дополнительным уровнем: сначала отбираются кандидаты в каждый ряд, затем ранжируются внутри ряда, затем ранжируются сами ряды. Плюс отдельная бандитская задача на выбор артворка — одному тайтлу соответствуют десятки обложек, и выбор влияет на клик сильнее, чем позиция.</p>
+<p><strong>Почему так.</strong> Выбор ряда — это выбор <em>контекста</em>, в котором пользователь смотрит на тайтл. Один и тот же фильм в ряду «Комедии» и в ряду «Новинки» воспринимается по-разному. Плоский список этого выразить не может.</p>
+<p><strong>Нюанс валидации.</strong> Офлайн-метрики систематически недооценивают exploration, поэтому оценка ведётся на несмещённом слое: часть трафика получает выдачу со случайной перестановкой, и на ней метрики считаются без IPS-коррекции. Горизонт измерения — недели, потому что эффект разнообразия проявляется в удержании, а не в CTR ближайшей сессии.</p>
+<p><strong>Подводный камень.</strong> Эффект новизны при смене артворка особенно силён: любая новая обложка даёт временный подъём CTR просто потому, что картинка изменилась. Бандит, не учитывающий это, будет бесконечно чередовать варианты, принимая новизну за качество. Сравнение ведётся на горизонте, превышающем время затухания эффекта.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🛒</span><div><div class="sysname">Amazon — рекомендации на карточке и в корзине</div><div class="syssub">Одна инфраструктура, принципиально разные задачи</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> На карточке товара и в корзине показываются рекомендации, но смысл у них противоположный: на карточке нужны <em>альтернативы для сравнения</em>, в корзине — <em>дополняющие товары</em>. Одна модель обе задачи решить не может.</p>
+<p><strong>Архитектура.</strong> Разные модели обучаются на разных сигналах: субституты — на совместных просмотрах без покупки (человек сравнивает), комплементы — на совместных покупках в одном чеке. Инфраструктура общая: тот же ANN-индекс, тот же ранжировщик, различаются обучающие пары и место применения.</p>
+<p><strong>Почему так.</strong> Один и тот же коллаборативный сигнал означает разное в зависимости от типа события. Просмотр двух дрелей — сравнение, покупка дрели и свёрел — дополнение. Смешивание этих сигналов теряет различие, и в корзине появляется вторая дрель.</p>
+<p><strong>Нюанс валидации.</strong> Для комплементов метрика — прирост <em>размера чека</em>, а не CTR блока. Клик по субституту в корзине может означать замену товара, то есть нулевой или отрицательный эффект. Проверка идёт через holdout-группу без блока рекомендаций: сравнивается средний чек, а не поведение внутри блока. Это ровно та инкрементальная логика, что разбиралась в теме 6.3 на примере Instacart.</p>
+<p><strong>Подводный камень.</strong> EASE из темы 6.1 частично решает различение автоматически — отрицательный вес $B_{ij}$ означает субститут. Но она не подсказывает, <em>где</em> показывать, поэтому разделение по месту в интерфейсе всё равно нужно.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🍔</span><div><div class="sysname">Доставка еды — рекомендации с жёсткими ограничениями</div><div class="syssub">Когда фильтры отсекают 99% каталога</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> Порекомендовать блюда и рестораны. Особенность — предельно узкие фильтры: ресторан должен работать <em>сейчас</em>, доставлять <em>по этому адресу</em>, иметь приемлемое время доставки, а блюдо должно быть в наличии. Из тысяч ресторанов города конкретному пользователю в конкретный момент доступны десятки.</p>
+<p><strong>Архитектура.</strong> Фильтрация встроена в отбор, а не применяется после: строится геоиндекс, и ANN-поиск идёт только по доступной зоне. Дополнительно — отдельные предрассчитанные индексы на частые срезы (например, «работает ночью»), потому что при селективности ниже 1% фильтрация внутри обхода графа тоже становится дорогой.</p>
+<p><strong>Почему так.</strong> Расчёт из секции 7 прямо применим: при доле проходящих 4% из 2000 кандидатов остаётся 1.2. Наивная постфильтрация даёт пустую выдачу на большинстве запросов.</p>
+<p><strong>Нюанс валидации.</strong> Метрики считаются <em>внутри города и временного слота</em>, а не глобально. Усреднение по всем городам доминируется крупными и скрывает провал в малых, где доступных ресторанов единицы. Отдельно отслеживается доля запросов с пустой или почти пустой выдачей — прямой индикатор того, что фильтры настроены слишком жёстко.</p>
+<p><strong>Подводный камень.</strong> Доступность меняется в реальном времени: ресторан закрылся, блюдо кончилось, курьеров не хватает. Данные о доступности запаздывают на минуты, и жёсткая фильтрация по устаревшим данным вредит дважды — показывает недоступное и скрывает доступное. Практическое решение — закладывать <em>вероятность</em> доступности в скор, а жёстко фильтровать только по надёжно известным признакам.</p>
+</div>
+</div>
+
+<div class="sysbox">
+<div class="sysbox-hd"><span class="sysico">🎧</span><div><div class="sysname">Spotify — непрерывный поток без явного выбора</div><div class="syssub">Когда рекомендация играет сама и «клика» не существует</div></div></div>
+<div class="sysbody">
+<p><strong>Задача.</strong> В радио и автоплее пользователь не выбирает — трек начинает играть сам. Понятия «клик» нет, а значит, нет и привычной целевой переменной. При этом решение принимается не о списке, а о <em>последовательности</em>: порядок треков влияет на то, продолжит ли человек слушать.</p>
+<p><strong>Архитектура.</strong> Сигнал строится из поведения при воспроизведении: пропуск в первые секунды — сильный негатив, дослушивание — позитив, сохранение — очень сильный позитив. Веса подбираются так, чтобы модель оптимизировала длительность сессии. Разнообразие обеспечивается не только MMR по содержанию, но и ограничениями на последовательность: не более N треков подряд одного артиста, чередование знакомого и нового.</p>
+<p><strong>Почему так.</strong> В потоковом сценарии «показ» не равен «выбору», и обычная логика позитив/негатив неприменима. Пропуск здесь информативнее клика в обычной ленте — это явный отказ, а не просто отсутствие действия.</p>
+<p><strong>Нюанс валидации.</strong> Оценка ведётся на уровне <em>сессии целиком</em>, а не отдельного трека: перестановка одних и тех же треков даёт разную длину сессии из-за усталости и эффекта контраста, и поштучная метрика этого не видит. Метрика — доля дослушанных треков и длина сессии, а не CTR.</p>
+<p><strong>Подводный камень.</strong> Пропуск неоднозначен: он может означать «не нравится», а может — «нравится, но не сейчас». Разделение по контексту (время суток, тип сессии, устройство) существенно меняет интерпретацию одного и того же события, и без этого разделения модель учится на смешанном сигнале.</p>
+</div>
+</div>
+</div>
+
+<!-- ================= S15 ================= -->
+<div class="sec" id="s15">
+<div class="stitle">15. Вопросы и ответы <span class="lvltag lvl-adv">30 вопросов</span></div>
+<div class="sdesc">С опорой на трассировки, а не на определения</div>
+
+<div class="qa"><div class="q">1. Зачем нужен каскад, а не одна модель?</div><div class="a">Стоимость модели на одного кандидата различается на порядки: ANN-поиск — около 128 FLOP, тяжёлый ранжировщик — 200 000, разница в 1560 раз. Отранжировать весь каталог тяжёлой моделью стоит $4\times10^{11}$ FLOP на запрос, каскад — $6.6\times10^7$, то есть в 6000 раз дешевле при том же качестве финальной выдачи. Ключевой принцип баланса: произведение «число кандидатов × стоимость одного» на каждом этапе примерно постоянно.</div></div>
+
+<div class="qa"><div class="q">2. Как выбрать, сколько кандидатов пропускать между этапами?</div><div class="a">По замеру, а не на глаз. В таблице секции 1 Recall отбора растёт с 0.412 до 0.782 при расширении с 500 до 10 000 кандидатов, а итоговый NDCG выходит на плато уже после 2000: 0.238 против 0.242 при впятеро большей ширине. <strong>Кривая качества выходит на плато раньше кривой Recall</strong> — расширять дальше значит платить временем за кандидатов, которые всё равно не попадут в топ.</div></div>
+
+<div class="qa"><div class="q">3. Почему нельзя оптимизировать этапы каскада независимо?</div><div class="a">Каждый этап видит распределение, порождённое предыдущим. В замере замена two-tower на графовую модель подняла Recall отбора с 0.681 до 0.719 (+5.6%), а итоговый NDCG упал с 0.238 до 0.226 (−5.0%) — ранжировщик обучался отличать хорошее от среднего в старом наборе кандидатов. После переобучения на новых кандидатах стало 0.247, то есть +3.8%, но выяснилось это только после переобучения. Правило: менять этап — переобучать все последующие, A/B ставить на связку.</div></div>
+
+<div class="qa"><div class="q">4. Что на самом деле съедает больше всего времени?</div><div class="a">Не модель, а загрузка признаков. В разложении секции 2: признаки объектов — 11.4 мс медианы и 38.7 мс p99, ранжирование — 14.6 мс медианы и 26.3 мс p99. По медиане модель дороже, по хвосту — наоборот, и хвост важнее. Батчирование загрузки дало −43.6% p99, кэш признаков ещё −24.4%, а оптимизация модели квантованием — только −10.1%.</div></div>
+
+<div class="qa"><div class="q">5. Почему p99 всей системы сильно хуже, чем p99 каждого этапа?</div><div class="a">Хвосты складываются. При 10 последовательных этапах, каждый с вероятностью 1% быть медленным, вероятность что хотя бы один окажется медленным равна $1 - 0.99^{10} = 9.56\%$. Чтобы итоговый p99 был приемлемым, каждый этап должен укладываться на уровне p99.9. Отсюда следствие: <strong>параллелизация важнее оптимизации отдельных этапов</strong> — при параллельном запуске берётся максимум, а не сумма.</div></div>
+
+<div class="qa"><div class="q">6. Какие признаки доступны на ранжировании и недоступны на отборе?</div><div class="a">Перекрёстные — зависящие одновременно от пользователя и объекта: «сколько раз этот человек смотрел эту категорию за 7 дней», «покупал ли он этот бренд», «насколько цена соответствует его обычному чеку». На отборе они невозможны, потому что векторы объектов считаются офлайн (тема 6.2). В ablation секции 3 они дали +11.1% — самый большой единичный прирост после базовых признаков объекта.</div></div>
+
+<div class="qa"><div class="q">7. Как утечка через счётчики выглядит и как её поймать?</div><div class="a">Счётчик, посчитанный по всему периоду, включает будущие события. В замере: офлайн NDCG 0.389 против корректных 0.247, при этом A/B дал −2.1% вместо +4.8%. Три проверки: ① слишком хорошая метрика без объяснения; ② один признак даёт больше 40% важности; ③ <strong>метрика по дням тестового периода не падает</strong>. Третья самая надёжная: качество обязано плавно снижаться по мере удаления от обучения, потому что данные устаревают. Плоская кривая означает, что модель получает информацию, которой в тот момент не существовало.</div></div>
+
+<div class="qa"><div class="q">8. Что такое позиционное смещение и насколько оно велико?</div><div class="a">Клик на верхней позиции вероятнее клика на нижней при <em>одинаковой</em> релевантности, потому что пользователь не доходит взглядом до низа. В типичной кривой $p_1 = 1.00$, $p_8 = 0.21$, $p_{20} = 0.09$ — то есть двадцатая позиция видна в 11 раз реже первой. Формально $P(\text{клик}) = p_k \times r_{ui}$, и логи фиксируют только произведение, не различая, какого из множителей не хватило.</div></div>
+
+<div class="qa"><div class="q">9. Разбери на числах, как коррекция меняет вывод.</div><div class="a">Из секции 4. Объект A: позиция 1, 1000 показов, 85 кликов, сырой CTR 8.5%. Объект B: позиция 8, 1000 показов, 42 клика, сырой CTR 4.2%. Наивно A лучше вдвое. С коррекцией: $\hat r_A = 0.085/1.00 = 0.085$, $\hat r_B = 0.042/0.21 = 0.200$ — <strong>B лучше в 2.35 раза</strong>. Разница между двумя выводами в 4.7 раза. Содержательно: среди тех, кто B <em>увидел</em>, кликнули 20% против 8.5% у A.</div></div>
+
+<div class="qa"><div class="q">10. Что происходит без коррекции позиции?</div><div class="a">Замыкается петля: объект внизу получает мало кликов → скор падает → опускается ещё ниже → кликов ещё меньше → выпадает из выдачи. В замере за 8 недель доля выдач с неизменным топ-3 выросла с 12% до 83%, а CTR сначала рос (+0.9% на 4-й неделе), потом упал (−1.8% на 8-й). Это та же петля обратной связи, что в теме 6.1, но через позицию — и она незаметнее, потому что объект формально показывается, просто там, где его не видят.</div></div>
+
+<div class="qa"><div class="q">11. Как измерить кривую вероятности проверки?</div><div class="a">Рабочий стандарт — рандомизация позиций на 1–2% трафика: порядок топ-N перемешивается случайно, и на этих показах позиция не связана с релевантностью. Отношение CTR по позициям на этом слое и даёт чистую кривую. Стоимость — доли процента CTR, взамен получается несмещённый слой, полезный и для оценки моделей. <strong>Чужую кривую из статьи брать нельзя:</strong> она зависит от интерфейса, устройства и типа контента и может отличаться в разы.</div></div>
+
+<div class="qa"><div class="q">12. IPW или позиция как признак?</div><div class="a">Позиция как признак даёт лучшее соотношение эффекта и усилий: NDCG 0.247 и +3.8% CTR против 0.239 и +1.2% у IPW с оценкой из логов, при том что реализация — одна строка при обучении и одна на инференсе. Работает потому, что модель сама выучивает зависимость от позиции. Комбинация IPW с рандомизацией плюс признак даёт максимум (+4.4%), но заметно дороже. <strong>Важная деталь:</strong> позицию подавать бакетами или категориально, не числом — зависимость сильно нелинейна.</div></div>
+
+<div class="qa"><div class="q">13. Почему нельзя оптимизировать одну метрику?</div><div class="a">Каждая по отдельности вырождается. Только клики → кликбейт: яркое и дешёвое, клики растут, покупки нет. Только покупки → показываем то, что человек и так купил бы, конверсия хорошая, удержание падает. Только маржа → дорогие товары наверху, конверсия обваливается. В трассировке секции 5 оптимизация кликов вывела на первое место товар W с ожидаемой выручкой 3.50 ₽ при том, что у Y она 28.01 ₽.</div></div>
+
+<div class="qa"><div class="q">14. Взвешенная сумма или ожидаемая ценность?</div><div class="a">Ожидаемая ценность честнее, потому что переводит всё в деньги и убирает произвол в весах: $\hat P_{\text{покупка}}\cdot\text{маржа} - \hat P_{\text{возврат}}\cdot c + \beta\hat P_{\text{клик}}$. Но она требует <em>калиброванных</em> вероятностей — если $\hat P$ систематически завышена, расчёт неверен. Для чистого ранжирования калибровка не нужна (важен только порядок), но становится обязательной, как только скоры складываются.</div></div>
+
+<div class="qa"><div class="q">15. Кто должен подбирать веса целей?</div><div class="a">Инженер строит Парето-фронт, продукт выбирает точку. Веса определяют размен между конфликтующими бизнес-целями, и это продуктовое решение, а не техническое. Попытка «подобрать самому» означает, что кто-то неявно принял решение, которое потом нельзя обосновать. Полезное наблюдение из таблицы секции 5: при $\beta = 25$ все четыре метрики оказались в плюсе одновременно — такая точка существует не всегда, но её стоит искать, потому что система часто настроена с запасом в одну сторону.</div></div>
+
+<div class="qa"><div class="q">16. Когда ограничения лучше весов?</div><div class="a">Когда требование формулируется как «должно быть не менее», а не «стоит столько-то». Бизнес естественно говорит «хвост должен быть представлен», а не «хвост стоит 0.3 клика», и перевод в вес требует произвольного решения. В замере: взвешенная сумма дала выручку +2.4% при доле хвоста 13.8%, колеблющейся от запроса к запросу; ограничение «доля хвоста ≥ 15%» дало +2.1% выручки, но <strong>гарантированные</strong> 15.0%. Для регуляторных и договорных требований это единственный приемлемый вариант.</div></div>
+
+<div class="qa"><div class="q">17. Почему разнообразие нельзя добавить в ранжировщик?</div><div class="a">Потому что это свойство <em>списка</em>, а не отдельного объекта. Ранжировщик оценивает каждого кандидата независимо, и пять почти идентичных товаров все получат высокий скор. Ценность второго элемента определяется не им самим, а тем, что он <em>добавляет</em> к первому — а это невыразимо через независимые скоры. Отсюда необходимость отдельного этапа переупорядочивания, где решения о позициях принимаются последовательно.</div></div>
+
+<div class="qa"><div class="q">18. Разбери шаг MMR, где кандидат с меньшей релевантностью побеждает.</div><div class="a">Позиция 2 из трассировки секции 6. Выбран A, считаем $0.7\cdot\text{rel} - 0.3\cdot\text{sim}(\cdot, A)$: B даёт $0.623 - 0.264 = 0.359$, C даёт $0.609 - 0.255 = 0.354$, D даёт $0.567 - 0.093 = 0.474$. <strong>D побеждает при релевантности 0.81 против 0.89 у B</strong>, потому что B похож на уже выбранный A на 0.88, а D — только на 0.31, и штраф съедает преимущество B.</div></div>
+
+<div class="qa"><div class="q">19. Почему в MMR берётся максимум сходства, а не среднее?</div><div class="a">Потому что избыточность определяется <em>ближайшим</em> уже выбранным элементом. Если кандидат почти идентичен хотя бы одному в списке, он избыточен — неважно, насколько он отличается от остальных. Среднее размыло бы этот сигнал: кандидат, идентичный одному элементу и непохожий на девять других, получил бы низкое среднее сходство и прошёл бы, хотя он дубликат.</div></div>
+
+<div class="qa"><div class="q">20. Как в MMR ценность кандидата меняется по ходу отбора?</div><div class="a">Наглядно на примере E из трассировки. На позиции 2 его MMR был 0.4660 — второе место. Затем выбрали D, с которым E схож на 0.79, штраф вырос втрое, и на позиции 3 MMR упал до 0.2950 — последнее место. То есть <strong>ценность кандидата зависит от того, что уже выбрано, и пересчитывается на каждом шаге</strong>. Именно поэтому MMR — жадный последовательный алгоритм, а не сортировка.</div></div>
+
+<div class="qa"><div class="q">21. Чем оборачивается MMR количественно?</div><div class="a">В трассировке при $\lambda = 0.7$: избыточность топ-3 упала с 0.880 до 0.203 (в 4.3 раза), суммарная релевантность топ-3 — с 2.68 до 2.44 (на 9.0%). Размен 9% релевантности за четырёхкратное снижение избыточности. По таблице видно, что избыточность падает резко при переходе от $\lambda=1.0$ к 0.7, а релевантность плавно — поэтому рабочая точка обычно около 0.7.</div></div>
+
+<div class="qa"><div class="q">22. Как оценивать эффект от разнообразия?</div><div class="a">Не по NDCG. Офлайн-метрики почти всегда ухудшаются от MMR, потому что считаются на логах, где разнообразия не было, и вознаграждают воспроизведение старой выдачи. Мерить надо долгосрочные метрики: в замере MMR при $\lambda=0.7$ дал −1.9% NDCG@10, но +2.8% сессий с кликом и +1.4% удержания на 30 дней. Ровно та же ситуация, что с дебаясингом популярности в теме 6.1.</div></div>
+
+<div class="qa"><div class="q">23. Где применять фильтр — до или после ранжирования?</div><div class="a">По селективности. Пропускает больше 50% — после ранжирования, кандидатов хватит. 10–50% — после отбора, расширив отбор пропорционально. 1–10% — внутри отбора, фильтрацией в обходе ANN-графа. Меньше 1% — отдельный индекс на частые срезы. Расчёт из секции 7: при узком запросе (доступность 8%, размер 19%, цена 4%) из 2000 кандидатов после постфильтрации остаётся 1.2 — выдача пустая.</div></div>
+
+<div class="qa"><div class="q">24. Множитель или слагаемое для мягких правил?</div><div class="a">Разница проявляется на слабых кандидатах. Множитель пропорционален скору: товар со скором 0.20 при бусте ×1.2 получает 0.24, наверх не вылезет. Слагаемое +0.05 даёт ему 0.25 — столько же, сколько сильному, и он может подняться неоправданно. <strong>Множитель безопаснее для продвижения</strong> (не вытаскивает мусор), слагаемое уместно, когда буст выражает внешнюю ценность, не зависящую от релевантности.</div></div>
+
+<div class="qa"><div class="q">25. Что делать с накоплением бизнес-правил?</div><div class="a">Проблема не в отдельных правилах, а в их произведении: три буста 1.15, 1.3 и 1.1 дают ×1.645, чего никто не проектировал. Четыре меры: ① ограничить суммарный буст сверху; ② логировать все сработавшие правила для каждой позиции; ③ регулярный аудит — замерять долю выдач, где правило изменило порядок; ④ дата пересмотра у каждого правила. В замере из 27 правил 8 не сработали ни разу за месяц; их удаление плюс ограничение буста дало +2.1% NDCG.</div></div>
+
+<div class="qa"><div class="q">26. Как правильно сделать пагинацию?</div><div class="a">Не через offset: при пересчёте между страницами 17% объектов пропускается и 9% повторяется, потому что порядок изменился. Рабочая схема — гибрид: кэшировать упорядоченный список на 15 минут для быстрой пагинации (латентность второй страницы 2 мс вместо 45), но проверять доступность и фильтры при каждой отдаче, а по истечении кэша пересчитывать с исключением уже показанного через курсор.</div></div>
+
+<div class="qa"><div class="q">27. Зачем понижать многократно показанное и почему CTR при этом падает?</div><div class="a">Объект, показанный много раз без клика, раздражает и «застревает» в выдаче. Затухание $\gamma^{\text{показов}}$ при $\gamma = 0.85$ дало +3.4% сессий с кликом и +31.2% уникальных объектов за неделю — при CTR −0.6%. <strong>Противоречие метрик здесь принципиально:</strong> CTR можно поднять, показывая одно и то же вечно, поэтому оптимизировать надо долю сессий с кликом, а не CTR.</div></div>
+
+<div class="qa"><div class="q">28. Что даёт сессионный контекст?</div><div class="a">Последние три просмотра сессии дали +12.1% NDCG — больше любого другого признака ранжировщика. Причина: намерение может смениться. Человек весь год покупал книги, а сегодня ищет подарок ребёнку — долгая история здесь мешает, а сессия говорит правду. Отдельно ценен негативный сигнал: быстрый возврат к выдаче после клика («отскок») даёт +4.6% и доступен в реальном времени, в отличие от полноценной обратной связи.</div></div>
+
+<div class="qa"><div class="q">29. Зачем проектировать деградацию заранее?</div><div class="a">Потому что во время инцидента поздно. Сравнение из секции 9: при отказе хранилища признаков без деградации 100% запросов вернули пустой экран за 22 минуты — около 840 тыс. потерянных сессий. С деградацией система перешла на уровень «дефолтные признаки» с 61% качества, и потери составили около 3.4 тыс. недополученных кликов. <strong>И деградацию надо проверять учениями:</strong> в первых учениях два уровня отката из пяти не работали, и об этом никто не знал.</div></div>
+
+<div class="qa"><div class="q">30. Почему рекомендательные системы надо мониторить особым образом?</div><div class="a">Потому что они ломаются молча: возвращают плохие рекомендации, а не ошибки. В инциденте из темы 6.2 CTR упал на 63% при всех зелёных технических проверках. Нужны четыре уровня, и ключевые — средние: уровень 2 (распределения — средний косинус top-1, разброс скоров, доля дефолтных признаков) и уровень 3 (содержание — покрытие, избыточность, стабильность топ-3). В разобранном инциденте уровень 2 обнаружил проблему за 3 минуты, уровень 4 (поведенческие метрики) обнаружил бы за 80 — разница в 2.7 млн испорченных выдач.</div></div>
+</div>
+
+<h3>Итог блока 6</h3>
+
+<div class="ct">
+<table>
+<caption>Сводка по всем пяти темам: что где разбиралось</caption>
+<thead><tr><th>Тема</th><th>Ключевой механизм</th><th>Когда применять</th></tr></thead>
+<tbody>
+<tr><td>6.1 — Коллаборативная фильтрация</td><td class="k">ALS, BPR, EASE; смещение популярности</td><td class="note">база любой системы; EASE до 50 тыс. каталога</td></tr>
+<tr><td>6.2 — Two-tower</td><td class="k">in-batch негативы, logQ, HNSW</td><td class="note">каталог &gt; 500 тыс., есть признаки</td></tr>
+<tr><td>6.3 — Холодный старт</td><td class="k">байесовское обновление, Thompson sampling</td><td class="note">много новых объектов, разрежённый хвост</td></tr>
+<tr><td>6.4 — Графовые модели</td><td class="k">распространение по слоям, PPR</td><td class="note">разрежённые пользователи, богатая структура</td></tr>
+<tr class="best"><td>6.5 — System Design</td><td class="g">каскад, коррекция позиции, MMR</td><td class="note">всегда — это оболочка для всего остального</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Общая нить всех пяти тем.</strong> В каждой обнаруживался один и тот же паттерн: <em>офлайн-метрика и реальная польза расходятся</em>, потому что метрика считается на логах, порождённых существующей системой. Смещение популярности (6.1), logQ-коррекция (6.2), сожаление вместо CTR (6.3), утечка через рёбра графа (6.4), позиционное смещение и оценка разнообразия (6.5) — всё это проявления одного: <strong>логи фиксируют не предпочтения пользователей, а пересечение предпочтений с тем, что система решила показать.</strong> Отсюда сквозной вывод: несмещённый exploration-слой и честная схема валидации важнее выбора алгоритма.</div></div>
+
+<div class="pnav">
+  <a href="block6_04_graph_ml.html">← Назад: 6.4 — Графовые модели</a>
+  <a href="block6_01_collab_filtering.html" class="next">К началу блока: 6.1 →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+var C_B='#2563eb', C_G='#16a34a', C_R='#dc2626', C_A='#d97706', C_O='#ea580c', C_T='#0d9488', C_GR='#94a3b8', C_V='#7c3aed';
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+
+/* ---------- S1: каскад ---------- */
+(function(){
+  mk('c_casc', {type:'bar', data:{labels:['Каталог','Отбор','Предранж.','Ранжир.','Переупоряд.','Выдача'], datasets:[
+    {label:'Кандидатов', data:[2000000,2000,300,300,20,10], backgroundColor:'rgba(234,88,12,.78)', borderColor:'#fff', borderWidth:2, order:2},
+    {label:'FLOP на одного кандидата', data:[null,128,2000,200000,5000,null], type:'line', borderColor:C_V, borderWidth:3, pointRadius:6, tension:.2, yAxisID:'y2', order:1, spanGaps:true}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({type:'logarithmic', title:{display:true,text:'Число кандидатов (лог)'}},GRID),
+             y2:{position:'right', type:'logarithmic', title:{display:true,text:'FLOP на кандидата (лог)'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return 'Дешёвая модель, много кандидатов';
+        if(i===3) return 'Дорогая модель, мало кандидатов —\nпроизведение остаётся управляемым';
+        return ''; }}}}}});
+})();
+
+/* ---------- S1: ширина отбора ---------- */
+(function(){
+  mk('c_width', {type:'line', data:{labels:['500','1 000','2 000','5 000','10 000'], datasets:[
+    {label:'Recall@K отбора', data:[0.412,0.587,0.681,0.744,0.782], borderColor:C_B, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Итоговый NDCG@10', data:[0.191,0.221,0.238,0.241,0.242], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3, yAxisID:'y2'},
+    {label:'Латентность, мс', data:[14,21,32,61,104], borderColor:C_R, borderDash:[5,4], tension:.3, pointRadius:5, borderWidth:2, yAxisID:'y3'},
+    {label:'Бюджет 50 мс', data:[50,50,50,50,50], borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0, yAxisID:'y3'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Кандидатов на отборе'}},NOG),
+             y:Object.assign({title:{display:true,text:'Recall@K'}},GRID),
+             y2:{position:'right', min:0.18, title:{display:true,text:'NDCG@10'}, grid:{display:false}},
+             y3:{display:false, min:0, max:120}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        return i>=3 ? 'Recall ещё растёт, NDCG уже на плато —\nранжировщик нашёл лучшее среди имеющихся' : ''; }}}}}});
+})();
+
+/* ---------- S2: разложение латентности ---------- */
+(function(){
+  var lbl=['разбор\nзапроса','признаки\nюзера','отбор\nANN','другие\nисточники','признаки\nобъектов','предранж.','ранжир.','MMR','правила','сериал.'];
+  mk('c_lat', {type:'bar', data:{labels:lbl, datasets:[
+    {label:'Медиана, мс', data:[1.2,4.8,2.1,1.9,11.4,2.3,14.6,3.8,1.4,2.1], backgroundColor:'rgba(234,88,12,.72)', borderColor:'#fff', borderWidth:2},
+    {label:'p99, мс', data:[3.1,21.4,5.8,7.2,38.7,4.9,26.3,6.1,3.3,4.4], backgroundColor:'rgba(220,38,38,.72)', borderColor:'#fff', borderWidth:2}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Миллисекунды'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===4) return 'Самая дорогая часть — и худший хвост.\nОптимизировать надо здесь, а не модель.';
+        if(i===6) return 'Модель дороже по медиане, но её хвост\nвдвое лучше, чем у загрузки признаков'; return ''; }}}}}});
+})();
+
+/* ---------- S2: эффект оптимизаций ---------- */
+(function(){
+  mk('c_opt', {type:'line', data:{labels:['исходно','батчирование','параллелизм','кэш','квантование','таймауты'], datasets:[
+    {label:'p99, мс', data:[121.2,68.4,59.1,44.7,40.2,33.8], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Медиана, мс', data:[45.6,37.2,35.8,28.4,25.1,25.1], borderColor:C_O, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Бюджет 50 мс', data:[50,50,50,50,50,50], borderColor:'#1e293b', borderDash:[3,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Латентность, мс'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i>=1 && i<=3) return 'Инженерная оптимизация — основной эффект';
+        if(i===4) return 'Оптимизация модели дала лишь 10%'; return ''; }}}}}});
+})();
+
+/* ---------- S4: позиционное смещение ---------- */
+(function(){
+  var pos=[1,2,3,5,8,10,15,20];
+  var pk=[1.00,0.72,0.52,0.34,0.21,0.17,0.12,0.09];
+  mk('c_pos', {type:'line', data:{labels:pos, datasets:[
+    {label:'Вероятность просмотра p_k', data:pk, borderColor:C_B, backgroundColor:'rgba(37,99,235,.10)', fill:true, tension:.3, pointRadius:5, borderWidth:2.5},
+    {label:'Сырой CTR объекта с истинной релевантностью 0.20', data:pk.map(function(p){return +(0.20*p).toFixed(4);}), borderColor:C_R, tension:.3, pointRadius:5, borderWidth:2.5, yAxisID:'y2'},
+    {label:'Скорректированная оценка релевантности', data:pos.map(function(){return 0.20;}), borderColor:C_G, borderDash:[4,3], borderWidth:3, pointRadius:4, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Позиция показа'}},NOG),
+             y:Object.assign({max:1.05, title:{display:true,text:'p_k'}},GRID),
+             y2:{position:'right', max:0.25, title:{display:true,text:'CTR / релевантность'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(){return 'Один и тот же объект с релевантностью 0.20\nдаёт разный сырой CTR в зависимости от позиции.\nКоррекция возвращает истинное значение.';}}}}}});
+})();
+
+/* ---------- S5: Парето-фронт ---------- */
+(function(){
+  mk('c_pareto', {type:'line', data:{labels:['0','10','25','50','100'], datasets:[
+    {label:'Δ CTR, %', data:[-8.4,-3.1,1.2,4.9,9.1], borderColor:C_B, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Δ конверсия, %', data:[3.1,2.4,1.8,0.3,-2.7], borderColor:C_G, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Δ средняя маржа, %', data:[6.2,4.1,2.4,-1.2,-6.8], borderColor:C_O, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Δ удержание 30д, %', data:[-2.9,-0.8,1.1,1.4,0.6], borderColor:C_V, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Ноль', data:[0,0,0,0,0], borderColor:'#1e293b', borderDash:[2,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Вес вовлечения β'}},NOG),
+             y:Object.assign({title:{display:true,text:'Изменение метрики, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return '✓ При β = 25 все четыре метрики в плюсе —\nтакая точка есть не всегда, но её стоит искать';
+        if(i===4) return '⚠ Кликбейт: CTR растёт, экономика падает';
+        if(i===0) return '⚠ Чистая экономика: вовлечение и удержание падают'; return ''; }}}}}});
+})();
+
+/* ---------- S6: MMR по шагам ---------- */
+(function(){
+  // MMR скоры кандидатов на каждом шаге отбора
+  mk('c_mmr', {type:'line', data:{labels:['поз. 1','поз. 2','поз. 3','поз. 4','поз. 5'], datasets:[
+    {label:'B (rel 0.89)', data:[0.623,0.359,0.359,0.359,null], borderColor:C_R, tension:.15, pointRadius:6, borderWidth:2.5, spanGaps:false},
+    {label:'C (rel 0.87)', data:[0.609,0.354,0.354,0.354,0.336], borderColor:'#f87171', tension:.15, pointRadius:6, borderWidth:2.5},
+    {label:'D (rel 0.81) — выбран 2-м', data:[0.567,0.474,null,null,null], borderColor:C_G, tension:.15, pointRadius:8, borderWidth:3},
+    {label:'E (rel 0.76) — рухнул после выбора D', data:[0.532,0.466,0.295,0.295,0.295], borderColor:C_A, tension:.15, pointRadius:6, borderWidth:2.5},
+    {label:'F (rel 0.71) — выбран 3-м', data:[0.497,0.461,0.443,null,null], borderColor:C_T, tension:.15, pointRadius:8, borderWidth:3}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Шаг отбора (после каждого шага скоры пересчитываются)'}},NOG),
+             y:Object.assign({title:{display:true,text:'MMR-скор кандидата'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===1) return 'D побеждает при меньшей релевантности:\nB и C похожи на выбранный A';
+        if(i===2) return 'E рухнул с 0.466 до 0.295 — он похож\nна только что выбранный D'; return ''; }}}}}});
+})();
+
+/* ---------- S7: селективность фильтра ---------- */
+(function(){
+  var sel=[80,50,25,14,8,4,1];
+  mk('c_filter', {type:'line', data:{labels:sel.map(function(s){return s+'%';}), datasets:[
+    {label:'Кандидатов после постфильтрации (из 2000)', data:sel.map(function(s){return Math.round(2000*s/100);}), borderColor:C_R, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Нужно для ранжирования (300)', data:sel.map(function(){return 300;}), borderColor:'#1e293b', borderDash:[3,3], borderWidth:2, pointRadius:0},
+    {label:'Кандидатов при фильтрации внутри отбора', data:sel.map(function(){return 2000;}), borderColor:C_G, borderDash:[5,4], borderWidth:2.5, pointRadius:5}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Доля кандидатов, проходящих фильтр'}},NOG),
+             y:Object.assign({type:'logarithmic', title:{display:true,text:'Кандидатов (лог)'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var s=sel[c[0].dataIndex];
+        return s<=8 ? '⚠ Постфильтрация оставляет меньше 300 —\nранжировщику не из чего выбирать' : ''; }}}}}});
+})();
+
+/* ---------- S8: усталость от показа ---------- */
+(function(){
+  mk('c_fatigue', {type:'line', data:{labels:['1.00','0.95','0.85','0.70','0.50'], datasets:[
+    {label:'Δ сессий с кликом, %', data:[0,1.1,3.4,2.8,0.4], borderColor:C_G, backgroundColor:'rgba(22,163,74,.12)', fill:true, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Δ CTR, %', data:[0,0.2,-0.6,-2.4,-5.9], borderColor:C_R, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Δ уникальных объектов за неделю, %', data:[0,8.4,31.2,52.1,78.3], borderColor:C_B, borderDash:[5,4], tension:.3, pointRadius:5, borderWidth:2, yAxisID:'y2'}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'γ — коэффициент затухания'}},NOG),
+             y:Object.assign({title:{display:true,text:'Δ, %'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Δ разнообразия, %'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:8,font:{size:10}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===2) return '✓ Рабочая точка: CTR слегка падает,\nно доля сессий с кликом растёт на 3.4%';
+        if(i>=3) return '⚠ Хорошие товары исчезают слишком быстро'; return ''; }}}}}});
+})();
+
+/* ---------- S9: уровни деградации ---------- */
+(function(){
+  mk('c_degr', {type:'bar', data:{labels:['0 — полный','1 — без MMR','2 — без ранжир.','3 — без признаков','4 — кэш','5 — статика','ОШИБКА'], datasets:[
+    {label:'Качество, % от полного', data:[100,97,78,61,54,31,0],
+     backgroundColor:['rgba(22,163,74,.85)','rgba(22,163,74,.72)','rgba(217,119,6,.72)','rgba(217,119,6,.62)','rgba(234,88,12,.62)','rgba(234,88,12,.50)','rgba(220,38,38,.85)'],
+     borderColor:'#fff', borderWidth:2, order:2},
+    {label:'Латентность, мс', data:[45,40,26,14,3,1,null], type:'line', borderColor:C_B, borderWidth:2.5, pointRadius:6, tension:.2, yAxisID:'y2', order:1, spanGaps:true}
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({max:105, title:{display:true,text:'Качество, %'}},GRID),
+             y2:{position:'right', title:{display:true,text:'Латентность, мс'}, grid:{display:false}}},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:11}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===5) return 'Даже 31% качества — рабочая выдача,\nпримерно уровень «популярное по сегменту»';
+        if(i===6) return 'Пустой экран не даёт ничего.\nЛюбой уровень отката лучше.'; return ''; }}}}}});
+})();
+
+/* ---------- S11: эффект новизны ---------- */
+(function(){
+  mk('c_novelty', {type:'line', data:{labels:['1','2','3','4','5','6'], datasets:[
+    {label:'Δ CTR у существующих пользователей', data:[6.2,4.1,2.4,1.9,1.8,1.7], borderColor:C_R, backgroundColor:'rgba(220,38,38,.10)', fill:true, tension:.3, pointRadius:6, borderWidth:2.5},
+    {label:'Δ CTR у новых пользователей', data:[1.9,1.9,1.8,1.8,1.8,1.8], borderColor:C_G, tension:.3, pointRadius:6, borderWidth:3},
+    {label:'Истинный эффект', data:[1.8,1.8,1.8,1.8,1.8,1.8], borderColor:'#1e293b', borderDash:[3,3], borderWidth:1.5, pointRadius:0}
+  ]}, options:{maintainAspectRatio:false, responsive:true, interaction:{mode:'index',intersect:false},
+    scales:{ x:Object.assign({title:{display:true,text:'Неделя эксперимента'}},NOG),
+             y:Object.assign({title:{display:true,text:'Δ CTR, %'}},GRID)},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:9,font:{size:10.5}}},
+      tooltip:{callbacks:{afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return '⚠ Решение по первой неделе завысило бы\nэффект в 3.4 раза';
+        return 'У новых пользователей нет привычки к старой выдаче,\nпоэтому нет и эффекта новизны'; }}}}}});
+})();
+
+/* ---------- S12: скорость обнаружения ---------- */
+(function(){
+  mk('c_mon', {type:'bar', data:{labels:['1 — инфраструктура','2 — распределения','3 — содержание','4 — поведение'], datasets:[
+    {label:'Минут до обнаружения инцидента', data:[null,3,6,80],
+     backgroundColor:['rgba(148,163,184,.60)','rgba(22,163,74,.82)','rgba(22,163,74,.68)','rgba(220,38,38,.75)'],
+     borderColor:'#fff', borderWidth:2},
+  ]}, options:{maintainAspectRatio:false, responsive:true,
+    scales:{ x:NOG, y:Object.assign({title:{display:true,text:'Минут до обнаружения'}},GRID)},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:function(c){ return c.parsed.y==null ? 'НЕ обнаружил вообще' : c.parsed.y+' минут'; },
+        afterBody:function(c){ var i=c[0].dataIndex;
+        if(i===0) return 'Всё зелёное: латентность даже улучшилась.\nСодержательную поломку не видит.';
+        if(i===1) return '✓ Доля дефолтных признаков 3% → 41%';
+        if(i===3) return '⚠ 77 минут позже уровня 2 —\n2.7 млн испорченных выдач'; return ''; }}}}}});
+})();
+
+/* ---------- Интерактив: позиционная коррекция ---------- */
+function updPos(){
+  var pos = +document.getElementById('sl_pos').value;
+  var ctrB = +document.getElementById('sl_ctrb').value/1000;
+  var steep = +document.getElementById('sl_steep').value/100;
+  document.getElementById('out_pos').textContent = pos;
+  document.getElementById('out_ctrb').textContent = (100*ctrB).toFixed(1)+'%';
+  document.getElementById('out_steep').textContent = steep.toFixed(2);
+  var pk = Math.pow(pos, -steep);
+  var ctrA = 0.085, rA = ctrA/1.0, rB = ctrB/pk;
+  var naive = ctrA/ctrB, corrected = rB/rA;
+  var html = '<b>p<sub>'+pos+'</sub> = '+pk.toFixed(4)+'</b> — объект виден в '+(1/pk).toFixed(1)+' раза реже, чем на первой позиции<br>';
+  html += '<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html += 'A (поз. 1): сырой CTR 8.50% → релевантность <b>'+(100*rA).toFixed(2)+'%</b><br>';
+  html += 'B (поз. '+pos+'): сырой CTR '+(100*ctrB).toFixed(2)+'% → релевантность <b>'+(100*rB).toFixed(2)+'%</b></span><br>';
+  html += '<span style="font-size:12.5px;color:#7c2d12;">';
+  if(ctrB >= ctrA) html += 'По сырому CTR B уже лучше A в '+(ctrB/ctrA).toFixed(2)+' раза; ';
+  else html += 'По сырому CTR A лучше B в <b>'+naive.toFixed(2)+' раза</b>; ';
+  if(rB > rA) html += 'после коррекции <b>B лучше A в '+corrected.toFixed(2)+' раза</b>.';
+  else html += 'после коррекции A всё ещё лучше в '+(1/corrected).toFixed(2)+' раза.';
+  html += '<br>';
+  var flip = (ctrB < ctrA) && (rB > rA);
+  if(flip) html += '⚠️ <b>Вывод перевернулся:</b> без коррекции B был бы опущен вниз и попал в петлю — позиция ниже, кликов меньше, скор ниже.';
+  else if(pos === 1) html += 'На первой позиции коррекции нет — p₁ = 1 по определению.';
+  else if(rB > rA) html += '✓ Коррекция подтвердила преимущество B и усилила его.';
+  else html += '✓ A действительно лучше — коррекция это подтверждает.';
+  html += '</span>';
+  document.getElementById('out_posres').innerHTML = html;
+}
+
+/* ---------- Интерактив: MMR ---------- */
+function updMMR(){
+  var lam = +document.getElementById('sl_lam').value/100;
+  document.getElementById('out_lam').textContent = lam.toFixed(2);
+  var names=['A','B','C','D','E','F'];
+  var rel=[0.92,0.89,0.87,0.81,0.76,0.71];
+  var sim=[
+    [0,0.88,0.85,0.31,0.22,0.12],
+    [0.88,0,0.91,0.28,0.19,0.15],
+    [0.85,0.91,0,0.34,0.25,0.11],
+    [0.31,0.28,0.34,0,0.79,0.18],
+    [0.22,0.19,0.25,0.79,0,0.21],
+    [0.12,0.15,0.11,0.18,0.21,0]];
+  var sel=[], rem=[0,1,2,3,4,5], maxSim=[0,0,0,0,0,0];
+  while(sel.length<6){
+    var best=-1, bs=-Infinity;
+    for(var t=0;t<rem.length;t++){
+      var i=rem[t], s=lam*rel[i]-(1-lam)*maxSim[i];
+      if(s>bs){bs=s;best=i;}
+    }
+    sel.push(best);
+    rem=rem.filter(function(x){return x!==best;});
+    for(var q=0;q<rem.length;q++){ var j=rem[q]; if(sim[j][best]>maxSim[j]) maxSim[j]=sim[j][best]; }
+  }
+  var top3=sel.slice(0,3);
+  var pairs=[[top3[0],top3[1]],[top3[0],top3[2]],[top3[1],top3[2]]];
+  var red=pairs.reduce(function(a,p){return a+sim[p[0]][p[1]];},0)/3;
+  var sumRel=top3.reduce(function(a,i){return a+rel[i];},0);
+  var html='<b>Порядок: '+sel.map(function(i){return names[i];}).join(' → ')+'</b><br>';
+  html+='<span style="font-family:SF Mono,monospace;font-size:12.5px;">';
+  html+='топ-3 = {'+top3.map(function(i){return names[i];}).join(', ')+'} &nbsp;·&nbsp; ';
+  html+='избыточность <b>'+red.toFixed(3)+'</b> &nbsp;·&nbsp; Σ rel <b>'+sumRel.toFixed(2)+'</b></span><br>';
+  html+='<span style="font-size:12.5px;color:#7c2d12;">';
+  html+='против чистой релевантности: избыточность 0.880, Σ rel 2.68<br>';
+  var redGain = 0.880/Math.max(red,0.001), relLoss = 100*(2.68-sumRel)/2.68;
+  if(lam>=0.98) html+='Чистая релевантность: топ-3 из одной категории, список избыточен';
+  else if(lam<=0.25) html+='⚠️ Релевантность почти не учитывается — список разнообразный, но слабый (потеря '+relLoss.toFixed(1)+'%)';
+  else html+='✓ Избыточность ниже в <b>'+redGain.toFixed(1)+' раза</b> ценой <b>'+relLoss.toFixed(1)+'%</b> суммарной релевантности';
+  html+='</span>';
+  document.getElementById('out_mmrres').innerHTML=html;
+}
+
+/* ---------- Подсветка активного раздела ---------- */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+updPos(); updMMR();
+</script>
+</body>
+</html>

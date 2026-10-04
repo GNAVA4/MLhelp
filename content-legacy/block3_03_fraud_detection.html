@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3.3 · Fraud Detection</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --rose:#e11d48;--rose-l:#fff1f2;--rose-b:#fecdd3;
+  --slate:#334155;--slate-l:#f8fafc;
+  --gray:#6b7280;--border:#e5e7eb;
+  --bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:32px 32px 26px;border-bottom:3px solid #dc2626;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.8;line-height:1.6;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--gray);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+.snav a:hover{color:var(--red);border-bottom-color:var(--red);}
+.main{max-width:960px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:60px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+strong{color:var(--text);}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);}
+.fbox.green{border-left-color:var(--grn);}
+.fbox.pur{border-left-color:var(--pur);}
+.fbox.teal{border-left-color:var(--teal);}
+.fbox.amber{border-left-color:var(--amber);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--red);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);}
+.fbox.green .flabel{color:var(--grn);}
+.fbox.pur .flabel{color:var(--pur);}
+.fbox.teal .flabel{color:var(--teal);}
+.fbox.amber .flabel{color:var(--amber);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--red-l);border:1px solid var(--red-b);border-left:4px solid var(--red);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--red);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#7f1d1d;margin-bottom:4px;line-height:1.7;}
+.usewhen{background:#fefce8;border:1px solid var(--amber-b);border-left:4px solid var(--amber);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.usewhen-label{font-size:10.5px;font-weight:800;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.usewhen p,.usewhen li{font-size:13.5px;color:#78350f;margin-bottom:3px;line-height:1.6;}
+.usewhen ul{padding-left:16px;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.ins{background:var(--pur-l);border:1px solid var(--pur-b);color:#5b21b6;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.04);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:var(--slate-l);padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--gray);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh{background:var(--red-l)!important;} .trh td{font-weight:600;color:#7f1d1d!important;}
+.trg{background:#f0fdf4!important;}
+.mn{font-family:'SF Mono','Fira Code',Menlo,monospace;font-size:13px;}
+.pos{color:#16a34a;font-weight:700;} .neg{color:#dc2626;font-weight:700;}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;}
+.numex-badge{background:var(--red);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.numex-badge.grn{background:var(--grn);} .numex-badge.blue{background:var(--blue);}
+.numex-badge.pur{background:var(--pur);} .numex-badge.amber{background:var(--amber);}
+.numex p{margin-bottom:4px;color:var(--text2);}
+/* pipeline nodes */
+.pipeline{display:flex;flex-direction:column;gap:0;margin:16px 0;}
+.pnode{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;position:relative;margin-bottom:0;}
+.pnode:not(:last-child){border-bottom:none;border-radius:10px 10px 0 0;}
+.pnode:not(:first-child):not(:last-child){border-radius:0;}
+.pnode:last-child{border-radius:0 0 10px 10px;}
+.pnode:first-child{border-radius:10px 10px 0 0;}
+.pnlabel{font-size:10px;font-weight:800;color:var(--red);letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;}
+.pntitle{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.pndesc{font-size:12.5px;color:var(--text3);}
+.pnarr{text-align:center;color:var(--red);font-size:18px;padding:2px 0;}
+/* confusion matrix */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:280px;margin:12px 0;}
+.cm-cell{border-radius:8px;padding:14px;text-align:center;}
+.cm-label{font-size:11px;color:var(--text3);margin-bottom:2px;}
+.cm-val{font-size:22px;font-weight:800;}
+/* velocity feature vis */
+.vel-timeline{margin:16px 0;overflow-x:auto;}
+.vel-events{display:flex;gap:6px;padding:10px 0;min-width:500px;}
+.vel-evt{border-radius:8px;padding:8px 12px;font-size:12px;text-align:center;min-width:90px;}
+/* sysbox */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#64748b;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.syshighlight{background:#450a0a;border:1px solid #dc2626;border-radius:8px;padding:9px 13px;font-size:12px;color:#fca5a5;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fecaca;display:block;font-size:13px;margin-bottom:2px;}
+.sysgreen{background:#052e16;border:1px solid #16a34a;border-radius:8px;padding:9px 13px;font-size:12px;color:#86efac;min-width:110px;text-align:center;line-height:1.5;}
+.sysgreen strong{color:#a7f3d0;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--red-l),#fff7ed);border:1px solid var(--red-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--red);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#7f1d1d;margin-bottom:8px;}
+.casebox p{color:#7f1d1d;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.casebox li{color:#7f1d1d;font-size:14px;line-height:1.7;}
+/* drift vis */
+.drift-vis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0;}
+.drift-cell{border-radius:10px;padding:12px;text-align:center;}
+.drift-cell h4{font-size:12px;font-weight:700;margin-bottom:6px;}
+.drift-cell .metric{font-size:20px;font-weight:800;}
+.drift-cell .trend{font-size:12px;margin-top:3px;}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--gray);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--red-l);color:#7f1d1d;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qah{font-size:18px;font-weight:800;color:var(--red);margin-bottom:16px;margin-top:8px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#fee2e2;color:#991b1b;} .td{background:#dbeafe;color:#1e40af;} .tpr{background:#dcfce7;color:#15803d;} .ttl{background:#ccfbf1;color:#0f766e;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--red);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#b91c1c;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--red);border:2px solid var(--red);}
+@media(max-width:640px){
+  .charts-2,.drift-vis{grid-template-columns:1fr;}
+  .ph{padding:22px 16px;} .main{padding:20px 14px 48px;}
+}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">⚡ Блок 3 · Applied ML Cases</div>
+  <h1>3.3 Fraud Detection</h1>
+  <p class="sub">Real-time scoring · Feature Store · Velocity Features · Concept Drift · Stripe / PayPal / Visa</p>
+</div>
+
+<nav class="snav">
+  <a href="#intro">Задача</a>
+  <a href="#tradeoff">Precision vs Recall</a>
+  <a href="#imbalance">Дисбаланс</a>
+  <a href="#velocity">Velocity Features</a>
+  <a href="#realtime">Real-time Scoring</a>
+  <a href="#featurestore">Feature Store</a>
+  <a href="#drift">Concept Drift</a>
+  <a href="#graphs">Graph ML</a>
+  <a href="#cases">System Design</a>
+  <a href="#qa">Q&A</a>
+</nav>
+
+<div class="main">
+
+<!-- ═══ INTRO ═══ -->
+<section class="sec" id="intro">
+  <div class="stitle">🚨 Задача Fraud Detection</div>
+  <div class="sdesc">Обнаружение мошеннических транзакций в реальном времени при жёстких ограничениях: &lt;50мс, 99.9% uptime, класс 0.1% мошенников.</div>
+
+  <p>Fraud Detection — одна из немногих задач где <strong>ошибки имеют прямую денежную стоимость с обеих сторон</strong>: пропустить фрод = потеря денег клиента. Заблокировать легитимную транзакцию = потеря клиента + репутационный ущерб.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;">
+    <div style="background:var(--red-l);border:1px solid var(--red-b);border-radius:10px;padding:16px;">
+      <div style="font-size:20px;margin-bottom:6px;">💸</div>
+      <strong style="font-size:13px;color:var(--red);">False Negative (пропустили фрод)</strong>
+      <p style="font-size:12.5px;color:#991b1b;margin:6px 0 0;">Мошеннические транзакции прошли. Прямые потери. Visa/MC chargeback — банк платит. $28.6B потери от card fraud в мире (2020, Nilson Report)</p>
+    </div>
+    <div style="background:var(--amber-l);border:1px solid var(--amber-b);border-radius:10px;padding:16px;">
+      <div style="font-size:20px;margin-bottom:6px;">🚫</div>
+      <strong style="font-size:13px;color:var(--amber);">False Positive (заблокировали честного)</strong>
+      <p style="font-size:12.5px;color:#92400e;margin:6px 0 0;">Легитимная транзакция отклонена. Клиент звонит в поддержку или уходит к конкурентам. 30% людей отказываются от карты после 1 ложной блокировки.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0;">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:22px;color:var(--red);font-weight:800;">0.1%</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Типичная доля фрода</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:22px;color:var(--blue);font-weight:800;">&lt;50ms</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Требуемая латентность p99</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:22px;color:var(--grn);font-weight:800;">24/7</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Непрерывность системы</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:22px;color:var(--pur);font-weight:800;">10K+</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Транзакций в секунду (Visa)</div>
+    </div>
+  </div>
+
+  <div class="cl danger">
+    <div class="cli">🔑</div>
+    <div><strong>Главная особенность:</strong> задача не симметричная. Стоимость FN и FP принципиально разная. Нельзя оптимизировать accuracy — нужен аккуратный подбор threshold с учётом бизнес-стоимости ошибок.</div>
+  </div>
+</section>
+
+<!-- ═══ TRADEOFF ═══ -->
+<section class="sec" id="tradeoff">
+  <div class="stitle">⚖️ Precision–Recall Tradeoff</div>
+  <div class="sdesc">Центральная дилемма fraud detection: чем строже фильтр, тем больше легитимных транзакций блокируем.</div>
+
+  <div class="fbox">
+    <div class="flabel">Confusion Matrix для Fraud Detection</div>
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-top:10px;">
+      <div>
+        <div class="cm-grid">
+          <div class="cm-cell" style="background:var(--grn-l);border:2px solid var(--grn-b);">
+            <div class="cm-label">TN — Легитимный → ✅</div>
+            <div class="cm-val" style="color:var(--grn);">98,900</div>
+          </div>
+          <div class="cm-cell" style="background:var(--amber-l);border:2px solid var(--amber-b);">
+            <div class="cm-label">FP — Легитимный → ❌</div>
+            <div class="cm-val" style="color:var(--amber);">100</div>
+          </div>
+          <div class="cm-cell" style="background:var(--red-l);border:2px solid var(--red-b);">
+            <div class="cm-label">FN — Фрод → ✅</div>
+            <div class="cm-val" style="color:var(--red);">10</div>
+          </div>
+          <div class="cm-cell" style="background:var(--blue-l);border:2px solid var(--blue-b);">
+            <div class="cm-label">TP — Фрод → ❌</div>
+            <div class="cm-val" style="color:var(--blue);">90</div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <p style="font-size:13px;"><strong>Precision</strong> = TP/(TP+FP) = 90/(90+100) = <span class="neg">47%</span></p>
+        <p style="font-size:13px;"><strong>Recall</strong> = TP/(TP+FN) = 90/(90+10) = <span class="pos">90%</span></p>
+        <p style="font-size:13px;"><strong>F1</strong> = 2×P×R/(P+R) = 2×0.47×0.90/1.37 = <span style="color:var(--pur);font-weight:700;">61.9%</span></p>
+        <p style="font-size:13px;"><strong>Accuracy</strong> = (TN+TP)/(all) = 98990/99100 = <span style="color:var(--green);">99.9%</span> — бесполезная метрика!</p>
+      </div>
+    </div>
+    <div class="fnote">Accuracy 99.9% достигается предсказанием "всё легально" — но Recall=0! <strong>Для fraud detection: ключевые метрики Recall (ловим мошенников), Precision (не беспокоим честных), PR-AUC.</strong></div>
+  </div>
+
+  <div class="fbox green">
+    <div class="flabel">F-beta Score — балансировка Precision и Recall</div>
+    $$F_\beta = (1+\beta^2) \cdot \frac{\text{Precision} \cdot \text{Recall}}{\beta^2 \cdot \text{Precision} + \text{Recall}}$$
+    <div class="fnote">
+      <strong>$\beta = 1$</strong>: равный вес (F1-score).<br>
+      <strong>$\beta = 2$</strong>: Recall важнее в 2 раза — когда пропустить фрод хуже чем заблокировать честного. Типично для банков и Stripe.<br>
+      <strong>$\beta = 0.5$</strong>: Precision важнее — когда FP дорог (VIP-клиенты, большие суммы).
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Почему PR-AUC лучше ROC-AUC при дисбалансе классов</div>
+    <p>ROC-AUC: ось X = FPR = FP/(FP+TN). При миллионах легитимных транзакций даже 1000 FP даёт очень маленький FPR → ROC кривая выглядит "хорошо" даже при плохом качестве.</p>
+    <p>PR-AUC: ось X = Recall, ось Y = Precision. Не учитывает TN → более честная оценка при дисбалансе. 0.1% fraud → random baseline PR-AUC = 0.001. Модель с PR-AUC = 0.8 — хорошая.</p>
+    <p><strong>Правило:</strong> при доле позитивного класса &lt;5% → смотри PR-AUC и Average Precision, а не ROC-AUC.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">ROC-AUC vs PR-AUC при 0.1% fraud rate</div>
+    <div class="chsub">ROC-AUC завышает качество; PR-AUC честнее показывает разницу между моделями</div>
+    <div style="position:relative;height:220px;"><canvas id="c_roc_pr"></canvas></div>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Как выбрать threshold: cost-based оптимизация</div>
+    <div class="numex-step">
+      <div class="numex-badge">Дано</div>
+      <div>Стоимость FN (пропустили фрод): $50 средняя потеря. Стоимость FP (заблокировали честного): $5 (обработка звонка + риск ухода клиента).</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Цель</div>
+      <div>Минимизировать $\text{Cost} = 50 \times FN + 5 \times FP$.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Расчёт</div>
+      <div>Для каждого threshold τ вычисляем FN(τ) и FP(τ) по validation set → выбираем τ* = argmin Cost(τ). При tau=0.3: FP=200, FN=5 → Cost = 250+1000=1,250$. При tau=0.5: FP=50, FN=20 → Cost = 250+100=350$. Оптимум: tau≈0.5!</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Для сегментов</div>
+      <div>Разные threshold для разных сегментов: VIP-клиенты → высокий threshold (не беспокоим). Новые пользователи → низкий threshold (подозрительнее).</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ IMBALANCE ═══ -->
+<section class="sec" id="imbalance">
+  <div class="stitle">⚖️ Работа с дисбалансом классов</div>
+  <div class="sdesc">0.1% fraud — экстремальный дисбаланс. Методы для его преодоления.</div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Метод</th><th>Идея</th><th>Плюсы</th><th>Минусы</th><th>Применение</th></tr></thead>
+      <tbody>
+        <tr><td><strong>SMOTE</strong></td><td>Генерация синтетических minority samples через интерполяцию KNN</td><td>Балансирует без потери данных</td><td>Генерирует "нереальные" примеры для fraud</td><td>Офлайн-обучение</td></tr>
+        <tr><td><strong>Undersample majority</strong></td><td>Случайно удаляем легитимные транзакции</td><td>Быстро, просто</td><td>Теряем информацию</td><td>Прототипирование</td></tr>
+        <tr class="trh"><td><strong>class_weight='balanced'</strong></td><td>В loss-функции вес fraud-примеров ∝ 1/частота</td><td>Не меняет данные, гибко</td><td>Требует настройки</td><td>LightGBM, LogReg</td></tr>
+        <tr><td><strong>scale_pos_weight</strong></td><td>XGBoost/LGBM: weight = neg/pos</td><td>Нативная поддержка</td><td>—</td><td>LGBM fraud models</td></tr>
+        <tr><td><strong>Focal Loss</strong></td><td>$(1-p_t)^\gamma \cdot \log(p_t)$ — фокус на сложных примерах</td><td>Подавляет "лёгкие" негативы</td><td>Сложнее настроить γ</td><td>NN-based fraud</td></tr>
+        <tr><td><strong>Calibration</strong></td><td>Изотоническая регрессия / Platt scaling выходных скоров</td><td>Правильные вероятности → порог по стоимости</td><td>Требует calibration set</td><td>Production scoring</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fbox pur">
+    <div class="flabel">Focal Loss — формула</div>
+    $$\text{FL}(p_t) = -\alpha_t (1-p_t)^\gamma \log(p_t)$$
+    <div class="fnote">
+      <strong>$p_t$</strong> — предсказанная вероятность правильного класса. <strong>$\gamma \geq 0$</strong> — focusing parameter. <strong>$\alpha_t$</strong> — балансировочный вес (обратно пропорционален частоте класса).<br>
+      При $\gamma=0$: стандартный cross-entropy. При $\gamma=2$: легко классифицируемые примеры (p_t=0.9 → фактор (0.1)²=0.01) почти не влияют на loss → модель фокусируется на трудных примерах (фрод похожий на легитимные операции).
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Focal Loss — зачем нужен</div>
+    <p>Стандартная cross-entropy: 99.9% примеров — легитимные транзакции. Loss = −log(0.999) ≈ 0.001 для каждой из 999 легитимных → суммарный градиент от них огромный. 1 fraud-пример: loss = −log(0.01) ≈ 4.6 → но их 1000 меньше.</p>
+    <p>Результат: модель игнорирует редкий класс. Focal Loss: для легитимной с p=0.999 → вес (1-0.999)² = 0.000001. Практически вычеркиваем простые примеры! Модель учится на сложных маргинальных случаях.</p>
+  </div>
+</section>
+
+<!-- ═══ VELOCITY FEATURES ═══ -->
+<section class="sec" id="velocity">
+  <div class="stitle">⚡ Velocity Features</div>
+  <div class="sdesc">Самые информативные признаки для fraud — подозрительное поведение во времени: "3 транзакции за 1 минуту", "5 разных стран за час".</div>
+
+  <p>Velocity features = агрегаты по скользящему временному окну. Мошенник спешит: он должен использовать украденные данные пока карта не заблокирована → много транзакций за короткое время в новых местах.</p>
+
+  <!-- Velocity timeline -->
+  <div class="vel-timeline">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;">Временная шкала подозрительного пользователя:</div>
+    <div class="vel-events">
+      <div class="vel-evt" style="background:var(--grn-l);border:1px solid var(--grn-b);">
+        <div style="font-size:10px;color:var(--grn);font-weight:700;">00:00</div>
+        <div>Москва</div>
+        <div style="font-size:11px;color:var(--text3);">500₽ кафе</div>
+      </div>
+      <div style="color:var(--text3);font-size:18px;align-self:center;">→</div>
+      <div class="vel-evt" style="background:var(--amber-l);border:1px solid var(--amber-b);">
+        <div style="font-size:10px;color:var(--amber);font-weight:700;">00:02</div>
+        <div>Лондон?</div>
+        <div style="font-size:11px;color:var(--text3);">15,000₽ онлайн</div>
+      </div>
+      <div style="color:var(--text3);font-size:18px;align-self:center;">→</div>
+      <div class="vel-evt" style="background:var(--red-l);border:2px solid var(--red-b);">
+        <div style="font-size:10px;color:var(--red);font-weight:700;">00:03</div>
+        <div>Токио?</div>
+        <div style="font-size:11px;color:var(--text3);">30,000₽ крипто</div>
+      </div>
+      <div style="color:var(--red);font-size:18px;align-self:center;">→</div>
+      <div class="vel-evt" style="background:var(--red-l);border:2px solid #dc2626;">
+        <div style="font-size:10px;color:var(--red);font-weight:700;">00:04</div>
+        <div style="font-weight:700;color:#dc2626;">ЗАБЛОКИРОВАНО</div>
+        <div style="font-size:11px;color:var(--text3);">velocity alert</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Velocity Feature Formulas</div>
+    $$v_{k,w}(u,t) = \sum_{t'=t-w}^{t-1} \mathbb{1}[\text{entity}(t')=k]$$
+    $$\text{или}\quad v_{k,w}^{\text{sum}}(u,t) = \sum_{t'=t-w}^{t-1} \text{amount}(t') \cdot \mathbb{1}[\text{entity}(t')=k]$$
+    <div class="fnote">
+      Velocity = count/sum событий по entity $k$ (карта, пользователь, устройство, IP) в окне $[t-w, t)$.<br>
+      <strong>Ключевые velocity признаки:</strong>
+      <ul style="margin-top:8px;padding-left:16px;">
+        <li><code>card_txn_count_1h</code> — количество транзакций по карте за последний час</li>
+        <li><code>card_txn_amt_sum_24h</code> — суммарная сумма транзакций по карте за сутки</li>
+        <li><code>user_countries_distinct_6h</code> — количество уникальных стран за 6 часов</li>
+        <li><code>ip_fraud_rate_30d</code> — историческая доля фрода с данного IP за 30 дней</li>
+        <li><code>device_new_card_count_7d</code> — сколько разных карт использовалось с устройства за неделю</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Почему velocity важнее статических признаков</div>
+    <p>Статические признаки: страна карты, тип мерчанта, сумма. Мошенник знает эти паттерны и имитирует их. "Транзакция из России на Amazon за $50 — выглядит нормально".</p>
+    <p>Velocity: "5 транзакций за 3 минуты в 3 часах ночи, 3 разных страны, 2 разных мерчанта" — это поведенческий профиль, который сложно имитировать. Velocity features дают 60-70% SHAP importance в production-моделях Stripe.</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Расчёт velocity для 5 транзакций</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>t</th><th>Транзакция</th><th>card_cnt_1h</th><th>card_amt_1h</th><th>countries_6h</th><th>Fraud Score</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">10:00</td><td>500₽ · Moscow · кафе</td><td class="mn">1</td><td class="mn">500</td><td class="mn">1</td><td style="color:var(--grn);font-weight:700;">0.02</td></tr>
+          <tr><td class="mn">10:02</td><td>15,000₽ · Online · UK</td><td class="mn">2</td><td class="mn">15,500</td><td class="mn">2</td><td style="color:var(--amber);font-weight:700;">0.31</td></tr>
+          <tr class="trh"><td class="mn">10:03</td><td>30,000₽ · Crypto · JP</td><td class="mn">3</td><td class="mn">45,500</td><td class="mn">3</td><td style="color:var(--red);font-weight:700;">0.87 🚨</td></tr>
+          <tr><td colspan="6" style="font-size:12px;color:#7f1d1d;background:var(--red-l);">Velocity признаки резко выросли → модель поднимает fraud score с 0.02 до 0.87 за 3 минуты!</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ REAL-TIME SCORING ═══ -->
+<section class="sec" id="realtime">
+  <div class="stitle">⚙️ Real-time Scoring Pipeline</div>
+  <div class="sdesc">Как организовать инференс с латентностью &lt;50ms на 10,000+ TPS.</div>
+
+  <div class="pipeline">
+    <div class="pnode">
+      <div class="pnlabel">Шаг 1 · &lt;1ms</div>
+      <div class="pntitle">📩 Transaction ingested</div>
+      <div class="pndesc">API получает транзакцию: card_id, amount, merchant, geo, device. Kafka topic или gRPC.</div>
+    </div>
+    <div class="pnarr">↓</div>
+    <div class="pnode">
+      <div class="pnlabel">Шаг 2 · &lt;5ms</div>
+      <div class="pntitle">⚡ Feature retrieval from Feature Store</div>
+      <div class="pndesc">Redis/Aerospike: pre-computed velocity features за последние 1h/6h/24h/30d. P99 &lt;2ms.</div>
+    </div>
+    <div class="pnarr">↓</div>
+    <div class="pnode">
+      <div class="pnlabel">Шаг 3 · &lt;2ms</div>
+      <div class="pntitle">🔢 Feature computation (real-time)</div>
+      <div class="pndesc">Признаки которые нельзя предвычислить: time_since_last_txn, amount_vs_avg_ratio, geo_velocity.</div>
+    </div>
+    <div class="pnarr">↓</div>
+    <div class="pnode">
+      <div class="pnlabel">Шаг 4 · &lt;10ms</div>
+      <div class="pntitle">🤖 Model inference</div>
+      <div class="pndesc">LightGBM (LGBM PMML или ONNX) предсказывает P(fraud). Один поток CPU ≈ 5ms инференс.</div>
+    </div>
+    <div class="pnarr">↓</div>
+    <div class="pnode">
+      <div class="pnlabel">Шаг 5 · &lt;2ms</div>
+      <div class="pntitle">📋 Rule Engine overlay</div>
+      <div class="pndesc">Детерминированные правила поверх ML: "блокировать если amount &gt; 500K и новый мерчант" независимо от ML-скора.</div>
+    </div>
+    <div class="pnarr">↓</div>
+    <div class="pnode">
+      <div class="pnlabel">Шаг 6 · &lt;2ms</div>
+      <div class="pntitle">✅/🚫 Decision + Feature Store update</div>
+      <div class="pndesc">Approve / Decline / Step-up (3DS). Асинхронно: обновляем velocity counters в Feature Store.</div>
+    </div>
+  </div>
+
+  <div class="cl warn">
+    <div class="cli">⚠️</div>
+    <div><strong>Критически важно:</strong> обновление velocity counters должно быть асинхронным (после ответа клиенту). Синхронное обновление добавляет 10-20ms → выбиваемся из SLA. Используем Kafka consumer group → отдельный writer в Redis.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Latency breakdown реального fraud pipeline</div>
+    <div class="chsub">P50 / P95 / P99 по компонентам (мс). Цель: суммарный p99 &lt; 50ms</div>
+    <div style="position:relative;height:220px;"><canvas id="c_latency"></canvas></div>
+  </div>
+</section>
+
+<!-- ═══ FEATURE STORE ═══ -->
+<section class="sec" id="featurestore">
+  <div class="stitle">🗄️ Feature Store для Fraud Detection</div>
+  <div class="sdesc">Feature Store — централизованное хранилище признаков. Решает проблему train-serve skew и обеспечивает &lt;5ms retrieval.</div>
+
+  <div class="cl ins">
+    <div class="cli">💡</div>
+    <div><strong>Train-serve skew</strong> — когда признаки при обучении вычисляются иначе чем при инференсе. Результат: модель обучена на одних данных, работает на других → неожиданное падение качества в production. Feature Store это устраняет.</div>
+  </div>
+
+  <div class="charts-2">
+    <div class="chb" style="background:#0f172a;color:#e2e8f0;">
+      <div class="cht" style="color:#f1f5f9;">❌ Без Feature Store</div>
+      <div class="chsub" style="color:#94a3b8;">Train-serve skew обязателен</div>
+      <div style="font-size:12.5px;color:#94a3b8;line-height:1.8;margin-top:8px;">
+        <div>📚 <strong style="color:#fca5a5;">Training:</strong> Python script, batch SQL join, Spark aggregation</div>
+        <div style="margin-top:6px;color:#475569;">↕ разные пайплайны ↕</div>
+        <div style="margin-top:6px;">⚡ <strong style="color:#fca5a5;">Serving:</strong> Java microservice, live DB query, другой SQL</div>
+        <div style="margin-top:8px;background:#450a0a;border:1px solid #dc2626;border-radius:8px;padding:8px;color:#fca5a5;">Разные определения rolling window<br>Разные timezone обработки<br>Разные NULL-handling → SKEW!</div>
+      </div>
+    </div>
+    <div class="chb" style="background:#0f172a;color:#e2e8f0;">
+      <div class="cht" style="color:#f1f5f9;">✅ С Feature Store</div>
+      <div class="chsub" style="color:#94a3b8;">Одна логика везде</div>
+      <div style="font-size:12.5px;color:#94a3b8;line-height:1.8;margin-top:8px;">
+        <div>📚 <strong style="color:#86efac;">Training:</strong> читаем historical features из FS (точечные feature values на каждый timestamp)</div>
+        <div style="margin-top:6px;color:#16a34a;">↕ одна и та же логика ↕</div>
+        <div style="margin-top:6px;">⚡ <strong style="color:#86efac;">Serving:</strong> читаем online features из FS (Redis, Aerospike)</div>
+        <div style="margin-top:8px;background:#052e16;border:1px solid #16a34a;border-radius:8px;padding:8px;color:#86efac;">Гарантированная консистентность<br>Point-in-time correct joins<br>Версионирование фич</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Типичная Feature Store архитектура (Stripe-like)</div>
+    <div class="numex-step">
+      <div class="numex-badge">Offline</div>
+      <div><strong>Warehouse (S3 / BigQuery):</strong> исторические транзакции → Spark job → предвычисленные признаки → Parquet files → Training dataset.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Online</div>
+      <div><strong>Stream (Kafka → Flink):</strong> входящие транзакции → real-time aggregation → Redis (TTL 7 дней). Каждый ключ: <code>card:12345:txn_count_1h → 3</code>.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Bridge</div>
+      <div><strong>Point-in-time join:</strong> при обучении — каждой транзакции в train set соответствуют feature values на момент t. Не используем "будущие" значения velocity!</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Feature catalog</div>
+      <div>Метаданные о каждом признаке: owner, description, SLA, data lineage. "card_txn_count_1h: ответственный — team fraud, SLA 99.9% uptime, max latency 2ms".</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONCEPT DRIFT ═══ -->
+<section class="sec" id="drift">
+  <div class="stitle">🔄 Concept Drift в Fraud Detection</div>
+  <div class="sdesc">Мошенники адаптируются. Паттерны фрода 2023 года ≠ паттерны 2024. Модель без обновлений деградирует.</div>
+
+  <p>Fraud detection — классический пример adversarial concept drift: мошенники активно изучают систему и адаптируют атаки. После каждого крупного блокирования схемы → новая схема.</p>
+
+  <!-- Drift visualization -->
+  <div class="drift-vis">
+    <div class="drift-cell" style="background:var(--grn-l);border:1px solid var(--grn-b);">
+      <h4 style="color:var(--grn);">Precision</h4>
+      <div class="metric" style="color:var(--grn);">87%</div>
+      <div class="trend" style="color:var(--grn);">↓ 74% через 6 мес</div>
+    </div>
+    <div class="drift-cell" style="background:var(--amber-l);border:1px solid var(--amber-b);">
+      <h4 style="color:var(--amber);">Recall</h4>
+      <div class="metric" style="color:var(--amber);">92%</div>
+      <div class="trend" style="color:var(--red);">↓ 71% через 6 мес</div>
+    </div>
+    <div class="drift-cell" style="background:var(--red-l);border:1px solid var(--red-b);">
+      <h4 style="color:var(--red);">FN Rate</h4>
+      <div class="metric" style="color:var(--red);">8%</div>
+      <div class="trend" style="color:var(--red);">↑ 29% без ретрейна</div>
+    </div>
+    <div class="drift-cell" style="background:var(--blue-l);border:1px solid var(--blue-b);">
+      <h4 style="color:var(--blue);">Data drift</h4>
+      <div class="metric" style="color:var(--blue);">PSI</div>
+      <div class="trend" style="color:var(--text3);">Population Stability Index</div>
+    </div>
+  </div>
+
+  <div class="fbox red">
+    <div class="flabel">Population Stability Index (PSI) — детектор дрифта</div>
+    $$\text{PSI} = \sum_{i=1}^{k} (E_i - A_i) \cdot \ln\!\left(\frac{E_i}{A_i}\right)$$
+    <div class="fnote">
+      <strong>$E_i$</strong> — доля наблюдений в бакете $i$ в reference (обучающий период). <strong>$A_i$</strong> — доля в текущем периоде.<br>
+      PSI &lt; 0.1: стабильно. PSI 0.1–0.2: небольшой сдвиг, мониторинг. PSI &gt; 0.2: значительный дрейф → ретрейн!<br>
+      Вычисляется по каждому признаку отдельно → находим "дрейфующие" признаки → понимаем какая схема фрода меняется.
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 PSI — интуиция через пример</div>
+    <p>Признак: сумма транзакции. В обучающих данных: 70% транзакций 1-100$, 20% 100-500$, 10% 500$+.</p>
+    <p>Через 6 месяцев: 40% 1-100$, 30% 100-500$, 30% 500$+. PSI = (0.70-0.40)×ln(0.70/0.40) + (0.20-0.30)×ln(0.20/0.30) + (0.10-0.30)×ln(0.10/0.30) ≈ 0.18+0.04+0.22 = 0.44. PSI &gt; 0.2 → РЕТРЕЙН ОБЯЗАТЕЛЕН.</p>
+    <p><strong>Что произошло:</strong> инфляция + рост онлайн-покупок → средний чек вырос. Модель не знает о новых крупных транзакциях — может их неправильно классифицировать.</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Стратегии работы с concept drift</div>
+    <div class="numex-step">
+      <div class="numex-badge">Trigger-based</div>
+      <div>Мониторим PSI / метрики на daily validation set. При PSI &gt; 0.2 или Precision/Recall просадка &gt; 5% → автоматический триггер ретрейна. <strong>Stripe:</strong> модель обновляется каждые 2-4 недели.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Window-based</div>
+      <div>Скользящее окно данных для обучения: всегда последние 90 дней. Старые паттерны вытесняются свежими. <strong>Риск:</strong> потеряем редкие но устойчивые схемы фрода.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Weighted</div>
+      <div>Экспоненциальное убывание веса старых данных: $w_t = e^{-\lambda(T-t)}$. Последние данные важнее без резкого отсечения истории. $\lambda$ = гиперпараметр скорости забывания.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Online Learning</div>
+      <div>Обновляем модель каждую транзакцию или каждый час. Логистическая регрессия / SGD — обновляются инкрементально. <strong>Проблема:</strong> нужна быстрая разметка (label). Для фрода: chargeback приходит через 30-90 дней!</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Деградация модели без ретрейна vs с ретрейном</div>
+    <div class="chsub">Recall по месяцам. Ретрейн каждые 4 недели поддерживает качество.</div>
+    <div style="position:relative;height:200px;"><canvas id="c_drift"></canvas></div>
+  </div>
+</section>
+
+<!-- ═══ GRAPHS ═══ -->
+<section class="sec" id="graphs">
+  <div class="stitle">🕸️ Graph ML для Fraud Detection</div>
+  <div class="sdesc">Мошеннические сети: скоординированные атаки через связанные аккаунты. Graph features дают +10-20% к качеству.</div>
+
+  <p>Ключевые инсайты: мошенники создают <strong>синтетические сети аккаунтов</strong> (synthetic identity fraud). Аккаунты используют общие устройства, IP, email домены, телефоны. Граф раскрывает эти связи.</p>
+
+  <div class="fbox teal">
+    <div class="flabel">Graph Features для транзакции (u, v, t)</div>
+    <div style="margin-top:10px;">
+      <strong>Node features (карта / мерчант):</strong>
+      <ul style="padding-left:16px;margin-top:6px;font-size:13.5px;line-height:1.8;color:var(--text2);">
+        <li>Degree: количество связанных сущностей (карт связанных с IP, IP связанных с устройством)</li>
+        <li>Fraud rate: доля прошлых фрод-транзакций узла</li>
+        <li>Clustering coefficient: насколько "клика" соседей связана между собой</li>
+        <li>PageRank: мера "подозрительности" в сети связей</li>
+      </ul>
+      <strong style="display:block;margin-top:10px;">Edge features (связь):</strong>
+      <ul style="padding-left:16px;margin-top:6px;font-size:13.5px;line-height:1.8;color:var(--text2);">
+        <li>shared_device_count: сколько карт использовали то же устройство</li>
+        <li>shared_ip_fraud_rate: доля фрода от карт с этого IP</li>
+        <li>bipartite_link_strength: сила связи карта-мерчант через количество транзакций</li>
+      </ul>
+    </div>
+    <div class="fnote">Реализация: NetworkX (small graphs), DGL/PyG (Graph Neural Networks), Spark GraphX (large scale).</div>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Пример: synthetic identity fraud через граф</div>
+    <div class="numex-step">
+      <div class="numex-badge">Сеть</div>
+      <div>Мошенник создал 50 карт. Все они регистрировались с 3 IP-адресов. 15 карт использовали 2 устройства. Граф: IP → Card → Device → Merchant.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Граф-признак</div>
+      <div><code>ip_shared_cards_count = 50/3 ≈ 17</code>. Легитимный пользователь обычно: 1-2 карты с одного IP. 17 карт с одного IP → аномально высокий connected component.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">GNN</div>
+      <div>GraphSAGE или GAT обучается агрегировать представления соседей. Новая карта получает embedding = функция(собственных признаков, признаков соседних карт). Даже без истории — заражается "репутацией" сети.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Результат</div>
+      <div>PayPal: добавление graph features к LGBM дало +18% AUC на synthetic identity fraud. Стандартная модель без графа: AUC 0.82. С графом: AUC 0.97.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SYSTEM DESIGN ═══ -->
+<section class="sec" id="cases">
+  <div class="stitle">🏗️ System Design Cases</div>
+
+  <div class="casebox">
+    <div class="caseco">💳 Stripe · Fraud Detection (Engineering Blog, 2023)</div>
+    <h4>Как Stripe обрабатывает $640B платежей в год с точностью &gt;99%</h4>
+    <ul>
+      <li><strong>Radar Rules Engine:</strong> до ML — 200+ детерминированных правил (block_if: country='XX' AND amount&gt;1000). Обрабатывает 10-15% транзакций немедленно без ML.</li>
+      <li><strong>ML Score:</strong> LightGBM с 500+ признаками. Обучается каждые 2 недели на последних 90 днях. Velocity features через Kafka→Redis pipeline.</li>
+      <li><strong>Ensemble:</strong> несколько моделей для разных типов фрода: card testing (маленькие проверочные транзакции), ATO (account takeover), synthetic identity. Финальный score = weighted ensemble.</li>
+      <li><strong>3DS Step-up:</strong> при score 0.3-0.7 → отправить на 3D Secure вместо блокировки. Балансирует UX и безопасность.</li>
+      <li><strong>Latency:</strong> p50=12ms, p99=45ms. SLA = 50ms. Выполняется за счёт pre-computed features в Redis и ONNX inference.</li>
+    </ul>
+  </div>
+
+  <div class="sysbox">
+    <h4>🏗️ Stripe Radar Architecture — полный пайплайн</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Payment API</strong>gRPC request<br>card + amount<br>merchant + geo</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Rule Engine</strong>200+ rules<br>Lua scripts<br>&lt;1ms</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>Feature Store</strong>Redis lookup<br>500+ features<br>p99 &lt;2ms</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>ML Inference</strong>LGBM ONNX<br>fraud_score<br>&lt;10ms</div>
+    </div>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Decision</strong>approve/block<br>/3ds threshold<br>&lt;1ms</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Response</strong>to merchant<br>&lt;50ms total<br>SLA</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Async: Kafka</strong>velocity update<br>feature write<br>Redis TTL</div>
+      <div class="sysarrow">→</div>
+      <div class="sysgreen"><strong>Monitoring</strong>PSI, Recall<br>drift alerts<br>retrain trigger</div>
+    </div>
+    <div class="sysnote">
+      <strong>Ключевые технические решения Stripe:</strong><br>
+      1. <strong>Radar vs ML separation:</strong> Правила обрабатывают "очевидный" фрод мгновенно. ML работает на неопределённых случаях. Это снижает ML нагрузку на 80%.<br>
+      2. <strong>Chargeback feedback loop:</strong> chargebacks (подтверждённый фрод через 30-90 дней) → автоматически добавляются как labeled data → ретрейн модели.<br>
+      3. <strong>Merchant-level models:</strong> крупные мерчанты (Amazon, Netflix) получают кастомную модель обученную на их специфическом фроде.
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <h4>🏗️ Visa Advanced Authorization — сетевой уровень</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>10,000 TPS</strong>Peak load<br>global network<br>24/7</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>Neural Scoring</strong>Deep learning<br>500+ features<br>~500 decisions/ms</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Risk Score 0-99</strong>sent to issuer<br>within auth<br>message</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Bank Decision</strong>issuer uses score<br>own rules<br>approve/decline</div>
+    </div>
+    <div class="sysnote">
+      <strong>Уникальность Visa:</strong> Visa не принимает решение сама — она отправляет fraud score банку-эмитенту в поле 44 авторизационного сообщения ISO 8583. Банк сам решает блокировать или нет.<br>
+      <strong>Объём:</strong> 65 billion транзакций в год, 24/7 глобально, данные из 200+ стран → модель обучается на беспрецедентно большом датасете. Это главное конкурентное преимущество Visa перед локальными банками.
+    </div>
+  </div>
+
+  <div class="casebox">
+    <div class="caseco">🏦 Сбербанк · AI Fraud Detection (2022)</div>
+    <h4>Крупнейший банк России — от правил к ML</h4>
+    <ul>
+      <li><strong>История:</strong> до 2018 — только правила (200+ правил). 2018 — первый ML пилот (LightGBM). 2020 — Graph Neural Networks добавлены к основной модели.</li>
+      <li><strong>Объём:</strong> 40M активных карт, 100M+ транзакций в день, 300+ параметров на транзакцию.</li>
+      <li><strong>Результат внедрения ML:</strong> Recall вырос с 62% (правила) до 91% (ML+правила). FPR снизился с 1.2% до 0.3%.</li>
+      <li><strong>Особенность:</strong> "антифрод на рельсах" — реализован на собственном ML платформе (DatasphereML). Не зависит от западных вендоров.</li>
+    </ul>
+  </div>
+
+  <div class="charts-2">
+    <div class="chb">
+      <div class="cht">Fraud типы и их доля (PayPal, 2023)</div>
+      <div class="chsub">Card testing — самый частый, ATO — самый дорогой</div>
+      <div style="position:relative;height:200px;"><canvas id="c_fraud_types"></canvas></div>
+    </div>
+    <div class="chb">
+      <div class="cht">Feature Importance (SHAP) — топ признаки</div>
+      <div class="chsub">Velocity features доминируют в production-моделях</div>
+      <div style="position:relative;height:200px;"><canvas id="c_shap_fraud"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Q&A ═══ -->
+<section class="sec" id="qa">
+  <div class="qah">❓ Q&amp;A — 12 вопросов</div>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Почему accuracy — плохая метрика для fraud detection? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      При 0.1% fraud rate: модель "всегда говорит легитимная" имеет accuracy 99.9% — но ловит 0% мошенников!<br><br>
+      <strong>Правильные метрики:</strong><br>
+      - <strong>Recall (Sensitivity)</strong>: доля пойманного фрода. Максимизируем.<br>
+      - <strong>Precision</strong>: доля реального фрода среди заблокированных. Минимум FP.<br>
+      - <strong>F-beta score</strong>: баланс, обычно с β=2 (Recall вдвое важнее).<br>
+      - <strong>PR-AUC</strong>: площадь под Precision-Recall кривой. Более честна при дисбалансе чем ROC-AUC.<br>
+      - <strong>Business metrics</strong>: потери от фрода ($) + потери от FP ($) — конечная метрика оценки.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое velocity features и почему они важны? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      Velocity features = агрегаты поведения за скользящее временное окно.<br><br>
+      <strong>Примеры:</strong><br>
+      - card_txn_count_1h: количество транзакций по карте за час<br>
+      - card_amt_sum_24h: суммарная сумма за сутки<br>
+      - user_countries_distinct_6h: уникальные страны за 6 часов<br>
+      - ip_fraud_rate_30d: исторический % фрода с этого IP<br><br>
+      <strong>Почему важны:</strong> мошенник спешит (карту скоро заблокируют) → аномально высокая активность за короткое время. Статические признаки можно имитировать, поведение во времени — сложнее.<br><br>
+      В production-моделях velocity features занимают 60-70% SHAP importance.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как организовать real-time inference с latency &lt;50ms? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Архитектурные решения:</strong><br><br>
+      1. <strong>Pre-compute features:</strong> velocity features вычисляются непрерывно (Kafka→Flink→Redis). При запросе — только lookup, не вычисление.<br>
+      2. <strong>In-memory Feature Store:</strong> Redis или Aerospike. Latency p99 &lt;2ms. TTL на старые данные.<br>
+      3. <strong>ONNX/PMML inference:</strong> LightGBM конвертируется в ONNX. Inference на CPU ≈5ms. Не нужен Python runtime.<br>
+      4. <strong>Rule Engine первым:</strong> детерминированные правила (&lt;1ms) фильтруют ~15-20% случаев без ML.<br>
+      5. <strong>Async updates:</strong> обновление velocity counters — асинхронно после ответа клиенту.<br><br>
+      <strong>SLA decomposition:</strong> network 5ms + feature lookup 2ms + real-time features 2ms + inference 8ms + decision 1ms + buffer = ~25ms p50, 45ms p99.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое concept drift и как его мониторить? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      <strong>Concept drift</strong> = изменение статистической зависимости P(Y|X) во времени. В fraud: мошенники меняют тактику → старая модель хуже ловит новые схемы.<br><br>
+      <strong>Типы дрифта:</strong><br>
+      - Sudden drift: новая схема фрода появляется резко (массовый phishing attack)<br>
+      - Gradual drift: постепенное изменение (инфляция меняет distribution сумм)<br>
+      - Adversarial drift: мошенники специально имитируют легитимные транзакции<br><br>
+      <strong>Мониторинг:</strong><br>
+      - PSI по каждому признаку: PSI &gt; 0.2 → ретрейн<br>
+      - Performance drift: Recall на rolling validation window. Снижение &gt;5% → alarm<br>
+      - Feature distribution shift: KL-divergence или Kolmogorov-Smirnov тест<br>
+      - Chargeback rate trend: рост chargebacks → модель пропускает новый тип фрода
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как бороться с дисбалансом классов в fraud? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      Порядок предпочтения на практике:<br><br>
+      1. <strong>scale_pos_weight = neg/pos</strong> в LightGBM: вес fraud-класса = 99900/100 = 999. Быстро, без изменения данных, хорошо работает.<br>
+      2. <strong>class_weight='balanced'</strong> в sklearn LogisticRegression/SVC<br>
+      3. <strong>Focal Loss</strong> в нейросетях: γ=2 подавляет лёгкие примеры<br>
+      4. <strong>SMOTE</strong> или <strong>ADASYN</strong> для синтетических примеров: помогает при очень малых классах (&lt;0.01%)<br>
+      5. <strong>Threshold optimization</strong>: оптимизировать threshold по бизнес-метрике (cost matrix), не 0.5<br><br>
+      <strong>Не рекомендую:</strong> random oversampling + undersampling вместе — приводит к переобучению на синтетических данных.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как Feature Store решает проблему train-serve skew? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>Train-serve skew</strong>: при обучении признаки вычислены одним способом, при инференсе — другим. Результат: offline метрики хорошие, production — плохие.<br><br>
+      <strong>Feature Store решение:</strong><br>
+      1. <strong>Единое определение признака:</strong> "card_txn_count_1h = count транзакций card_id за последний час до транзакции t (exclusive)". Одна реализация, два использования.<br>
+      2. <strong>Point-in-time correct training:</strong> при генерации train set — для каждой строки берём feature values на момент timestamp транзакции из исторического хранилища.<br>
+      3. <strong>Online serving:</strong> те же feature definitions, но из live Redis.<br><br>
+      Популярные open-source: Feast, Hopsworks, Tecton. AWS: SageMaker Feature Store. GCP: Vertex AI Feature Store.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое card testing fraud и как его детектировать? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      <strong>Card testing</strong>: мошенник получил список украденных карт. Проверяет каждую маленькой транзакцией (0.01$, 1$) на легитимном мерчанте. Если прошла → использует для крупных покупок.<br><br>
+      <strong>Характерные паттерны:</strong><br>
+      - Очень маленькие суммы (outlier amount_percentile)<br>
+      - Высокая частота с одного IP/device (velocity!)<br>
+      - Новые карты без истории<br>
+      - Специфические мерчанты (парковки, donation sites — низкий порог)<br><br>
+      <strong>Detection signals:</strong><br>
+      - ip_txn_count_1h &gt; 10 → подозрительно<br>
+      - device_unique_cards_24h &gt; 5 → очень подозрительно<br>
+      - amount &lt; 2$ AND is_new_card → flag<br>
+      - merchant_card_testing_rate — исторический % card testing через этого мерчанта
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как использовать граф-признаки для fraud? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      <strong>Граф строится из сущностей:</strong> карты, IP-адреса, устройства, email, телефоны, мерчанты.<br><br>
+      <strong>Рёбра:</strong> "карта X использовалась с IP Y", "IP Y также использовался карта Z", etc.<br><br>
+      <strong>Простые граф-признаки (без GNN):</strong><br>
+      - degree(IP) = сколько карт использовали этот IP<br>
+      - fraud_rate(device) = доля фрода транзакций с этого устройства<br>
+      - shared_device_with_fraud_account: связан ли пользователь через устройство с известным фродером<br><br>
+      <strong>GNN подход (PayPal, JPMorgan):</strong><br>
+      GraphSAGE/GAT: каждый узел = embedding = функция(собственных признаков, агрегат признаков соседей). Новый узел "заражается" репутацией соседей.<br><br>
+      <strong>Результат:</strong> +10-20% AUC на synthetic identity fraud vs модель без графа.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как выставить правильный threshold? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Не используйте 0.5 по умолчанию!</strong> При дисбалансе 0.1% оптимальный threshold обычно 0.1-0.3.<br><br>
+      <strong>Метод 1: Cost-based оптимизация</strong><br>
+      Для каждого threshold τ: Cost(τ) = cost_FN × FN(τ) + cost_FP × FP(τ). Выбираем τ* = argmin Cost.<br><br>
+      <strong>Метод 2: F-beta максимизация</strong><br>
+      Максимизируем F₂ (если Recall важнее) на validation set по grid τ = [0.01, 0.02, ..., 0.99].<br><br>
+      <strong>Метод 3: Precision@K</strong><br>
+      Устанавливаем фиксированное число ручных проверок в день (K). Threshold = K-й percentile скоров.<br><br>
+      <strong>Метод 4: Multi-threshold</strong><br>
+      Разные threshold для разных сегментов: VIP-клиенты (высокий threshold), новые пользователи (низкий), транзакции в ночное время (средний).
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое 3DS и как ML решает когда его использовать? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>3D Secure (3DS)</strong> = дополнительная аутентификация: SMS, push-уведомление, биометрия. Перекладывает ответственность на эмитента → chargeback платит банк, не мерчант.<br><br>
+      <strong>Проблема:</strong> 3DS фрикция → часть пользователей бросает покупку (abandonment rate 15-30%). Нельзя применять ко всем.<br><br>
+      <strong>ML-решение (Stripe, Adyen):</strong><br>
+      - Низкий fraud score (0-0.3): approve без 3DS<br>
+      - Средний (0.3-0.7): step-up → 3DS<br>
+      - Высокий (&gt;0.7): block немедленно<br><br>
+      <strong>Результат:</strong> оптимальный "step-up" использует 3DS только для 5-10% транзакций, ловя 80-90% фрода с минимальной фрикцией для честных клиентов.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как оценить ROI от улучшения fraud модели? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Формула ROI:</strong><br>
+      ΔRevenue = ΔRecall × fraud_volume × avg_fraud_amount<br>
+      ΔCost_FP = ΔFPR × legit_volume × cost_per_FP<br>
+      Net benefit = ΔRevenue − ΔCost_FP<br><br>
+      <strong>Пример:</strong><br>
+      Recall: 85% → 90% (+5%). Fraud volume: $10M/год. avg fraud: $500.<br>
+      ΔRecall = 5% → дополнительно поймали 0.05 × 10M/500 = 1,000 транзакций → $500K сохранили.<br><br>
+      FPR: 0.5% → 0.6% (+0.1%). Legit volume: $1B. Cost per FP: $5.<br>
+      ΔFP = 0.001 × $1B/avg_legit($200) = 5,000 доп. блокировок. Cost = 5,000 × $5 = $25K.<br><br>
+      Net benefit = $500K − $25K = <strong>$475K/год</strong> от улучшения Recall на 5%.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как обрабатывать delayed labels в fraud detection? <span class="tag td">deep dive</span></summary>
+    <div class="qa">
+      <strong>Проблема:</strong> chargeback (подтверждение фрода) приходит через 30-90 дней после транзакции. Для онлайн-обучения нужна немедленная метка.<br><br>
+      <strong>Решения:</strong><br>
+      1. <strong>Proxy labels:</strong> использовать быстрые сигналы — пользователь позвонил в поддержку через 24ч, карта заблокирована через 48ч. Не идеальны но быстры.<br>
+      2. <strong>Batch retrain:</strong> переобучаем с реальными chargeback метками каждые 2-4 недели. Принятое решение в большинстве production-систем.<br>
+      3. <strong>Positive-unlabeled (PU) learning:</strong> знаем что часть "легитимных" (unlabeled) на самом деле фрод (еще не received chargeback). PU learning учитывает это при обучении.<br>
+      4. <strong>Active learning:</strong> отправлять подозрительные транзакции (score 0.4-0.7) на ручной review → быстрая разметка от аналитиков → онлайн обновление.
+    </div>
+  </details>
+
+  <div class="pfooter">
+    <a href="block3_02_demand_forecasting.html" class="btn prev">← Demand Forecasting</a>
+    <a href="block3_04_ltv_prediction.html" class="btn">LTV Prediction →</a>
+  </div>
+</section>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+
+// ROC vs PR comparison
+(function(){
+  const ctx = document.getElementById('c_roc_pr'); if(!ctx)return;
+  const fpr = [0,0.001,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1.0];
+  const roc_good = [0,0.5,0.75,0.82,0.88,0.94,0.97,0.99,1.0,1.0];
+  const roc_ok = [0,0.2,0.45,0.60,0.72,0.85,0.92,0.97,1.0,1.0];
+  new Chart(ctx, {type:'line', data:{labels:fpr.map(v=>v.toFixed(3)),datasets:[
+    {label:'ROC — хорошая модель (AUC=0.98)', data:roc_good, borderColor:'#2563eb', fill:false, pointRadius:0, tension:0.3, borderWidth:2.5},
+    {label:'ROC — средняя модель (AUC=0.92)', data:roc_ok, borderColor:'#7c3aed', fill:false, pointRadius:0, tension:0.3, borderWidth:2, borderDash:[5,3]},
+    {label:'Diagonal baseline', data:fpr, borderColor:'#9ca3af', fill:false, pointRadius:0, borderDash:[3,3], borderWidth:1}
+  ]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}},
+      title:{display:true,text:'ROC: обе модели "выглядят хорошо" при 0.1% fraud',font:{size:11,style:'italic'}}},
+    scales:{x:{title:{display:true,text:'FPR'},grid:{color:'#f3f4f6'}},
+      y:{title:{display:true,text:'TPR'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// Latency breakdown
+(function(){
+  const ctx = document.getElementById('c_latency'); if(!ctx)return;
+  const components = ['Network','Feature\nlookup','Real-time\nfeatures','ML\ninference','Rule\nengine','Decision','Buffer'];
+  const p50 = [3,1.5,1,5,0.5,0.5,0.5];
+  const p95 = [8,3,2,9,1,1,2];
+  const p99 = [12,4,3,12,2,1.5,5];
+  new Chart(ctx, {type:'bar', data:{labels:components, datasets:[
+    {label:'p50 (мс)', data:p50, backgroundColor:'rgba(22,163,74,0.7)', borderRadius:4},
+    {label:'p95 (мс)', data:p95, backgroundColor:'rgba(234,88,12,0.6)', borderRadius:4},
+    {label:'p99 (мс)', data:p99, backgroundColor:'rgba(220,38,38,0.6)', borderRadius:4}
+  ]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}}},
+    scales:{x:{stacked:false,grid:{display:false}},
+      y:{title:{display:true,text:'Latency (мс)'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// Concept drift
+(function(){
+  const ctx = document.getElementById('c_drift'); if(!ctx)return;
+  const months = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const no_retrain = [92,89,85,80,75,70,67,63,60,57,54,52];
+  const with_retrain = [92,90,91,89,92,90,91,89,92,91,90,92];
+  new Chart(ctx, {type:'line', data:{labels:months, datasets:[
+    {label:'Без ретрейна',data:no_retrain,borderColor:'#dc2626',fill:false,tension:0.3,pointRadius:3,borderWidth:2},
+    {label:'С ретрейном каждые 4 нед.',data:with_retrain,borderColor:'#16a34a',fill:false,tension:0.3,pointRadius:3,borderWidth:2.5}
+  ]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}}},
+    scales:{x:{grid:{color:'#f3f4f6'}},
+      y:{min:45,max:100,title:{display:true,text:'Recall (%)'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// Fraud types
+(function(){
+  const ctx = document.getElementById('c_fraud_types'); if(!ctx)return;
+  new Chart(ctx, {type:'doughnut', data:{
+    labels:['Card Testing','ATO (Account Takeover)','Synthetic Identity','CNP (Card Not Present)','Phishing/Social Eng.','Other'],
+    datasets:[{data:[35,22,18,13,8,4],
+      backgroundColor:['#dc2626','#ea580c','#d97706','#7c3aed','#2563eb','#6b7280'],
+      borderWidth:2,borderColor:'#fff'}]
+  }, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}}}}});
+})();
+
+// SHAP fraud
+(function(){
+  const ctx = document.getElementById('c_shap_fraud'); if(!ctx)return;
+  const features = ['card_cnt_1h','ip_fraud_rate','card_amt_24h','countries_6h','device_new_cards','amount_zscore','is_night','merchant_risk','user_age_days','prev_declined'];
+  const shap = [0.52,0.44,0.38,0.35,0.29,0.23,0.19,0.17,0.14,0.11];
+  new Chart(ctx, {type:'bar', data:{labels:features,datasets:[{
+    label:'Mean |SHAP|',data:shap,
+    backgroundColor:shap.map((_,i)=>i<4?'#dc2626':i<7?'#ea580c':'#fca5a5'),
+    borderRadius:4
+  }]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    indexAxis:'y',
+    plugins:{legend:{display:false}},
+    scales:{x:{title:{display:true,text:'Mean |SHAP|'},grid:{color:'#f3f4f6'}},
+      y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+})();
+
+}); // DOMContentLoaded
+</script>
+</body>
+</html>

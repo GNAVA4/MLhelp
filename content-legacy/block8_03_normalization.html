@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.3 · Нормализация, инициализация и регуляризация</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --cy:#0891b2;--cy-l:#ecfeff;--cy-b:#a5f3fc;--cy-d:#083344;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --pk:#db2777;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#083344,#0891b2,#22d3ee);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.68;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.88;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--cy);border-bottom-color:var(--cy);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--cy);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--cy);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--cy-l);border:1px solid var(--cy-b);border-left:4px solid var(--cy);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--cy);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#083344;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--cy-l)!important;color:#083344!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--cy);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#083344;border:1px solid #0891b2;border-radius:8px;padding:9px 13px;font-size:12px;color:#a5f3fc;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--cy-l),#cffafe);border:1px solid var(--cy-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--cy);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#083344;margin:0 0 8px;}
+.casebox p,.casebox li{color:#0c4a5e;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.cy{border-top:3px solid var(--cy);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--cy-l);color:#083344;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--cy);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--cy);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#0e7490;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--cy);border:2px solid var(--cy);}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes sweepAxis{0%,100%{opacity:.25;}50%{opacity:1;}}
+@keyframes dropOut{0%,45%{opacity:1;}50%,95%{opacity:.13;}100%{opacity:1;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+/* Куб нормализации: оси усреднения */
+.normgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin:10px 0;}
+.ncell{aspect-ratio:1;border-radius:4px;background:#e2e8f0;}
+.nrow-lbl{font-size:11px;color:var(--text3);margin:8px 0 4px;font-weight:700;}
+.normbox{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;}
+.normbox h5{font-size:13.5px;font-weight:750;margin-bottom:2px;}
+.normbox p{font-size:12px;color:var(--text3);margin-bottom:8px;line-height:1.5;}
+/* Dropout-анимация */
+.dnet{display:flex;gap:26px;justify-content:center;align-items:center;margin:16px 0;}
+.dlayer{display:flex;flex-direction:column;gap:9px;}
+.dn{width:26px;height:26px;border-radius:50%;background:var(--cy);}
+.dn.drop{animation:dropOut 2.6s ease-in-out infinite;}
+.dn.drop:nth-child(2){animation-delay:.35s;} .dn.drop:nth-child(4){animation-delay:.7s;}
+.dn.drop:nth-child(1){animation-delay:1.05s;} .dn.drop:nth-child(5){animation-delay:1.4s;}
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--cy);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--cy);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--cy-l);border-radius:9px;font-size:13.5px;color:#083344;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3,.grid4{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 8 · Deep Learning фундамент · Тема 3 из 6</div>
+  <h1>Нормализация, инициализация и регуляризация</h1>
+  <p class="sub">Три группы приёмов, без которых глубокая сеть просто не обучается</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Зачем это всё</a>
+  <a href="#s2">2. Инициализация</a>
+  <a href="#s3">3. BatchNorm</a>
+  <a href="#s4">4. LayerNorm и семейство</a>
+  <a href="#s5">5. Pre-LN vs Post-LN</a>
+  <a href="#s6">6. Dropout</a>
+  <a href="#s7">7. Регуляризация данными</a>
+  <a href="#s8">8. Подводные камни</a>
+  <a href="#s9">9. System Design</a>
+  <a href="#qa">10. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Общая рамка: всё это про одну величину</div>
+<div class="sdesc">Дисперсия активаций и градиентов — вот что мы на самом деле контролируем</div>
+
+<p>В теме 8.1 мы вывели: градиент через $L$ слоёв ведёт себя как $c^L$, где $c$ — типичный коэффициент передачи слоя. Если $c$ хоть немного отличается от 1, глубокая сеть не обучается. <strong>Инициализация, нормализация и residual-связи — три разных способа удержать $c \approx 1$.</strong></p>
+
+<div class="grid3">
+<div class="card bl"><h5>Инициализация</h5><p>Задаёт $c \approx 1$ <strong>в начальный момент</strong>. Дальше веса меняются, и гарантия слабеет.</p></div>
+<div class="card cy"><h5>Нормализация</h5><p>Принудительно возвращает масштаб активаций к фиксированному <strong>на каждом слое, на каждом шаге</strong>.</p></div>
+<div class="card gr"><h5>Residual-связи</h5><p>Дают якобиан $I + \partial f$: путь для градиента <strong>с коэффициентом ровно 1</strong>, что бы ни делал слой.</p></div>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь цепочку из 50 усилителей звука. Если каждый усиливает на 5%, на выходе сигнал в 11 раз громче. Если ослабляет на 5% — в 13 раз тише. Ни то, ни другое не годится.</p>
+<p><strong>Инициализация</strong> — настроить все усилители на коэффициент 1.0 при сборке. Хорошо, но со временем ручки крутятся.</p>
+<p><strong>Нормализация</strong> — поставить после каждого усилителя автоматический регулятор громкости, который приводит сигнал к эталонному уровню. Работает всегда, но добавляет вычислений.</p>
+<p><strong>Residual</strong> — протянуть параллельно основной цепи прямой провод. Даже если все усилители сломаются, сигнал дойдёт неискажённым.</p>
+<p>Современные архитектуры используют <strong>все три сразу</strong> — и это не избыточность, а страховка на разных временных масштабах.</p>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Регуляризация — про другое, но живёт рядом.</strong> Нормализация и инициализация решают проблему <em>оптимизации</em> («сеть вообще обучается?»). Dropout, weight decay и аугментации решают проблему <em>обобщения</em> («сеть работает на новых данных?»). Их часто изучают вместе, потому что применяют в одних и тех же местах кода — но это принципиально разные задачи, и путать их не стоит. Забавно, что BatchNorm попал в обе категории: он проектировался для оптимизации, но даёт и регуляризующий эффект как побочный.</div></div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Инициализация: вывод Xavier и He из одного требования</div>
+<div class="sdesc">Не эмпирика, а прямое следствие сохранения дисперсии</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Дисперсия выхода линейного слоя</div>
+<p>Пусть $z = \sum_{j=1}^{n_{\text{in}}} w_j x_j$, веса независимы, $\mathbb{E}[w]=0$, входы независимы от весов:</p>
+$$\operatorname{Var}(z) = n_{\text{in}}\cdot\operatorname{Var}(w)\cdot\operatorname{Var}(x)$$
+<p>Требование «дисперсия не меняется от слоя к слою» даёт:</p>
+$$\operatorname{Var}(z) = \operatorname{Var}(x) \quad\Longrightarrow\quad \boxed{\operatorname{Var}(w) = \frac{1}{n_{\text{in}}}}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Каждый нейрон складывает $n_{\text{in}}$ слагаемых. При суммировании независимых случайных величин <strong>дисперсии складываются</strong>. Значит выход в $n_{\text{in}}$ раз «шире» по дисперсии, чем каждое слагаемое.</p>
+<p>Чтобы это скомпенсировать, дисперсию весов надо взять в $n_{\text{in}}$ раз меньше. Отсюда $1/n_{\text{in}}$ — не подобранная константа, а <em>единственное значение</em>, при котором сигнал не разъезжается.</p>
+<p>Отсюда же становится понятно, почему <strong>инициализация нулями катастрофична</strong>: все нейроны слоя получат одинаковый выход, одинаковый градиент и навсегда останутся идентичными. Слой из 512 нейронов будет вести себя как один. Случайность нужна не «для разнообразия», а чтобы <strong>разорвать симметрию</strong>.</p>
+</div>
+
+<div class="fbox pur">
+<div class="flabel">📐 Xavier / Glorot (2010) — компромисс для forward и backward</div>
+$$\operatorname{Var}(w) = \frac{2}{n_{\text{in}} + n_{\text{out}}}$$
+<p>Равномерная версия: $\;w \sim \mathcal{U}\left[-\sqrt{\dfrac{6}{n_{\text{in}}+n_{\text{out}}}},\; \sqrt{\dfrac{6}{n_{\text{in}}+n_{\text{out}}}}\right]$</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: откуда взялось «и то, и другое»</div>
+<p>Прямой проход требует $\operatorname{Var}(w) = 1/n_{\text{in}}$ — чтобы не разъезжались активации.</p>
+<p>Обратный проход требует $\operatorname{Var}(w) = 1/n_{\text{out}}$ — потому что в backward умножение идёт на $W^\top$, и там суммирование по $n_{\text{out}}$ (см. вывод в теме 8.1).</p>
+<p>Одновременно выполнить оба условия невозможно, если $n_{\text{in}} \ne n_{\text{out}}$. Glorot взял <strong>среднее гармоническое</strong> — компромисс, штрафующий оба направления одинаково. Отсюда $2/(n_{\text{in}}+n_{\text{out}})$.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 He / Kaiming (2015) — поправка на ReLU</div>
+$$\operatorname{Var}(w) = \frac{2}{n_{\text{in}}}$$
+<p class="fnote">Множитель 2 компенсирует то, что ReLU обнуляет половину активаций и тем самым <strong>вдвое сокращает дисперсию</strong>.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Откуда именно двойка: вывод для ReLU</div>
+<div class="numex-step"><span class="nb">1</span><div>Пусть $z$ симметрично распределён вокруг нуля с дисперсией $\sigma^2$. После ReLU половина значений становится нулями.</div></div>
+<div class="numex-step"><span class="nb">2</span><div>$\mathbb{E}[\text{ReLU}(z)^2] = \mathbb{E}[z^2 \cdot \mathbb{1}(z>0)] = \tfrac12\mathbb{E}[z^2] = \tfrac12\sigma^2$ — по симметрии распределения.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>То есть каждый слой с ReLU <strong>делит дисперсию пополам</strong>. За 20 слоёв: $(1/2)^{20} \approx 10^{-6}$ — сигнал исчезает.</div></div>
+<div class="numex-step"><span class="nb grn">4</span><div>Чтобы скомпенсировать, берём дисперсию весов вдвое больше: $\operatorname{Var}(w) = 2/n_{\text{in}}$. Тогда потеря от ReLU в точности компенсируется усилением от весов.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div><strong>Практический эффект.</strong> He et al. показали: сеть на 30 слоёв с Xavier не сходится вообще, с He-инициализацией обучается нормально. Разница — множитель 2 в одной строчке.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Дисперсия активаций по слоям при разных инициализациях</div>
+<div class="chsub">Сеть из 30 слоёв с ReLU. Логарифмическая шкала</div>
+<div style="position:relative;height:310px;"><canvas id="c_init"></canvas></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Инициализация</th><th>Формула</th><th>Для чего</th><th>PyTorch</th></tr></thead>
+<tbody>
+<tr><td>Xavier / Glorot</td><td>$2/(n_{in}+n_{out})$</td><td>tanh, sigmoid, линейные слои</td><td><code>xavier_normal_</code></td></tr>
+<tr class="trh"><td>He / Kaiming</td><td>$2/n_{in}$</td><td><strong>ReLU и его варианты — дефолт</strong></td><td><code>kaiming_normal_(mode='fan_in')</code></td></tr>
+<tr><td>LeCun</td><td>$1/n_{in}$</td><td>SELU, self-normalizing сети</td><td>—</td></tr>
+<tr><td>Orthogonal</td><td>ортогональная матрица</td><td>RNN, где важно сохранение нормы</td><td><code>orthogonal_</code></td></tr>
+<tr><td>Trunc. normal $\sigma$=0.02</td><td>фиксированная малая</td><td><strong>Трансформеры (GPT-подобные)</strong></td><td><code>trunc_normal_</code></td></tr>
+<tr><td>Zeros</td><td>—</td><td>только bias и выход residual-ветки</td><td><code>zeros_</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Трюк, который используют все современные архитектуры: инициализация выходного слоя residual-ветки нулями.</strong> Если последний слой внутри $f$ в $y = x + f(x)$ инициализировать нулями, то на старте $f(x) = 0$ и вся сеть <em>тождественна</em>: $y = x$. Градиент проходит идеально, обучение начинается со «слоями-невидимками», которые постепенно включаются. Это заметно стабилизирует старт очень глубоких сетей и применяется в ResNet (zero-init последнего BN), в диффузионных моделях и в LoRA (матрица $B$ инициализируется нулями ровно по этой причине).</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Почему в трансформерах просто $\sigma = 0.02$, а не He?</strong> Потому что там дисперсию удерживает LayerNorm, а не инициализация. Дополнительно GPT-подобные модели масштабируют инициализацию выходных проекций на $1/\sqrt{2L}$, где $L$ — число слоёв: с ростом глубины вклад каждой residual-ветки уменьшается, чтобы суммарная дисперсия после $L$ сложений оставалась ограниченной. Это тот же принцип сохранения дисперсии, просто применённый к сумме residual-ветвей, а не к цепочке умножений.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. BatchNorm: как работает и почему ломается</div>
+<div class="sdesc">Самый влиятельный приём 2015 года — и его ограничения</div>
+
+<div class="fbox">
+<div class="flabel">📐 BatchNorm (Ioffe & Szegedy, 2015)</div>
+<p>Для каждого канала $c$ статистика считается <strong>по батчу</strong> (и по пространственным осям для свёрток):</p>
+$$\mu_c = \frac{1}{|B|}\sum_{i\in B} x_{i,c}, \qquad \sigma_c^2 = \frac{1}{|B|}\sum_{i\in B}(x_{i,c}-\mu_c)^2$$
+$$\hat x_{i,c} = \frac{x_{i,c}-\mu_c}{\sqrt{\sigma_c^2+\epsilon}}, \qquad y_{i,c} = \gamma_c\,\hat x_{i,c} + \beta_c$$
+<p class="fnote">$\gamma$ и $\beta$ — <strong>обучаемые</strong> параметры на канал. Они позволяют сети при необходимости отменить нормализацию.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем нужны γ и β</div>
+<p>Первая часть формулы жёстко приводит активации к $\mathcal{N}(0,1)$. Но это может быть <strong>вредно</strong>: например, для сигмоиды диапазон около нуля — почти линейный участок, и сеть теряет нелинейность.</p>
+<p>$\gamma$ и $\beta$ возвращают сети свободу: она может выучить любой нужный масштаб и сдвиг. В частности, при $\gamma = \sqrt{\sigma^2+\epsilon}$ и $\beta = \mu$ нормализация полностью отменяется.</p>
+<p>То есть BatchNorm не <em>навязывает</em> распределение, а <strong>перепараметризует задачу</strong>: вместо «выучить правильный масштаб через веса всех предыдущих слоёв» сеть получает две прямые ручки на каждый канал. Это и есть главный источник ускорения обучения.</p>
+</div>
+
+<h3>Train и eval — два разных режима</h3>
+<div class="fbox amber">
+<div class="flabel">📐 Running statistics</div>
+$$\mu_{\text{run}} \leftarrow (1-\alpha)\,\mu_{\text{run}} + \alpha\,\mu_B, \qquad \sigma^2_{\text{run}} \leftarrow (1-\alpha)\,\sigma^2_{\text{run}} + \alpha\,\sigma^2_B$$
+<p class="fnote">$\alpha$ = <code>momentum</code> (в PyTorch по умолчанию 0.1). В режиме <code>eval()</code> используются накопленные $\mu_{\text{run}}$, $\sigma_{\text{run}}$ вместо статистики батча.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему на инференсе нельзя брать статистику батча</div>
+<p>Три причины, и все практические.</p>
+<p>① <strong>Предсказание перестало бы быть детерминированным.</strong> Один и тот же объект получал бы разный ответ в зависимости от того, с кем он попал в батч. Ровно та же проблема, что у intersample attention в SAINT (блок 7).</p>
+<p>② <strong>Батч размера 1 невозможен.</strong> Дисперсия одного объекта равна нулю, деление разваливается.</p>
+<p>③ <strong>Продовый батч нерепрезентативен.</strong> В онлайне могут прийти 4 запроса от одного сегмента — их статистика не отражает популяцию.</p>
+<p>Поэтому BatchNorm запоминает «среднюю статистику по всему обучению» и на инференсе использует её как фиксированные константы. Заодно это позволяет <strong>вплавить BatchNorm в предыдущий линейный слой</strong> — на инференсе это просто аффинное преобразование, и его можно слить с весами свёртки, получив ускорение бесплатно.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Забытый <code>model.eval()</code> — классика.</strong> Симптомы: валидационная метрика прыгает от запуска к запуску, зависит от размера валидационного батча, и систематически <em>занижена</em>. Причина: BatchNorm использует статистику маленького валидационного батча, а Dropout продолжает выключать нейроны. Ошибки нет, всё «работает». Обратная ситуация — забытый <code>model.train()</code> после валидации — ещё коварнее: running statistics перестают обновляться, и обучение тихо деградирует.</div></div>
+
+<h3>Где BatchNorm ломается</h3>
+<div class="grid2">
+<div class="card rd"><h5>Маленький батч</h5><p>При батче 2–8 оценка $\mu$ и $\sigma$ по батчу очень шумная. Нормализация вносит шум вместо стабилизации. Критично для детекции и сегментации, где батч ограничен памятью.</p></div>
+<div class="card rd"><h5>Последовательности переменной длины</h5><p>В RNN и трансформерах статистика по батчу смешивает позиции с разным смыслом и падди. Плюс на инференсе длина другая, чем при обучении.</p></div>
+<div class="card rd"><h5>Онлайн-обучение и RL</h5><p>Распределение данных меняется быстро, running statistics отстают и оказываются неверными.</p></div>
+<div class="card rd"><h5>Распределённое обучение</h5><p>Каждая GPU считает статистику по своему микробатчу — это не то же самое, что статистика по общему батчу. Нужен SyncBatchNorm ценой синхронизации.</p></div>
+</div>
+
+<div class="chb">
+<div class="cht">Качество BatchNorm в зависимости от размера батча</div>
+<div class="chsub">GroupNorm почти не зависит от батча — отсюда его популярность в детекции и сегментации</div>
+<div style="position:relative;height:290px;"><canvas id="c_bs"></canvas></div>
+</div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Почему BatchNorm работает — история пересмотра.</strong> Оригинальная статья объясняла эффект «уменьшением internal covariate shift» — сдвига распределений активаций между слоями. Santurkar et al. (2018) экспериментально это опровергли: они <em>намеренно добавляли</em> шум после BatchNorm, воссоздавая covariate shift, — и обучение всё равно оставалось быстрым. Текущее объяснение: BatchNorm <strong>сглаживает ландшафт оптимизации</strong>, уменьшая липшицеву константу градиента, что позволяет делать более крупные шаги. Полезный урок: правильное объяснение механизма может прийти через годы после того, как приём стал стандартом.</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. LayerNorm, RMSNorm, GroupNorm: по каким осям усредняем</div>
+<div class="sdesc">Вся разница между ними — в выборе осей статистики</div>
+
+<p>Представь тензор активаций формы <code>(N, C, H, W)</code> — батч, каналы, высота, ширина. Все виды нормализации отличаются <strong>только тем, по каким осям считается среднее и дисперсия</strong>.</p>
+
+<div class="grid4">
+<div class="normbox"><h5 style="color:var(--blue)">BatchNorm</h5><p>по (N, H, W)<br>своя статистика на канал</p>
+<div class="normgrid" id="ng_bn"></div></div>
+<div class="normbox"><h5 style="color:var(--cy)">LayerNorm</h5><p>по (C, H, W)<br>своя статистика на объект</p>
+<div class="normgrid" id="ng_ln"></div></div>
+<div class="normbox"><h5 style="color:var(--pur)">InstanceNorm</h5><p>по (H, W)<br>на объект и канал</p>
+<div class="normgrid" id="ng_in"></div></div>
+<div class="normbox"><h5 style="color:var(--grn)">GroupNorm</h5><p>по (группа C, H, W)<br>компромисс</p>
+<div class="normgrid" id="ng_gn"></div></div>
+</div>
+<p style="font-size:12px;color:var(--text3);margin-top:-2px;">Подсвеченные ячейки — элементы, по которым считается одна общая статистика. Столбцы = объекты батча, строки = каналы.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p><strong>BatchNorm</strong> спрашивает: «какова типичная яркость <em>этого канала</em> среди всех картинок батча?» — статистика межобъектная, отсюда зависимость от батча.</p>
+<p><strong>LayerNorm</strong> спрашивает: «каков типичный масштаб активаций <em>у этого объекта</em>?» — статистика внутриобъектная, <strong>батч вообще не участвует</strong>. Отсюда полная независимость от размера батча и от других объектов.</p>
+<p><strong>GroupNorm</strong> — среднее между ними: делим каналы на $G$ групп и нормализуем внутри группы. При $G=1$ это LayerNorm, при $G=C$ — InstanceNorm.</p>
+<p>Именно поэтому <strong>трансформеры используют LayerNorm</strong>: последовательности имеют разную длину, батчи бывают маленькими, а инференс идёт по одному объекту. Всё это несовместимо с BatchNorm, но полностью безразлично LayerNorm.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 RMSNorm (Zhang & Sennrich, 2019)</div>
+$$y = \frac{x}{\sqrt{\frac{1}{n}\sum_{i=1}^{n} x_i^2 + \epsilon}}\cdot\gamma$$
+<p class="fnote">Отличие от LayerNorm: <strong>не вычитается среднее</strong> и нет параметра $\beta$. Только масштабирование на среднеквадратичное значение.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему выбросили вычитание среднего</div>
+<p>Авторы проверили экспериментально: <strong>re-centering</strong> (вычитание среднего) даёт почти нулевой вклад в качество, а <strong>re-scaling</strong> (деление на масштаб) — весь эффект.</p>
+<p>Выгода от упрощения: не нужен проход для вычисления среднего, меньше операций, меньше промежуточных тензоров. На больших моделях экономия достигает 7–10% времени слоя — а качество не меняется.</p>
+<p>Именно поэтому <strong>RMSNorm стал стандартом в современных LLM</strong> (Llama, Mistral, Gemma). Это редкий случай, когда упрощение оказалось строго лучше: дешевле при том же качестве.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Нормализация</th><th>Оси статистики</th><th>Зависит от батча</th><th>Параметры</th><th>Где применяется</th></tr></thead>
+<tbody>
+<tr><td>BatchNorm</td><td>N, H, W</td><td><strong>Да</strong></td><td>$\gamma,\beta$ на канал</td><td>CNN с большим батчем</td></tr>
+<tr><td>LayerNorm</td><td>C, H, W</td><td>Нет</td><td>$\gamma,\beta$ на признак</td><td>Трансформеры, RNN</td></tr>
+<tr class="trh"><td>RMSNorm</td><td>C (без центрирования)</td><td>Нет</td><td>только $\gamma$</td><td><strong>Современные LLM</strong></td></tr>
+<tr><td>GroupNorm</td><td>группа C, H, W</td><td>Нет</td><td>$\gamma,\beta$ на канал</td><td>Детекция, сегментация, диффузия</td></tr>
+<tr><td>InstanceNorm</td><td>H, W</td><td>Нет</td><td>$\gamma,\beta$ на канал</td><td>Style transfer, GAN</td></tr>
+<tr><td>WeightNorm</td><td>нормализуются веса, не активации</td><td>Нет</td><td>направление + масштаб</td><td>Редко, некоторые GAN</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Тонкость с $\epsilon$: внутри корня, а не снаружи.</strong> Правильно $\dfrac{x-\mu}{\sqrt{\sigma^2+\epsilon}}$, а не $\dfrac{x-\mu}{\sqrt{\sigma^2}+\epsilon}$. Вторая форма не защищает от того, что производная корня уходит в бесконечность при $\sigma\to0$ — и даёт редкие <code>NaN</code>, которые почти невозможно воспроизвести. Все реализации в PyTorch используют первую форму; при написании нормализации вручную это надо повторить.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>LayerNorm в fp16 — источник переполнения.</strong> Вычисление $\sum x_i^2$ по длинному вектору (например, 8192 признаков) в fp16 легко даёт значения выше $65504$ и переполняется. Все качественные реализации приводят вход к fp32 <em>внутри</em> нормализации, считают статистику и возвращают обратно. Если пишешь свой слой под autocast — обязательно оберни вычисление статистики в <code>with torch.autocast(enabled=False)</code>.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Pre-LN vs Post-LN: одна перестановка, меняющая всё</div>
+<div class="sdesc">Почему современные трансформеры устроены не так, как в оригинальной статье</div>
+
+<div class="fbox red">
+<div class="flabel">📐 Post-LN — оригинальный Transformer (Vaswani et al., 2017)</div>
+$$x_{l+1} = \operatorname{LN}\big(x_l + f(x_l)\big)$$
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Pre-LN — современный стандарт</div>
+$$x_{l+1} = x_l + f\big(\operatorname{LN}(x_l)\big)$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: почему перестановка так важна</div>
+<p>Смотри, где проходит «чистый» путь для градиента.</p>
+<p><strong>Post-LN:</strong> residual-связь есть, но <em>сверху на неё надета нормализация</em>. Градиент, идущий вниз, обязан пройти через LayerNorm на каждом слое. LayerNorm масштабирует градиент, и на 50 слоях эти масштабирования перемножаются — возвращается ровно та проблема $c^L$, ради решения которой residual и вводили.</p>
+<p><strong>Pre-LN:</strong> сложение стоит <em>снаружи</em>. Градиент имеет прямой путь $x_l \to x_{l+1}$ с коэффициентом ровно 1, вообще не проходя через нормализацию. Якобиан $I + \partial(f\circ\text{LN})$ — единичная матрица гарантирована.</p>
+<p><strong>Практическое следствие, ради которого всё делалось:</strong> Post-LN <em>требует</em> warmup, иначе расходится за десятки шагов. Pre-LN обучается стабильно почти без warmup и терпит гораздо больший learning rate.</p>
+</div>
+
+<div class="chb">
+<div class="cht">Норма градиента по слоям: Pre-LN vs Post-LN</div>
+<div class="chsub">В Post-LN градиент до нижних слоёв доходит на порядки ослабленным</div>
+<div style="position:relative;height:300px;"><canvas id="c_prepost"></canvas></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Post-LN</th><th>Pre-LN</th></tr></thead>
+<tbody>
+<tr><td>Стабильность обучения</td><td>Требует warmup, чувствителен к lr</td><td><strong>Стабилен</strong>, терпит большой lr</td></tr>
+<tr><td>Градиент к нижним слоям</td><td>Затухает с глубиной</td><td>Проходит без ослабления</td></tr>
+<tr><td>Максимальная глубина</td><td>Практически до ~12–24 слоёв</td><td>Сотни слоёв</td></tr>
+<tr><td>Итоговое качество при удачном обучении</td><td>Иногда <em>чуть выше</em></td><td>Чуть ниже, но надёжнее</td></tr>
+<tr><td>Финальная нормализация</td><td>встроена в последний блок</td><td>нужен отдельный LN перед головой</td></tr>
+<tr><td>Где встречается</td><td>Оригинальный Transformer, BERT</td><td><strong>GPT-семейство, Llama, все современные LLM</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Неочевидная деталь Pre-LN.</strong> Поскольку выход последнего блока не нормализуется (сложение стоит снаружи), <strong>перед выходной головой обязателен отдельный LayerNorm</strong>. Его забывают в самописных реализациях — модель обучается, но хуже, потому что на голову приходят активации с накопленным по всем слоям масштабом. Все GPT-подобные архитектуры имеют этот финальный <code>ln_f</code>.</div></div>
+
+<pre><code># Pre-LN блок трансформера — современный стандарт
+class Block(nn.Module):
+    def __init__(self, d, n_heads, mlp_ratio=4):
+        super().__init__()
+        self.ln1  = nn.RMSNorm(d)                    # или LayerNorm
+        self.attn = MultiHeadAttention(d, n_heads)
+        self.ln2  = nn.RMSNorm(d)
+        self.mlp  = nn.Sequential(
+            nn.Linear(d, mlp_ratio*d), nn.GELU(),
+            nn.Linear(mlp_ratio*d, d),
+        )
+        # zero-init выходных проекций: на старте f(x)=0, сеть тождественна
+        nn.init.zeros_(self.mlp[2].weight)
+        nn.init.zeros_(self.attn.proj.weight)
+
+    def forward(self, x, mask=None):
+        x = x + self.attn(self.ln1(x), mask)         # LN ВНУТРИ ветки
+        x = x + self.mlp(self.ln2(x))
+        return x
+
+# ...и обязательный финальный LN перед головой
+self.ln_f = nn.RMSNorm(d)
+logits = self.head(self.ln_f(x))
+</code></pre>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Что дальше после Pre-LN.</strong> Появились промежуточные варианты: <strong>DeepNorm</strong> (Microsoft) масштабирует residual-ветку на $\alpha$ и позволяет обучать Post-LN на 1000 слоёв; <strong>Sandwich-LN</strong> ставит нормализацию и до, и после ветки; <strong>QK-Norm</strong> нормализует отдельно queries и keys внутри attention, что борется с расхождением логитов внимания на больших моделях. Все они решают одну и ту же задачу — <em>удержать масштаб активаций и градиентов на очень большой глубине</em>, просто в разных местах архитектуры.</div></div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Dropout: ансамбль из одной сети</div>
+<div class="sdesc">И почему он почти исчез из современных архитектур</div>
+
+<div class="dnet">
+  <div class="dlayer"><div class="dn"></div><div class="dn"></div><div class="dn"></div><div class="dn"></div></div>
+  <div class="dlayer"><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div></div>
+  <div class="dlayer"><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div><div class="dn drop"></div></div>
+  <div class="dlayer"><div class="dn"></div><div class="dn"></div><div class="dn"></div></div>
+</div>
+<p style="text-align:center;font-size:12.5px;color:var(--text3);margin-top:-6px;">На каждом шаге выключается случайное подмножество нейронов — каждый раз обучается новая «подсеть»</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Inverted dropout — то, что реально реализовано</div>
+<p><strong>При обучении:</strong></p>
+$$m_i \sim \text{Bernoulli}(1-p), \qquad y_i = \frac{m_i}{1-p}\cdot x_i$$
+<p><strong>При инференсе:</strong> $\;y_i = x_i$ — ничего не делается.</p>
+<p class="fnote">Деление на $(1-p)$ во время обучения гарантирует $\mathbb{E}[y] = x$, поэтому на инференсе никакой поправки не нужно.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах: зачем деление на (1−p)</div>
+<p>Если выключить 50% нейронов, сумма на следующем слое станет примерно вдвое меньше. Слои дальше «привыкнут» к этому масштабу. А на инференсе, когда все нейроны включены, сумма окажется вдвое больше ожидаемой — и вся сеть сломается.</p>
+<p>Есть два способа это исправить. <strong>Оригинальный dropout</strong> умножал активации на $(1-p)$ во время инференса. <strong>Inverted dropout</strong> делит на $(1-p)$ во время обучения — и тогда инференс остаётся полностью нетронутым.</p>
+<p>Второй вариант строго удобнее: инференс — критичный по скорости путь, и лишняя операция там не нужна. Все фреймворки реализуют именно его, поэтому <code>nn.Dropout</code> в режиме <code>eval()</code> буквально ничего не делает.</p>
+</div>
+
+<div class="fbox blue">
+<div class="flabel">📐 Интерпретация как ансамбль</div>
+<p>Для сети с $n$ нейронами dropout неявно обучает $2^n$ разных подсетей с разделяемыми весами. Инференс без dropout приближает <strong>геометрическое среднее</strong> их предсказаний:</p>
+$$p_{\text{ens}}(y|x) \;\approx\; \prod_{m} p(y|x, m)^{P(m)}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Dropout — это способ обучить экспоненциально большой ансамбль по цене одной сети. При 1000 нейронов это $2^{1000}$ подсетей — больше, чем атомов во Вселенной.</p>
+<p>Есть и вторая интерпретация, более практичная: dropout <strong>запрещает нейронам полагаться друг на друга</strong>. Если нейрон A всегда компенсирует ошибку нейрона B, то при случайном выключении B нейрон A окажется бесполезен. Сеть вынуждена делать каждый признак <em>самодостаточным</em>, а не частью хрупкой коалиции. Это называется предотвращением ко-адаптации, и именно этот эффект обычно и работает.</p>
+</div>
+
+<h3>Почему dropout почти исчез из современных архитектур</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Причина</th><th>Пояснение</th></tr></thead>
+<tbody>
+<tr><td><strong>Конфликт с BatchNorm</strong></td><td>Dropout меняет дисперсию активаций, а BatchNorm пытается её оценить. При переходе в eval dropout выключается, дисперсия скачком меняется — running statistics оказываются неверными. Li et al. (2019) описали это как «variance shift»</td></tr>
+<tr><td><strong>Данных стало много</strong></td><td>Dropout боролся с переобучением на малых датасетах. При обучении на миллиардах токенов переобучение — не основная проблема</td></tr>
+<tr><td><strong>Есть более дешёвые регуляризаторы</strong></td><td>Weight decay, аугментации, label smoothing, ранняя остановка дают тот же эффект без замедления обучения</td></tr>
+<tr><td><strong>Замедляет сходимость</strong></td><td>Шум в активациях требует больше шагов до сходимости — при дорогом обучении это существенная плата</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Где dropout всё ещё жив и полезен.</strong> ① <strong>Дообучение на малых датасетах</strong> — там переобучение реально и dropout эффективен. ② <strong>Attention dropout</strong> в трансформерах (на матрице внимания) — используется до сих пор, хоть и с малыми значениями 0.0–0.1. ③ <strong>MC Dropout</strong> для оценки неопределённости: оставляем dropout включённым на инференсе и делаем N прогонов, разброс предсказаний даёт эпистемическую неопределённость. ④ <strong>Табличные сети</strong> (блок 7) — там данных мало и dropout 0.2–0.4 стандарт.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Правило порядка: Dropout ставят ПОСЛЕ нормализации, не перед.</strong> Если поставить dropout перед BatchNorm, тот будет оценивать статистику зашумлённых активаций — и в eval-режиме, когда шума нет, эта статистика окажется неверной. Каноничный порядок в блоке: <code>Linear → Norm → Activation → Dropout</code>.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Регуляризация через данные и цель</div>
+<div class="sdesc">Label smoothing, mixup, stochastic depth — приёмы, которые заменили dropout</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Label smoothing (Szegedy et al., 2016)</div>
+$$y'_k = (1-\alpha)\,y_k + \frac{\alpha}{K}$$
+<p class="fnote">Вместо жёсткого one-hot $[0,0,1,0]$ используем $[0.025, 0.025, 0.925, 0.025]$ при $\alpha = 0.1$, $K = 4$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Требование «выдай ровно 1.0 для правильного класса» достижимо только при <strong>бесконечном логите</strong>. Сеть, оптимизируя кросс-энтропию, будет бесконечно раздувать веса выходного слоя, пытаясь дотянуться до недостижимой цели.</p>
+<p>Label smoothing говорит: «целься в 0.925, а не в 1.0». Эта цель достижима при конечных логитах — и раздувание прекращается.</p>
+<p><strong>Два полезных эффекта:</strong> ① лучшая <em>калибровка</em> — модель перестаёт быть патологически самоуверенной (см. блок 7, ECE); ② более компактные кластеры представлений внутри класса.</p>
+<p><strong>Когда НЕ применять:</strong> если тебе нужны точные вероятности для последующей калибровки или для дистилляции — label smoothing искажает распределение выходов и «стирает» ту самую информацию о похожести классов, которую дистилляция пытается передать.</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Mixup (Zhang et al., 2018)</div>
+$$\tilde x = \lambda x_i + (1-\lambda)x_j, \qquad \tilde y = \lambda y_i + (1-\lambda)y_j, \qquad \lambda \sim \text{Beta}(\alpha,\alpha)$$
+<p class="fnote">Типично $\alpha = 0.2$–0.4. При $\alpha \to 0$ mixup выключается, при $\alpha = 1$ $\lambda$ равномерна на $[0,1]$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Mixup буквально показывает сети «полукошку-полусобаку» с меткой «0.6 кошка, 0.4 собака». Звучит абсурдно, но работает.</p>
+<p>Смысл: мы заставляем модель вести себя <strong>линейно между обучающими примерами</strong>. Обычная сеть в пространстве между двумя примерами может делать что угодно — там нет данных, и она склонна к резким скачкам уверенности. Mixup заполняет эти промежутки, требуя плавного перехода.</p>
+<p>Побочные эффекты: заметно лучше калибровка и заметно выше устойчивость к adversarial-примерам — и то, и другое следует из отсутствия резких границ решения.</p>
+<p><strong>CutMix</strong> — вариант, где вместо смешивания пикселей вырезается прямоугольник из одного изображения и вставляется в другое, а метки смешиваются пропорционально площади. На изображениях обычно работает лучше mixup, потому что не создаёт «призрачных» полупрозрачных объектов.</p>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Stochastic Depth (Huang et al., 2016)</div>
+$$x_{l+1} = x_l + b_l \cdot f(x_l), \qquad b_l \sim \text{Bernoulli}(1-p_l), \qquad p_l = \frac{l}{L}\,p_{\max}$$
+<p class="fnote">Вероятность выключения линейно растёт с глубиной: нижние слои почти всегда активны, верхние выключаются часто.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Это dropout, применённый не к нейронам, а к <strong>целым слоям</strong>. Выключенный residual-блок превращается в тождественное отображение $x_{l+1} = x_l$ — сеть на этом шаге становится короче.</p>
+<p>Два выигрыша сразу: <strong>регуляризация</strong> (эффективный ансамбль сетей разной глубины) и <strong>ускорение обучения</strong> (выключенные блоки не считаются вообще — экономия до 25% времени).</p>
+<p>Линейный рост $p_l$ с глубиной не случаен: нижние слои извлекают базовые признаки, нужные всегда, а верхние специализированы и более взаимозаменяемы.</p>
+<p>Stochastic depth — стандарт в современных ViT и ConvNeXt, где он называется <em>drop path</em>.</p>
+</div>
+
+<div class="play">
+  <label>Поиграй: label smoothing и максимальная достижимая уверенность</label>
+  <input type="range" id="sl_ls" min="0" max="30" step="1" value="10" oninput="updLS()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>α = 0 (без сглаживания)</span><span class="out" id="out_ls">0.10</span><span>α = 0.30</span></div>
+  <label style="margin-top:14px;">Число классов K</label>
+  <input type="range" id="sl_k" min="2" max="1000" step="1" value="10" oninput="updLS()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>2</span><span class="out" id="out_k">10</span><span>1000</span></div>
+  <div class="res" id="out_lsres"></div>
+</div>
+
+<h3>Что применять и когда</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Приём</th><th>Против чего</th><th>Типичные значения</th><th>Стоит ли брать по умолчанию</th></tr></thead>
+<tbody>
+<tr class="trh"><td>Weight decay</td><td>Переобучение, большие веса</td><td>0.01–0.1 (AdamW)</td><td><strong>Да, почти всегда</strong></td></tr>
+<tr><td>Аугментации</td><td>Недостаток данных</td><td>зависит от домена</td><td><strong>Да, если применимы</strong></td></tr>
+<tr><td>Label smoothing</td><td>Переуверенность, плохая калибровка</td><td>$\alpha$ = 0.1</td><td>Да для классификации, нет для дистилляции</td></tr>
+<tr><td>Mixup / CutMix</td><td>Резкие границы решения</td><td>$\alpha$ = 0.2–1.0</td><td>Да в CV, спорно в NLP</td></tr>
+<tr><td>Stochastic depth</td><td>Переобучение глубоких сетей</td><td>$p_{\max}$ = 0.1–0.3</td><td>Да для ViT и глубоких CNN</td></tr>
+<tr><td>Dropout</td><td>Ко-адаптация нейронов</td><td>0.1–0.5</td><td>Только при малых данных</td></tr>
+<tr><td>Early stopping</td><td>Переобучение по времени</td><td>patience 10–30</td><td>Да, если есть валидация</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Порядок внедрения регуляризации.</strong> Не включай всё сразу — иначе не поймёшь, что помогло. Правильный порядок: ① обучи без регуляризации и убедись, что модель <em>способна переобучиться</em> на train (если не может — проблема не в регуляризации, а в ёмкости или в данных); ② добавь weight decay; ③ добавь аугментации; ④ и только если переобучение осталось — dropout и остальное. Модель, которая не переобучается на маленьком подмножестве данных, содержит баг, а не нуждается в регуляризации.</div></div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. Подводные камни</div>
+<div class="sdesc">Ошибки, которые не падают, а тихо портят качество</div>
+
+<div class="grid2">
+<div class="card rd"><h5>Weight decay на γ и β нормализации</h5><p>Затухание $\gamma$ к нулю буквально выключает слой нормализации. Качество падает, причину ищут где угодно, кроме конфига оптимизатора.</p><p><em>Лечение:</em> исключить все параметры с <code>ndim &lt;= 1</code>.</p></div>
+<div class="card rd"><h5>Dropout перед BatchNorm</h5><p>BN оценивает статистику зашумлённых активаций. В eval шум исчезает — статистика неверна. Расхождение train/val метрик.</p><p><em>Лечение:</em> порядок Linear → Norm → Act → Dropout.</p></div>
+<div class="card rd"><h5>Забытый model.eval()</h5><p>Val-метрика прыгает, зависит от размера батча, систематически занижена. Обратный случай — забытый train() — тихо ломает running statistics.</p></div>
+<div class="card rd"><h5>BatchNorm при батче 2–8</h5><p>Оценка $\mu,\sigma$ шумная, нормализация вносит шум вместо стабилизации. Критично в детекции и сегментации.</p><p><em>Лечение:</em> GroupNorm или SyncBatchNorm.</p></div>
+<div class="card rd"><h5>Инициализация нулями</h5><p>Все нейроны слоя идентичны навсегда — симметрия не разрывается. Слой из 512 нейронов работает как один.</p><p><em>Исключение:</em> bias и выход residual-ветки нулями — это правильно.</p></div>
+<div class="card rd"><h5>Xavier вместо He при ReLU</h5><p>Множитель 2 не компенсирует потерю дисперсии от ReLU. На 30 слоях сигнал затухает в $10^{-6}$ раз.</p></div>
+<div class="card rd"><h5>Забытый финальный LN в Pre-LN</h5><p>На выходную голову приходят активации с накопленным по всем слоям масштабом. Модель обучается, но хуже.</p></div>
+<div class="card rd"><h5>Аугментации на валидации</h5><p>Метрика измеряет качество на искажённых данных и невоспроизводима между запусками.</p></div>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Тонкий баг: BatchNorm и gradient accumulation.</strong> При накоплении градиентов по $k$ микробатчам BatchNorm считает статистику по <em>каждому микробатчу отдельно</em>, а не по эффективному батчу. То есть при микробатче 8 и накоплении 16 у тебя эффективный батч 128, но BatchNorm ведёт себя как при батче 8 — со всеми проблемами шумной статистики. Это одно из немногих мест, где gradient accumulation <strong>не эквивалентен</strong> большому батчу. То же касается gradient checkpointing: при пересчёте forward статистика BN может обновиться дважды.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Неочевидное про SyncBatchNorm.</strong> В распределённом обучении каждая GPU считает статистику по своему микробатчу. При 8 GPU с микробатчем 4 у тебя формально батч 32, но BN работает как при батче 4. <code>nn.SyncBatchNorm.convert_sync_batchnorm(model)</code> синхронизирует статистику между картами — но добавляет два all-reduce на каждый BN-слой, что заметно замедляет обучение. Компромисс: включать только там, где батч на карту действительно мал.</div></div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. System Design: нормализация в проде</div>
+<div class="sdesc">Как эти решения влияют на инференс и инфраструктуру</div>
+
+<div class="sysbox">
+<h4>🏗 Fusion: почему BatchNorm бесплатен на инференсе</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Обучение</strong>Conv → BN<br>две операции</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Fusion</strong>BN — аффинное<br>преобразование</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Инференс</strong>одна Conv с<br>изменёнными весами</div>
+</div>
+<div class="sysnote"><strong>Механика.</strong> На инференсе BatchNorm использует фиксированные $\mu_{\text{run}}$, $\sigma_{\text{run}}$, то есть представляет собой $y = \gamma\frac{x-\mu}{\sigma} + \beta = ax + b$ с константами $a = \gamma/\sigma$, $b = \beta - \gamma\mu/\sigma$. Свёртка перед ним — тоже линейная операция. Композиция двух линейных операций есть одна линейная: $W' = aW$, $b' = ab_{\text{conv}} + b$.<br><br>
+<strong>Практический эффект:</strong> ONNX Runtime, TensorRT и <code>torch.fx</code> делают это автоматически. Слой BN исчезает из графа полностью — <em>нулевая стоимость на инференсе</em>, минус одно обращение к памяти.<br><br>
+<strong>Почему LayerNorm так не сливается:</strong> его статистика зависит от <em>входа</em>, а не фиксирована. Поэтому LN остаётся полноценной операцией в рантайме — и на длинных последовательностях становится заметной статьёй расходов. Отсюда популярность RMSNorm: он дешевле на 30–40% при том же качестве.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Выбор нормализации под инфраструктуру</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Большой батч<br>+ CNN</strong>классификация<br>изображений</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>BatchNorm</strong>сливается на инференсе,<br>бесплатен</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Батч 2–8</strong>детекция,<br>сегментация</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>GroupNorm</strong>не зависит<br>от батча</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Последовательности</strong>трансформеры,<br>переменная длина</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>RMSNorm</strong>дёшево,<br>батч не важен</div>
+</div>
+<div class="sysnote"><strong>Скрытое требование, о котором забывают.</strong> BatchNorm накладывает ограничение на весь путь данных в проде: батч на инференсе должен быть достаточно велик <em>или</em> нужно гарантировать корректность running statistics. Если продовое распределение отличается от обучающего, накопленные $\mu_{\text{run}}$ и $\sigma_{\text{run}}$ становятся неверными — и это форма train/serving skew (блок 7), которую невозможно обнаружить обычным мониторингом признаков, потому что признаки-то не менялись.<br><br>
+<strong>Диагностический приём:</strong> при подозрении на дрейф пересчитай running statistics BatchNorm на свежих продовых данных без обновления остальных весов (<code>model.train()</code> с нулевым lr, несколько сотен батчей). Если качество заметно выросло — статистика была устаревшей.</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Эволюция архитектурных дефолтов</div>
+<h4>Как менялся «стандартный блок» за десять лет</h4>
+<ul>
+<li><strong>2012, AlexNet:</strong> без нормализации, случайная инициализация, dropout 0.5. Обучение крайне нестабильно, глубина ограничена восемью слоями.</li>
+<li><strong>2015, ResNet:</strong> Conv → BatchNorm → ReLU, residual-связи, He-инициализация. Глубина скачком выросла до 152 слоёв. <em>Это был качественный переход.</em></li>
+<li><strong>2017, Transformer:</strong> Post-LN, LayerNorm, dropout 0.1, обязательный warmup. Работает, но капризен.</li>
+<li><strong>2020, GPT-3 и далее:</strong> Pre-LN, отказ от dropout в претрейне, zero-init выходных проекций, масштабирование инициализации на $1/\sqrt{2L}$.</li>
+<li><strong>2023+, Llama-подобные:</strong> RMSNorm вместо LayerNorm, SwiGLU вместо ReLU/GELU в FFN, RoPE вместо обучаемых позиций, QK-Norm против расхождения логитов внимания.</li>
+</ul>
+<p><strong>Сквозная линия.</strong> Каждый шаг убирал <em>причину нестабильности</em> и по возможности <em>упрощал</em> конструкцию. RMSNorm проще LayerNorm, Pre-LN проще в обучении, чем Post-LN, dropout вообще выбросили. Хороший ориентир: если новый приём делает архитектуру сложнее и не устраняет конкретный сбой — скорее всего, он не приживётся.</p>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">10. Вопросы и ответы</div>
+<div class="sdesc">21 вопрос — от вывода инициализации до отладки нормализации в проде</div>
+
+<div class="qah">Инициализация</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Выведи формулу инициализации из требования сохранения дисперсии.<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Для $z = \sum_{j=1}^{n_{in}} w_j x_j$ при независимых $w$ и $x$ с нулевым средним: $\operatorname{Var}(z) = n_{in}\operatorname{Var}(w)\operatorname{Var}(x)$ — дисперсии независимых слагаемых складываются.</p><p>Требование $\operatorname{Var}(z) = \operatorname{Var}(x)$ даёт $\operatorname{Var}(w) = 1/n_{in}$.</p><p>Это не подобранная константа, а <strong>единственное значение</strong>, при котором сигнал не разъезжается по слоям. Всё семейство инициализаций — вариации этого вывода при разных дополнительных условиях.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Откуда в He-инициализации множитель 2?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>ReLU обнуляет отрицательную половину значений. Для симметрично распределённого $z$: $\mathbb{E}[\text{ReLU}(z)^2] = \mathbb{E}[z^2\cdot\mathbb{1}(z>0)] = \tfrac12\mathbb{E}[z^2]$.</p><p>То есть каждый слой с ReLU <strong>делит дисперсию пополам</strong>. За 20 слоёв: $(1/2)^{20}\approx10^{-6}$ — сигнал исчезает.</p><p>Компенсируем, взяв дисперсию весов вдвое больше: $\operatorname{Var}(w) = 2/n_{in}$. Потеря от ReLU в точности компенсируется усилением от весов.</p><p><strong>Практический эффект:</strong> He et al. показали, что сеть на 30 слоёв с Xavier не сходится вообще, а с He обучается нормально. Разница — множитель 2.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Почему Xavier использует 2/(n_in + n_out), а не что-то одно?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Прямой проход требует $\operatorname{Var}(w)=1/n_{in}$ — чтобы не разъезжались активации.</p><p>Обратный проход требует $\operatorname{Var}(w)=1/n_{out}$ — потому что в backward умножение идёт на $W^\top$ и суммирование происходит по $n_{out}$.</p><p>При $n_{in}\ne n_{out}$ оба условия одновременно невыполнимы. Glorot взял компромисс — среднее гармоническое, штрафующее оба направления одинаково: $2/(n_{in}+n_{out})$.</p><p>He отказался от компромисса в пользу прямого прохода ($\text{mode='fan\_in'}$), сочтя сохранение активаций важнее — и на практике это оказалось верно для ReLU-сетей.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Почему инициализация нулями катастрофична, но zero-init выхода residual-ветки — хорошая практика?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Нули везде:</strong> все нейроны слоя дают одинаковый выход, получают одинаковый градиент и навсегда остаются идентичными. Симметрия не разрывается — слой из 512 нейронов работает как один. Случайность нужна именно для разрыва симметрии, а не «для разнообразия».</p><p><strong>Zero-init последнего слоя residual-ветки:</strong> тут ситуация другая. При $f(x)=0$ блок становится тождественным: $y = x + 0 = x$. Симметрия <em>не нарушена</em>, потому что предыдущие слои внутри ветки инициализированы случайно — как только пойдёт градиент, они разойдутся.</p><p>Выгода: на старте вся глубокая сеть тождественна, градиент проходит идеально, слои постепенно «включаются». Применяется в ResNet (zero-init последнего BN), диффузионных моделях и LoRA (матрица $B$ — нулями ровно поэтому).</p></div></details>
+
+<div class="qah">BatchNorm</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Зачем в BatchNorm обучаемые γ и β, если мы только что всё нормализовали?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Жёсткое приведение к $\mathcal{N}(0,1)$ может быть <strong>вредно</strong>: например, для сигмоиды окрестность нуля — почти линейный участок, и сеть теряет нелинейность.</p><p>$\gamma$ и $\beta$ возвращают свободу: сеть может выучить любой нужный масштаб и сдвиг, включая полную отмену нормализации при $\gamma=\sqrt{\sigma^2+\epsilon}$, $\beta=\mu$.</p><p>Правильная рамка: BatchNorm не <em>навязывает</em> распределение, а <strong>перепараметризует задачу</strong>. Вместо «выучить нужный масштаб через веса всех предыдущих слоёв» сеть получает две прямые ручки на канал. Это и есть основной источник ускорения обучения.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Почему BatchNorm ведёт себя по-разному в train и eval?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>В train используется статистика текущего батча, в eval — накопленные running statistics.</p><p><strong>Три причины, почему на инференсе нельзя брать статистику батча:</strong></p><p>① Предсказание перестало бы быть детерминированным — один объект получал бы разный ответ в зависимости от соседей по батчу.</p><p>② Батч размера 1 невозможен: дисперсия одного объекта равна нулю.</p><p>③ Продовый батч нерепрезентативен — 4 запроса от одного сегмента не отражают популяцию.</p><p>Бонус фиксированной статистики: BatchNorm становится аффинным преобразованием и его можно <strong>вплавить в предыдущую свёртку</strong>, получив нулевую стоимость на инференсе.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Что происходит при забытом model.eval() и при забытом model.train()?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Забыт eval():</strong> BatchNorm использует статистику маленького валидационного батча, Dropout продолжает выключать нейроны. Симптомы — val-метрика прыгает между запусками, зависит от размера валидационного батча и систематически занижена.</p><p><strong>Забыт train() после валидации</strong> — коварнее: running statistics перестают обновляться, дропаут выключен, обучение тихо деградирует. Ошибки нет, loss даже может выглядеть лучше (нет шума дропаута).</p><p>Отсюда правило: переключение режимов должно быть в одном месте кода, а не разбросано. Хороший приём — контекстный менеджер или обёртка <code>evaluate()</code>, которая гарантированно возвращает режим обратно.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Почему BatchNorm плохо работает при батче 4 и что использовать вместо?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Оценка $\mu$ и $\sigma$ по 4 объектам очень шумная. Нормализация начинает <em>вносить</em> шум вместо стабилизации, а running statistics накапливают эту шумную оценку.</p><p>Критично в детекции и сегментации, где батч ограничен памятью (изображения большие).</p><p><strong>Альтернативы:</strong> <strong>GroupNorm</strong> (статистика по группе каналов внутри объекта — батч вообще не участвует, качество почти не зависит от его размера); <strong>SyncBatchNorm</strong> (синхронизирует статистику между GPU, но добавляет два all-reduce на слой); <strong>LayerNorm</strong>, если архитектура позволяет.</p><p>Отдельная тонкость: gradient accumulation <strong>не спасает</strong> — BN считает статистику по микробатчу, а не по эффективному батчу.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Верно ли, что BatchNorm работает за счёт уменьшения internal covariate shift?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Это было объяснение из оригинальной статьи, и оно <strong>экспериментально опровергнуто</strong>. Santurkar et al. (2018) намеренно добавляли шум <em>после</em> BatchNorm, воссоздавая covariate shift — обучение всё равно оставалось быстрым.</p><p>Текущее объяснение: BatchNorm <strong>сглаживает ландшафт оптимизации</strong>, уменьшая липшицеву константу градиента, что позволяет делать более крупные шаги без расходимости.</p><p>Полезный методологический урок: приём может стать индустриальным стандартом раньше, чем появится верное объяснение его механизма. При чтении статей стоит отделять <em>работающий приём</em> от <em>предложенного объяснения</em>.</p></div></details>
+
+<div class="qah">LayerNorm и семейство</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. В чём принципиальная разница между BatchNorm и LayerNorm?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Только в осях усреднения. BatchNorm считает статистику <strong>по батчу</strong> для каждого канала: «какова типичная яркость этого канала среди всех картинок». LayerNorm — <strong>по признакам одного объекта</strong>: «каков типичный масштаб активаций у этого объекта».</p><p>Ключевое следствие: LayerNorm <strong>не зависит от батча вообще</strong>. Работает при батче 1, не требует running statistics, ведёт себя одинаково в train и eval.</p><p>Именно поэтому трансформеры используют LayerNorm: последовательности имеют разную длину, батчи бывают малы, инференс идёт по одному объекту — всё это несовместимо с BatchNorm и безразлично LayerNorm.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Что убрали в RMSNorm и почему это ничего не сломало?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Убрали <strong>вычитание среднего</strong> (re-centering) и параметр $\beta$. Осталось только деление на среднеквадратичное значение: $y = \frac{x}{\sqrt{\frac1n\sum x_i^2+\epsilon}}\gamma$.</p><p>Авторы экспериментально показали: весь эффект LayerNorm даёт <em>re-scaling</em>, а <em>re-centering</em> вносит почти нулевой вклад.</p><p>Выгода: не нужен отдельный проход для вычисления среднего, меньше операций и промежуточных тензоров. На больших моделях экономия 7–10% времени слоя при том же качестве.</p><p>Редкий случай, когда упрощение строго лучше — поэтому RMSNorm стал стандартом в Llama, Mistral, Gemma.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Почему ε ставят внутрь корня, а не снаружи?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Правильно: $\dfrac{x-\mu}{\sqrt{\sigma^2+\epsilon}}$. Неправильно: $\dfrac{x-\mu}{\sqrt{\sigma^2}+\epsilon}$.</p><p>Разница в производной. У $\sqrt{\sigma^2}$ производная равна $\frac{1}{2\sqrt{\sigma^2}}$, которая при $\sigma\to0$ уходит в бесконечность — и градиент взрывается. Вариант с $\epsilon$ внутри ограничивает знаменатель снизу величиной $\sqrt{\epsilon}$, и производная остаётся конечной.</p><p>Проявляется редко (нужен почти константный признак или канал), но даёт <code>NaN</code>, который крайне трудно воспроизвести. Все реализации PyTorch используют первую форму — при написании нормализации вручную это надо повторить.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Почему LayerNorm опасен в fp16?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Вычисление $\sum x_i^2$ по длинному вектору признаков (например, 8192 измерений) легко превышает максимум fp16 ($65504$) и переполняется в $\infty$, после чего деление даёт <code>NaN</code>.</p><p>Все качественные реализации приводят вход к fp32 <em>внутри</em> нормализации, считают статистику и возвращают результат обратно в fp16.</p><p>При написании своего слоя под autocast нужно явно обернуть вычисление статистики в <code>with torch.autocast(enabled=False)</code>, иначе получишь редкие <code>NaN</code> на длинных последовательностях.</p></div></details>
+
+<div class="qah">Pre-LN vs Post-LN</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Почему современные трансформеры используют Pre-LN?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Разница в том, где проходит чистый путь для градиента.</p><p><strong>Post-LN</strong> ($x_{l+1} = \operatorname{LN}(x_l + f(x_l))$): нормализация надета <em>сверху</em> на residual. Градиент обязан пройти через LayerNorm на каждом слое, эти масштабирования перемножаются — возвращается проблема $c^L$, ради решения которой residual и вводили.</p><p><strong>Pre-LN</strong> ($x_{l+1} = x_l + f(\operatorname{LN}(x_l))$): сложение снаружи, градиент имеет прямой путь с коэффициентом ровно 1. Якобиан $I + \partial(f\circ\text{LN})$.</p><p><strong>Следствие:</strong> Post-LN <em>требует</em> warmup, иначе расходится за десятки шагов, и практически ограничен 12–24 слоями. Pre-LN обучается стабильно, терпит больший lr и масштабируется до сотен слоёв.</p><p>Плата: при удачном обучении Post-LN иногда даёт чуть более высокое итоговое качество — но надёжность важнее.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Что обязательно нужно добавить в Pre-LN архитектуру и почему это забывают?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Отдельный LayerNorm перед выходной головой</strong> (обычно называется <code>ln_f</code>).</p><p>Причина: в Pre-LN сложение стоит снаружи, поэтому выход последнего блока <em>не нормализован</em> — на голову приходят активации с масштабом, накопленным по всем $L$ слоям residual-сложений.</p><p>Без него модель обучается, но заметно хуже, и ошибку трудно заметить: нет ни падения, ни предупреждения. Все GPT-подобные архитектуры имеют этот финальный LN.</p></div></details>
+
+<div class="qah">Dropout и регуляризация</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Почему inverted dropout делит на (1−p) при обучении, а не умножает при инференсе?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Если выключить долю $p$ нейронов, сумма на следующем слое станет примерно в $(1-p)$ раз меньше. На инференсе, когда все нейроны включены, масштаб окажется другим — и сеть сломается.</p><p>Два способа исправить: умножать активации на $(1-p)$ на инференсе (оригинальный dropout), либо делить на $(1-p)$ при обучении (inverted dropout). Оба дают $\mathbb{E}[y]=x$.</p><p><strong>Второй строго удобнее:</strong> инференс — критичный по скорости путь, лишняя операция там не нужна. Все фреймворки реализуют inverted, поэтому <code>nn.Dropout</code> в <code>eval()</code> буквально ничего не делает.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Почему dropout почти исчез из современных архитектур?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>① Конфликт с BatchNorm.</strong> Dropout меняет дисперсию активаций, BN пытается её оценить; при переходе в eval дропаут выключается, дисперсия скачком меняется, running statistics оказываются неверными (variance shift).</p><p><strong>② Данных стало много.</strong> Dropout боролся с переобучением на малых датасетах; при обучении на миллиардах токенов это не основная проблема.</p><p><strong>③ Есть более дешёвые регуляризаторы</strong> — weight decay, аугментации, label smoothing.</p><p><strong>④ Замедляет сходимость</strong> — шум требует больше шагов, при дорогом обучении это существенно.</p><p><strong>Где всё ещё жив:</strong> дообучение на малых данных, attention dropout (0.0–0.1), MC Dropout для оценки неопределённости, табличные сети.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. В каком порядке ставить Linear, Norm, активацию и Dropout?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Каноничный порядок: <code>Linear → Norm → Activation → Dropout</code>.</p><p><strong>Почему Dropout последним:</strong> если поставить его перед нормализацией, та будет оценивать статистику зашумлённых активаций, а в eval-режиме шума не будет — статистика окажется неверной.</p><p><strong>Norm до или после активации</strong> — исторически спорный вопрос. ResNet использует Conv→BN→ReLU. Аргумент в пользу этого порядка: нормализуем <em>до</em> нелинейности, чтобы активации попадали в её «рабочий» диапазон, а не в область насыщения.</p><p>В трансформерах вопрос снимается сам: там Pre-LN, и нормализация стоит в начале ветки.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. Что делает label smoothing и когда его НЕ надо применять?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Заменяет жёсткую цель $[0,0,1,0]$ на сглаженную $[\alpha/K, \alpha/K, 1-\alpha+\alpha/K, \alpha/K]$.</p><p>Требование «выдай ровно 1.0» достижимо только при бесконечном логите — сеть бесконечно раздувает веса выходного слоя. Сглаженная цель достижима при конечных логитах, и раздувание прекращается.</p><p><strong>Эффекты:</strong> лучшая калибровка (модель перестаёт быть патологически самоуверенной), более компактные кластеры представлений.</p><p><strong>Когда НЕ применять:</strong> ① если нужны точные вероятности для последующей калибровки; ② при <strong>дистилляции</strong> — label smoothing стирает информацию о похожести классов, которую дистилляция как раз пытается передать; ③ при сильно несбалансированных классах, где равномерное размазывание $\alpha/K$ искажает приоры.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Как работает mixup и почему это не абсурд?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>$\tilde x = \lambda x_i + (1-\lambda)x_j$, $\tilde y = \lambda y_i + (1-\lambda)y_j$, $\lambda\sim\text{Beta}(\alpha,\alpha)$. Модель учится на «полукошке-полусобаке» с меткой «0.6/0.4».</p><p>Смысл: мы требуем от модели <strong>линейного поведения между обучающими примерами</strong>. В пространстве между примерами данных нет, и обычная сеть там склонна к резким скачкам уверенности. Mixup заполняет эти промежутки.</p><p><strong>Побочные эффекты:</strong> заметно лучшая калибровка и выше устойчивость к adversarial-примерам — оба следуют из отсутствия резких границ решения.</p><p><strong>CutMix</strong> вместо смешивания пикселей вырезает прямоугольник из одного изображения и вставляет в другое, смешивая метки пропорционально площади. На изображениях обычно лучше, потому что не создаёт полупрозрачных «призраков».</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>21. Как правильно внедрять регуляризацию на новой задаче?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Не включать всё сразу — иначе не понять, что помогло.</p><p><strong>① Сначала убедись, что модель способна переобучиться.</strong> Обучи без всякой регуляризации на маленьком подмножестве (100–500 примеров) до почти нулевого train loss. Если не получается — <em>проблема не в регуляризации</em>, а в ёмкости, learning rate, или в баге с данными/лейблами. Это самый ценный диагностический шаг.</p><p>② Добавь weight decay (0.01–0.1 для AdamW), исключив bias и параметры нормализации.</p><p>③ Добавь аугментации, подходящие домену.</p><p>④ Только если переобучение сохраняется — label smoothing, mixup, stochastic depth, dropout.</p><p>На каждом шаге измеряй эффект отдельно, минимум по 3 сидам. Модель, которая не переобучается на маленьком подмножестве, содержит баг, а не нуждается в регуляризации.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block8_02_optimizers.html" class="btn prev">← Оптимизаторы</a>
+  <a href="block8_04_attention.html" class="btn">Attention и Transformer →</a>
+</div>
+
+</div>
+<script>
+if (typeof Chart === 'undefined') { window.Chart = function(){ return {}; }; Chart.defaults = { font: {} }; }
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Дисперсия активаций по слоям при разных инициализациях ---
+(function(){
+  const L=30, xs=[]; for(let l=0;l<=L;l++) xs.push(l);
+  // ReLU режет дисперсию вдвое; init задаёт множитель k/n_in
+  const run = k => xs.map(l => Math.pow(k/2 * 1.0, l) * 1);  // k=2 → ровно 1
+  const he    = xs.map(l => 1);
+  const xav   = xs.map(l => Math.pow(0.5, l));          // k=1 → делим пополам каждый слой
+  const small = xs.map(l => Math.pow(0.18, l));
+  const big   = xs.map(l => Math.pow(1.9, l));
+  new Chart(document.getElementById('c_init'), {
+    type:'line',
+    data:{labels:xs,datasets:[
+      {label:'He: Var(w)=2/n_in — дисперсия сохраняется',data:he,borderColor:'#16a34a',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'Xavier при ReLU: Var(w)=1/n_in — затухание вдвое на слой',data:xav,borderColor:'#d97706',pointRadius:0,borderWidth:2.5,tension:.2},
+      {label:'слишком малая инициализация',data:small,borderColor:'#dc2626',pointRadius:0,borderWidth:2.5,tension:.2},
+      {label:'слишком большая инициализация',data:big,borderColor:'#7c3aed',pointRadius:0,borderWidth:2.5,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'номер слоя'}},
+              y:{type:'logarithmic',title:{display:true,text:'дисперсия активаций (отн. входа)'},min:1e-12,max:1e10}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(':')[0]+': '+c.parsed.y.toExponential(2)}}}}
+  });
+})();
+
+// --- Качество vs размер батча ---
+new Chart(document.getElementById('c_bs'), {
+  type:'line',
+  data:{labels:['2','4','8','16','32','64','128','256'],datasets:[
+    {label:'BatchNorm — резко деградирует на малых батчах',
+     data:[0.612,0.688,0.741,0.772,0.784,0.789,0.791,0.792],
+     borderColor:'#dc2626',pointRadius:4,borderWidth:2.8,tension:.25},
+    {label:'GroupNorm — почти не зависит от батча',
+     data:[0.774,0.776,0.778,0.779,0.780,0.780,0.781,0.781],
+     borderColor:'#16a34a',pointRadius:4,borderWidth:2.8,tension:.25},
+    {label:'LayerNorm',
+     data:[0.766,0.768,0.769,0.770,0.771,0.771,0.772,0.772],
+     borderColor:'#0891b2',pointRadius:4,borderWidth:2.5,tension:.25}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'размер батча на GPU'}},
+            y:{title:{display:true,text:'качество на валидации'},min:0.58,max:0.81}},
+    plugins:{legend:{position:'bottom'}}}
+});
+
+// --- Pre-LN vs Post-LN ---
+(function(){
+  const L=24, xs=[]; for(let l=L;l>=1;l--) xs.push(l);
+  const pre  = xs.map(()=>1);
+  const post = xs.map((l,i)=>Math.pow(0.80, i));
+  new Chart(document.getElementById('c_prepost'), {
+    type:'line',
+    data:{labels:xs.map(l=>'слой '+l),datasets:[
+      {label:'Pre-LN — градиент доходит без ослабления',data:pre,borderColor:'#16a34a',pointRadius:0,borderWidth:3,tension:.2},
+      {label:'Post-LN — затухание с глубиной',data:post,borderColor:'#dc2626',pointRadius:0,borderWidth:3,tension:.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'от выхода (слева) вглубь сети (справа)'},ticks:{maxTicksLimit:9}},
+              y:{type:'logarithmic',title:{display:true,text:'относительная норма градиента'},min:1e-3,max:2}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Сетки нормализации ---
+(function(){
+  const N=6, C=6;
+  function build(id, fn, color){
+    const el=document.getElementById(id); if(!el) return;
+    let h='';
+    for(let c=0;c<C;c++) for(let n=0;n<N;n++){
+      const on = fn(n,c);
+      h += '<div class="ncell" style="background:'+(on?color:'#e8ecf1')+
+           ';opacity:'+(on?1:0.55)+'"></div>';
+    }
+    el.innerHTML=h;
+  }
+  // подсвечиваем ОДНУ группу, по которой считается статистика
+  build('ng_bn', (n,c)=> c===2,               '#0284c7'); // канал 2 по всем объектам
+  build('ng_ln', (n,c)=> n===2,               '#0891b2'); // объект 2 по всем каналам
+  build('ng_in', (n,c)=> n===2 && c===2,      '#7c3aed'); // один объект, один канал
+  build('ng_gn', (n,c)=> n===2 && c>=3,       '#16a34a'); // один объект, группа каналов
+})();
+
+// --- Интерактив: label smoothing ---
+function updLS(){
+  const a = +document.getElementById('sl_ls').value / 100;
+  const K = +document.getElementById('sl_k').value;
+  document.getElementById('out_ls').textContent = a.toFixed(2);
+  document.getElementById('out_k').textContent = K;
+  const target = 1 - a + a/K;
+  const other  = a/K;
+  // логит-разрыв, нужный чтобы softmax дал target при K классах
+  const gap = Math.log(target*(K-1)/(1-target));
+  let verdict;
+  if (a === 0) verdict = '⚠️ Без сглаживания цель достижима только при бесконечном логите — веса выходного слоя раздуваются неограниченно.';
+  else if (a < 0.05) verdict = '✅ Мягкое сглаживание — небольшой эффект на калибровку.';
+  else if (a <= 0.15) verdict = '✅ Рабочий диапазон, стандартное значение для классификации.';
+  else verdict = '⚠️ Сильное сглаживание — модель может стать недоуверенной, качество ранжирования падает.';
+  document.getElementById('out_lsres').innerHTML =
+    'Целевая вероятность правильного класса: <strong>' + target.toFixed(4) + '</strong>' +
+    ' &nbsp;·&nbsp; остальным по <strong>' + other.toFixed(5) + '</strong>' +
+    '<br>Требуемый разрыв логитов: <strong>' + (a===0 ? '∞' : gap.toFixed(2)) + '</strong>' +
+    ' &nbsp;<em style="color:#0e7490">(при α=0 разрыв бесконечен — отсюда раздувание весов)</em>' +
+    '<br>' + verdict;
+}
+updLS();
+</script>
+</body>
+</html>

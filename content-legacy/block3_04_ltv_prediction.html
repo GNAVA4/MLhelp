@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3.4 · LTV Prediction</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --grn2:#15803d;
+  --violet:#6d28d9;
+  --slate:#334155;--slate-l:#f8fafc;
+  --gray:#6b7280;--border:#e5e7eb;
+  --bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#064e3b,#065f46);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.8;line-height:1.6;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--gray);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+.snav a:hover{color:var(--grn);border-bottom-color:var(--grn);}
+.main{max-width:960px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:60px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+strong{color:var(--text);}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--grn);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);}
+.fbox.pur{border-left-color:var(--pur);}
+.fbox.teal{border-left-color:var(--teal);}
+.fbox.red{border-left-color:var(--red);}
+.fbox.amber{border-left-color:var(--amber);}
+.fbox.violet{border-left-color:var(--violet);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grn);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);}
+.fbox.pur .flabel{color:var(--pur);}
+.fbox.teal .flabel{color:var(--teal);}
+.fbox.red .flabel{color:var(--red);}
+.fbox.amber .flabel{color:var(--amber);}
+.fbox.violet .flabel{color:var(--violet);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--grn-l);border:1px solid var(--grn-b);border-left:4px solid var(--grn);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--grn);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#14532d;margin-bottom:4px;line-height:1.7;}
+.usewhen{background:#fefce8;border:1px solid var(--amber-b);border-left:4px solid var(--amber);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.usewhen-label{font-size:10.5px;font-weight:800;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.usewhen p,.usewhen li{font-size:13.5px;color:#78350f;margin-bottom:3px;line-height:1.6;}
+.usewhen ul{padding-left:16px;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.ins{background:var(--pur-l);border:1px solid var(--pur-b);color:#5b21b6;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.04);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:var(--slate-l);padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--gray);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh{background:var(--grn-l)!important;} .trh td{font-weight:600;color:#14532d!important;}
+.mn{font-family:'SF Mono','Fira Code',Menlo,monospace;font-size:13px;}
+.pos{color:#16a34a;font-weight:700;} .neg{color:#dc2626;font-weight:700;}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;}
+.numex-badge{background:var(--grn);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.numex-badge.blue{background:var(--blue);} .numex-badge.pur{background:var(--pur);}
+.numex-badge.red{background:var(--red);} .numex-badge.amber{background:var(--amber);}
+.numex p{margin-bottom:4px;color:var(--text2);}
+/* customer cards */
+.customer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0;}
+.cust-card{border-radius:10px;padding:12px;border:2px solid var(--border);}
+.cust-name{font-size:12px;font-weight:700;margin-bottom:6px;}
+.cust-rfm{font-size:11px;color:var(--text3);line-height:1.6;}
+.cust-alive{font-size:12px;font-weight:700;margin-top:6px;}
+/* RFM cells */
+.rfm-bar{height:6px;border-radius:3px;margin-top:2px;}
+/* BG-NBD visual */
+.bgnbd-vis{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.bgnbd-panel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;}
+.bgnbd-panel h4{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;}
+/* sysbox */
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#64748b;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.syshighlight{background:#064e3b;border:1px solid #16a34a;border-radius:8px;padding:9px 13px;font-size:12px;color:#86efac;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#a7f3d0;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--grn-l),#dcfce7);border:1px solid var(--grn-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--grn);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#14532d;margin-bottom:8px;}
+.casebox p{color:#15803d;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.casebox li{color:#14532d;font-size:14px;line-height:1.7;}
+/* Q&A */
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--gray);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--grn-l);color:#14532d;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qah{font-size:18px;font-weight:800;color:var(--grn);margin-bottom:16px;margin-top:8px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#dcfce7;color:#15803d;} .td{background:#dbeafe;color:#1e40af;} .tpr{background:#fef9c3;color:#854d0e;} .ttl{background:#ccfbf1;color:#0f766e;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--grn);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#15803d;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--grn);border:2px solid var(--grn);}
+@media(max-width:640px){
+  .charts-2,.customer-grid,.bgnbd-vis{grid-template-columns:1fr;}
+  .ph{padding:22px 16px;} .main{padding:20px 14px 48px;}
+}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">⚡ Блок 3 · Applied ML Cases</div>
+  <h1>3.4 LTV Prediction</h1>
+  <p class="sub">BG/NBD · Pareto/NBD · Probabilistic vs ML · CLV как north star · Ручной расчёт на 10 клиентах</p>
+</div>
+
+<nav class="snav">
+  <a href="#intro">Что такое LTV</a>
+  <a href="#clv-formula">CLV формула</a>
+  <a href="#bgnbd">BG/NBD</a>
+  <a href="#manual">🔢 Расчёт вручную</a>
+  <a href="#pareto">Pareto/NBD</a>
+  <a href="#gg">Gamma-Gamma</a>
+  <a href="#ml">ML подходы</a>
+  <a href="#northstar">North Star</a>
+  <a href="#cases">System Design</a>
+  <a href="#qa">Q&A</a>
+</nav>
+
+<div class="main">
+
+<!-- ═══ INTRO ═══ -->
+<section class="sec" id="intro">
+  <div class="stitle">💰 Что такое LTV / CLV</div>
+  <div class="sdesc">Customer Lifetime Value — суммарная прибыль, которую клиент принесёт за всё время взаимодействия с компанией.</div>
+
+  <p><strong>LTV</strong> (Lifetime Value) = <strong>CLV</strong> (Customer Lifetime Value) — одна и та же метрика. Ответ на вопрос: "сколько стоит этот клиент?". Определяет сколько можно потратить на привлечение (CAC) и удержание.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0;">
+    <div style="background:var(--grn-l);border:1px solid var(--grn-b);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:var(--grn);">3×</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Правило: LTV/CAC &gt; 3 для здорового бизнеса</div>
+    </div>
+    <div style="background:var(--blue-l);border:1px solid var(--blue-b);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:var(--blue);">5-7×</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Дороже привлечь нового vs удержать существующего клиента</div>
+    </div>
+    <div style="background:var(--amber-l);border:1px solid var(--amber-b);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:var(--amber);">20%</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Топ 20% клиентов генерируют 80% выручки (Парето)</div>
+    </div>
+    <div style="background:var(--pur-l);border:1px solid var(--pur-b);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:var(--pur);">12 мес</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">Типичный горизонт для 1-year LTV прогноза</div>
+    </div>
+  </div>
+
+  <p><strong>Зачем предсказывать LTV?</strong> Не все клиенты одинаково ценны. Зная будущий LTV в момент регистрации (или после первой покупки) — компания может персонализировать маркетинг, предложить правильные скидки, сосредоточить поддержку на VIP-клиентах.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:18px;margin-bottom:6px;">🎯</div>
+      <strong style="font-size:13px;">Acquisition</strong>
+      <p style="font-size:12.5px;color:var(--text3);margin:6px 0 0;">Bid больше за ценных пользователей в рекламе. Google/Facebook: передать LTV → оптимизировать под Value, не CPA</p>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:18px;margin-bottom:6px;">🔄</div>
+      <strong style="font-size:13px;">Retention</strong>
+      <p style="font-size:12.5px;color:var(--text3);margin:6px 0 0;">Высокий LTV + риск оттока = приоритет для winback кампании. Низкий LTV + риск оттока = пусть уходит</p>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:18px;margin-bottom:6px;">💎</div>
+      <strong style="font-size:13px;">Segmentation</strong>
+      <p style="font-size:12.5px;color:var(--text3);margin:6px 0 0;">VIP-программы, персональные менеджеры, бесплатная доставка — только для top-10% по LTV</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CLV FORMULA ═══ -->
+<section class="sec" id="clv-formula">
+  <div class="stitle">📐 Базовые формулы CLV</div>
+  <div class="sdesc">От простой исторической формулы к вероятностным моделям.</div>
+
+  <div class="fbox">
+    <div class="flabel">Историческая CLV (простейшая)</div>
+    $$\text{Historical CLV} = \sum_{t=1}^{T} (\text{Revenue}_t - \text{Cost}_t)$$
+    <div class="fnote">Просто сумма всех прошлых прибылей. Смотрим назад. Полезно для сегментации и анализа, но не для прогноза будущего.</div>
+  </div>
+
+  <div class="fbox green">
+    <div class="flabel">Predictive CLV с дисконтированием (стандарт для финансов)</div>
+    $$\text{CLV} = \sum_{t=1}^{T} \frac{m_t \cdot r_t}{(1+d)^t}$$
+    <div class="fnote">
+      <strong>$m_t$</strong> — маржа (margin) в период $t$.<br>
+      <strong>$r_t$</strong> — вероятность что клиент "живой" в период $t$ (retention probability, $r_t = r^t$ при постоянном retention).<br>
+      <strong>$d$</strong> — ставка дисконтирования (discount rate). Деньги сегодня дороже денег завтра.<br>
+      При постоянных $m$ и $r$: $\text{CLV} = m \cdot \frac{r}{1+d-r}$ — геометрическая прогрессия.
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Зачем дисконтирование?</div>
+    <p>1000₽ через год ≠ 1000₽ сегодня. При ставке дисконтирования d=10%: 1000₽ через год = 1000/1.1 = 909₽ сегодня. Через 5 лет = 1000/1.1⁵ = 621₽. Деньги далёкого будущего менее ценны.</p>
+    <p>Для CLV: клиент с $100/год в течение 10 лет ≠ 1000$ CLV. При d=10%: CLV = 100/1.1 + 100/1.1² + ... = $614. Это реальная NPV (Net Present Value) клиентского потока.</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Простой расчёт CLV для SaaS компании</div>
+    <div class="numex-step">
+      <div class="numex-badge">Дано</div>
+      <div>Подписка 1000₽/мес. Churn rate = 5%/мес → retention = 95%. Маржа = 60%. Ставка дисконтирования = 12%/год = 1%/мес.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Формула</div>
+      <div>$m = 1000 \times 0.6 = 600₽/мес$. $r = 0.95$. $d = 0.01$. $\text{CLV} = 600 \times \frac{0.95}{1.01 - 0.95} = 600 \times \frac{0.95}{0.06} = 600 \times 15.83 = \mathbf{9{,}500₽}$</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Средняя жизнь клиента</div>
+      <div>$\text{ALT} = 1/(1-r) = 1/0.05 = 20$ месяцев. $\text{CLV} \approx m \times \text{ALT} = 600 \times 20 = 12{,}000₽$ (без дисконтирования). С дисконтированием — 9,500₽.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Решение</div>
+      <div>CAC должен быть &lt; 9,500/3 = 3,167₽ для сохранения LTV/CAC ≥ 3. Если CAC = 5,000₽ → бизнес убыточен или нужно снизить churn.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BG/NBD ═══ -->
+<section class="sec" id="bgnbd">
+  <div class="stitle">🎲 BG/NBD Model (Beta-Geometric / Negative Binomial Distribution)</div>
+  <div class="sdesc">Вероятностная модель для non-contractual settings: нет подписки, клиент может "умереть" (уйти) незаметно в любой момент.</div>
+
+  <p><strong>Контекст:</strong> интернет-магазин, кофейня, авиакомпания. Клиент не говорит "я ухожу". Просто перестаёт покупать. Когда он "мёртв"? Когда "просто не купил пока"? BG/NBD отвечает на этот вопрос.</p>
+
+  <div class="cl ins">
+    <div class="cli">💡</div>
+    <div><strong>Ключевое предположение BG/NBD:</strong> пока клиент "жив" — совершает покупки согласно Poisson(λ). В случайный момент "умирает" согласно Geometric(p). Мы не наблюдаем момент смерти — только покупки.</div>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">BG/NBD — 4 предположения модели</div>
+    <div style="font-size:13.5px;color:var(--text2);margin-top:10px;line-height:1.9;">
+      <strong>1. Транзакции:</strong> пока клиент жив — покупает со скоростью λ (Poisson). Количество покупок за T = Poisson(λT).<br>
+      <strong>2. Смерть:</strong> после каждой покупки клиент "умирает" с вероятностью p (Geometric drop-out). Отсюда: "B" = Beta-Geometric.<br>
+      <strong>3. Гетерогенность λ:</strong> у разных клиентов разный λ. Популяционное распределение: $\lambda \sim \text{Gamma}(r, \alpha)$. Отсюда: "NBD" = Negative Binomial.<br>
+      <strong>4. Гетерогенность p:</strong> $p \sim \text{Beta}(a, b)$ — разные клиенты по-разному склонны уходить.
+    </div>
+    <div class="fnote">Параметры $r, \alpha, a, b$ оцениваются MLE по исторической RFM-истории клиентов. После подгонки — модель предсказывает P(alive) и ожидаемое количество будущих покупок для каждого клиента.</div>
+  </div>
+
+  <div class="fbox pur">
+    <div class="flabel">BG/NBD — ключевые формулы</div>
+    $$P(\text{X=x} | \text{alive}) = \text{Poisson}(\lambda t) \cdot P(\text{alive})$$
+    $$E[\text{покупок} | x, t_x, T] = \frac{r+x}{\alpha + T} \cdot \frac{1}{1 + \frac{a}{b+x-1}\left[\frac{\alpha+T}{\alpha+t_x}\right]^{r+x}}^{-1}$$
+    <div class="fnote">
+      <strong>$x$</strong> — количество покупок в наблюдаемом периоде. <strong>$t_x$</strong> — время последней покупки. <strong>$T$</strong> — общая длина наблюдаемого периода.<br>
+      На практике используем Python библиотеку <code>lifetimes</code>: <code>from lifetimes import BetaGeoFitter</code>. Подгонка: <code>bgf.fit(df['frequency'], df['recency'], df['T'])</code>. Прогноз: <code>bgf.predict(t=52, frequency, recency, T)</code>.
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 BG/NBD на пальцах</div>
+    <p>Два клиента. Клиент А: 10 покупок за год, последняя неделю назад. Клиент Б: 10 покупок за год, последняя 11 месяцев назад.</p>
+    <p>По frequency (10 покупок) они одинаковые. Но по recency — очень разные. Клиент А скорее всего жив. Клиент Б — может быть "мёртв" (ушёл к конкурентам).</p>
+    <p>BG/NBD формализует это: P(alive|А) ≈ 0.95, P(alive|Б) ≈ 0.15. Прогноз покупок через год: А → 9.1, Б → 0.8. Это и есть вклад в CLV!</p>
+  </div>
+</section>
+
+<!-- ═══ MANUAL CALCULATION ═══ -->
+<section class="sec" id="manual">
+  <div class="stitle">🔢 Ручной расчёт BG/NBD на 10 клиентах</div>
+  <div class="sdesc">Пошаговое применение модели на реальных данных. Параметры модели предположим уже оцененными: r=0.243, α=4.414, a=0.793, b=2.426.</div>
+
+  <p>Данные: 10 клиентов интернет-магазина. Период наблюдения T=52 недели. Параметры BG/NBD: <strong>r=0.243, α=4.414, a=0.793, b=2.426</strong> (из оригинальной статьи Fader et al., 2005 на CDNOW данных).</p>
+
+  <!-- Customer data table -->
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>Клиент</th>
+          <th>Покупок (x)</th>
+          <th>Recency t_x (нед)</th>
+          <th>T (нед)</th>
+          <th>P(alive)</th>
+          <th>E[покупок | след. 52 нед]</th>
+          <th>Avg чек (₽)</th>
+          <th>CLV 1yr (₽)</th>
+          <th>Сегмент</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="trh">
+          <td><strong>1 · Анна</strong></td>
+          <td class="mn">8</td>
+          <td class="mn">50</td>
+          <td class="mn">52</td>
+          <td class="mn pos">0.94</td>
+          <td class="mn">7.1</td>
+          <td class="mn">3,500</td>
+          <td class="mn pos">24,850</td>
+          <td>⭐ VIP</td>
+        </tr>
+        <tr>
+          <td><strong>2 · Борис</strong></td>
+          <td class="mn">5</td>
+          <td class="mn">48</td>
+          <td class="mn">52</td>
+          <td class="mn pos">0.81</td>
+          <td class="mn">4.2</td>
+          <td class="mn">2,200</td>
+          <td class="mn pos">9,240</td>
+          <td>🟢 Активный</td>
+        </tr>
+        <tr>
+          <td><strong>3 · Вера</strong></td>
+          <td class="mn">3</td>
+          <td class="mn">40</td>
+          <td class="mn">52</td>
+          <td class="mn" style="color:var(--amber);">0.55</td>
+          <td class="mn">1.8</td>
+          <td class="mn">1,800</td>
+          <td class="mn">3,240</td>
+          <td>🟡 Средний</td>
+        </tr>
+        <tr>
+          <td><strong>4 · Глеб</strong></td>
+          <td class="mn">1</td>
+          <td class="mn">4</td>
+          <td class="mn">52</td>
+          <td class="mn neg">0.11</td>
+          <td class="mn">0.3</td>
+          <td class="mn">5,000</td>
+          <td class="mn neg">1,500</td>
+          <td>🔴 Риск ухода</td>
+        </tr>
+        <tr>
+          <td><strong>5 · Диана</strong></td>
+          <td class="mn">6</td>
+          <td class="mn">46</td>
+          <td class="mn">52</td>
+          <td class="mn pos">0.88</td>
+          <td class="mn">5.5</td>
+          <td class="mn">1,500</td>
+          <td class="mn">8,250</td>
+          <td>🟢 Активный</td>
+        </tr>
+        <tr>
+          <td><strong>6 · Егор</strong></td>
+          <td class="mn">2</td>
+          <td class="mn">30</td>
+          <td class="mn">52</td>
+          <td class="mn" style="color:var(--amber);">0.32</td>
+          <td class="mn">0.9</td>
+          <td class="mn">4,000</td>
+          <td class="mn">3,600</td>
+          <td>🟡 Средний</td>
+        </tr>
+        <tr>
+          <td><strong>7 · Жанна</strong></td>
+          <td class="mn">12</td>
+          <td class="mn">51</td>
+          <td class="mn">52</td>
+          <td class="mn pos">0.97</td>
+          <td class="mn">10.8</td>
+          <td class="mn">2,800</td>
+          <td class="mn pos">30,240</td>
+          <td>⭐ VIP</td>
+        </tr>
+        <tr>
+          <td><strong>8 · Захар</strong></td>
+          <td class="mn">1</td>
+          <td class="mn">50</td>
+          <td class="mn">52</td>
+          <td class="mn" style="color:var(--amber);">0.48</td>
+          <td class="mn">1.2</td>
+          <td class="mn">800</td>
+          <td class="mn">960</td>
+          <td>🟡 Новый</td>
+        </tr>
+        <tr>
+          <td><strong>9 · Ирина</strong></td>
+          <td class="mn">0</td>
+          <td class="mn">0</td>
+          <td class="mn">52</td>
+          <td class="mn neg">0.05</td>
+          <td class="mn">0.1</td>
+          <td class="mn">2,000</td>
+          <td class="mn neg">200</td>
+          <td>🔴 Одноразовый</td>
+        </tr>
+        <tr>
+          <td><strong>10 · Кирилл</strong></td>
+          <td class="mn">4</td>
+          <td class="mn">20</td>
+          <td class="mn">52</td>
+          <td class="mn neg">0.22</td>
+          <td class="mn">0.6</td>
+          <td class="mn">3,200</td>
+          <td class="mn neg">1,920</td>
+          <td>🔴 Риск ухода</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Пошаговый расчёт P(alive) для клиента Глеб (x=1, t_x=4, T=52)</div>
+    <p style="font-size:13.5px;color:var(--text2);margin-bottom:12px;">Глеб купил 1 раз в начале года (t_x=4 нед) и больше не появлялся. 48 недель тишины. Жив?</p>
+    <div class="numex-step">
+      <div class="numex-badge">Интуиция</div>
+      <div>48 недель без покупок при λ≈r/α=0.055 в неделю → если живой, ожидаемо 48×0.055=2.6 покупки за это время. Ноль покупок за 2.6 ожидаемых → P(живой) × P(0 покупок | живой) = P(живой) × e^{-2.6} ≈ P(живой) × 0.074.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Баланс</div>
+      <div>P(alive) vs P(dead): $\frac{P(\text{alive} \cap 0\text{ after } t_x)}{P(\text{dead after }t_x)} = \frac{e^{-\lambda(T-t_x)}}{p} \approx \frac{0.074}{p}$. При высоком p (склонность к уходу) → знаменатель большой → P(alive) мала. Параметры a=0.793, b=2.426 → E[p] = a/(a+b) ≈ 0.25. P(alive|Глеб) ≈ 0.11.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Итог</div>
+      <div>P(alive) = 11% → Ожидаем 0.11 × E[λ] × 52 нед = 0.11 × 0.055 × 52 ≈ <strong>0.31 покупки</strong> в следующий год. При среднем чеке 5000₽: CLV = 0.31 × 5000 × маржа60% = <strong>930₽</strong>.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge amber">Сравнение</div>
+      <div>Жанна: x=12, t_x=51 → P(alive)=0.97, E[покупок]=10.8. CLV = 10.8 × 2800 × 60% = <strong>18,144₽</strong>. Разница в 19 раз! BG/NBD точно захватывает эту разницу.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">P(alive) vs Recency: визуализация BG/NBD</div>
+    <div class="chsub">При одинаковом frequency=5 и T=52: как P(alive) зависит от recency (t_x)</div>
+    <div style="position:relative;height:220px;"><canvas id="c_palive"></canvas></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">CLV сегментация 10 клиентов</div>
+    <div class="chsub">CLV (ось Y) vs P(alive) (ось X). Размер пузыря = средний чек. VIP = высокий CLV + высокий P(alive)</div>
+    <div style="position:relative;height:240px;"><canvas id="c_clv_scatter"></canvas></div>
+  </div>
+</section>
+
+<!-- ═══ PARETO/NBD ═══ -->
+<section class="sec" id="pareto">
+  <div class="stitle">📊 Pareto/NBD vs BG/NBD</div>
+  <div class="sdesc">Оригинальная модель (Schmittlein et al., 1987) и её упрощение (Fader et al., 2005). В чём разница?</div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Аспект</th><th>Pareto/NBD (1987)</th><th>BG/NBD (2005)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Drop-out механизм</strong></td><td>Continuous time: клиент может умереть в любой момент (Exponential)</td><td>Discrete: умирает только сразу после покупки (Geometric)</td></tr>
+        <tr><td><strong>Математика</strong></td><td>Более сложная: Pareto distribution (Gamma/Exponential mixture)</td><td>Проще: Beta distribution для dropout probability</td></tr>
+        <tr class="trh"><td><strong>Практика</strong></td><td>Исторически считалась более "правдоподобной"</td><td>Практически одинаковые результаты, проще реализовать</td></tr>
+        <tr><td><strong>Библиотека Python</strong></td><td><code>lifetimes.ParetoNBDFitter()</code></td><td><code>lifetimes.BetaGeoFitter()</code></td></tr>
+        <tr><td><strong>Использование на практике</strong></td><td>Академические работы, банки</td><td>E-commerce, стартапы, большинство open-source</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fbox blue">
+    <div class="flabel">Pareto/NBD — идея модели</div>
+    $$\lambda \sim \text{Gamma}(r, \alpha), \quad \mu \sim \text{Gamma}(s, \beta)$$
+    $$\text{Lifetime} = \text{Exp}(\mu) \quad \text{(непрерывный "уход")}$$
+    <div class="fnote">
+      <strong>$\lambda$</strong> — скорость покупок (Poisson rate). <strong>$\mu$</strong> — скорость ухода (hazard rate "умирания"). Оба гетерогенны в популяции через Gamma-миксчер.<br>
+      <strong>Pareto</strong> в названии: Gamma(s,β) × Exponential = Pareto distribution для lifetime. При s=1: Exponential lifetime = "нет памяти".<br>
+      <strong>Точность vs BG/NBD:</strong> Fader et al. (2005) показали: BG/NBD имеет практически идентичную точность при значительно более простой реализации. На большинстве датасетов разница &lt;1% MAE.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ GAMMA-GAMMA ═══ -->
+<section class="sec" id="gg">
+  <div class="stitle">💵 Gamma-Gamma Model — монетизация</div>
+  <div class="sdesc">BG/NBD предсказывает количество покупок. Gamma-Gamma предсказывает среднюю стоимость покупки.</div>
+
+  <div class="fbox teal">
+    <div class="flabel">Gamma-Gamma Model</div>
+    $$E[M | \bar{m}, x] = \frac{p \cdot \gamma + x \cdot \bar{m}}{p \gamma + x}$$
+    <div class="fnote">
+      <strong>$\bar{m}$</strong> — средняя стоимость транзакции клиента. <strong>$x$</strong> — количество транзакций. <strong>$p, q, \gamma$</strong> — параметры модели.<br>
+      Предположение: стоимость транзакции $\sim \text{Gamma}(p, v)$, а $v \sim \text{Gamma}(q, \gamma)$ по клиентам.<br>
+      <strong>Shrinkage:</strong> оценка = взвешенное среднее между "персональной историей" ($\bar{m}$) и "популяционным средним" ($\gamma/p$). Клиенты с малым количеством транзакций сильнее тянутся к среднему.
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Gamma-Gamma — зачем нужен shrinkage</div>
+    <p>Новый клиент купил 1 раз на 50,000₽. Его "средний чек" = 50,000₽. Достоверно ли это? Нет — одна покупка.</p>
+    <p>Gamma-Gamma: E[M|50000, x=1] = (p×γ + 1×50000)/(p×γ+1). При популяционном среднем 3,000₽: оценка ≈ (0.5×3000 + 50000)/1.5 ≈ 34,333₽. "Сдвинулись" к средней — мы не уверены в одной наблюдении.</p>
+    <p>При x=100 транзакций по 50,000₽: shrinkage почти исчезает → E[M] ≈ 50,000₽. Статистически убедительно.</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Итоговый CLV = BG/NBD × Gamma-Gamma × Discount</div>
+    <div class="numex-step">
+      <div class="numex-badge">Шаг 1: BG/NBD</div>
+      <div>Для клиента Диана (x=6, t_x=46, T=52): E[покупок | следующий год] = <strong>5.5 покупки</strong>. P(alive) = 0.88.</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge grn">Шаг 2: Gamma-Gamma</div>
+      <div>Исторический средний чек Дианы = 1,500₽. x=6. E[M|1500, 6] = (p×γ + 6×1500)/(p×γ+6) ≈ <strong>1,480₽</strong> (shrinkage небольшой при 6 транзакциях).</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge blue">Шаг 3: Маржа и дисконт</div>
+      <div>Маржа = 40%. Ставка дисконтирования = 10%/год. Поправочный коэффициент ≈ 0.92 (за год с равномерными покупками).</div>
+    </div>
+    <div class="numex-step">
+      <div class="numex-badge pur">Итог</div>
+      <div>$\text{CLV}_{\text{1yr}} = 5.5 \times 1{,}480 \times 0.40 \times 0.92 = \mathbf{2{,}993₽}$. В Python: <code>ggf.customer_lifetime_value(bgf, frequency, recency, T, monetary_value, time=1, discount_rate=0.10)</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ML APPROACHES ═══ -->
+<section class="sec" id="ml">
+  <div class="stitle">🤖 ML подходы к LTV Prediction</div>
+  <div class="sdesc">Когда BG/NBD недостаточен: богатые признаки, сложные паттерны — переходим к gradient boosting.</div>
+
+  <p>BG/NBD использует только RFM (Recency, Frequency, Monetary, T). Но у нас есть: поведенческие данные, engagement, канал привлечения, демография, продуктовые действия. ML использует всё это.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Подход</th><th>Данные</th><th>Горизонт</th><th>Интерпрет.</th><th>Лучше когда</th></tr></thead>
+      <tbody>
+        <tr><td><strong>BG/NBD + GG</strong></td><td>Только RFM транзакции</td><td>Любой</td><td>✅ P(alive)</td><td>Нет дополнительных данных, non-contractual</td></tr>
+        <tr><td><strong>Pareto/NBD</strong></td><td>Только RFM</td><td>Любой</td><td>✅</td><td>Более строгий continuous dropout</td></tr>
+        <tr class="trh"><td><strong>LightGBM regression</strong></td><td>RFM + поведение + демо</td><td>Фиксир.</td><td>SHAP</td><td>Много признаков, e-commerce, SaaS</td></tr>
+        <tr><td><strong>Two-stage: p(convert) × E[value]</strong></td><td>Любые</td><td>Фиксир.</td><td>Частично</td><td>Много нулей (coldstart customers)</td></tr>
+        <tr><td><strong>RNN/Transformer</strong></td><td>Последовательность транзакций</td><td>Любой</td><td>❌</td><td>Длинные последовательности, сложные паттерны</td></tr>
+        <tr><td><strong>Quantile Regression</strong></td><td>Любые</td><td>Фиксир.</td><td>Частично</td><td>Нужны доверительные интервалы LTV</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fbox amber">
+    <div class="flabel">Two-stage LTV Model (Google, 2019)</div>
+    $$\text{LTV} = P(\text{convert}) \times E[\text{value} | \text{convert}]$$
+    $$\text{Stage 1: } P(\text{convert}) = \sigma(\text{LGBM}(X))$$
+    $$\text{Stage 2: } E[\text{value} | \text{convert}] = \text{LGBM\_regressor}(X)$$
+    <div class="fnote">
+      <strong>Мотивация:</strong> LTV-распределение — смесь точечной массы в 0 (клиент не купил) и непрерывного распределения для тех кто купил. Одна регрессия плохо это моделирует.<br>
+      Stage 1: классификатор предсказывает вероятность хотя бы одной покупки в горизонте. Stage 2: регрессор предсказывает суммарную стоимость условно на покупку. LTV = произведение.<br>
+      Google использует этот подход для Value-Based Bidding в Google Ads.
+    </div>
+  </div>
+
+  <div class="intuition">
+    <div class="intuition-label">🤏 Почему Two-stage лучше одной регрессии при нулях</div>
+    <p>Задача: предсказать LTV за год. 70% пользователей — 0₽ (не купили ни разу). 30% — от 100₽ до 100,000₽.</p>
+    <p>Одна регрессия: средний LTV = 0.3 × E[value|buyer] ≈ 5,000₽. Предсказывает около 5,000 для всех. RMSE высокий, интерпретация неясна.</p>
+    <p>Two-stage: Stage 1 классифицирует 70% в "не купит". Stage 2 качественно предсказывает распределение для 30% покупателей. Итоговое LTV = P×E[V] — точнее, интерпретируемее, удобнее для принятия решений.</p>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 Feature Engineering для LTV ML модели</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Категория</th><th>Признаки</th><th>Важность</th></tr></thead>
+        <tbody>
+          <tr><td><strong>RFM</strong></td><td class="mn">recency, frequency, monetary, T</td><td>🔴🔴🔴🔴🔴 Top</td></tr>
+          <tr class="trh"><td><strong>Поведение на сайте</strong></td><td class="mn">session_count, avg_session_dur, pages_viewed, cart_abandonment</td><td>🔴🔴🔴🔴 Высокая</td></tr>
+          <tr><td><strong>Продуктовые действия</strong></td><td class="mn">features_used, aha_moment_reached, onboarding_complete</td><td>🔴🔴🔴🔴 Высокая</td></tr>
+          <tr><td><strong>Источник привлечения</strong></td><td class="mn">channel (organic/paid), campaign, keyword</td><td>🔴🔴🔴 Средняя</td></tr>
+          <tr><td><strong>Демография</strong></td><td class="mn">country, device_type, signup_age</td><td>🔴🔴 Низкая</td></tr>
+          <tr><td><strong>Email engagement</strong></td><td class="mn">email_open_rate, click_rate, unsubscribed</td><td>🔴🔴🔴 Средняя</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="charts-2">
+    <div class="chb">
+      <div class="cht">BG/NBD vs ML LightGBM — точность по сегментам</div>
+      <div class="chsub">MAPE по квинтилям LTV. ML лучше на extremes, BG/NBD стабильнее в середине</div>
+      <div style="position:relative;height:200px;"><canvas id="c_model_compare"></canvas></div>
+    </div>
+    <div class="chb">
+      <div class="cht">Распределение CLV (типичный e-commerce)</div>
+      <div class="chsub">Жирный хвост: топ-5% клиентов = 50% выручки</div>
+      <div style="position:relative;height:200px;"><canvas id="c_clv_dist"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ NORTH STAR ═══ -->
+<section class="sec" id="northstar">
+  <div class="stitle">⭐ CLV как North Star Metric</div>
+  <div class="sdesc">Почему ведущие компании переходят от Revenue к CLV как ключевой метрике бизнеса.</div>
+
+  <p>North Star Metric — единственная метрика, вокруг которой выстраивается вся компания. Что лучше: выручка, MAU, NPS или CLV?</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;">
+    <div style="background:var(--red-l);border:1px solid var(--red-b);border-radius:10px;padding:16px;">
+      <strong style="color:var(--red);">❌ Проблемы с Revenue как North Star</strong>
+      <ul style="padding-left:16px;margin-top:8px;font-size:13.5px;color:#7f1d1d;line-height:1.8;">
+        <li>Краткосрочная: большие скидки = высокая выручка, но PLV = 0</li>
+        <li>Поощряет дешёвых клиентов наравне с VIP</li>
+        <li>Не учитывает CAC: дорого привлечённый клиент = убыток</li>
+        <li>Не предсказывает будущее: разовый всплеск vs устойчивый рост</li>
+      </ul>
+    </div>
+    <div style="background:var(--grn-l);border:1px solid var(--grn-b);border-radius:10px;padding:16px;">
+      <strong style="color:var(--grn);">✅ CLV как North Star</strong>
+      <ul style="padding-left:16px;margin-top:8px;font-size:13.5px;color:#14532d;line-height:1.8;">
+        <li>Long-term: оптимизирует весь жизненный цикл клиента</li>
+        <li>Учитывает CAC: LTV/CAC ≥ 3 = здоровый бизнес</li>
+        <li>Сегментирует: ресурсы → туда где наибольший LTV потенциал</li>
+        <li>Предиктивен: предсказанный CLV = leading indicator будущей выручки</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="casebox">
+    <div class="caseco">🎵 Spotify · CLV как North Star (2022)</div>
+    <h4>Переход от MAU к "Quality User" метрике на базе CLV</h4>
+    <ul>
+      <li><strong>Проблема:</strong> MAU (Monthly Active Users) поощрял количество, не качество. Привлечение бесплатных пользователей которые никогда не конвертируются = расход маркетинга впустую.</li>
+      <li><strong>Решение:</strong> "Adjusted Quality Score" = P(convert to Premium) × E[LTV | Premium]. Маркетинговые кампании оцениваются по AQS, не по MAU.</li>
+      <li><strong>Результат:</strong> premium conversion rate вырос на 12% за год. CAC снизился на 18%.</li>
+      <li><strong>Инструмент:</strong> BG/NBD на транзакционных данных Premium подписок + LightGBM для P(convert) с поведенческими признаками (listening time, playlist saves, social features).</li>
+    </ul>
+  </div>
+
+  <div class="casebox" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:var(--blue-b);">
+    <div class="caseco" style="background:var(--blue);">🛍️ Amazon Prime · CLV-driven все решения</div>
+    <h4>Почему Prime стоит $139/год и всё равно прибылен</h4>
+    <ul>
+      <li><strong>CLV Prime vs non-Prime:</strong> исследование (Consumer Intelligence Research Partners): Prime member тратит $1,400/год vs $600 для non-Prime. Разница = $800/год. При марже 10% = $80/год дополнительной прибыли.</li>
+      <li><strong>Маркетинг:</strong> Prime членство = CAC-агрегатор. $139/год membership fee ≈ стоимость привлечения → Amazon платит нулевой дополнительный CAC за высокоценного клиента.</li>
+      <li><strong>LTV сегментация:</strong> Prime → бесплатная доставка (retention), эксклюзивные скидки, Prime Video (engagement). Всё для максимизации CLV.</li>
+      <li><strong>Метрика команд:</strong> инженерные команды Amazon оцениваются по incremental CLV их фичей. A/B тест: "новая фича увеличивает CLV segment A на 3%?" → шипим.</li>
+    </ul>
+  </div>
+
+  <div class="numex">
+    <div class="numex-title">🔢 LTV/CAC анализ — практический расчёт</div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Канал привлечения</th><th>CAC</th><th>LTV 12m</th><th>LTV/CAC</th><th>Рекомендация</th></tr></thead>
+        <tbody>
+          <tr class="trh"><td>SEO / Organic</td><td class="mn">800₽</td><td class="mn">9,500₽</td><td class="mn pos">11.9×</td><td>⭐ Максимально увеличивать</td></tr>
+          <tr class="trh"><td>Referral program</td><td class="mn">1,200₽</td><td class="mn">11,000₽</td><td class="mn pos">9.2×</td><td>⭐ Масштабировать</td></tr>
+          <tr><td>Google Ads (Brand)</td><td class="mn">2,500₽</td><td class="mn">8,000₽</td><td class="mn pos">3.2×</td><td>✅ Продолжать</td></tr>
+          <tr><td>Facebook Ads</td><td class="mn">4,000₽</td><td class="mn">7,500₽</td><td class="mn" style="color:var(--amber);">1.9×</td><td>⚠️ Оптимизировать</td></tr>
+          <tr><td>TikTok Ads</td><td class="mn">6,500₽</td><td class="mn">4,000₽</td><td class="mn neg">0.6×</td><td>❌ Остановить</td></tr>
+          <tr><td>TV реклама</td><td class="mn">12,000₽</td><td class="mn">3,000₽</td><td class="mn neg">0.25×</td><td>❌ Убыточно</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-top:8px;">Без LTV-анализа: все каналы "работают" (клиенты есть). С LTV: TikTok и TV — убыточные каналы. Перераспределение бюджета SEO+Referral → +40% ROI маркетинга.</p>
+  </div>
+</section>
+
+<!-- ═══ SYSTEM DESIGN ═══ -->
+<section class="sec" id="cases">
+  <div class="stitle">🏗️ System Design Cases</div>
+
+  <div class="sysbox">
+    <h4>🏗️ Airbnb LTV Pipeline (Engineering Blog, 2020)</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Booking Events</strong>Kafka stream<br>host + guest<br>price × nights</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Feature Store</strong>RFM per user<br>engagement<br>rolling 90d</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>BG/NBD + GG</strong>P(alive)<br>E[bookings]<br>E[spend]</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>LightGBM</strong>extra features<br>final LTV score<br>calibrated</div>
+    </div>
+    <div class="sys-row">
+      <div class="sysblock"><strong>LTV Segments</strong>Top/Mid/Low<br>dynamic daily<br>recalculation</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Marketing</strong>bid adjust<br>retention offers<br>personalization</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Cx Support</strong>VIP routing<br>priority queue<br>proactive reach</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>Experiments</strong>LTV-based A/B<br>incrementality<br>uplift by LTV</div>
+    </div>
+    <div class="sysnote">
+      <strong>Ключевые инсайты Airbnb:</strong><br>
+      1. <strong>"Super hosts" LTV:</strong> хозяева с высоким LTV получают особые программы поддержки. Удержание top-10% хозяев = 30% выручки платформы.<br>
+      2. <strong>Guest LTV для bid optimization:</strong> интеграция с Google/Facebook: передаём CLTV как Conversion Value → bidding алгоритм автоматически платит больше за ценных пользователей.<br>
+      3. <strong>Two-sided marketplace:</strong> Airbnb считает LTV для гостей И хозяев отдельно. Оптимизирует баланс двустороннего рынка.
+    </div>
+  </div>
+
+  <div class="casebox">
+    <div class="caseco">🎮 Supercell · LTV в mobile gaming</div>
+    <h4>Clash of Clans: предсказание LTV в первые 7 дней</h4>
+    <ul>
+      <li><strong>Задача:</strong> мобильные игры — очень высокий CAC ($5-50 за установку). Нужно знать ожидаемый LTV через 6-12 месяцев чтобы bid правильно уже сейчас.</li>
+      <li><strong>Early signals:</strong> поведение за первые 7 дней — мощный предиктор LTV. Clans joined, battles played, buildings upgraded, в-app purchases D1/D7 — SHAP importance top-5.</li>
+      <li><strong>Модель:</strong> Two-stage: P(ever_pay) × E[LTV|payer]. Для "whales" (5% пользователей, 50% выручки) — отдельная модель.</li>
+      <li><strong>Value-based bidding:</strong> Supercell интегрировал LTV в Google UAC (Universal App Campaigns): CLTV передаётся как in-app event value → Google оптимизирует на суммарный predicted LTV, не на установки.</li>
+      <li><strong>Результат:</strong> ROAS (Return on Ad Spend) вырос на 35% за 6 месяцев после перехода от CPI (Cost per Install) к CLTV-based bidding.</li>
+    </ul>
+  </div>
+
+  <div class="sysbox">
+    <h4>🏗️ Netflix LTV-driven Content Investment</h4>
+    <div class="sys-row">
+      <div class="sysblock"><strong>Subscriber events</strong>play, pause, finish<br>search, rating<br>device type</div>
+      <div class="sysarrow">→</div>
+      <div class="sysblock"><strong>Engagement model</strong>viewing hours<br>content breadth<br>satisfaction</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>Churn model</strong>P(cancel | 30d)<br>by engagement<br>tier</div>
+      <div class="sysarrow">→</div>
+      <div class="syshighlight"><strong>LTV = Σ margins</strong>per cohort<br>discounted<br>12/24/36m</div>
+    </div>
+    <div class="sysnote">
+      Netflix принимает решения о производстве контента ($100M+ на сериал) на основе incremental LTV:<br>
+      "Stranger Things увеличивает удержание на X% для когорты 18-34 → дополнительные Y месяцев подписки → incremental LTV = Z million $".<br>
+      Это объясняет кажущийся парадокс: дорогие оригинальные сериалы экономически выгоднее лицензирования, если они достаточно снижают churn и привлекают ценные когорты.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Q&A ═══ -->
+<section class="sec" id="qa">
+  <div class="qah">❓ Q&amp;A — 12 вопросов</div>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое CLV и зачем его предсказывать? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>CLV</strong> (Customer Lifetime Value) = суммарная чистая прибыль от клиента за всё время взаимодействия.<br><br>
+      <strong>Зачем предсказывать:</strong><br>
+      1. <strong>CAC обоснование:</strong> тратить на привлечение ≤ CLV/3. Без CLV не знаем допустимый CAC.<br>
+      2. <strong>Сегментация:</strong> VIP-клиенты (топ-10% CLV) требуют других стратегий чем массовый сегмент.<br>
+      3. <strong>Marketing bid optimization:</strong> Google/FB Value-Based Bidding — платить больше за пользователей с высоким predicted CLV.<br>
+      4. <strong>Product prioritization:</strong> фичи которые увеличивают CLV high-value сегмента = высокий приоритет.<br>
+      5. <strong>Retention targeting:</strong> высокий CLV + высокий churn risk = первый приоритет для retention кампании.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое BG/NBD и как работает? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>BG/NBD</strong> = Beta-Geometric / Negative Binomial Distribution. Вероятностная модель для предсказания будущих покупок в non-contractual settings (интернет-магазин, кофейня).<br><br>
+      <strong>Предположения:</strong><br>
+      1. Пока живой → покупает по Poisson(λ)<br>
+      2. После каждой покупки может "умереть" с вероятностью p (Geometric)<br>
+      3. λ ~ Gamma(r,α) по клиентам (NBD часть)<br>
+      4. p ~ Beta(a,b) по клиентам (BG часть)<br><br>
+      <strong>Входные данные:</strong> только RFM — Frequency, Recency, T (длина наблюдаемого периода).<br><br>
+      <strong>Выходные данные:</strong> P(alive), E[покупок за следующие T недель].<br><br>
+      В Python: <code>from lifetimes import BetaGeoFitter; bgf.fit(frequency, recency, T); bgf.predict(52, frequency, recency, T)</code>
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>В чём разница BG/NBD и Pareto/NBD? <span class="tag td">deep</span></summary>
+    <div class="qa">
+      <strong>Pareto/NBD (1987):</strong> клиент может "умереть" в любой момент времени (continuous dropout). Lifetime ~ Exponential(μ). Теоретически более правдоподобен — уход происходит не только сразу после покупки.<br><br>
+      <strong>BG/NBD (2005):</strong> клиент может "умереть" только сразу после покупки (discrete Geometric). Упрощение которое даёт практически идентичные результаты.<br><br>
+      <strong>На практике:</strong> Fader et al. (2005) показали: MAE обеих моделей различается &lt;1% на стандартных датасетах. BG/NBD значительно проще реализовать и оценить параметры (MLE сходится быстрее).<br><br>
+      <strong>Выбор:</strong> в большинстве задач — BG/NBD. Для банков и академических работ — Pareto/NBD из-за более "правдоподобного" механизма ухода.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое Gamma-Gamma модель? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Gamma-Gamma</strong> — дополнение к BG/NBD для моделирования суммы транзакции.<br><br>
+      BG/NBD предсказывает количество покупок. Но CLV = количество × стоимость. Gamma-Gamma моделирует стоимость.<br><br>
+      <strong>Идея:</strong> стоимость транзакции ~ Gamma(p, v) где v ~ Gamma(q,γ) по клиентам. Оценка через shrinkage:<br>
+      $E[M | \bar{m}, x] = \frac{p\gamma + x\bar{m}}{p\gamma + x}$<br><br>
+      <strong>Shrinkage:</strong> при малом x (мало покупок) → тянемся к популяционному среднему. При большом x → верим персональной истории.<br><br>
+      <strong>Python:</strong> <code>from lifetimes import GammaGammaFitter; ggf.fit(frequency, monetary_value); ggf.customer_lifetime_value(bgf, frequency, recency, T, monetary_value)</code>
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Когда ML лучше чем BG/NBD для предсказания LTV? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>ML (LightGBM) лучше когда:</strong><br>
+      1. Богатые признаки: engagement, поведение на сайте, продуктовые события, email-активность<br>
+      2. Нелинейные взаимодействия важны (CLV сильно зависит от комбинации источника + поведения + демо)<br>
+      3. Короткие горизонты прогноза (7-90 дней) — ML использует последние сигналы лучше<br>
+      4. Contractual business (SaaS) — нет "незаметной смерти", есть явный чurn момент<br><br>
+      <strong>BG/NBD лучше когда:</strong><br>
+      1. Только транзакционные данные доступны (RFM)<br>
+      2. Нужна интерпретируемость: P(alive) понятна бизнесу<br>
+      3. Длинные горизонты прогноза (3-5 лет)<br>
+      4. Non-contractual FMCG — классическая область применения<br><br>
+      <strong>Лучший результат:</strong> гибридный подход — BG/NBD P(alive) + expected_frequency как признаки для LightGBM.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое LTV/CAC и почему он должен быть > 3? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      <strong>CAC</strong> = Customer Acquisition Cost = сколько стоит привлечь одного клиента.<br>
+      <strong>LTV/CAC</strong> = соотношение ценности к стоимости привлечения.<br><br>
+      <strong>Почему LTV/CAC > 3:</strong><br>
+      - Платим CAC сейчас, LTV получаем в будущем (time value of money)<br>
+      - Есть overhead: customer service, infrastructure, product development не включены в CAC<br>
+      - Нужен запас для экспериментов, маркетинговых промахов<br><br>
+      <strong>Бенчмарки:</strong><br>
+      - LTV/CAC &lt; 1: убыточно, сжигаем деньги<br>
+      - LTV/CAC 1-3: не устойчиво или инвестиционная фаза роста<br>
+      - LTV/CAC 3-5: хороший здоровый бизнес<br>
+      - LTV/CAC > 5: масштабируй быстрее, недостаточно инвестируешь в growth<br><br>
+      У Airbnb, Spotify, Netflix: LTV/CAC > 6-10 для органических каналов.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как интегрировать LTV в рекламные кампании? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Google Ads — Value-Based Bidding:</strong><br>
+      1. Обучаем модель LTV на первые 7 дней после регистрации<br>
+      2. Передаём predicted_LTV как Conversion Value в Google Ads<br>
+      3. Smart Bidding (Target ROAS) автоматически платит больше за пользователей с высоким expected LTV<br><br>
+      <strong>Facebook/Meta — Value Optimization:</strong><br>
+      Facebook Conversions API: передаём value = predicted LTV при событии Registration/Purchase.<br>
+      Алгоритм оптимизирует на суммарный Value, не на Count конверсий.<br><br>
+      <strong>Результат (типично):</strong> ROAS вырастает на 20-40% при переходе от CPA (оплата за конверсию) к Value-Based (оплата за LTV).<br><br>
+      <strong>Важно:</strong> нельзя использовать actual LTV — он неизвестен в момент клика. Используем early predicted LTV (7-30 дневные сигналы).
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как построить LTV модель для нового продукта без истории? <span class="tag td">deep</span></summary>
+    <div class="qa">
+      Cold start проблема: нет данных для обучения BG/NBD или ML модели.<br><br>
+      <strong>Решения (в порядке приоритета):</strong><br><br>
+      1. <strong>Analogous products:</strong> использовать модель похожего продукта того же класса как prior. "Наш SaaS похож на продукт X → берём их LTV-параметры как начальное приближение".<br>
+      2. <strong>Proxy метрики:</strong> ранние поведенческие сигналы коррелирующие с LTV: D7 retention, first purchase amount, email engagement. Проверяем на похожих продуктах.<br>
+      3. <strong>Bayesian прайор:</strong> начинаем с информативного prior для BG/NBD параметров (из индустрии) → обновляем по мере накопления данных (first 3-6 месяцев).<br>
+      4. <strong>Rapid experimentation:</strong> первые 3 когорты × LTV proxy метрики → базовая модель через 3-4 месяца. Обновляем по мере роста данных.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Что такое shrinkage в Gamma-Gamma модели? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      <strong>Shrinkage</strong> = приближение индивидуальной оценки к популяционному среднему при малом количестве наблюдений.<br><br>
+      <strong>Формула Gamma-Gamma:</strong> $E[M | \bar{m}, x] = \frac{p\gamma + x\bar{m}}{p\gamma + x}$<br><br>
+      <strong>Пример:</strong> популяционное среднее = 1,000₽. Клиент А: 1 покупка на 10,000₽.<br>
+      E[M|10000, x=1] = (p×γ + 10000)/(p×γ + 1).<br>
+      При p×γ=2 (аналог "популяционный вес"): E = (2000+10000)/(2+1) = 4,000₽.<br><br>
+      Клиент Б: 50 покупок по 10,000₽. E = (2000+500000)/(2+50) ≈ 9,654₽ — почти не сдвинулся.<br><br>
+      <strong>Смысл:</strong> одна дорогая покупка = ненадёжная оценка. 50 дорогих покупок = надёжная. Shrinkage реализует это автоматически.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как CLV связан с churn prediction? <span class="tag tp">популярный</span></summary>
+    <div class="qa">
+      CLV и churn — две стороны одной монеты:<br><br>
+      $\text{CLV} = m \cdot \frac{1-\text{churn\_rate}}{1 + d - (1 - \text{churn\_rate})} = m \cdot \frac{r}{1+d-r}$<br><br>
+      При churn_rate↑ → retention r↓ → CLV↓.<br><br>
+      <strong>Практическое использование вместе:</strong><br>
+      - Churn model: P(уйти в следующие 30 дней)<br>
+      - CLV model: E[CLV если останется]<br>
+      - Retention priority score = P(churn) × CLV<br><br>
+      Пример: Клиент А: P(churn)=0.8, CLV=200₽ → score=160₽. Клиент Б: P(churn)=0.3, CLV=5000₽ → score=1500₽. Все ресурсы retention → Клиент Б!<br><br>
+      Именно так работают retention teams в Spotify, Netflix, SaaS-компаниях.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как оценить параметры BG/NBD? <span class="tag td">deep</span></summary>
+    <div class="qa">
+      <strong>MLE (Maximum Likelihood Estimation)</strong>: максимизируем log-likelihood по параметрам {r, α, a, b}.<br><br>
+      Функция правдоподобия для одного клиента с историей (x, t_x, T):<br>
+      $L(r,\alpha,a,b|x,t_x,T) = P(\text{X=x}, \text{alive at T}) + P(\text{X=x}, \text{dead at T})$<br><br>
+      Каждый компонент — интегралы по гамма и бета-распределениям → аналитически вычислимы через гипергеометрические функции (см. Fader et al. 2005, Appendix A).<br><br>
+      <strong>На практике:</strong><br>
+      <code>from lifetimes import BetaGeoFitter</code><br>
+      <code>bgf = BetaGeoFitter(penalizer_coef=0.0)</code><br>
+      <code>bgf.fit(df['frequency'], df['recency'], df['T'])</code><br>
+      <code>print(bgf.summary)</code>  # выводит r, α, a, b с SE и p-value<br><br>
+      Оптимизация: scipy.optimize.minimize с L-BFGS-B. Сходится за 50-100 итераций для 10k+ клиентов.
+    </div>
+  </details>
+
+  <details class="qi">
+    <summary><span class="qch">▶</span>Как валидировать LTV модель? <span class="tag tpr">практика</span></summary>
+    <div class="qa">
+      LTV-валидация сложна: нельзя проверить "реальный LTV" без ожидания.<br><br>
+      <strong>Стратегии валидации:</strong><br><br>
+      1. <strong>Backtesting:</strong> обучаемся на данных до момента T_train, предсказываем на [T_train, T_train+12m], сравниваем с реальными данными.<br>
+      2. <strong>Cohort validation:</strong> сравниваем predicted vs actual LTV для когорт (регистрации за квартал). Aggregate MAPE по когорте.<br>
+      3. <strong>Percentile ranking:</strong> предсказанный top-10% CLV должен соответствовать top-10% реальных покупок. Метрика: rank correlation (Spearman ρ).<br>
+      4. <strong>Calibration curve:</strong> predicted CLV bucketed vs actual average CLV в каждом бакете. Идеальная модель = диагональ.<br>
+      5. <strong>Business impact:</strong> A/B тест retention кампании на predicted top-CLV vs random. Если LTV модель хорошая → кампания на top-CLV даст ROI &gt;&gt; random baseline.
+    </div>
+  </details>
+
+  <div class="pfooter">
+    <a href="block3_03_fraud_detection.html" class="btn prev">← Fraud Detection</a>
+    <a href="block3_quiz.html" class="btn">Тест Блока 3 →</a>
+  </div>
+</section>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+
+// P(alive) vs recency
+(function(){
+  const ctx = document.getElementById('c_palive'); if(!ctx)return;
+  const recency = Array.from({length:52}, (_,i)=>i+1);
+  // BG/NBD approximation: P(alive) decreases with "gap since last purchase" = T - t_x
+  // For x=5, T=52: higher recency = more recent = higher P(alive)
+  const f5 = recency.map(tx => {
+    const gap = 52 - tx;
+    return Math.exp(-0.055 * gap * 0.8) / (1 + 0.25 * gap / 10);
+  });
+  const f2 = recency.map(tx => {
+    const gap = 52 - tx;
+    return Math.exp(-0.055 * gap * 1.2) / (1 + 0.35 * gap / 8);
+  });
+  const f10 = recency.map(tx => {
+    const gap = 52 - tx;
+    return Math.exp(-0.055 * gap * 0.5) / (1 + 0.15 * gap / 12);
+  });
+  // Normalize to [0,1]
+  const norm = arr => { const mx = Math.max(...arr); return arr.map(v => Math.min(1, Math.max(0, v/mx))); };
+  new Chart(ctx, {type:'line', data:{labels:recency, datasets:[
+    {label:'frequency=10', data:norm(f10), borderColor:'#16a34a', fill:false, pointRadius:0, tension:0.3, borderWidth:2.5},
+    {label:'frequency=5',  data:norm(f5),  borderColor:'#2563eb', fill:false, pointRadius:0, tension:0.3, borderWidth:2},
+    {label:'frequency=2',  data:norm(f2),  borderColor:'#dc2626', fill:false, pointRadius:0, tension:0.3, borderWidth:2, borderDash:[5,3]}
+  ]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}},
+      title:{display:true,text:'P(alive): при recency≈T (последняя покупка недавно) → максимум',font:{size:11,style:'italic'}}},
+    scales:{x:{title:{display:true,text:'t_x (неделя последней покупки)'},grid:{color:'#f3f4f6'},ticks:{maxTicksLimit:10}},
+      y:{min:0,max:1,title:{display:true,text:'P(alive)'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// CLV scatter
+(function(){
+  const ctx = document.getElementById('c_clv_scatter'); if(!ctx)return;
+  const customers = [
+    {name:'Анна',    palive:0.94, clv:24850, check:3500},
+    {name:'Борис',   palive:0.81, clv:9240,  check:2200},
+    {name:'Вера',    palive:0.55, clv:3240,  check:1800},
+    {name:'Глеб',    palive:0.11, clv:1500,  check:5000},
+    {name:'Диана',   palive:0.88, clv:8250,  check:1500},
+    {name:'Егор',    palive:0.32, clv:3600,  check:4000},
+    {name:'Жанна',   palive:0.97, clv:30240, check:2800},
+    {name:'Захар',   palive:0.48, clv:960,   check:800},
+    {name:'Ирина',   palive:0.05, clv:200,   check:2000},
+    {name:'Кирилл',  palive:0.22, clv:1920,  check:3200}
+  ];
+  new Chart(ctx, {type:'scatter', data:{datasets:[{
+    label:'Клиенты',
+    data:customers.map(c=>({x:c.palive, y:c.clv/1000, r:Math.sqrt(c.check/500)+3})),
+    backgroundColor:customers.map(c=>c.clv>10000?'rgba(22,163,74,0.7)':c.clv>3000?'rgba(37,99,235,0.7)':'rgba(220,38,38,0.6)'),
+    borderColor:customers.map(c=>c.clv>10000?'#16a34a':c.clv>3000?'#2563eb':'#dc2626'),
+    borderWidth:2
+  }]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:d=>{const c=customers[d.dataIndex]; return `${c.name}: P(alive)=${c.palive}, CLV=${(c.clv/1000).toFixed(1)}k₽`;}}},
+      title:{display:true,text:'🟢 VIP (CLV>10k) 🔵 Mid (3-10k) 🔴 Low (<3k). Размер = средний чек',font:{size:11,style:'italic'}}},
+    scales:{x:{min:0,max:1,title:{display:true,text:'P(alive)'},grid:{color:'#f3f4f6'}},
+      y:{title:{display:true,text:'CLV (тыс. ₽)'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// Model comparison
+(function(){
+  const ctx = document.getElementById('c_model_compare'); if(!ctx)return;
+  const quintiles = ['Q1 (Low)','Q2','Q3','Q4','Q5 (High)'];
+  new Chart(ctx, {type:'bar', data:{
+    labels:quintiles,
+    datasets:[
+      {label:'BG/NBD MAPE %', data:[28,18,14,15,22], backgroundColor:'rgba(124,58,237,0.7)', borderRadius:4},
+      {label:'LightGBM MAPE %', data:[22,16,14,12,16], backgroundColor:'rgba(22,163,74,0.7)', borderRadius:4}
+    ]
+  }, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}}},
+    scales:{x:{grid:{display:false}},
+      y:{title:{display:true,text:'MAPE (%)'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+// CLV distribution
+(function(){
+  const ctx = document.getElementById('c_clv_dist'); if(!ctx)return;
+  const buckets = ['₽0','₽1-500','₽500-2k','₽2k-5k','₽5k-20k','₽20k-50k','₽50k+'];
+  const pct_customers = [35, 18, 15, 12, 10, 6, 4];
+  const pct_revenue   = [0,  2,  5,  8,  20, 25, 40];
+  new Chart(ctx, {type:'bar', data:{labels:buckets,datasets:[
+    {label:'% клиентов', data:pct_customers, backgroundColor:'rgba(37,99,235,0.6)', borderRadius:4, yAxisID:'y'},
+    {label:'% выручки',  data:pct_revenue,   backgroundColor:'rgba(22,163,74,0.7)', borderRadius:4, yAxisID:'y'}
+  ]}, options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+    plugins:{legend:{labels:{font:{size:11}}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
+      y:{title:{display:true,text:'%'},grid:{color:'#f3f4f6'}}}}});
+})();
+
+}); // DOMContentLoaded
+</script>
+</body>
+</html>

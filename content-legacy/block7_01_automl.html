@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7.1 · AutoML: Optuna, AutoGluon, H2O</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --pk:#db2777;--pk-l:#fdf2f8;--pk-b:#fbcfe8;--pk-d:#500724;
+  --sl:#475569;--sl-l:#f8fafc;--sl-b:#cbd5e1;
+  --blue:#0284c7;--blue-l:#f0f9ff;--blue-b:#bae6fd;
+  --pur:#7c3aed;--pur-l:#f5f3ff;--pur-b:#ddd6fe;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-b:#fcd34d;
+  --red:#dc2626;--red-l:#fef2f2;--red-b:#fca5a5;
+  --grn:#16a34a;--grn-l:#f0fdf4;--grn-b:#86efac;
+  --teal:#0d9488;--teal-l:#f0fdfa;--teal-b:#99f6e4;
+  --org:#ea580c;--org-l:#fff7ed;--org-b:#fed7aa;
+  --border:#e5e7eb;--bg:#f9fafb;--text:#111827;--text2:#374151;--text3:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.ph{background:linear-gradient(135deg,#500724,#db2777);color:#fff;padding:32px 32px 26px;}
+.ph .bc{font-size:11px;opacity:.65;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.ph h1{font-size:30px;font-weight:800;margin-bottom:8px;}
+.ph .sub{font-size:14px;opacity:.85;}
+.snav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;padding:0 28px;gap:2px;}
+.snav a{padding:10px 12px;font-size:13px;font-weight:500;color:var(--text3);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;}
+.snav a:hover{color:var(--pk);border-bottom-color:var(--pk);}
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px;}
+.sec{margin-bottom:64px;scroll-margin-top:56px;}
+.stitle{font-size:22px;font-weight:800;margin-bottom:6px;}
+.sdesc{font-size:14px;color:var(--text3);margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:var(--text);}
+h4{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--text2);}
+p{font-size:15px;color:var(--text2);margin-bottom:13px;line-height:1.72;}
+ul,ol{margin:0 0 13px 20px;} li{font-size:15px;color:var(--text2);margin-bottom:7px;line-height:1.7;}
+strong{color:var(--text);}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono','Fira Code',monospace;}
+pre{background:#f1f5f9;border-radius:8px;padding:14px;overflow-x:auto;font-size:12.5px;font-family:'SF Mono','Fira Code',monospace;line-height:1.7;margin:12px 0;color:#1e293b;border:1px solid var(--sl-b);}
+pre code{background:none;padding:0;font-size:12.5px;}
+.fbox{background:#fff;border:1px solid var(--border);border-left:4px solid var(--pk);border-radius:10px;padding:18px 22px;margin:16px 0;overflow-x:auto;}
+.fbox.blue{border-left-color:var(--blue);} .fbox.amber{border-left-color:var(--amber);}
+.fbox.red{border-left-color:var(--red);} .fbox.teal{border-left-color:var(--teal);}
+.fbox.grn{border-left-color:var(--grn);} .fbox.pur{border-left-color:var(--pur);}
+.fbox.org{border-left-color:var(--org);} .fbox.sl{border-left-color:var(--sl);}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--pk);margin-bottom:10px;}
+.fbox.blue .flabel{color:var(--blue);} .fbox.amber .flabel{color:var(--amber);}
+.fbox.red .flabel{color:var(--red);} .fbox.teal .flabel{color:var(--teal);}
+.fbox.grn .flabel{color:var(--grn);} .fbox.pur .flabel{color:var(--pur);}
+.fbox.org .flabel{color:var(--org);} .fbox.sl .flabel{color:var(--sl);}
+.fnote{font-size:13px;color:var(--text3);margin-top:10px;line-height:1.65;}
+.intuition{background:var(--pk-l);border:1px solid var(--pk-b);border-left:4px solid var(--pk);border-radius:10px;padding:14px 18px;margin:10px 0 18px;}
+.intuition-label{font-size:10.5px;font-weight:800;color:var(--pk);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.intuition p{font-size:14px;color:#831843;margin-bottom:4px;line-height:1.7;}
+.cl{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:14px 0;font-size:14px;line-height:1.65;}
+.cl.tip{background:var(--grn-l);border:1px solid var(--grn-b);color:#15803d;}
+.cl.warn{background:var(--amber-l);border:1px solid var(--amber-b);color:#92400e;}
+.cl.danger{background:var(--red-l);border:1px solid var(--red-b);color:#991b1b;}
+.cl.info{background:var(--blue-l);border:1px solid var(--blue-b);color:#1e40af;}
+.cl.ins{background:var(--sl-l);border:1px solid var(--sl-b);color:#334155;}
+.cli{font-size:20px;flex-shrink:0;margin-top:1px;}
+.tw{overflow-x:auto;margin:14px 0;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:2px solid var(--border);}
+tbody td{padding:9px 14px;border-bottom:1px solid #f3f4f6;color:var(--text2);vertical-align:top;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafafa;}
+.trh td{font-weight:600;background:var(--pk-l)!important;color:#831843!important;}
+.numex{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;}
+.numex-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.numex-step{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px;align-items:flex-start;color:var(--text2);line-height:1.7;}
+.nb{background:var(--pk);color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.nb.blue{background:var(--blue);} .nb.pur{background:var(--pur);} .nb.grn{background:var(--grn);} .nb.red{background:var(--red);} .nb.org{background:var(--org);} .nb.sl{background:var(--sl);}
+.chb{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cht{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.chsub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.sysbox{background:#0f172a;border-radius:16px;padding:26px;margin:18px 0;color:#e2e8f0;}
+.sysbox h4{font-size:16px;font-weight:700;color:#f8fafc;margin:0 0 18px;}
+.sys-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.sysblock{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:12px;color:#94a3b8;min-width:110px;text-align:center;line-height:1.5;}
+.sysblock strong{color:#f1f5f9;display:block;font-size:13px;margin-bottom:2px;}
+.sysarrow{color:#475569;font-size:20px;flex-shrink:0;}
+.sysnote{font-size:12px;color:#94a3b8;margin-top:12px;border-top:1px solid #1e293b;padding-top:12px;line-height:1.7;}
+.sysnote strong{color:#e2e8f0;}
+.syshighlight{background:#500724;border:1px solid #db2777;border-radius:8px;padding:9px 13px;font-size:12px;color:#fbcfe8;min-width:110px;text-align:center;line-height:1.5;}
+.syshighlight strong{color:#fff;display:block;font-size:13px;margin-bottom:2px;}
+.casebox{background:linear-gradient(135deg,var(--pk-l),#fce7f3);border:1px solid var(--pk-b);border-radius:14px;padding:22px;margin:18px 0;}
+.caseco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--pk);color:#fff;padding:3px 12px;border-radius:99px;margin-bottom:10px;}
+.casebox h4{font-size:16px;font-weight:700;color:#831843;margin:0 0 8px;}
+.casebox p,.casebox li{color:#500724;font-size:14px;line-height:1.7;margin-bottom:6px;}
+.casebox ul{padding-left:18px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0;}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.card h5{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.card p{font-size:13px;margin-bottom:4px;line-height:1.65;}
+.card.pk{border-top:3px solid var(--pk);} .card.bl{border-top:3px solid var(--blue);}
+.card.gr{border-top:3px solid var(--grn);} .card.am{border-top:3px solid var(--amber);}
+.card.pu{border-top:3px solid var(--pur);} .card.rd{border-top:3px solid var(--red);}
+.qi{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.qi summary{padding:13px 17px;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:flex-start;gap:10px;list-style:none;user-select:none;color:var(--text);}
+.qi summary::-webkit-details-marker{display:none;}
+.qch{font-size:11px;color:var(--text3);margin-top:2px;flex-shrink:0;transition:transform .2s;}
+details[open] .qch{transform:rotate(90deg);}
+details[open]>summary{background:var(--pk-l);color:#831843;}
+.qa{padding:15px 17px;background:#fafafa;border-top:1px solid var(--border);font-size:14px;color:var(--text2);line-height:1.75;}
+.qa p{font-size:14px;}
+.qah{font-size:18px;font-weight:800;color:var(--pk);margin:24px 0 12px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.tp{background:#e0f2fe;color:#0c4a6e;} .td{background:#ede9fe;color:#5b21b6;} .tpr{background:#fef9c3;color:#854d0e;} .tcase{background:#dcfce7;color:#15803d;} .tgot{background:#fee2e2;color:#991b1b;}
+.pfooter{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:2px solid var(--border);}
+.btn{background:var(--pk);color:#fff;padding:11px 22px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .15s;}
+.btn:hover{background:#be185d;transform:translateY(-1px);}
+.btn.prev{background:#fff;color:var(--pk);border:2px solid var(--pk);}
+.ladder{display:flex;flex-direction:column;gap:4px;margin:16px 0;}
+.rung{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;border:1px solid var(--border);background:#fff;}
+.rung .rn{font-weight:800;color:var(--pk);min-width:74px;font-size:12px;}
+/* ---------- АНИМАЦИИ ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.sec{animation:fadeUp .5s ease both;}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(219,39,119,.45);}50%{box-shadow:0 0 0 10px rgba(219,39,119,0);}}
+@keyframes dash{to{stroke-dashoffset:0;}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes shrinkBar{from{width:100%;}to{width:var(--w);}}
+/* Турнир SHA */
+.sha{margin:18px 0;}
+.sha-round{display:flex;align-items:center;gap:12px;margin-bottom:9px;}
+.sha-lbl{font-size:12px;font-weight:700;color:var(--text3);min-width:96px;}
+.sha-track{flex:1;height:30px;background:#f1f5f9;border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--border);}
+.sha-fill{height:100%;border-radius:7px;display:flex;align-items:center;padding-left:11px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;animation:shrinkBar 1.1s cubic-bezier(.22,1,.36,1) both;}
+.sha-r0 .sha-fill{background:#db2777;--w:100%;animation-delay:.05s;}
+.sha-r1 .sha-fill{background:#c026d3;--w:33.3%;animation-delay:.35s;}
+.sha-r2 .sha-fill{background:#9333ea;--w:11.1%;animation-delay:.65s;}
+.sha-r3 .sha-fill{background:#6d28d9;--w:3.7%;animation-delay:.95s;}
+.sha-cost{font-size:11.5px;color:var(--text3);min-width:112px;text-align:right;font-variant-numeric:tabular-nums;}
+/* Анимированная схема цикла BO */
+.loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:20px 0;}
+.loop-node{background:#fff;border:2px solid var(--pk-b);border-radius:12px;padding:12px 15px;font-size:12.5px;text-align:center;min-width:126px;line-height:1.5;color:var(--text2);animation:floatY 3s ease-in-out infinite;}
+.loop-node strong{display:block;color:var(--pk);font-size:13px;margin-bottom:3px;}
+.loop-node:nth-child(1){animation-delay:0s;} .loop-node:nth-child(3){animation-delay:.4s;}
+.loop-node:nth-child(5){animation-delay:.8s;} .loop-node:nth-child(7){animation-delay:1.2s;}
+.loop-arr{font-size:20px;color:var(--pk);animation:pulseGlow 2.4s infinite;border-radius:50%;}
+/* SVG самопрорисовка */
+.draw path,.draw line,.draw circle,.draw polyline{stroke-dasharray:1400;stroke-dashoffset:1400;animation:dash 2.6s ease-out forwards;}
+.draw .d2{animation-delay:.5s;} .draw .d3{animation-delay:1s;} .draw .d4{animation-delay:1.5s;}
+/* Интерактивный слайдер */
+.play{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;}
+.play label{font-size:13px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.play input[type=range]{width:100%;accent-color:var(--pk);}
+.play .out{font-family:'SF Mono',monospace;font-size:13px;color:var(--pk);font-weight:700;}
+.play .res{margin-top:12px;padding:12px 14px;background:var(--pk-l);border-radius:9px;font-size:13.5px;color:#831843;line-height:1.7;}
+@media(max-width:640px){.charts-2,.grid2,.grid3{grid-template-columns:1fr;}.ph{padding:22px 16px;}.main{padding:20px 14px 48px;}.sha-lbl{min-width:70px;font-size:11px;}.sha-cost{min-width:64px;font-size:10.5px;}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="ph">
+  <div class="bc">Блок 7 · AutoML + Tabular DL + MLOps · Тема 1 из 3</div>
+  <h1>AutoML: Optuna, AutoGluon, H2O</h1>
+  <p class="sub">Bayesian optimization · TPE · Hyperband · multi-fidelity · когда AutoML убивает интерпретируемость</p>
+</div>
+
+<div class="snav">
+  <a href="#s1">1. Что такое AutoML</a>
+  <a href="#s2">2. Grid / Random</a>
+  <a href="#s3">3. Байесовская оптимизация</a>
+  <a href="#s4">4. TPE под капотом</a>
+  <a href="#s5">5. Multi-fidelity</a>
+  <a href="#s6">6. Hyperband & ASHA</a>
+  <a href="#s7">7. Optuna на практике</a>
+  <a href="#s8">8. AutoGluon & H2O</a>
+  <a href="#s9">9. NAS</a>
+  <a href="#s10">10. Подводные камни</a>
+  <a href="#s11">11. System Design</a>
+  <a href="#qa">12. Q&A</a>
+</div>
+
+<div class="main">
+
+<!-- ================= S1 ================= -->
+<div class="sec" id="s1">
+<div class="stitle">1. Что такое AutoML и зачем он нужен</div>
+<div class="sdesc">От «шаманства с параметрами» к воспроизводимому поиску</div>
+
+<p><strong>AutoML</strong> — это автоматизация тех частей ML-пайплайна, которые исторически делались вручную по наитию: выбор модели, подбор гиперпараметров, feature engineering, ансамблирование. Ключевая идея — превратить «искусство» в <strong>задачу оптимизации</strong>, у которой есть чётко определённая целевая функция и бюджет.</p>
+
+<div class="fbox">
+<div class="flabel">📐 Формальная постановка — CASH problem</div>
+$$A^*_{\lambda^*} \;=\; \arg\min_{A^{(j)} \in \mathcal{A},\; \lambda \in \Lambda^{(j)}} \; \frac{1}{K}\sum_{i=1}^{K} \mathcal{L}\!\left(A^{(j)}_{\lambda},\; D_{\text{train}}^{(i)},\; D_{\text{valid}}^{(i)}\right)$$
+<p class="fnote">CASH = <em>Combined Algorithm Selection and Hyperparameter optimization</em> (Thornton et al., 2013). $\mathcal{A}$ — множество алгоритмов (XGBoost, LightGBM, RandomForest, LogReg…), $\Lambda^{(j)}$ — пространство гиперпараметров конкретного алгоритма $j$, $K$ — число фолдов кросс-валидации.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Ты ищешь не просто «лучшую глубину дерева». Ты ищешь <strong>одновременно</strong>: какую модель взять И какие у неё крутилки поставить. Это как выбирать не только настройки гитары, но и сам инструмент — гитару, скрипку или синтезатор. Причём настройки у каждого свои, и сравнивать их можно только по итоговому звуку (метрике на валидации).</p>
+</div>
+
+<h3>Что именно автоматизируют</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Уровень</th><th>Что автоматизируется</th><th>Инструменты</th><th>Реалистичный выигрыш</th></tr></thead>
+<tbody>
+<tr><td><strong>HPO</strong></td><td>Только гиперпараметры фиксированной модели</td><td>Optuna, Hyperopt, Ray Tune, Ax</td><td>+0.5–3% метрики</td></tr>
+<tr><td><strong>CASH</strong></td><td>Модель + гиперпараметры</td><td>auto-sklearn, TPOT</td><td>+1–4%</td></tr>
+<tr><td><strong>Full AutoML</strong></td><td>+ препроцессинг, feature engineering, ансамбли</td><td>AutoGluon, H2O AutoML, FLAML</td><td>+2–6%</td></tr>
+<tr><td><strong>NAS</strong></td><td>Архитектура нейросети</td><td>DARTS, ENAS, EfficientNet-family</td><td>зависит от домена</td></tr>
+<tr><td><strong>Meta-learning</strong></td><td>Warm start из похожих датасетов</td><td>auto-sklearn 2.0, OpenML</td><td>ускорение в 2–10×</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Главное заблуждение новичка.</strong> «AutoML заменит дата-сайентиста». Нет. AutoML отлично решает <em>последние 5% работы</em> — подкрутить параметры на уже готовом, правильно собранном датасете. Он не решит утечку таргета, неправильную схему валидации, смещённую выборку или то, что бизнес-метрика не совпадает с ML-метрикой. Именно там живут 95% провалов проектов.</div></div>
+
+<div class="cl ins"><span class="cli">🧠</span><div><strong>Неочевидное.</strong> Самая большая ценность AutoML в проде — не в «+2% AUC», а в <strong>воспроизводимости и снятии bus-factor</strong>. Когда подбор параметров описан кодом study-объекта, а не сидит в голове ушедшего сеньора, — команда может повторить эксперимент через год.</div></div>
+
+<h3>Когда AutoML реально окупается</h3>
+<div class="grid3">
+<div class="card gr"><h5>✅ Много похожих задач</h5><p>Сотни моделей на разные сегменты/страны/магазины. Ручной тюнинг каждой невозможен физически.</p></div>
+<div class="card gr"><h5>✅ Быстрый baseline</h5><p>Нужно за 2 часа понять «есть ли вообще сигнал в данных». AutoGluon на 10 минут даёт честную верхнюю оценку.</p></div>
+<div class="card gr"><h5>✅ Регулярный переобучение</h5><p>Данные дрейфуют, оптимальные параметры едут. Автоподбор в retraining-пайплайне.</p></div>
+<div class="card rd"><h5>❌ Мало данных</h5><p>&lt;1000 строк — AutoML переобучится на валидации. Оптимизация шума.</p></div>
+<div class="card rd"><h5>❌ Нужна интерпретируемость</h5><p>Кредитный скоринг, медицина. Стек из 40 моделей никто не одобрит.</p></div>
+<div class="card rd"><h5>❌ Проблема в данных</h5><p>Если фичи мусорные — никакой перебор параметров не спасёт. Garbage in, tuned garbage out.</p></div>
+</div>
+</div>
+
+<!-- ================= S2 ================= -->
+<div class="sec" id="s2">
+<div class="stitle">2. Grid Search и Random Search: почему сетка проигрывает</div>
+<div class="sdesc">Классика, которую надо понимать, чтобы понять всё остальное</div>
+
+<h3>Grid Search</h3>
+<p>Берём декартово произведение всех значений всех параметров и перебираем. Просто, воспроизводимо, тривиально параллелится.</p>
+
+<div class="fbox sl">
+<div class="flabel">📐 Число конфигураций Grid Search</div>
+$$N_{\text{grid}} = \prod_{i=1}^{d} k_i$$
+<p class="fnote">$d$ — число гиперпараметров, $k_i$ — число значений для $i$-го параметра.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>3 параметра по 5 значений каждый = 5×5×5 = 125 обучений. Добавили четвёртый параметр — 625. Пятый — 3125. Это <strong>проклятие размерности</strong> в чистом виде: каждый новый параметр умножает стоимость, а не прибавляет к ней. Именно поэтому Grid умирает уже на 4–5 параметрах, а у LightGBM их полтора десятка.</p>
+</div>
+
+<h3>Random Search и почему он лучше</h3>
+<p>Bergstra & Bengio (2012) показали неинтуитивную вещь: <strong>случайный поиск при том же бюджете почти всегда лучше сетки</strong>. Причина — <em>low effective dimensionality</em>: обычно из 8 гиперпараметров реально на метрику влияют 1–2, остальные почти безразличны.</p>
+
+<div class="fbox blue">
+<div class="flabel">📐 Вероятность попасть в топ-p% пространства</div>
+$$P(\text{хотя бы одна из } n \text{ точек в топ-}p\%) = 1 - (1-p)^n$$
+<p class="fnote">При $p = 0.05$ (топ-5% конфигураций) и $n = 60$: $1 - 0.95^{60} \approx 0.954$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Магическое число <strong>60 итераций</strong>: если сделать 60 случайных попыток, ты с вероятностью 95% попадёшь в лучшие 5% всех возможных конфигураций. Это работает независимо от того, сколько у тебя параметров — 3 или 30. Именно поэтому random search так устойчив: он не зависит от размерности, только от того, насколько «широкая» область хороших решений.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: Grid vs Random на 2 параметрах</div>
+<div class="numex-step"><span class="nb">1</span><div>Есть 2 параметра: <code>learning_rate</code> (важный, влияет сильно) и <code>colsample_bytree</code> (почти не влияет). Бюджет — 9 обучений.</div></div>
+<div class="numex-step"><span class="nb">2</span><div><strong>Grid 3×3:</strong> lr ∈ {0.01, 0.1, 0.3}, colsample ∈ {0.6, 0.8, 1.0}. Мы пробуем ровно <strong>3 уникальных значения lr</strong> — остальные 6 обучений тратятся на бесполезное варьирование colsample.</div></div>
+<div class="numex-step"><span class="nb">3</span><div><strong>Random 9 точек:</strong> каждая точка имеет уникальное значение lr. Мы пробуем <strong>9 уникальных значений lr</strong> — в 3 раза плотнее покрываем важную ось.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Итог: при равном бюджете random покрывает важное измерение в $k$ раз плотнее, где $k$ — число значений на «бесполезной» оси. С ростом числа неважных параметров разрыв растёт экспоненциально.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">Grid vs Random: покрытие важного параметра</div>
+<div class="chsub">Ось X — learning_rate (важный), ось Y — colsample (неважный). Точки — испробованные конфигурации</div>
+<div style="position:relative;height:300px;"><canvas id="c_grid"></canvas></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практика.</strong> Random search до сих пор используется в проде как <em>baseline для сравнения</em>. Если твой умный байесовский метод не бьёт random search на 60 итерациях — значит, у тебя баг или пространство слишком шумное. Это стандартная санитарная проверка.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Подводный камень: логарифмическая шкала.</strong> Если сэмплировать <code>learning_rate</code> равномерно из [0.001, 0.3], то 99.7% точек попадут в диапазон &gt;0.001, и ты почти никогда не попробуешь малые lr. Нужен <strong>log-uniform</strong>: <code>trial.suggest_float("lr", 1e-4, 0.3, log=True)</code>. Это ошибка №1 у новичков в Optuna, и она молча съедает половину бюджета поиска.</div></div>
+</div>
+
+<!-- ================= S3 ================= -->
+<div class="sec" id="s3">
+<div class="stitle">3. Байесовская оптимизация: учимся на прошлых попытках</div>
+<div class="sdesc">Surrogate model + acquisition function — два кита BO</div>
+
+<p>Grid и Random <strong>ничего не помнят</strong>. Попробовали 40 конфигураций — 41-я выбирается так же слепо, как первая. Байесовская оптимизация строит <strong>суррогатную модель</strong> целевой функции и использует её, чтобы решить, куда идти дальше.</p>
+
+<h3>Два компонента</h3>
+<div class="grid2">
+<div class="card bl"><h5>1️⃣ Surrogate model</h5><p>Дешёвая модель, аппроксимирующая дорогую целевую функцию $f(\lambda)$. Даёт не только предсказание, но и <strong>неопределённость</strong>. Варианты: Gaussian Process, Random Forest (SMAC), TPE, нейросети.</p></div>
+<div class="card pu"><h5>2️⃣ Acquisition function</h5><p>Решает, где сэмплировать следующую точку. Балансирует <em>exploitation</em> (там, где предсказано хорошо) и <em>exploration</em> (там, где мы ничего не знаем).</p></div>
+</div>
+
+<div class="loop">
+  <div class="loop-node"><strong>① История</strong>наблюдения<br>(λᵢ, yᵢ)</div>
+  <div class="loop-arr">→</div>
+  <div class="loop-node"><strong>② Surrogate</strong>строим μ(λ), σ(λ)</div>
+  <div class="loop-arr">→</div>
+  <div class="loop-node"><strong>③ Acquisition</strong>максимизируем EI</div>
+  <div class="loop-arr">→</div>
+  <div class="loop-node"><strong>④ Обучение</strong>дорогой запуск<br>f(λ_next)</div>
+  <div class="loop-arr">↺</div>
+</div>
+<p style="text-align:center;font-size:12.5px;color:var(--text3);margin-top:-6px;">Цикл повторяется, пока не кончится бюджет. Дорогой только шаг ④ — шаги ②–③ занимают миллисекунды.</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Expected Improvement (EI)</div>
+$$\text{EI}(\lambda) = \mathbb{E}\left[\max\left(f(\lambda^+) - f(\lambda),\, 0\right)\right]$$
+<p>Для GP-суррогата с $\mu(\lambda)$ и $\sigma(\lambda)$ существует замкнутая форма:</p>
+$$\text{EI}(\lambda) = \underbrace{(f(\lambda^+) - \mu(\lambda))\,\Phi(Z)}_{\text{exploitation}} + \underbrace{\sigma(\lambda)\,\phi(Z)}_{\text{exploration}}, \quad Z = \frac{f(\lambda^+) - \mu(\lambda)}{\sigma(\lambda)}$$
+<p class="fnote">$f(\lambda^+)$ — лучшее найденное значение, $\Phi$ и $\phi$ — CDF и PDF стандартного нормального распределения.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>EI отвечает на вопрос: «<em>насколько сильно я в среднем улучшу текущий рекорд, если попробую вот эту точку?</em>». Два способа получить высокий EI:</p>
+<p>① Модель уверена, что здесь хорошо ($\mu$ низкая ошибка) — первое слагаемое большое. Это <strong>эксплуатация</strong>.</p>
+<p>② Модель понятия не имеет, что здесь ($\sigma$ большая) — второе слагаемое большое. Это <strong>исследование</strong>.</p>
+<p>Формула автоматически балансирует эти два режима без ручных настроек — в этом её красота. Аналогия: выбирая ресторан, ты либо идёшь в проверенный любимый (①), либо в новый, о котором ничего не знаешь и который может оказаться шедевром (②).</p>
+</div>
+
+<div class="fbox amber">
+<div class="flabel">📐 Upper Confidence Bound (UCB) — альтернатива EI</div>
+$$\text{UCB}(\lambda) = \mu(\lambda) + \kappa \cdot \sigma(\lambda)$$
+<p class="fnote">$\kappa$ — явный параметр баланса. $\kappa=0$ → чистая эксплуатация, $\kappa \to \infty$ → чистое исследование. Типично $\kappa \in [1, 3]$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>UCB — это «оптимизм перед лицом неопределённости». Мы оцениваем каждую точку не по среднему, а по <strong>верхней границе правдоподобного диапазона</strong>. Если про точку ничего не известно — её верхняя граница высокая, и её обязательно попробуют. Тот же принцип, что в UCB1 для многоруких бандитов (см. блок 6) — только там руки дискретные, а здесь пространство непрерывное.</p>
+</div>
+
+<h3>Gaussian Process: сильные и слабые стороны</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Аспект</th><th>GP-BO</th><th>Комментарий</th></tr></thead>
+<tbody>
+<tr><td>Сложность</td><td>$O(n^3)$ по числу испытаний</td><td>Обращение ковариационной матрицы. При n&gt;500 сам суррогат становится узким местом</td></tr>
+<tr><td>Категориальные параметры</td><td>Плохо</td><td>Нужны хитрые ядра; одноместное кодирование раздувает размерность</td></tr>
+<tr><td>Условные параметры</td><td>Не поддерживает нативно</td><td>«num_leaves имеет смысл только если booster=gbdt» — GP этого не понимает</td></tr>
+<tr><td>Размерность</td><td>Хорошо до ~20 измерений</td><td>Дальше деградирует до random search</td></tr>
+<tr><td>Параллелизм</td><td>Требует трюков</td><td>Constant liar, q-EI, Thompson sampling</td></tr>
+<tr><td>Sample efficiency</td><td>Отличная</td><td>При &lt;100 испытаний и непрерывном пространстве — лучший выбор</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Неочевидное.</strong> GP-BO предполагает, что целевая функция <strong>гладкая и детерминированная</strong>. Но валидационная метрика — шумная: тот же набор параметров даёт разный AUC из-за случайного seed, порядка данных, недетерминированности GPU. Если шум сопоставим с разницей между конфигурациями — BO будет «гоняться за шумом». Лечится: фиксированный seed, усреднение по нескольким фолдам, или явная модель шума (<code>alpha</code> в GP).</div></div>
+</div>
+
+<!-- ================= S4 ================= -->
+<div class="sec" id="s4">
+<div class="stitle">4. TPE под капотом: почему Optuna работает именно так</div>
+<div class="sdesc">Tree-structured Parzen Estimator — сердце Hyperopt и дефолт Optuna</div>
+
+<p>TPE (Bergstra et al., 2011) переворачивает задачу. Вместо моделирования $p(y \mid \lambda)$ — «какая метрика при этих параметрах» — он моделирует <strong>обратное</strong>: $p(\lambda \mid y)$ — «какие параметры бывают у хороших результатов».</p>
+
+<div class="fbox">
+<div class="flabel">📐 Два распределения TPE</div>
+$$p(\lambda \mid y) = \begin{cases} \ell(\lambda) & \text{если } y < y^* \quad (\text{«хорошие» испытания}) \\[4pt] g(\lambda) & \text{если } y \geq y^* \quad (\text{«плохие» испытания}) \end{cases}$$
+<p class="fnote">$y^*$ — квантиль-порог, обычно $\gamma = 0.15$–$0.25$ (то есть топ-15–25% испытаний считаются «хорошими»). $\ell$ и $g$ строятся как <strong>Parzen-оценки</strong> (смеси гауссиан, центрированных на наблюдённых точках).</p>
+</div>
+
+<div class="fbox grn">
+<div class="flabel">📐 Критерий выбора следующей точки</div>
+$$\lambda_{\text{next}} = \arg\max_{\lambda} \frac{\ell(\lambda)}{g(\lambda)}$$
+<p>Это эквивалентно максимизации EI с точностью до монотонного преобразования:</p>
+$$\text{EI}(\lambda) \propto \left(\gamma + \frac{g(\lambda)}{\ell(\lambda)}(1-\gamma)\right)^{-1}$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Представь, что ты собираешь статистику по резюме кандидатов, которых взяли на работу (<strong>ℓ</strong>) и которых не взяли (<strong>g</strong>). Ты замечаешь: у принятых чаще 3–5 лет опыта, у отклонённых — 0–1 год. Дальше ты просто ищешь резюме, где отношение «плотность среди принятых / плотность среди отклонённых» максимально.</p>
+<p>Ключевой момент: точки, где $g$ близка к нулю (никто плохой туда не попадал), но $\ell$ ненулевая — получают огромное отношение. Это и есть встроенное <strong>исследование</strong>: TPE идёт туда, где «плохих» ещё не видели.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: TPE выбирает learning_rate</div>
+<div class="numex-step"><span class="nb">1</span><div>Провели 20 испытаний. $\gamma = 0.25$ → топ-5 идут в «хорошие», остальные 15 — в «плохие».</div></div>
+<div class="numex-step"><span class="nb">2</span><div>Значения lr у 5 лучших: <code>0.03, 0.05, 0.04, 0.08, 0.045</code>. Строим $\ell(\lambda)$ = смесь гауссиан с центрами в этих точках → пик около <strong>0.045</strong>.</div></div>
+<div class="numex-step"><span class="nb">3</span><div>Значения lr у 15 худших: <code>0.001, 0.002, 0.25, 0.3, 0.28, 0.0005, ...</code> Строим $g(\lambda)$ → два горба: около <strong>0.001</strong> и около <strong>0.28</strong>.</div></div>
+<div class="numex-step"><span class="nb">4</span><div>Считаем $\ell/g$ на сетке кандидатов: при lr=0.045 отношение ≈ 12.0; при lr=0.002 ≈ 0.05; при lr=0.27 ≈ 0.03; при lr=0.12 ≈ 2.1 (там мало данных — $g$ мала, но и $\ell$ мала).</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Побеждает окрестность 0.045, но благодаря стохастичности сэмплирования кандидатов TPE иногда всё равно попробует 0.12 — не застревает в локальном оптимуме.</div></div>
+</div>
+
+<div class="chb">
+<div class="cht">TPE: распределения ℓ(λ) и g(λ)</div>
+<div class="chsub">Красная кривая — плотность параметра среди хороших испытаний, серая — среди плохих. Оптимум там, где отношение максимально</div>
+<div style="position:relative;height:300px;"><canvas id="c_tpe"></canvas></div>
+</div>
+
+<h3>Почему «Tree-structured»</h3>
+<p>«Tree» в названии — не про деревья решений. Это про <strong>древовидную структуру пространства поиска</strong>: некоторые параметры существуют только при определённых значениях других.</p>
+
+<pre><code>if classifier == "SVM":
+    C, kernel, gamma          # эти параметры существуют
+elif classifier == "RandomForest":
+    n_estimators, max_depth   # а эти — совсем другие
+</code></pre>
+
+<p>TPE строит отдельные Parzen-оценки для каждой ветки дерева. GP этого не умеет — приходится либо кодировать «несуществующие» параметры фиктивными значениями (что портит модель), либо запускать отдельный GP на каждую ветку.</p>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Optuna define-by-run.</strong> Именно поэтому Optuna позволяет писать <code>if</code> прямо внутри objective-функции: пространство поиска определяется <em>динамически при выполнении</em>. Это прямое следствие древовидной природы TPE. В Hyperopt для того же приходилось писать громоздкие вложенные <code>hp.choice</code>.</div></div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>GP-BO</th><th>TPE</th><th>SMAC (RF-based)</th></tr></thead>
+<tbody>
+<tr><td>Сложность суррогата</td><td>$O(n^3)$</td><td>$O(n \log n)$</td><td>$O(n \log n)$</td></tr>
+<tr><td>Категориальные</td><td>Костыли</td><td>Нативно</td><td>Нативно</td></tr>
+<tr><td>Условные параметры</td><td>Нет</td><td>Да</td><td>Да</td></tr>
+<tr><td>Учёт взаимодействий параметров</td><td>Да, через ядро</td><td><strong>Нет</strong> (классический TPE независим по осям)</td><td>Да, через сплиты</td></tr>
+<tr><td>Масштаб (число trials)</td><td>&lt;300</td><td>тысячи</td><td>тысячи</td></tr>
+<tr><td>Где используется</td><td>Ax/BoTorch (Meta), Vizier (Google)</td><td>Optuna, Hyperopt</td><td>auto-sklearn</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Главная слабость TPE.</strong> Классический TPE моделирует каждый параметр <strong>независимо</strong>: $\ell(\lambda) = \prod_i \ell_i(\lambda_i)$. Он не увидит, что «высокий learning_rate хорош только при малом числе деревьев». Если в твоей задаче параметры сильно взаимодействуют — бери <code>multivariate=True</code> в Optuna (это включает многомерный TPE) или переходи на GP/SMAC. По умолчанию Optuna использует независимый вариант.</div></div>
+</div>
+
+<!-- ================= S5 ================= -->
+<div class="sec" id="s5">
+<div class="stitle">5. Multi-fidelity: не обучай до конца то, что уже проиграло</div>
+<div class="sdesc">Successive Halving — самая недооценённая идея в HPO</div>
+
+<p>BO и TPE экономят <em>число</em> испытаний. Multi-fidelity экономит <strong>стоимость каждого испытания</strong>: плохие конфигурации отсекаются рано, не доводя обучение до конца.</p>
+
+<div class="fbox org">
+<div class="flabel">📐 Successive Halving (SHA)</div>
+<p>Начинаем с $n$ конфигураций и бюджета $r$ на каждую. На каждом раунде $k = 0, 1, \dots$:</p>
+$$n_k = \left\lfloor \frac{n}{\eta^k} \right\rfloor, \qquad r_k = r \cdot \eta^{k}$$
+<p class="fnote">$\eta$ — коэффициент отсева (обычно 3 или 4). Оставляем топ-$1/\eta$ конфигураций, а бюджет каждой умножаем на $\eta$.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Это турнир на выбывание. Первый раунд: 81 участник бежит 1 круг — оставляем 27 лучших. Второй: 27 бегут 3 круга — оставляем 9. Третий: 9 бегут 9 кругов — оставляем 3. Финал: 3 бегут 27 кругов.</p>
+<p>Гениальность в том, что <strong>суммарная работа в каждом раунде одинакова</strong>: 81×1 = 27×3 = 9×9 = 3×27 = 81 единиц. Мы платим одинаково за каждый раунд, но с каждым раундом точность оценки растёт.</p>
+</div>
+
+<div class="numex">
+<div class="numex-title">🔢 Числовой пример: SHA на обучении LightGBM</div>
+<div class="numex-step"><span class="nb org">1</span><div>Бюджет = «число boosting-раундов». $n=27$ конфигураций, $r=50$ раундов, $\eta=3$.</div></div>
+<div class="numex-step"><span class="nb org">2</span><div><strong>Раунд 0:</strong> 27 конфигураций × 50 раундов = 1350 единиц. Оценили valid AUC → оставили топ-9.</div></div>
+<div class="numex-step"><span class="nb org">3</span><div><strong>Раунд 1:</strong> 9 конфигураций × 150 раундов = 1350 единиц. Оставили топ-3.</div></div>
+<div class="numex-step"><span class="nb org">4</span><div><strong>Раунд 2:</strong> 3 конфигурации × 450 раундов = 1350 единиц. Оставили топ-1.</div></div>
+<div class="numex-step"><span class="nb grn">✓</span><div>Итого 4050 единиц. Наивный перебор: 27 × 450 = <strong>12150 единиц</strong>. Экономия в <strong>3 раза</strong> при том же качестве финалиста.</div></div>
+</div>
+
+<div class="sha">
+  <div class="sha-round sha-r0"><span class="sha-lbl">Раунд 0</span><div class="sha-track"><div class="sha-fill">81 конфигурации × 1 круг</div></div><span class="sha-cost">81 ед.</span></div>
+  <div class="sha-round sha-r1"><span class="sha-lbl">Раунд 1</span><div class="sha-track"><div class="sha-fill">27 × 3</div></div><span class="sha-cost">81 ед.</span></div>
+  <div class="sha-round sha-r2"><span class="sha-lbl">Раунд 2</span><div class="sha-track"><div class="sha-fill">9 × 9</div></div><span class="sha-cost">81 ед.</span></div>
+  <div class="sha-round sha-r3"><span class="sha-lbl">Финал</span><div class="sha-track"><div class="sha-fill">3 × 27</div></div><span class="sha-cost">81 ед.</span></div>
+</div>
+<p style="font-size:12.5px;color:var(--text3);margin-top:-4px;">Ширина полосы = число выживших конфигураций. Суммарная стоимость раунда постоянна: чем меньше участников, тем длиннее дистанция.</p>
+
+<h3>Что может быть «фиделити»</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Тип бюджета</th><th>Пример</th><th>Когда подходит</th><th>Риск</th></tr></thead>
+<tbody>
+<tr><td>Число итераций/эпох</td><td><code>n_estimators</code>, epochs</td><td>Градиентный бустинг, нейросети</td><td>Низкий — кривые обучения обычно монотонны</td></tr>
+<tr><td>Доля обучающей выборки</td><td>10% → 30% → 100%</td><td>Большие датасеты</td><td>Средний — ранжирование на 10% может врать</td></tr>
+<tr><td>Число фолдов CV</td><td>1 фолд → 3 → 5</td><td>Малые данные</td><td>Высокий — оценка по 1 фолду очень шумная</td></tr>
+<tr><td>Разрешение изображений</td><td>64px → 128 → 224</td><td>CV-задачи</td><td>Средний</td></tr>
+<tr><td>Число признаков</td><td>топ-50 → топ-200 → все</td><td>Широкие таблицы</td><td>Высокий</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Ключевой подводный камень multi-fidelity.</strong> Метод молча предполагает, что <strong>ранжирование конфигураций на малом бюджете совпадает с ранжированием на полном</strong>. Это часто ложно! Классический контрпример: конфигурация с большим <code>learning_rate</code> и сильной регуляризацией стартует медленно, но в итоге выигрывает — а SHA убьёт её на первом раунде. То же с нейросетями и warmup-планировщиками: модель с длинным warmup на 3 эпохе выглядит провальной.</div></div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Как проверить на своей задаче.</strong> Возьми 20 конфигураций, обучи все до конца, посчитай <strong>ранговую корреляцию Спирмена</strong> между метрикой на 10% бюджета и на 100%. Если $\rho &gt; 0.7$ — SHA/Hyperband безопасны. Если $\rho &lt; 0.4$ — агрессивный отсев отрежет победителей, увеличивай минимальный бюджет (<code>min_resource</code>).</div></div>
+
+<div class="chb">
+<div class="cht">Ловушка ранней остановки: кривые обучения пересекаются</div>
+<div class="chsub">Конфигурация B проигрывает на первых 20% бюджета, но выигрывает на полном. SHA отсёк бы её</div>
+<div style="position:relative;height:300px;"><canvas id="c_lc"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S6 ================= -->
+<div class="sec" id="s6">
+<div class="stitle">6. Hyperband, ASHA и BOHB</div>
+<div class="sdesc">Как починить главную дыру Successive Halving</div>
+
+<p>У SHA есть неприятный вопрос: <strong>с чего начинать — с многих конфигураций и малого бюджета, или с немногих и большого?</strong> Это дилемма «$n$ против $B/n$», и правильного ответа заранее нет.</p>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Если задача «легко различимая» (плохие конфигурации сразу видно) — бери много конфигураций и режь агрессивно. Если кривые обучения долго идут рядом — надо мало конфигураций, но каждой дать много бюджета, иначе отсечёшь наугад. Проблема: чтобы узнать, какой случай у тебя, надо уже провести эксперимент.</p>
+</div>
+
+<h3>Hyperband: перебираем сами стратегии отсева</h3>
+<p>Li et al. (2017): раз мы не знаем правильный компромисс — запустим <strong>несколько SHA с разными стартовыми точками</strong> (они называются <em>brackets</em>) и возьмём лучшее.</p>
+
+<div class="fbox org">
+<div class="flabel">📐 Число брекетов Hyperband</div>
+$$s_{\max} = \left\lfloor \log_{\eta}\frac{R}{r} \right\rfloor, \qquad B = (s_{\max}+1)\cdot R$$
+<p>Для брекета $s$: $\;n_s = \left\lceil \dfrac{s_{\max}+1}{s+1}\cdot \eta^{s} \right\rceil$ конфигураций со стартовым бюджетом $r_s = R\,\eta^{-s}$.</p>
+<p class="fnote">$R$ — максимальный бюджет на одну конфигурацию, $r$ — минимальный, $\eta$ — коэффициент отсева.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Hyperband — это <strong>хеджирование</strong>. Брекет $s=4$: очень много конфигураций, очень агрессивный отсев (ставка на «плохое видно сразу»). Брекет $s=0$: мало конфигураций, каждая обучается на полный бюджет — это фактически обычный random search (страховка на случай, что ранний отсев врёт). Мы платим примерно $\log_\eta(R/r)$-кратную цену за то, что нам не нужно угадывать режим задачи заранее.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Брекет $s$</th><th>$n_s$ конфигураций</th><th>Старт. бюджет $r_s$</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td>4</td><td>81</td><td>1</td><td>Максимально агрессивный отсев</td></tr>
+<tr><td>3</td><td>34</td><td>3</td><td>Агрессивный</td></tr>
+<tr><td>2</td><td>15</td><td>9</td><td>Умеренный</td></tr>
+<tr><td>1</td><td>8</td><td>27</td><td>Осторожный</td></tr>
+<tr><td>0</td><td>5</td><td>81</td><td>Без отсева = чистый random search</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>ASHA — асинхронная версия для кластера</h3>
+<p>У SHA/Hyperband есть врождённый дефект для распределённого запуска: <strong>синхронный барьер</strong>. Раунд не закончится, пока не досчитается самая медленная конфигурация. На 100 воркерах это означает, что 99 из них простаивают.</p>
+
+<div class="fbox grn">
+<div class="flabel">📐 Правило продвижения ASHA</div>
+<p>Конфигурация на уровне $k$ продвигается на уровень $k+1$ <strong>немедленно</strong>, если:</p>
+$$\text{rank}(\lambda) \le \left\lfloor \frac{|S_k|}{\eta} \right\rfloor$$
+<p class="fnote">$S_k$ — множество конфигураций, уже достигших уровня $k$. Никакого ожидания остальных.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Синхронный SHA — это «все бегуны ждут финиша последнего, потом судья объявляет прошедших». ASHA — «как только ты пробежал круг и оказался в верхней трети от тех, кто уже пробежал, — беги дальше не дожидаясь никого». Иногда ASHA продвигает конфигурацию, которая на самом деле не вошла бы в топ (потому что решение принято по неполной статистике), но в масштабе кластера выигрыш от 100% утилизации перекрывает эти ошибки многократно.</p>
+</div>
+
+<h3>BOHB = Bayesian Optimization + Hyperband</h3>
+<p>Falkner et al. (2018) заметили: Hyperband выбирает конфигурации <strong>случайно</strong>. Он умно распределяет бюджет, но глупо выбирает кандидатов. BOHB заменяет random-сэмплирование на TPE, обученный на результатах <em>самого дорогого уровня бюджета, где есть достаточно данных</em>.</p>
+
+<div class="grid3">
+<div class="card bl"><h5>Random Search</h5><p>Глупый выбор ✗<br>Глупый бюджет ✗</p></div>
+<div class="card am"><h5>TPE / GP-BO</h5><p>Умный выбор ✓<br>Глупый бюджет ✗</p></div>
+<div class="card gr"><h5>Hyperband</h5><p>Глупый выбор ✗<br>Умный бюджет ✓</p></div>
+</div>
+<div class="grid3">
+<div class="card pk" style="grid-column:1/-1;"><h5>BOHB / Optuna(TPESampler + HyperbandPruner)</h5><p>Умный выбор ✓ + Умный бюджет ✓ — на практике сходится в 3–20× быстрее чистого BO на задачах с дорогим обучением. Это дефолтная рекомендация для нейросетей и больших GBDT.</p></div>
+</div>
+
+<div class="chb">
+<div class="cht">Скорость сходимости: Random vs TPE vs Hyperband vs BOHB</div>
+<div class="chsub">Ось X — потраченный бюджет (в единицах полного обучения), Y — лучшая найденная ошибка валидации</div>
+<div style="position:relative;height:320px;"><canvas id="c_conv"></canvas></div>
+</div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Неочевидное про Hyperband.</strong> На <em>дешёвых</em> моделях (логрег, маленький RandomForest) Hyperband почти не даёт выигрыша и даже проигрывает: накладные расходы на чекпоинты и оркестрацию сопоставимы со стоимостью обучения. Multi-fidelity окупается, когда одно полное обучение занимает <strong>минуты и больше</strong>.</div></div>
+</div>
+
+<!-- ================= S7 ================= -->
+<div class="sec" id="s7">
+<div class="stitle">7. Optuna на практике</div>
+<div class="sdesc">Define-by-run, прунеры, распределённый запуск, анализ важности</div>
+
+<h3>Базовый скелет</h3>
+<pre><code>import optuna
+from optuna.samplers import TPESampler
+from optuna.pruners import HyperbandPruner
+import lightgbm as lgb
+
+def objective(trial):
+    params = {
+        "objective": "binary",
+        "metric": "auc",
+        # ЛОГ-шкала обязательна для lr и регуляризаторов
+        "learning_rate":     trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
+        "num_leaves":        trial.suggest_int("num_leaves", 8, 512, log=True),
+        "min_child_samples": trial.suggest_int("min_child_samples", 5, 300, log=True),
+        "feature_fraction":  trial.suggest_float("feature_fraction", 0.4, 1.0),
+        "bagging_fraction":  trial.suggest_float("bagging_fraction", 0.4, 1.0),
+        "lambda_l1":         trial.suggest_float("lambda_l1", 1e-8, 10.0, log=True),
+        "lambda_l2":         trial.suggest_float("lambda_l2", 1e-8, 10.0, log=True),
+    }
+    # define-by-run: условный параметр появляется только в одной ветке
+    params["boosting_type"] = trial.suggest_categorical("boosting", ["gbdt", "dart"])
+    if params["boosting_type"] == "dart":
+        params["drop_rate"] = trial.suggest_float("drop_rate", 0.05, 0.4)
+
+    pruning_cb = optuna.integration.LightGBMPruningCallback(trial, "auc")
+    model = lgb.train(params, dtrain, num_boost_round=2000,
+                      valid_sets=[dvalid], callbacks=[pruning_cb,
+                          lgb.early_stopping(100, verbose=False)])
+    return model.best_score["valid_0"]["auc"]
+
+study = optuna.create_study(
+    direction="maximize",
+    sampler=TPESampler(seed=42, multivariate=True, n_startup_trials=20),
+    pruner=HyperbandPruner(min_resource=50, max_resource=2000, reduction_factor=3),
+    storage="postgresql://.../optuna",   # для распределённого запуска
+    study_name="lgbm_v3", load_if_exists=True,
+)
+study.optimize(objective, n_trials=300, n_jobs=1, timeout=3600*6)
+</code></pre>
+
+<div class="tw">
+<table>
+<thead><tr><th>Что</th><th>Зачем именно так</th></tr></thead>
+<tbody>
+<tr><td><code>log=True</code></td><td>Равномерное сэмплирование в лог-пространстве. Без него малые значения lr почти не пробуются</td></tr>
+<tr><td><code>num_leaves</code> с log</td><td>Разница между 8 и 16 листьями огромна, между 400 и 408 — незаметна. Лог отражает это</td></tr>
+<tr><td><code>multivariate=True</code></td><td>Включает многомерный TPE — учитывает взаимодействия между параметрами</td></tr>
+<tr><td><code>n_startup_trials=20</code></td><td>Первые 20 испытаний — чистый random. TPE нужна начальная выборка, иначе он застрянет</td></tr>
+<tr><td><code>storage=postgres</code></td><td>Несколько машин пишут в одну БД → честный распределённый поиск с общей историей</td></tr>
+<tr><td><code>load_if_exists</code></td><td>Можно докрутить study завтра, не потеряв 300 испытаний</td></tr>
+<tr><td><code>timeout</code></td><td>Ограничение по времени важнее, чем по числу trials — бюджет обычно в часах GPU</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Смертельный подводный камень: двойная ранняя остановка.</strong> В примере выше одновременно работают <code>lgb.early_stopping</code> (останавливает обучение конкретной модели) и <code>PruningCallback</code> (убивает всё испытание). Если <code>min_resource</code> прунера меньше, чем patience early stopping, прунер убьёт модель до того, как она успеет показать себя. Правило: <code>min_resource ≥ 2 × early_stopping_rounds</code>.</div></div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Overfitting на валидацию — главный грех HPO.</strong> Если ты сделал 500 испытаний, выбирая по одному и тому же <code>valid</code>, то лучшая метрика на нём <strong>смещена вверх</strong>. Это multiple comparisons problem: из 500 шумных оценок максимум почти всегда завышен. Ожидаемое смещение растёт как $\sigma\sqrt{2\ln n}$.</div></div>
+
+<div class="fbox red">
+<div class="flabel">📐 Смещение максимума из n шумных оценок</div>
+$$\mathbb{E}\left[\max_{i \le n} \hat{y}_i\right] \approx \mu + \sigma\sqrt{2\ln n}$$
+<p class="fnote">Если std валидационной метрики $\sigma = 0.004$ AUC, а $n=500$ испытаний, то ожидаемое «фальшивое» превышение ≈ $0.004\cdot\sqrt{2\ln 500} \approx 0.004 \cdot 3.53 \approx \mathbf{0.014}$ AUC. Это больше, чем весь твой реальный выигрыш от тюнинга!</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Кинь 500 монеток по 100 бросков каждая. Лучшая покажет ~62 орла из 100 — и ты решишь, что она «счастливая». Она не счастливая, она просто победитель лотереи из 500 участников. Точно так же лучшая из 500 конфигураций частично побеждает за счёт удачи на конкретном сплите.</p>
+<p><strong>Лечение:</strong> обязательный <em>holdout, который вообще не участвовал в HPO</em>. Или nested CV: внешний цикл для оценки, внутренний — для подбора. Финальная цифра для бизнеса берётся только с внешнего holdout.</p>
+</div>
+
+<div class="play">
+  <label>Поиграй: сколько испытаний → сколько «фальшивого» прироста AUC</label>
+  <input type="range" id="sl_n" min="10" max="2000" step="10" value="300" oninput="updBias()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>10 trials</span><span class="out" id="out_n">300 trials</span><span>2000 trials</span></div>
+  <label style="margin-top:14px;">Шум валидационной метрики σ (AUC)</label>
+  <input type="range" id="sl_s" min="1" max="100" step="1" value="40" oninput="updBias()">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);"><span>0.0001</span><span class="out" id="out_s">0.0040</span><span>0.0100</span></div>
+  <div class="res" id="out_bias"></div>
+</div>
+
+<h3>Анализ study: что делать после поиска</h3>
+<pre><code>import optuna.visualization as vis
+
+vis.plot_optimization_history(study)   # сходимость: вышли на плато или нет?
+vis.plot_param_importances(study)      # fANOVA: какие параметры реально важны
+vis.plot_slice(study, ["learning_rate", "num_leaves"])  # границы диапазона упёрлись?
+vis.plot_parallel_coordinate(study)    # взаимодействия параметров
+vis.plot_contour(study, ["learning_rate", "num_leaves"])
+
+print(optuna.importance.get_param_importances(study))
+# {'learning_rate': 0.51, 'num_leaves': 0.22, 'lambda_l2': 0.11, ...}
+</code></pre>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Практический ритуал после каждого study.</strong> ① Смотри <code>plot_slice</code>: если оптимум лежит <em>на границе</em> диапазона — расширь диапазон и перезапусти, ты просто упёрся в стену. ② Смотри <code>param_importances</code>: параметры с важностью &lt;2% — зафиксируй константой в следующем запуске, освободишь бюджет. ③ Смотри <code>optimization_history</code>: если последние 100 испытаний не улучшили ничего — поиск сошёлся, дальше жечь компьют бессмысленно.</div></div>
+
+<div class="chb">
+<div class="cht">fANOVA importance: типичная картина для LightGBM</div>
+<div class="chsub">Обычно 2–3 параметра объясняют 70–85% вариации метрики. Остальные можно фиксировать</div>
+<div style="position:relative;height:280px;"><canvas id="c_imp"></canvas></div>
+</div>
+</div>
+
+<!-- ================= S8 ================= -->
+<div class="sec" id="s8">
+<div class="stitle">8. AutoGluon и H2O AutoML: полные фреймворки</div>
+<div class="sdesc">Здесь побеждает не поиск параметров, а стекинг</div>
+
+<h3>AutoGluon-Tabular: контринтуитивная философия</h3>
+<p>Команда AWS (Erickson et al., 2020) сделала неожиданный вывод: <strong>тюнинг гиперпараметров даёт меньше, чем грамотное ансамблирование</strong>. Поэтому AutoGluon почти не тратит бюджет на HPO — он тратит его на обучение множества разных моделей и многослойный стекинг.</p>
+
+<div class="sysbox">
+<h4>🏗 AutoGluon-Tabular: multi-layer stack ensembling</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Layer 1</strong>LightGBM ×3<br>XGBoost, CatBoost<br>RF, ExtraTrees<br>NN-Torch, NN-FastAI, KNN</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>OOF preds</strong>bagged k-fold<br>out-of-fold предсказания</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Layer 2</strong>те же типы моделей,<br>но вход = исходные фичи<br><em>+ OOF слоя 1</em></div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Weighted Ensemble</strong>жадный отбор<br>Caruana et al.</div>
+</div>
+<div class="sysnote"><strong>Ключевые инженерные решения:</strong> ① <strong>Bagging вместо holdout</strong> — каждая модель обучается k раз на k-1 фолдах, предсказания OOF идут наверх без утечки. ② <strong>Repeated bagging</strong> — повторяем с разными разбиениями, усредняем: снижает дисперсию оценки. ③ <strong>Жадный ансамбль с возвращением</strong> — модель можно выбрать несколько раз, что эквивалентно весам. ④ <strong>Учёт бюджета времени</strong> — обучение идёт по возрастанию стоимости моделей, чтобы при обрыве по времени уже был готовый результат.</div>
+</div>
+
+<div class="fbox teal">
+<div class="flabel">📐 Жадный отбор ансамбля (Caruana)</div>
+$$w^{(t+1)} = \arg\min_{m \in \mathcal{M}} \; \mathcal{L}\left(\frac{t \cdot \hat{y}^{(t)} + \hat{y}_m}{t+1},\; y_{\text{oof}}\right)$$
+<p class="fnote">На каждом шаге добавляем в ансамбль ту модель $m$, которая сильнее всего улучшает OOF-метрику текущего среднего. Выбор <em>с возвращением</em>: если модель выбрали 4 раза из 10 шагов — её вес 0.4.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Это как набирать команду по перетягиванию каната. Ты не решаешь заранее веса — ты по очереди зовёшь того человека, который прямо сейчас сильнее всего сдвинет канат. Кого-то зовёшь дважды (значит, он важнее). Метод устойчив к переобучению лучше, чем оптимизация весов напрямую, потому что пространство решений дискретное и маленькое.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Пресет AutoGluon</th><th>Что делает</th><th>Время</th><th>Когда брать</th></tr></thead>
+<tbody>
+<tr><td><code>medium_quality</code></td><td>Одна модель каждого типа, без bagging</td><td>минуты</td><td>Быстрый прототип, проверка сигнала</td></tr>
+<tr><td><code>good_quality</code></td><td>Bagging, 1 слой стека</td><td>десятки минут</td><td>Прод с ограничением по latency</td></tr>
+<tr><td><code>high_quality</code></td><td>Bagging + стек, refit_full</td><td>часы</td><td>Баланс качества и размера модели</td></tr>
+<tr><td><code>best_quality</code></td><td>Всё + repeated bagging</td><td>много часов</td><td>Kaggle, оффлайн-скоринг</td></tr>
+<tr><td><code>optimize_for_deployment</code></td><td>Удаляет неиспользуемые модели с диска</td><td>—</td><td>Обязательно перед деплоем</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>H2O AutoML</h3>
+<p>H2O идёт от другой философии — <strong>распределённые вычисления на JVM-кластере</strong>. Обучает фиксированный набор: GLM, GBM (сетка), XGBoost (сетка), DRF/XRT, Deep Learning; затем два стека — «All Models» и «Best of Family».</p>
+
+<div class="grid2">
+<div class="card gr"><h5>✅ Сильные стороны H2O</h5><p>• Настоящий distributed режим на кластере (Hadoop/Spark)<br>• MOJO-экспорт — модель работает без Python как self-contained Java-артефакт<br>• Встроенная поддержка Explainability (SHAP, PDP)<br>• Зрелый enterprise-стек, привычный банкам</p></div>
+<div class="card rd"><h5>❌ Слабые стороны</h5><p>• JVM-инфраструктура тяжелее<br>• Менее гибкое пространство поиска<br>• Стек только 2 уровня<br>• На бенчмарках обычно проигрывает AutoGluon на табличке</p></div>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Optuna</th><th>AutoGluon</th><th>H2O AutoML</th><th>FLAML</th></tr></thead>
+<tbody>
+<tr><td>Что это</td><td>HPO-библиотека</td><td>Full AutoML</td><td>Full AutoML</td><td>Cost-aware AutoML</td></tr>
+<tr><td>Главный приём</td><td>TPE + прунинг</td><td>Стекинг</td><td>Сетка + стек</td><td>ECI-поиск с учётом стоимости</td></tr>
+<tr><td>Контроль пользователя</td><td>Полный</td><td>Низкий</td><td>Средний</td><td>Средний</td></tr>
+<tr><td>Размер артефакта</td><td>1 модель</td><td>Десятки моделей, гигабайты</td><td>Единицы моделей</td><td>1 модель</td></tr>
+<tr><td>Latency инференса</td><td>мс</td><td>десятки–сотни мс</td><td>мс–десятки мс</td><td>мс</td></tr>
+<tr><td>Интерпретируемость</td><td>Сохраняется</td><td><strong>Убита</strong></td><td>Частично (Best-of-Family)</td><td>Сохраняется</td></tr>
+<tr><td>Типичное применение</td><td>Прод, точечный тюнинг</td><td>Kaggle, быстрый baseline</td><td>Enterprise, банки</td><td>Прод с жёстким бюджетом</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="casebox">
+<div class="caseco">Amazon</div>
+<h4>AutoGluon как внутренний стандарт baseline</h4>
+<p>AWS позиционирует AutoGluon как «3 строчки кода до сильной модели». Внутренний паттерн, который стоит перенять:</p>
+<ul>
+<li><strong>AutoGluon как верхняя граница.</strong> Прежде чем неделю пилить свою модель — запусти AutoGluon на 1 час. Получишь честную оценку «сколько сигнала вообще есть в данных».</li>
+<li><strong>Если своя модель бьёт AutoGluon</strong> — отлично, у тебя есть доменные фичи, которых он не нашёл.</li>
+<li><strong>Если не бьёт даже близко</strong> — проблема не в модели, а в подходе; вернись к фичам и валидации.</li>
+<li><strong>Если бьёт слегка</strong> — посчитай, стоит ли разница в 0.3% метрики того, что твою модель поддерживать может только ты.</li>
+</ul>
+</div>
+</div>
+
+<!-- ================= S9 ================= -->
+<div class="sec" id="s9">
+<div class="stitle">9. NAS: Neural Architecture Search</div>
+<div class="sdesc">Когда искать надо не параметры, а саму архитектуру</div>
+
+<p>NAS — это HPO, где пространство поиска = <strong>структура сети</strong>: сколько слоёв, какие операции между узлами, как их соединять. Формально задача та же, но пространство комбинаторно огромное.</p>
+
+<div class="fbox pur">
+<div class="flabel">📐 Размер пространства NAS (cell-based)</div>
+$$|\mathcal{A}| = \prod_{i=1}^{N} \left[ |\mathcal{O}| \cdot \binom{i+1}{2} \right]$$
+<p class="fnote">$N$ — число узлов в ячейке, $\mathcal{O}$ — множество операций (conv3×3, conv5×5, maxpool, skip, zero…). Для DARTS-пространства: $N=4$, $|\mathcal{O}|=8$ → примерно $10^{18}$ архитектур.</p>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>$10^{18}$ — это больше, чем число секунд с Большого взрыва. Перебирать нельзя даже теоретически. Ранние работы (NASNet, Google 2017) тратили <strong>~2000 GPU-дней</strong> на одну задачу. Вся история NAS — это история удешевления: как получить приличную архитектуру не за 2000 GPU-дней, а за 1.</p>
+</div>
+
+<h3>Три поколения NAS</h3>
+<div class="ladder">
+  <div class="rung"><span class="rn">2017</span><div><strong>RL / Evolution.</strong> RNN-контроллер генерирует архитектуру → обучаем её с нуля → accuracy = reward → REINFORCE. Честно, но 2000+ GPU-дней.</div></div>
+  <div class="rung"><span class="rn">2018</span><div><strong>Weight sharing (ENAS).</strong> Все архитектуры — подграфы одного большого супернета с общими весами. Не надо обучать каждую с нуля. ~1000× дешевле.</div></div>
+  <div class="rung"><span class="rn">2019</span><div><strong>DARTS — дифференцируемый поиск.</strong> Заменяем дискретный выбор операции на softmax-смесь → архитектуру можно оптимизировать градиентным спуском. Часы вместо дней.</div></div>
+  <div class="rung"><span class="rn">2020+</span><div><strong>Once-for-All / Zero-cost proxies.</strong> Обучаем один супернет, вырезаем подсети под конкретное устройство без дообучения. Либо оцениваем архитектуру по градиентам на одном батче.</div></div>
+</div>
+
+<div class="fbox">
+<div class="flabel">📐 DARTS: непрерывная релаксация</div>
+$$\bar{o}^{(i,j)}(x) = \sum_{o \in \mathcal{O}} \frac{\exp(\alpha_o^{(i,j)})}{\sum_{o' \in \mathcal{O}} \exp(\alpha_{o'}^{(i,j)})}\; o(x)$$
+<p>Двухуровневая оптимизация:</p>
+$$\min_{\alpha} \; \mathcal{L}_{\text{val}}\big(w^*(\alpha), \alpha\big) \quad \text{s.t.} \quad w^*(\alpha) = \arg\min_{w} \mathcal{L}_{\text{train}}(w, \alpha)$$
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>Вместо «выбери одну операцию из 8» DARTS говорит: «пропусти вход через <strong>все 8 операций сразу</strong> и сложи с весами softmax». Теперь веса $\alpha$ — обычные обучаемые числа, и по ним можно взять градиент. В конце для каждого ребра оставляем операцию с максимальной $\alpha$ и переобучаем итоговую сеть.</p>
+<p>Аналогия: вместо «выбери один маршрут» ты едешь по всем маршрутам одновременно, распределяя между ними долю трафика, а потом закатываешь в асфальт тот, где трафика больше всего.</p>
+</div>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Известная патология DARTS.</strong> При долгом поиске $\alpha$ схлопывается на <code>skip-connection</code>: skip не имеет параметров, поэтому даёт быстрое падение train loss на ранних этапах и «выигрывает» гонку. Итоговая архитектура вырождается в лестницу из skip-ов и работает плохо. Лечится ранней остановкой поиска, регуляризацией на число skip-ов (DARTS+, P-DARTS) или отслеживанием собственных чисел гессиана по $\alpha$.</div></div>
+
+<div class="cl warn"><span class="cli">⚠️</span><div><strong>Отрезвляющий факт.</strong> Li & Talwalkar (2019) показали: <strong>random search с weight sharing на том же бюджете конкурентен с большинством NAS-методов</strong>. Многие громкие результаты NAS объяснялись не самим поиском, а хорошо подобранным пространством поиска и качественным протоколом дообучения. Всегда сравнивай NAS с random-baseline в том же пространстве — это единственная честная проверка.</div></div>
+
+<div class="casebox">
+<div class="caseco">Google</div>
+<h4>EfficientNet и hardware-aware NAS</h4>
+<p>Google применил NAS не «в вакууме», а с <strong>явным ограничением на латентность реального устройства</strong>. Целевая функция MnasNet:</p>
+<pre style="background:#fff;border-color:var(--pk-b);"><code>reward = ACC(m) × [LAT(m) / T]^w</code></pre>
+<p>где LAT измерялась запуском на настоящем Pixel-телефоне, а не оценивалась по FLOPs. Это важнейший урок: <strong>FLOPs — плохой прокси для скорости</strong>. Depthwise-свёртки дают мало FLOPs, но плохо утилизируют железо; операции с одинаковыми FLOPs могут отличаться по времени в 3–5 раз.</p>
+<p>Дальше EfficientNet добавил <strong>compound scaling</strong>: глубина, ширина и разрешение масштабируются согласованно по правилу $d=\alpha^\phi,\; w=\beta^\phi,\; r=\gamma^\phi$ при $\alpha\beta^2\gamma^2 \approx 2$ — вместо того чтобы наращивать что-то одно.</p>
+</div>
+
+<div class="cl info"><span class="cli">📘</span><div><strong>Практический вывод для 99% задач.</strong> Свой NAS запускать не нужно. Нужно уметь <em>читать</em> результаты чужого NAS: EfficientNet, RegNet, MobileNetV3, NAS-FPN — это готовые артефакты поиска. Своё пространство поиска имеет смысл только когда у тебя нестандартное железо (edge-чип, FPGA) или нестандартная модальность.</div></div>
+</div>
+
+<!-- ================= S10 ================= -->
+<div class="sec" id="s10">
+<div class="stitle">10. Подводные камни: когда AutoML вредит</div>
+<div class="sdesc">Самая важная секция темы</div>
+
+<h3>① Оптимизация протекающей валидации</h3>
+<p>AutoML — это <strong>усилитель ошибок схемы валидации</strong>. Если в твоём сплите есть утечка, ручная модель её частично «не заметит», а AutoML найдёт и эксплуатирует по максимуму — он же ищет всё, что повышает метрику.</p>
+
+<div class="cl danger"><span class="cli">🚨</span><div><strong>Реальный сценарий.</strong> Временной ряд, случайный <code>train_test_split</code> вместо временного. AutoML даёт AUC 0.94. В проде — 0.71. Почему: модель научилась использовать будущее, а перебор параметров выбрал именно ту конфигурацию, которая эксплуатирует утечку сильнее всех. <strong>AutoML не сломал валидацию — он безжалостно показал, что она уже была сломана.</strong></div></div>
+
+<h3>② Смерть интерпретируемости</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Что теряем</th><th>Последствие в проде</th></tr></thead>
+<tbody>
+<tr><td>Понимание, почему модель так решила</td><td>Нельзя обосновать отказ клиенту (GDPR «right to explanation», ECOA/Reg B в кредитовании)</td></tr>
+<tr><td>Простая отладка</td><td>Модель поехала — непонятно, какая из 40 подмоделей виновата</td></tr>
+<tr><td>Sanity-check доменным экспертом</td><td>Эксперт не может сказать «стоп, эта фича не должна так влиять»</td></tr>
+<tr><td>Предсказуемое поведение на краях</td><td>Стек экстраполирует непредсказуемо на данных вне распределения</td></tr>
+<tr><td>Простой rollback</td><td>Артефакт на 8 ГБ вместо одного .txt-бустера</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="intuition">
+<div class="intuition-label">🤏 На пальцах</div>
+<p>SHAP на стеке из 40 моделей формально посчитается — но он объяснит «что делает ансамбль», а не «почему это разумно». Когда регулятор спрашивает «почему отказали в кредите» — ответ «взвешенная комбинация 40 моделей второго уровня дала score 0.31» не принимается. В регулируемых доменах <strong>ограничение на класс модели — часть требований, а не техническое ограничение</strong>.</p>
+</div>
+
+<h3>③ Стоимость инференса не входит в целевую функцию</h3>
+<p>По умолчанию AutoML оптимизирует только качество. Победит стек из 40 моделей с latency 400 мс, который физически не влезет в SLA 20 мс.</p>
+
+<pre><code># Правильно: многокритериальная оптимизация в Optuna
+def objective(trial):
+    ...
+    auc = evaluate(model)
+    latency_ms = benchmark_inference(model, n=1000)
+    return auc, latency_ms
+
+study = optuna.create_study(directions=["maximize", "minimize"])
+study.optimize(objective, n_trials=200)
+# Парето-фронт: выбираем точку, влезающую в SLA
+best = [t for t in study.best_trials if t.values[1] &lt; 20]
+</code></pre>
+
+<div class="chb">
+<div class="cht">Парето-фронт: качество vs latency</div>
+<div class="chsub">Красные точки — недоминируемые решения. Выбираем самую качественную из тех, что влезает в SLA (пунктир)</div>
+<div style="position:relative;height:300px;"><canvas id="c_pareto"></canvas></div>
+</div>
+
+<h3>④ Прочие ловушки</h3>
+<div class="grid2">
+<div class="card rd"><h5>Категориальные с высокой мощностью</h5><p>AutoML может выбрать target encoding без корректного OOF-расчёта → утечка таргета внутри фолда. Всегда проверяй, как именно фреймворк кодирует категории.</p></div>
+<div class="card rd"><h5>Дисбаланс классов</h5><p>Оптимизация accuracy при 1% позитивов даст модель, предсказывающую всегда 0. Задавай метрику явно: PR-AUC, F-beta, custom.</p></div>
+<div class="card rd"><h5>Групповая структура данных</h5><p>Один клиент в train и в valid → утечка. Нужен GroupKFold, и AutoML должен о нём знать (<code>groups=</code>).</p></div>
+<div class="card rd"><h5>Недетерминированность</h5><p>Два запуска дают разные модели. Без фиксации seed + версий библиотек эксперимент невоспроизводим.</p></div>
+<div class="card rd"><h5>Дрейф пространства поиска</h5><p>Оптимальные параметры, найденные полгода назад, устарели вместе с данными. Нужен периодический re-tune.</p></div>
+<div class="card rd"><h5>Расход бюджета на ерунду</h5><p>50% бюджета уходит на параметры с важностью &lt;1%. Всегда прореживай пространство после первого прохода.</p></div>
+</div>
+
+<div class="cl tip"><span class="cli">💡</span><div><strong>Двухфазный протокол, который стоит принять как стандарт.</strong> <br><strong>Фаза 1 (разведка, 50–80 испытаний):</strong> широкие диапазоны, все параметры, дешёвый бюджет на каждое испытание. Цель — получить <code>param_importances</code> и понять границы. <br><strong>Фаза 2 (эксплуатация, 150–300 испытаний):</strong> сузили диапазоны вокруг найденной области, выкинули неважные параметры, включили полный бюджет и полную кросс-валидацию. Это стабильно даёт лучший результат, чем один длинный запуск, при том же общем компьюте.</div></div>
+</div>
+
+<!-- ================= S11 ================= -->
+<div class="sec" id="s11">
+<div class="stitle">11. System Design: AutoML в проде</div>
+<div class="sdesc">Как это устроено у компаний, которые делают это в масштабе</div>
+
+<div class="sysbox">
+<h4>🏗 Google Vizier — HPO как сервис (основа Vertex AI Vizier)</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Client</strong>любая команда,<br>любой язык</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Vizier API</strong>CreateStudy<br>SuggestTrials<br>CompleteTrial</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Suggestion Service</strong>GP-Bandit,<br>алгоритм-плагины</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Datastore</strong>история всех<br>studies компании</div>
+</div>
+<div class="sys-row">
+  <div class="syshighlight"><strong>Transfer Learning</strong>приор из прошлых<br>похожих studies</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Early Stopping</strong>Median rule<br>по кривым обучения</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Dashboard</strong>визуализация,<br>сравнение алгоритмов</div>
+</div>
+<div class="sysnote"><strong>Ключевые архитектурные решения:</strong> ① <strong>Сервис, а не библиотека</strong> — стейт живёт на сервере, клиент stateless, воркеры могут падать и перезапускаться. ② <strong>Transfer learning между studies</strong> — если команда А тюнила похожую модель, приор используется для команды Б; это главный источник ускорения в масштабе организации. ③ <strong>Median stopping rule</strong> — испытание останавливается, если его текущая метрика хуже медианы завершённых на том же шаге; проще Hyperband и не требует заранее знать бюджет. ④ <strong>Плагинная архитектура алгоритмов</strong> — можно A/B-тестировать сами оптимизаторы.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Meta Ax / BoTorch — многокритериальный BO для продуктовых экспериментов</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Ax Service API</strong>эксперимент<br>+ ограничения</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>BoTorch</strong>GP на PyTorch,<br>qNEHVI acquisition</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Pareto front</strong>качество ↔ latency<br>↔ размер модели</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Online A/B</strong>проверка<br>на живом трафике</div>
+</div>
+<div class="sysnote"><strong>Чем отличается от классического HPO:</strong> Meta использует BO не только для гиперпараметров моделей, но и для <strong>настройки продуктовых и инфраструктурных параметров</strong> — коэффициентов ранжирования ленты, параметров компилятора, конфигураций серверов. Ключевое отличие — <em>batch-режим и наблюдения с шумом</em>: результат каждого «испытания» приходит из онлайн-A/B-теста через несколько дней и содержит статистическую неопределённость, которая явно моделируется в GP. Отсюда qNEHVI — acquisition, работающая с батчем точек и многокритериальностью одновременно.</div>
+</div>
+
+<div class="sysbox">
+<h4>🏗 Типовой production-паттерн: AutoML внутри retraining-пайплайна</h4>
+<div class="sys-row">
+  <div class="sysblock"><strong>Trigger</strong>cron / drift alert /<br>новая порция данных</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Data validation</strong>схема, дубли,<br>распределения</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Warm-start HPO</strong>Optuna study,<br>load_if_exists=True</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Train + CV</strong>лучшая конфигурация<br>на полных данных</div>
+</div>
+<div class="sys-row">
+  <div class="sysblock"><strong>Holdout eval</strong>сплит, не видевший<br>HPO вообще</div>
+  <div class="sysarrow">→</div>
+  <div class="syshighlight"><strong>Champion-Challenger</strong>новая ≥ старой<br>+ порог?</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Shadow deploy</strong>считает, но не<br>влияет на решения</div>
+  <div class="sysarrow">→</div>
+  <div class="sysblock"><strong>Canary → 100%</strong>5% → 25% → 100%</div>
+</div>
+<div class="sysnote"><strong>Критические детали, которые ломаются чаще всего:</strong> ① <strong>Warm start</strong> — переиспользуем историю прошлого study, но с <em>ограничением по давности</em>: испытания старше 6 месяцев могут вводить в заблуждение, если данные уехали. ② <strong>Бюджет ограничен по времени, а не по числу trials</strong> — пайплайн должен укладываться в окно. ③ <strong>Отдельный «святой» holdout</strong> — единственный источник цифры для принятия решения о деплое. ④ <strong>Порог улучшения</strong> — новая модель должна быть лучше не «численно», а <em>статистически значимо и на величину, оправдывающую риск деплоя</em> (обычно ≥ 0.3–0.5% относительного прироста).</div>
+</div>
+
+<div class="casebox">
+<div class="caseco">Microsoft</div>
+<h4>FLAML: оптимизация с учётом стоимости испытания</h4>
+<p>Обычный BO неявно считает, что все испытания стоят одинаково. Но обучить модель с <code>n_estimators=50</code> в 40 раз дешевле, чем с <code>n_estimators=2000</code>. FLAML вводит <strong>cost-aware поиск</strong>: критерий ECI (Estimated Cost for Improvement) делит ожидаемое улучшение на ожидаемую стоимость.</p>
+<p>Практическое следствие: FLAML начинает с дешёвых конфигураций и наращивает сложность только тогда, когда дешёвые перестают улучшаться. На фиксированном бюджете в <em>секундах</em> (а не в числе испытаний) он часто обгоняет чистый TPE — потому что успевает сделать в разы больше испытаний.</p>
+<p><strong>Когда брать FLAML:</strong> жёсткий бюджет по времени/деньгам и большой разброс стоимости конфигураций внутри пространства поиска.</p>
+</div>
+
+<div class="casebox">
+<div class="caseco">Netflix / Airbnb — общий паттерн</div>
+<h4>Metaflow / Bighead: HPO как шаг рабочего процесса, а не отдельный скрипт</h4>
+<p>Общий вывод крупных платформ: <strong>HPO не должен быть отдельным ноутбуком</strong>. Он оформляется как шаг в оркестраторе со свойствами:</p>
+<ul>
+<li><strong>Идемпотентность</strong> — перезапуск шага не портит study, а продолжает его (persistent storage).</li>
+<li><strong>Версионирование</strong> — study_name содержит хеш кода + версию датасета; изменил фичи → новый study.</li>
+<li><strong>Артефакт = конфигурация, а не модель</strong> — на выходе шага сохраняется JSON лучших параметров; обучение финальной модели — отдельный шаг.</li>
+<li><strong>Наблюдаемость</strong> — история испытаний уходит в трекер экспериментов (MLflow/W&B) и живёт дольше, чем сам пайплайн.</li>
+</ul>
+</div>
+</div>
+
+<!-- ================= Q&A ================= -->
+<div class="sec" id="qa">
+<div class="stitle">12. Вопросы и ответы</div>
+<div class="sdesc">20 вопросов уровня собеседования — от базы до подводных камней</div>
+
+<div class="qah">Основы и постановка задачи</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>1. Почему Random Search обычно бьёт Grid Search при равном бюджете?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Из-за <strong>низкой эффективной размерности</strong>: реально на метрику влияют 1–2 параметра из 8–10. Grid тратит бюджет на многократное варьирование неважных осей — при сетке 3×3 ты пробуешь всего 3 уникальных значения важного параметра. Random при тех же 9 запусках даёт 9 уникальных значений на каждой оси.</p><p>Формально: вероятность попасть в топ-$p$ доли пространства за $n$ случайных попыток равна $1-(1-p)^n$ и <strong>не зависит от размерности</strong>. 60 попыток → 95% шанс попасть в топ-5%. Grid же деградирует экспоненциально с ростом числа параметров.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>2. Что такое CASH-проблема и чем она сложнее обычного HPO?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p><strong>CASH</strong> = Combined Algorithm Selection and Hyperparameter optimization. Мы одновременно выбираем алгоритм $A^{(j)}$ и его гиперпараметры $\lambda \in \Lambda^{(j)}$.</p><p>Сложность в том, что пространство поиска становится <strong>иерархическим и условным</strong>: параметр <code>kernel</code> существует только при выборе SVM, а <code>num_leaves</code> — только при LightGBM. Обычный GP на таком пространстве работать не умеет: он предполагает единое непрерывное пространство с осмысленной метрикой расстояния. Отсюда популярность TPE и RF-суррогатов (SMAC) — они нативно обрабатывают древовидные и категориальные пространства.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>3. Объясни на пальцах, что делает acquisition function.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Суррогатная модель говорит: «в точке λ я жду качество μ(λ) с неопределённостью σ(λ)». Acquisition превращает эту пару чисел в <strong>одну оценку полезности испытания</strong>.</p><p>EI отвечает: «насколько в среднем я улучшу рекорд, если попробую здесь». Она автоматически высока в двух ситуациях — где модель уверена в хорошем результате (эксплуатация) и где модель ничего не знает (исследование). UCB делает то же самое явно: $\mu + \kappa\sigma$, где κ — ручка баланса.</p><p>Ключевое: acquisition <strong>дешёвая</strong>. Мы её максимизируем тысячами вызовов за миллисекунды, чтобы решить, куда потратить один дорогой запуск обучения.</p></div></details>
+
+<div class="qah">TPE и байесовская оптимизация</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>4. Чем принципиально TPE отличается от GP-based BO?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>GP моделирует <strong>прямое</strong> распределение $p(y \mid \lambda)$ — «какое качество при этих параметрах». TPE моделирует <strong>обратное</strong> $p(\lambda \mid y)$ — «какие параметры бывают у хороших и у плохих результатов», строя две плотности ℓ и g и максимизируя их отношение.</p><p>Практические следствия: TPE — $O(n\log n)$ вместо $O(n^3)$, нативно работает с категориальными и условными параметрами, масштабируется на тысячи испытаний. Взамен классический TPE <strong>не моделирует взаимодействия между параметрами</strong> (факторизуется по осям), тогда как GP через ядро их видит. При &lt;100 испытаниях на гладком непрерывном пространстве GP обычно точнее.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>5. Почему TPE называется «tree-structured»?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>Не из-за деревьев решений. «Tree» — про <strong>структуру пространства поиска</strong>: параметры образуют дерево зависимостей, где потомки существуют только при определённых значениях родителя.</p><p>TPE строит отдельные Parzen-оценки для каждой ветки. Именно это делает возможным <strong>define-by-run</strong> в Optuna: ты пишешь обычный Python с <code>if</code>, и пространство поиска определяется динамически во время выполнения objective. GP такого не умеет — ему пришлось бы кодировать несуществующие параметры фиктивными значениями, что искажает метрику расстояния.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>6. Что означает γ в TPE и как его выбирать?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>γ — доля испытаний, объявляемых «хорошими» (обычно 0.15–0.25). Порог $y^*$ = γ-квантиль наблюдённых значений.</p><p><strong>Маленькая γ (0.05):</strong> ℓ строится по очень немногим точкам → оценка плотности шумная, риск застрять в первой попавшейся удачной области. <strong>Большая γ (0.5):</strong> ℓ и g почти совпадают, отношение ℓ/g близко к 1 везде → поиск вырождается в random search.</p><p>В Optuna это <code>gamma</code>-функция сэмплера; по умолчанию используется адаптивное правило вида $\min(\lceil 0.1n\rceil, 25)$ — с ростом числа испытаний абсолютное число «хороших» перестаёт расти, чтобы ℓ оставалась сфокусированной.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>7. Почему <code>n_startup_trials</code> нельзя ставить в 0?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>TPE строит ℓ и g по наблюдённым точкам. Если испытаний почти нет, обе плотности определяются одной-двумя случайными точками, и поиск немедленно схлопывается в их окрестность — классическое преждевременное схождение.</p><p><code>n_startup_trials</code> (по умолчанию 10, разумно 15–30) заставляет Optuna сначала сделать чистый random search, чтобы набрать репрезентативную выборку. Правило: чем больше размерность пространства, тем больше startup-испытаний нужно — ориентир примерно $3\times d$.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>8. Когда включать <code>multivariate=True</code>?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Когда параметры взаимодействуют. Классические примеры: <code>learning_rate</code> ↔ <code>n_estimators</code> (низкий lr требует больше деревьев), <code>num_leaves</code> ↔ <code>min_child_samples</code> (глубокие деревья требуют больше объектов в листе), <code>batch_size</code> ↔ <code>learning_rate</code> в нейросетях.</p><p>Многомерный TPE моделирует совместную плотность и видит эти связи. Цена — нужно больше испытаний для надёжной оценки совместной плотности, поэтому при бюджете &lt;50 испытаний одномерный вариант может оказаться стабильнее. Практический ориентир: включать при бюджете ≥100 испытаний.</p></div></details>
+
+<div class="qah">Multi-fidelity и прунинг</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>9. Объясни Successive Halving и посчитай экономию.<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Стартуем с $n$ конфигураций и малого бюджета $r$. После каждого раунда оставляем лучшую $1/\eta$ долю и умножаем их бюджет на η.</p><p><strong>Расчёт:</strong> $n=27$, $r=50$, $\eta=3$. Раунд 0: 27×50=1350. Раунд 1: 9×150=1350. Раунд 2: 3×450=1350. Итого 4050 единиц против 27×450=12150 при полном переборе — экономия в 3×. В общем случае экономия примерно в $\log_\eta n$ раз.</p><p>Красивое свойство: <strong>стоимость каждого раунда одинакова</strong> — по построению.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>10. Какое неявное допущение делает Successive Halving и когда оно ломается?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Допущение: <strong>ранжирование конфигураций на малом бюджете сохраняется на полном</strong>. То есть кривые обучения не пересекаются.</p><p>Оно регулярно ломается: ① большой learning_rate + сильная регуляризация — медленный старт, лучший финиш; ② нейросети с длинным warmup выглядят провальными первые эпохи; ③ высокая регуляризация всегда проигрывает на ранних шагах, но лучше обобщает; ④ dart-бустинг в LightGBM стартует медленнее gbdt.</p><p><strong>Как проверить:</strong> обучи 20 конфигураций до конца и посчитай ранговую корреляцию Спирмена между метрикой на 10% и на 100% бюджета. ρ&gt;0.7 — прунинг безопасен, ρ&lt;0.4 — поднимай <code>min_resource</code> или откажись от агрессивного отсева.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>11. Зачем нужен Hyperband, если есть SHA?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>SHA требует заранее выбрать компромисс «много конфигураций с малым бюджетом» vs «мало конфигураций с большим». Правильный выбор зависит от того, насколько рано различимы хорошие конфигурации — а этого мы не знаем до эксперимента.</p><p>Hyperband запускает <strong>несколько SHA с разными стартовыми точками (брекетами)</strong>, включая крайний брекет $s=0$, который вообще не отсекает и эквивалентен random search. Это страховка: даже если ранний отсев на твоей задаче врёт, один из брекетов отработает корректно. Плата — примерно $\log_\eta(R/r)$-кратный оверхед относительно «идеально угаданного» SHA.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>12. Чем ASHA отличается от SHA и почему это критично на кластере?<span class="tag td">Под капот</span></span></summary>
+<div class="qa"><p>SHA <strong>синхронный</strong>: раунд не завершится, пока не досчитается самая медленная конфигурация. На 100 воркерах 99 простаивают в ожидании — утилизация кластера падает в разы.</p><p>ASHA продвигает конфигурацию <strong>немедленно</strong>, как только она попала в топ-$1/\eta$ среди уже достигших этого уровня. Никакого барьера, воркер сразу берёт следующую задачу.</p><p>Цена: решение принимается по неполной статистике, поэтому иногда продвигается конфигурация, которая при синхронном сравнении не прошла бы. На практике выигрыш от 100% утилизации кратно перекрывает эти ошибки — ASHA стандарт в Ray Tune для распределённого HPO.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>13. Что такое BOHB и какую дыру он закрывает?<span class="tag tp">Теория</span></span></summary>
+<div class="qa"><p>Hyperband умно <em>распределяет бюджет</em>, но выбирает конфигурации <strong>случайно</strong>. BOHB (Falkner et al., 2018) заменяет random-сэмплирование на TPE, обученный на результатах самого высокого уровня бюджета, где накопилось достаточно наблюдений.</p><p>Итог: умный выбор кандидатов (от BO) + умное распределение бюджета (от Hyperband). На задачах с дорогим обучением сходится в 3–20× быстрее чистого BO. В Optuna это собирается как <code>TPESampler</code> + <code>HyperbandPruner</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>14. Когда multi-fidelity НЕ нужен?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Когда одно полное обучение стоит секунды: логистическая регрессия, маленький RandomForest, линейные модели на небольшой таблице. Накладные расходы на чекпоинтинг, промежуточные оценки и оркестрацию сопоставимы со стоимостью самого обучения, и Hyperband проигрывает простому TPE.</p><p>Также не нужен, когда у бюджета нет естественной «шкалы» — например, у KNN или SVM нет осмысленного «частичного обучения», а сокращение выборки меняет задачу качественно.</p><p>Ориентир: multi-fidelity окупается, когда полное обучение занимает <strong>от минут и больше</strong>.</p></div></details>
+
+<div class="qah">Практика Optuna и AutoML-фреймворки</div>
+
+<details class="qi"><summary><span class="qch">▶</span><span>15. Почему <code>log=True</code> для learning_rate — не косметика, а необходимость?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>При равномерном сэмплировании из [0.001, 0.3] доля точек в диапазоне [0.001, 0.01] составляет всего $\frac{0.009}{0.299} \approx 3\%$. То есть 97% бюджета уходит на «большие» lr, а область малых практически не исследуется.</p><p>С <code>log=True</code> сэмплирование равномерно по $\log\lambda$, и каждая <strong>декада</strong> получает равную долю точек. Это соответствует тому, как learning_rate реально влияет на обучение: разница между 0.001 и 0.01 огромна, между 0.29 и 0.30 — незаметна.</p><p>То же правило применимо к <code>lambda_l1/l2</code>, <code>C</code> в SVM, <code>alpha</code> в Ridge, <code>weight_decay</code>, а также к целочисленным параметрам вроде <code>num_leaves</code> и <code>n_estimators</code>.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>16. Что такое overfitting на валидацию при HPO и как его посчитать?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p>Каждая валидационная оценка шумная. Выбирая максимум из $n$ шумных оценок, мы систематически завышаем результат — это multiple comparisons problem.</p><p>Оценка смещения: $\mathbb{E}[\max_{i\le n}\hat y_i] \approx \mu + \sigma\sqrt{2\ln n}$. При $\sigma=0.004$ AUC и $n=500$: смещение ≈ $0.004\cdot 3.53 \approx 0.014$ AUC — часто больше, чем весь реальный выигрыш от тюнинга.</p><p><strong>Защита:</strong> ① отдельный holdout, вообще не участвовавший в HPO — единственный источник цифры для бизнеса; ② nested CV; ③ повторные разбиения (repeated CV) для снижения σ; ④ дисциплина «одна цифра — одно решение»: не подглядывать в holdout между итерациями.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>17. Почему AutoGluon почти не тюнит гиперпараметры?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Эмпирический вывод команды AWS: на табличных данных <strong>прирост от ансамблирования разнородных моделей больше, чем от тонкого тюнинга одной</strong>. При фиксированном бюджете времени выгоднее обучить LightGBM + CatBoost + XGBoost + NN + RF с разумными дефолтами и грамотно их состекать, чем оптимизировать один LightGBM.</p><p>Механика: k-fold bagging даёт out-of-fold предсказания без утечки, они идут признаками во второй слой, затем жадный weighted ensemble по Caruana. Дополнительно — repeated bagging для снижения дисперсии.</p><p><strong>Цена:</strong> артефакт на гигабайты, latency в сотни миллисекунд, полностью убитая интерпретируемость. Поэтому AutoGluon — отличный <em>baseline и верхняя оценка сигнала</em>, но далеко не всегда то, что уезжает в прод.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>18. Как заставить AutoML учитывать latency инференса?<span class="tag tpr">Практика</span></span></summary>
+<div class="qa"><p>Через <strong>многокритериальную оптимизацию</strong>. В Optuna: <code>create_study(directions=["maximize","minimize"])</code>, objective возвращает кортеж <code>(auc, latency_ms)</code>. Optuna строит парето-фронт (сэмплер NSGA-II или MOTPE), из которого выбираешь лучшую точку, влезающую в SLA.</p><p>Альтернативы: ① жёсткий constraint — возвращать «плохое» значение метрики, если latency превышена (грубо, портит суррогат); ② скаляризация — $\text{score} = \text{AUC} - \beta\cdot\max(0, \text{lat}-\text{SLA})$; ③ ограничить само пространство поиска так, чтобы неприемлемые конфигурации туда не попадали (обычно самое надёжное).</p><p><strong>Важно:</strong> latency надо <em>измерять на целевом железе</em>, а не оценивать по числу параметров или FLOPs — соотношение между ними нелинейное и зависит от того, как операции ложатся на конкретный процессор.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>19. В каких доменах AutoML нельзя применять и почему?<span class="tag tgot">Подводный камень</span></span></summary>
+<div class="qa"><p><strong>Регулируемые домены с требованием объяснимости:</strong> кредитный скоринг (в США — ECOA/Reg B требует выдавать конкретные причины отказа), страховой андеррайтинг, медицинская диагностика, найм. Ответ «стек из 40 моделей выдал 0.31» не проходит ни аудит, ни разговор с клиентом.</p><p><strong>Домены с жёсткими SLA:</strong> HFT, real-time bidding с бюджетом в единицы миллисекунд.</p><p><strong>Малые данные:</strong> при &lt;1000 наблюдений AutoML оптимизирует шум валидации — смещение $\sigma\sqrt{2\ln n}$ съедает весь реальный сигнал.</p><p><strong>Обходной путь для регулируемых доменов:</strong> использовать AutoML как <em>исследовательский инструмент</em> — узнать верхнюю границу качества, а в прод отправить простую модель (скоркарта, монотонный GBDT с ограничениями) и сознательно принять разницу как плату за объяснимость.</p></div></details>
+
+<details class="qi"><summary><span class="qch">▶</span><span>20. Как встроить HPO в регулярный retraining-пайплайн?<span class="tag tcase">Кейс</span></span></summary>
+<div class="qa"><p>Ключевые решения:</p><p>① <strong>Warm start с ограничением давности.</strong> Persistent storage (Postgres) + <code>load_if_exists=True</code>, но испытания старше ~6 месяцев отбрасываются — при дрейфе данных старая история вводит в заблуждение.</p><p>② <strong>Бюджет в единицах времени, не в trials.</strong> <code>timeout=</code> вместо <code>n_trials=</code>, чтобы пайплайн гарантированно укладывался в окно.</p><p>③ <strong>Версионирование study.</strong> <code>study_name</code> = хеш кода фичей + версия датасета. Изменил фичи — новый study, иначе смешиваешь несравнимые испытания.</p><p>④ <strong>Артефакт шага — конфигурация, а не модель.</strong> JSON лучших параметров; финальное обучение — отдельный воспроизводимый шаг.</p><p>⑤ <strong>Champion-challenger с порогом.</strong> Новая модель заменяет старую только при статистически значимом улучшении на «святом» holdout, обычно ≥0.3–0.5% относительного прироста — иначе риск деплоя не окупается.</p><p>⑥ <strong>Shadow deploy перед canary.</strong> Модель считает предсказания на реальном трафике, но не влияет на решения — так ловится train-serving skew до того, как он затронет пользователей.</p></div></details>
+</div>
+
+<div class="pfooter">
+  <a href="block6_quiz.html" class="btn prev">← Блок 6: Тест</a>
+  <a href="block7_02_tabular_dl.html" class="btn">Табличный DL →</a>
+</div>
+
+</div>
+<script>
+Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7280';
+
+// --- Grid vs Random ---
+new Chart(document.getElementById('c_grid'), {
+  type:'scatter',
+  data:{datasets:[
+    {label:'Grid Search (9 точек, 3 уник. lr)',
+     data:[{x:0.01,y:0.6},{x:0.01,y:0.8},{x:0.01,y:1.0},{x:0.1,y:0.6},{x:0.1,y:0.8},{x:0.1,y:1.0},{x:0.3,y:0.6},{x:0.3,y:0.8},{x:0.3,y:1.0}],
+     backgroundColor:'#0284c7',pointRadius:7,pointStyle:'rect'},
+    {label:'Random Search (9 точек, 9 уник. lr)',
+     data:[{x:0.014,y:0.71},{x:0.038,y:0.93},{x:0.061,y:0.63},{x:0.092,y:0.85},{x:0.128,y:0.97},{x:0.167,y:0.68},{x:0.211,y:0.78},{x:0.256,y:0.90},{x:0.289,y:0.66}],
+     backgroundColor:'#db2777',pointRadius:7}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'learning_rate — ВАЖНЫЙ параметр'},min:0,max:0.32},
+            y:{title:{display:true,text:'colsample — неважный параметр'},min:0.5,max:1.1}},
+    plugins:{legend:{position:'bottom'}}}
+});
+
+// --- TPE densities ---
+(function(){
+  const xs = [];
+  for(let i=0;i<=100;i++) xs.push(i*0.004);
+  const g1 = (x,m,s)=>Math.exp(-Math.pow(x-m,2)/(2*s*s))/(s*Math.sqrt(2*Math.PI));
+  const good = xs.map(x=>(g1(x,0.03,0.018)+g1(x,0.05,0.018)+g1(x,0.04,0.018)+g1(x,0.08,0.022)+g1(x,0.045,0.018))/5);
+  const bad = xs.map(x=>(g1(x,0.001,0.012)+g1(x,0.002,0.012)+g1(x,0.25,0.04)+g1(x,0.30,0.04)+g1(x,0.28,0.04)+g1(x,0.0005,0.012))/6);
+  new Chart(document.getElementById('c_tpe'), {
+    type:'line',
+    data:{labels:xs.map(x=>x.toFixed(3)),datasets:[
+      {label:'ℓ(λ) — плотность среди ХОРОШИХ',data:good,borderColor:'#db2777',backgroundColor:'rgba(219,39,119,.12)',fill:true,pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'g(λ) — плотность среди ПЛОХИХ',data:bad,borderColor:'#94a3b8',backgroundColor:'rgba(148,163,184,.12)',fill:true,pointRadius:0,borderWidth:2.5,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'learning_rate'},ticks:{maxTicksLimit:9}},
+              y:{title:{display:true,text:'плотность'}}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Learning curves crossing ---
+(function(){
+  const xs=[]; for(let i=0;i<=100;i+=5) xs.push(i);
+  const A = xs.map(t=>0.78+0.09*(1-Math.exp(-t/12)));
+  const B = xs.map(t=>0.70+0.20*(1-Math.exp(-t/38)));
+  new Chart(document.getElementById('c_lc'), {
+    type:'line',
+    data:{labels:xs.map(t=>t+'%'),datasets:[
+      {label:'Конфигурация A — быстрый старт, плато 0.87',data:A,borderColor:'#0284c7',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'Конфигурация B — медленный старт, финиш 0.90',data:B,borderColor:'#db2777',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'Порог отсева SHA (20% бюджета)',data:xs.map(t=>t===20?0.95:null),borderColor:'#dc2626',borderDash:[5,5],pointRadius:0,borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'доля бюджета обучения'}},
+              y:{title:{display:true,text:'valid AUC'},min:0.68,max:0.92}},
+      plugins:{legend:{position:'bottom'}}}
+  });
+})();
+
+// --- Convergence: Random vs TPE vs Hyperband vs BOHB ---
+(function(){
+  const xs=[]; for(let i=0;i<=60;i+=2) xs.push(i);
+  const f=(a,b,c)=>xs.map(t=>a+b*Math.exp(-t/c));
+  new Chart(document.getElementById('c_conv'), {
+    type:'line',
+    data:{labels:xs.map(t=>t),datasets:[
+      {label:'Random Search',data:f(0.150,0.075,26),borderColor:'#94a3b8',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'TPE (Optuna default)',data:f(0.139,0.086,17),borderColor:'#0284c7',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'Hyperband',data:f(0.141,0.084,11),borderColor:'#d97706',pointRadius:0,borderWidth:2.5,tension:.3},
+      {label:'BOHB (TPE + Hyperband)',data:f(0.133,0.092,7),borderColor:'#db2777',pointRadius:0,borderWidth:3,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{title:{display:true,text:'бюджет (эквивалент полных обучений)'}},
+              y:{title:{display:true,text:'лучшая ошибка валидации'},min:0.125,max:0.235}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(4)}}}}
+  });
+})();
+
+// --- fANOVA importance ---
+new Chart(document.getElementById('c_imp'), {
+  type:'bar',
+  data:{labels:['learning_rate','num_leaves','min_child_samples','lambda_l2','feature_fraction','bagging_fraction','lambda_l1','max_bin'],
+    datasets:[{label:'важность (доля объяснённой вариации)',
+      data:[0.42,0.24,0.13,0.08,0.055,0.035,0.025,0.015],
+      backgroundColor:['#db2777','#c026d3','#9333ea','#7c3aed','#6366f1','#94a3b8','#cbd5e1','#e2e8f0'],
+      borderRadius:5}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{x:{title:{display:true,text:'fANOVA importance'},max:0.5,
+      ticks:{callback:v=>(v*100).toFixed(0)+'%'}}},
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>(c.parsed.x*100).toFixed(1)+'% вариации метрики'}}}}
+});
+
+// --- Pareto front: AUC vs latency ---
+(function(){
+  const dominated=[], front=[];
+  const pts=[[3,0.812],[5,0.828],[8,0.841],[12,0.852],[18,0.860],[27,0.866],[42,0.870],[70,0.8725],[120,0.8738],[210,0.8744],[400,0.8747],
+             [6,0.805],[10,0.822],[15,0.833],[22,0.840],[30,0.845],[45,0.851],[60,0.848],[90,0.858],[140,0.862],[260,0.865],
+             [4,0.790],[9,0.800],[16,0.815],[25,0.826],[38,0.836],[55,0.842],[100,0.850],[180,0.856],[330,0.860],
+             [7,0.775],[13,0.795],[20,0.808],[33,0.820],[50,0.830],[80,0.838],[150,0.845],[280,0.852]];
+  const isFront=p=>!pts.some(q=>(q[0]<=p[0]&&q[1]>=p[1])&&(q[0]<p[0]||q[1]>p[1]));
+  pts.forEach(p=>(isFront(p)?front:dominated).push({x:p[0],y:p[1]}));
+  front.sort((a,b)=>a.x-b.x);
+  new Chart(document.getElementById('c_pareto'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'доминируемые конфигурации',data:dominated,backgroundColor:'rgba(148,163,184,.55)',pointRadius:5},
+      {label:'парето-фронт',data:front,backgroundColor:'#db2777',pointRadius:7,showLine:true,
+       borderColor:'#db2777',borderWidth:2,tension:.2,fill:false},
+      {label:'SLA = 20 мс',data:[{x:20,y:0.76},{x:20,y:0.885}],borderColor:'#dc2626',borderDash:[6,4],
+       borderWidth:2,pointRadius:0,showLine:true}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{type:'logarithmic',title:{display:true,text:'latency инференса, мс (лог-шкала)'}},
+              y:{title:{display:true,text:'AUC на holdout'},min:0.77,max:0.88}},
+      plugins:{legend:{position:'bottom'},
+        tooltip:{callbacks:{label:c=>'AUC '+c.parsed.y.toFixed(4)+' @ '+c.parsed.x+' мс'}}}}
+  });
+})();
+
+// --- Интерактив: смещение максимума ---
+function updBias(){
+  const n = +document.getElementById('sl_n').value;
+  const s = +document.getElementById('sl_s').value / 10000;
+  document.getElementById('out_n').textContent = n + ' trials';
+  document.getElementById('out_s').textContent = s.toFixed(4);
+  const bias = s * Math.sqrt(2 * Math.log(n));
+  const verdict = bias > 0.010
+    ? '🚨 Смещение огромное — цифра с валидации почти бессмысленна без holdout.'
+    : bias > 0.004
+      ? '⚠️ Смещение сопоставимо с реальным выигрышем от тюнинга. Holdout обязателен.'
+      : '✅ Смещение мало относительно типичного прироста. Но holdout всё равно нужен.';
+  document.getElementById('out_bias').innerHTML =
+    'Ожидаемое «фальшивое» превышение: <strong>' + bias.toFixed(4) + ' AUC</strong>' +
+    ' &nbsp;=&nbsp; σ·√(2·ln n) = ' + s.toFixed(4) + ' × ' + Math.sqrt(2*Math.log(n)).toFixed(2) +
+    '<br>' + verdict;
+}
+updBias();
+</script>
+</body>
+</html>

@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.4 · Causal ML: оценка эффекта без эксперимента</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ac:#7f1d1d; --ac-d:#450a0a; --ac-l:#fef2f2; --ac-b:#fca5a5; --ac-m:#b91c1c;
+  --tx:#1e293b; --tx2:#475569; --tx3:#64748b;
+  --bg:#f8fafc; --cd:#ffffff; --bd:#e2e8f0;
+  --ok:#047857; --okl:#ecfdf5; --bad:#b91c1c; --badl:#fef2f2; --wr:#b45309; --wrl:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.68;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+a{color:var(--ac-m);text-decoration:none}
+h1,h2,h3,h4{line-height:1.28;margin:0}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+
+.hero{background:linear-gradient(135deg,#450a0a,#7f1d1d 50%,#fca5a5);color:#fff;padding:66px 24px 58px}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;opacity:.95;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;opacity:.88;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx3);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d)}
+.snav a.act{background:var(--ac);color:#fff}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac-d);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+.intuition{background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:#1e40af}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.ct th{background:#f1f5f9;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd)}
+.ct td{padding:9px 13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#0f172a;border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.16)}
+.trace-hd{background:#1e293b;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #334155}
+.tstep{padding:14px 20px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:14.5px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:#fca5a5;font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px}
+.chsub{font-size:13.5px;color:var(--tx3);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:88px;text-align:right}
+.pout{background:#fff;border:1px solid var(--ac-b);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+
+.sysbox{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.sysh{background:#f1f5f9;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.sysc{padding:17px 20px;font-size:15px}
+.sysc p{margin:0 0 11px}
+.sysc p:last-child{margin-bottom:0}
+.sysc b{color:var(--tx)}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.42;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:var(--tx)}
+.pfc span{color:var(--tx2)}
+
+.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:15px 19px;margin:0 0 11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.qa b{display:block;font-size:15.5px;margin-bottom:7px;color:var(--ac-d)}
+.qa span{font-size:15px;color:var(--tx2)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l)}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 4 · тема 4 · продвинутый уровень</div>
+    <h1>Causal ML: оценка эффекта без эксперимента</h1>
+    <p>Рандомизация делает группы сопоставимыми бесплатно. Когда её нет — регион выбрал сам, закон вступил в силу, фича раскатывалась поэтапно, — сопоставимость приходится <b>предполагать</b>. Каждый метод в этой теме есть обмен одного непроверяемого предположения на другое, и главный навык здесь — не считать оценки, а понимать, во что именно вы поверили.</p>
+    <div class="meta">
+      <span>15 секций</span><span>13 графиков</span><span>интерактив</span><span>15 подводных камней</span><span>5 System Design</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Когда нет эксперимента</a>
+    <a href="#s2">2 · Что предполагаем</a>
+    <a href="#s3">3 · DiD</a>
+    <a href="#s4">4 · Параллельные тренды</a>
+    <a href="#s5">5 · Поэтапное внедрение</a>
+    <a href="#s6">6 · Современные оценщики</a>
+    <a href="#s7">7 · Synthetic control</a>
+    <a href="#s8">8 · Synthetic DiD</a>
+    <a href="#s9">9 · Инструменты</a>
+    <a href="#s10">10 · Double ML</a>
+    <a href="#s11">11 · CATE без эксперимента</a>
+    <a href="#s12">12 · Разрывный дизайн</a>
+    <a href="#s13">13 · Выбор и ошибки</a>
+    <a href="#s14">14 · System Design</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Когда эксперимента нет и не будет</h2></div>
+  <p class="slead">Причин ровно четыре, и они разные по природе. От того, какая из них у вас, зависит выбор метода.</p>
+
+  <table class="ct">
+    <thead><tr><th>Ситуация</th><th>Пример</th><th>Что обычно подходит</th></tr></thead>
+    <tbody>
+      <tr><td>Воздействие уже случилось</td><td class="note">закон вступил в силу, конкурент ушёл с рынка, поменялась комиссия</td><td class="note">DiD, synthetic control</td></tr>
+      <tr><td>Рандомизировать нельзя этически или юридически</td><td class="note">цена, доступ к сервису, условия договора</td><td class="note">DiD, разрывный дизайн</td></tr>
+      <tr><td>Мощности не хватает даже при лучшем дизайне</td><td class="note">8 зон доставки — см. <a href="block4_03_switchback.html">4.3</a></td><td class="note">synthetic control, IV</td></tr>
+      <tr><td>Выкат уже идёт поэтапно</td><td class="note">раскатка по регионам или когортам</td><td class="a">современные оценщики для staggered adoption</td></tr>
+      <tr class="worst"><td>«Эксперимент долго, а решить надо сейчас»</td><td class="note">—</td><td class="r">не причина: это причина запустить эксперимент</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Последняя строка встречается чаще четырёх первых вместе взятых. Causal ML — способ извлечь ответ там, где эксперимент невозможен, а не способ получить его быстрее.</p>
+
+  <div class="def">
+    <div class="def-t">Что теряется без рандомизации</div>
+    <p>Рандомизация гарантирует, что группы одинаковы по <b>всем</b> характеристикам — включая те, о которых вы не знаете и не измеряете. Это её единственное, но исчерпывающее свойство.</p>
+    <p>Без неё вы обязаны заявить, <b>чем именно</b> группы похожи и почему. Любой метод здесь — это конкретная формулировка такого заявления:</p>
+    <ul style="margin:10px 0 0 0">
+      <li><b>DiD:</b> «они менялись бы одинаково, если бы воздействия не было»</li>
+      <li><b>Synthetic control:</b> «взвешенная комбинация контролей ведёт себя как обработанный»</li>
+      <li><b>IV:</b> «инструмент влияет на исход только через воздействие»</li>
+      <li><b>DML и матчинг:</b> «мы измерили все переменные, влияющие и на выбор, и на исход»</li>
+      <li><b>Разрывный дизайн:</b> «прямо у порога объекты по обе стороны одинаковы»</li>
+    </ul>
+    <p>Ни одно из этих утверждений не проверяется данными полностью. Проверяются лишь их следствия — и это принципиальная разница, о которой в отчётах обычно молчат.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Цена предположения: чем платят за отсутствие рандомизации</h2></div>
+  <p class="slead">Полезно один раз посмотреть, насколько велика разница между наивным сравнением и честной оценкой. Обычно она больше самого эффекта.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · четыре оценки одного эффекта</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Компания включила новый тариф в 12 регионах из 60. Регионы выбирал коммерческий отдел.
+      <div class="calc"><span class="lbl">способ оценки                       эффект</span>
+разность средних после                <span class="bad">+18.4%</span>
+разность «после − до» в обработанных   <span class="bad">+15.5%</span>
+difference-in-differences              <span class="hl">+7.1%</span>
+synthetic control                      <span class="res">+6.4%</span>
+<span class="dim">──────────────────────────────────────────────</span>
+эксперимент, проведённый позже         <span class="res">+6.1%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Откуда берётся разрыв между 18.4% и 6.1%.
+      <div class="calc"><span class="lbl">составляющая                          вклад</span>
+отбор регионов: включали там,
+где и так росло                       <span class="bad">+8.2 п.п.</span>
+общий рыночный рост в этот период      <span class="bad">+3.1 п.п.</span>
+реальный эффект тарифа                 <span class="res">+6.1 п.п.</span>
+остаток (шум)                              1.0 п.п.
+<span class="dim">──────────────────────────────────────────────</span>
+итого наивная оценка                    <span class="bad">18.4%</span>
+
+<span class="bad">Две трети «эффекта» не имеют отношения к тарифу.</span>
+
+<span class="res">DiD убирает второе слагаемое (общий рост).
+Synthetic control убирает и часть первого,
+подбирая контроли, похожие по динамике.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Разложение наивной оценки</div>
+    <div class="chsub">Из заявленных 18.4% на сам тариф приходится треть. Каждый следующий метод отсекает один источник смещения</div>
+    <canvas id="c_decomp"></canvas>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Difference-in-Differences: механика</h2></div>
+  <p class="slead">Самый простой и самый распространённый метод. Четыре числа, одно вычитание — и одно очень сильное предположение.</p>
+
+  <div class="def">
+    <div class="def-t">DiD</div>
+    <p>Сравниваем не уровни, а <b>изменения</b>. Из изменения в обработанной группе вычитаем изменение в контрольной:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">эффект = (Y<sub>A,после</sub> − Y<sub>A,до</sub>) − (Y<sub>B,после</sub> − Y<sub>B,до</sub>)</p>
+    <p>Первая разность убирает всё постоянное во времени: регион A может быть богаче, крупнее, старше — это сокращается. Вторая разность убирает всё общее для обеих групп: сезон, рынок, курс валюты.</p>
+    <p><b>Что остаётся неубранным:</b> всё, что менялось по-разному в двух группах и не связано с воздействием. Именно это и есть предположение о параллельных трендах.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · DiD целиком на четырёх числах</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Данные: выручка на пользователя.
+      <div class="calc"><span class="lbl">              до      после   изменение</span>
+регион A     4 200    4 850     <span class="hl">+650</span>
+(обработан)
+регион B     3 800    4 150     <span class="hl">+350</span>
+(контроль)</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Три способа посчитать «эффект» и почему верен только третий.
+      <div class="calc"><span class="lbl">разность уровней после:</span>
+  4 850 − 4 150 = <span class="bad">+700</span>
+  <span class="dim">включает исходное различие регионов (+400)</span>
+
+<span class="lbl">изменение в обработанном:</span>
+  4 850 − 4 200 = <span class="bad">+650</span>
+  <span class="dim">включает общий рост рынка (+350)</span>
+
+<span class="lbl">difference-in-differences:</span>
+  (4 850 − 4 200) − (4 150 − 3 800)
+  = 650 − 350 = <span class="res">+300</span>
+
+<span class="lbl">проверка вторым порядком:</span>
+  (4 850 − 4 150) − (4 200 − 3 800)
+  = 700 − 400 = <span class="res">+300</span> ✓
+<span class="dim">порядок вычитания не важен — отсюда название</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что именно предположено.
+      <div class="calc"><span class="lbl">контрфактическое значение A без воздействия:</span>
+  4 200 + 350 = <span class="hl">4 550</span>
+  <span class="dim">то есть A вырос бы ровно так же, как B</span>
+
+  эффект = 4 850 − 4 550 = <span class="res">+300</span>
+  в относительном выражении: 300/4 200 = <span class="res">+7.14%</span>
+
+<span class="bad">Всё держится на числе 350.
+Если A без воздействия вырос бы на 420,
+эффект равен 230, а не 300 — на 23% меньше.
+И проверить это по данным после воздействия
+невозможно в принципе.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">DiD: четыре точки и контрфактическая линия</div>
+    <div class="chsub">Пунктир — предполагаемая траектория обработанного региона без воздействия, построенная переносом изменения контроля. Вертикальный разрыв в конце и есть оценка эффекта</div>
+    <canvas id="c_did"></canvas>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Параллельные тренды: проверка и её пределы</h2></div>
+  <p class="slead">Само предположение непроверяемо — оно о том, чего не произошло. Но у него есть следствие в предпериоде, и вот его проверить можно и нужно.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · тест на предтренды и его последствия</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Смотрим на пять периодов до воздействия.
+      <div class="calc"><span class="lbl">период    A       B     разница</span>
+  −5     3 400   3 100     <span class="hl">300</span>
+  −4     3 580   3 260     <span class="hl">320</span>
+  −3     3 750   3 440     <span class="hl">310</span>
+  −2     3 980   3 630     <span class="hl">350</span>
+  −1     4 200   3 800     <span class="hl">400</span>
+
+<span class="bad">Разница растёт: 300 → 400.
+Тренды не параллельны.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Формальный тест: регрессия разницы на время.
+      <div class="calc"><span class="lbl">x (период): −5, −4, −3, −2, −1  →  x̄ = −3</span>
+<span class="lbl">y (разница): 300, 320, 310, 350, 400  →  ȳ = 336</span>
+
+<span class="lbl">отклонения x:</span> −2, −1, 0, +1, +2
+<span class="lbl">отклонения y:</span> −36, −16, −26, +14, +64
+
+  S_xy = (−2)(−36) + (−1)(−16) + 0 + (1)(14) + (2)(64)
+       = 72 + 16 + 0 + 14 + 128 = <span class="hl">230</span>
+  S_xx = 4 + 1 + 0 + 1 + 4 = <span class="hl">10</span>
+
+  наклон = 230 / 10 = <span class="bad">23.0 за период</span>
+
+<span class="lbl">стандартная ошибка наклона: 11.1</span>
+  t = 23.0 / 11.1 = <span class="bad">2.07</span>,  p = 0.130
+<span class="dim">формально не значим при 5 точках —
+но это и есть проблема: мощности теста
+на предтренды почти всегда не хватает</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что этот наклон делает с оценкой.
+      <div class="calc"><span class="lbl">если тренд расхождения продолжился,
+разница росла бы на 23 за период
+и без всякого воздействия</span>
+
+<span class="lbl">длина постпериода   накопленное смещение</span>
+   1 период              <span class="hl">23</span>   (7.7% от оценки 300)
+   2 периода             <span class="hl">46</span>   (15.3%)
+   4 периода             <span class="bad">92</span>   (30.7%)
+   8 периодов            <span class="bad">184</span>  (61.3%)
+
+<span class="bad">Смещение растёт линейно с длиной постпериода.
+Чем дольше вы наблюдаете, тем хуже оценка —
+прямо противоположно интуиции про «больше данных».</span>
+
+<span class="lbl">скорректированная оценка при постпериоде
+в 4 периода:</span>
+  среднее смещение = 23 × (1+2+3+4)/4 = 23 × 2.5 = <span class="hl">57.5</span>
+  оценка: 300 − 57.5 = <span class="res">242.5</span>  вместо 300
+  <span class="bad">разница 19%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Честная позиция по тесту на предтренды.
+      <div class="calc"><span class="bad">Незначимый тест НЕ означает, что тренды
+параллельны. Он означает, что мощности
+не хватило это опровергнуть.</span>
+
+<span class="lbl">в примере: наклон 23 ± 11.1</span>
+  доверительный интервал: [1.3; 44.7]
+  <span class="bad">верхняя граница даёт смещение 179
+  за четыре периода — 60% от оценки</span>
+
+<span class="res">Что делать вместо простого «p &gt; 0.05»:</span>
+  1. Показывать график предтрендов, а не p-значение
+  2. Считать, какое смещение допускает
+     верхняя граница интервала наклона
+  3. Использовать методы, устойчивые
+     к нарушению параллельности (секция 8)
+  4. Ограничивать длину постпериода</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Событийный график: коэффициенты по периодам</div>
+    <div class="chsub">Точки до нуля должны лежать на нуле — это и есть проверка параллельности. Здесь они растут, что означает расхождение трендов ещё до воздействия</div>
+    <canvas id="c_pretrend"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Как нарушение трендов портит оценку</h4>
+    <div class="prow">
+      <label>Наклон расхождения за период</label>
+      <input type="range" id="sl_slope" min="0" max="60" step="1" value="23">
+      <output id="out_slope">23</output>
+    </div>
+    <div class="prow">
+      <label>Длина постпериода, периодов</label>
+      <input type="range" id="sl_post" min="1" max="12" step="1" value="4">
+      <output id="out_post">4</output>
+    </div>
+    <div class="prow">
+      <label>Оценка DiD без поправки</label>
+      <input type="range" id="sl_est" min="50" max="600" step="10" value="300">
+      <output id="out_est">300</output>
+    </div>
+    <div class="pout" id="out_did"></div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Поэтапное внедрение ломает обычный DiD</h2></div>
+  <p class="slead">Самая частая ситуация в продукте — раскатка по регионам или когортам — оказывается и самой коварной. Стандартная регрессия с фиксированными эффектами даёт число, которое не является средним эффектом ни в каком смысле.</p>
+
+  <div class="def">
+    <div class="def-t">Что делает регрессия с двусторонними фиксированными эффектами</div>
+    <p>При поэтапном внедрении принято оценивать эффект регрессией <code>Y ~ D + фикс.эффекты единицы + фикс.эффекты времени</code>. Кажется, что это естественное обобщение DiD на много групп и много моментов.</p>
+    <p><b>На деле</b> такая регрессия равна взвешенному среднему <i>всех возможных</i> парных DiD-сравнений. Среди них есть корректные — «обработанные против никогда не обработанных». И есть <b>испорченные</b>: «поздно внедрившие против рано внедривших», где рано внедрившие служат контролем, хотя у них воздействие уже действует и его эффект продолжает расти.</p>
+    <p>В испорченном сравнении рост контрольной группы вычитается из оценки. При растущем со временем эффекте это даёт отрицательный вклад — и итоговое число может оказаться заниженным, а в крайних случаях иметь неверный знак.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · разложение оценки на парные сравнения</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Три группы регионов. Эффект динамический: растёт со временем после внедрения.
+      <div class="calc"><span class="lbl">рано внедрившие (t = 2):</span>
+  эффект по периодам: 100, 160, 220, 280, 340, 400
+  <span class="dim">растёт на 60 за период</span>
+
+<span class="lbl">поздно внедрившие (t = 6):</span>
+  эффект по периодам: 90, 90, 90
+  <span class="dim">плоский</span>
+
+<span class="lbl">никогда не внедрявшие:</span> эффекта нет
+
+<span class="lbl">истинный средний эффект по всем
+обработанным ячейкам «когорта × период»:</span>
+  (100+160+220+280+340+400 + 90+90+90) / 9
+  = (1 500 + 270) / 9 = <span class="res">196.7</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Считаем испорченное сравнение вручную: поздние против ранних.
+      <div class="calc"><span class="lbl">окно вокруг внедрения поздних (t = 6)</span>
+
+<span class="lbl">периоды до (t = 4, 5):</span>
+  поздние: эффекта нет → среднее <span class="hl">0</span>
+  ранние: 220 и 280 → среднее <span class="hl">250</span>
+
+<span class="lbl">периоды после (t = 6, 7):</span>
+  поздние: 90 и 90 → среднее <span class="hl">90</span>
+  ранние: 340 и 400 → среднее <span class="hl">370</span>
+
+<span class="lbl">DiD этого сравнения:</span>
+  (90 − 0) − (370 − 250) = 90 − 120 = <span class="bad">−30</span>
+
+<span class="bad">Отрицательная оценка при положительном
+эффекте у обеих групп. Контроль рос быстрее
+обработанных — потому что контроль сам обработан
+и его эффект накапливается.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Собираем итоговую оценку из четырёх сравнений.
+      <div class="calc"><span class="lbl">сравнение                        вес    оценка</span>
+рано vs никогда                  0.31     160
+поздно vs никогда                0.24     120
+рано vs поздно (те ещё чисты)    0.27     155
+<span class="bad">поздно vs рано (те уже обработаны) 0.18     −30</span>
+<span class="dim">──────────────────────────────────────────────</span>
+                                 1.00
+
+  0.31×160 + 0.24×120 + 0.27×155 + 0.18×(−30)
+  = 49.60 + 28.80 + 41.85 − 5.40
+  = <span class="bad">114.85</span>
+
+<span class="lbl">истинный средний эффект:</span> <span class="res">196.7</span>
+<span class="bad">занижение: (196.7 − 114.85)/196.7 = 41.6%</span>
+
+<span class="dim">Без испорченного сравнения оценка была бы
+(49.60 + 28.80 + 41.85)/0.82 = 146.6 —
+всё ещё занижена, но вдвое ближе.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Когда становится совсем плохо.
+      <div class="calc"><span class="lbl">вес испорченного сравнения растёт, когда:</span>
+  — групп внедрения много
+  — они разнесены во времени
+  — «никогда не внедривших» мало или нет вовсе
+
+<span class="bad">Если все единицы рано или поздно внедрили,
+чистых контролей не остаётся, и вся оценка
+складывается из сравнений обработанных
+с обработанными.</span>
+
+<span class="lbl">доля испорченных сравнений:</span>
+  есть 30% никогда не внедривших:  <span class="hl">18%</span>
+  есть 10%:                        <span class="bad">41%</span>
+  нет вовсе:                       <span class="bad">67%</span>
+
+<span class="res">Практическое правило: если раскатка идёт
+поэтапно и «контрольной» группы в конце
+не остаётся — стандартная регрессия
+с фиксированными эффектами непригодна.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Из чего складывается оценка при поэтапном внедрении</div>
+    <div class="chsub">Три корректных сравнения дают положительные оценки, четвёртое — отрицательную, потому что контрольная группа сама обработана. Взвешенная сумма занижает истинный эффект на 21%</div>
+    <canvas id="c_bacon"></canvas>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Современные оценщики для поэтапного внедрения</h2></div>
+  <p class="slead">Решение простое по идее и появилось недавно: строить только корректные сравнения, а потом усреднять их с осмысленными весами. Разница с наивной регрессией в разобранном примере — 26%.</p>
+
+  <div class="def">
+    <div class="def-t">Общий принцип</div>
+    <p><b>Шаг 1.</b> Для каждой когорты внедрения и каждого момента времени построить <b>отдельный</b> DiD, используя в качестве контроля только «чистые» единицы — никогда не внедрявшие либо ещё не внедрившие на этот момент.</p>
+    <p><b>Шаг 2.</b> Усреднить полученные эффекты с явно выбранными весами: по размеру когорт, по длительности воздействия, или вовсе не усреднять, а показать как событийный график.</p>
+    <p>Разные оценщики отличаются деталями — какие контроли считать допустимыми, как обрабатывать ковариаты, — но идея одна: <b>никогда не использовать уже обработанную единицу как контроль</b>.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · корректная оценка на тех же данных</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Строим эффекты по когортам и периодам от внедрения.
+      <div class="calc"><span class="lbl">когорта «рано», контроль — никогда не внедрявшие</span>
+  период +0: <span class="hl">100</span>   +1: <span class="hl">160</span>   +2: <span class="hl">220</span>
+  период +3: <span class="hl">280</span>   +4: <span class="hl">340</span>   +5: <span class="hl">400</span>
+
+<span class="lbl">когорта «поздно», контроль — никогда не внедрявшие</span>
+  период +0: <span class="hl">90</span>    +1: <span class="hl">90</span>    +2: <span class="hl">90</span>
+
+<span class="dim">Ни одно сравнение не использует
+обработанную единицу как контроль.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Усредняем. Веса — по числу наблюдений в каждой паре «когорта × период».
+      <div class="calc"><span class="lbl">когорта «рано»: 6 периодов, 40 регионов</span>
+  сумма эффектов: 100+160+220+280+340+400 = <span class="hl">1 500</span>
+  наблюдений: 6 × 40 = 240
+
+<span class="lbl">когорта «поздно»: 3 периода, 25 регионов</span>
+  сумма эффектов: 90+90+90 = <span class="hl">270</span>
+  наблюдений: 3 × 25 = 75
+
+<span class="lbl">взвешенное среднее:</span>
+  (1 500 × 40 + 270 × 25) / (240 + 75)
+  = (60 000 + 6 750) / 315
+  = 66 750 / 315 = <span class="res">211.9</span>
+
+<span class="dim">Это средний эффект по всем обработанным
+периодам с весом по числу наблюдений.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Сравниваем оценки — и обращаем внимание на то, что они отвечают на разные вопросы.
+      <div class="calc"><span class="lbl">оценка                              значение</span>
+регрессия с фикс. эффектами            <span class="bad">114.9</span>
+корректный оценщик, простое среднее
+по ячейкам «когорта × период»          <span class="res">196.7</span>
+корректный оценщик, вес по числу
+наблюдений                             <span class="hl">211.9</span>
+эффект в первый период (+0)             <span class="hl">96.2</span>
+  <span class="dim">(100×40 + 90×25)/65 = 6 250/65</span>
+эффект через год (+5)                   <span class="hl">400.0</span>
+
+<span class="res">Ни одно из этих чисел не «правильнее»
+остальных — они отвечают на разные вопросы.
+Наивная регрессия плоха не тем, что даёт
+114.9, а тем, что не соответствует
+ни одному осмысленному вопросу.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Что показывать вместо одного числа.
+      <div class="calc"><span class="res">Событийный график: эффект по периодам
+от момента внедрения, отдельно по когортам.</span>
+
+<span class="lbl">он отвечает сразу на несколько вопросов:</span>
+  — параллельны ли тренды до внедрения
+    <span class="dim">(точки слева от нуля должны лежать на нуле)</span>
+  — растёт эффект или затухает
+  — одинаков ли он у разных когорт
+    <span class="dim">если у поздних он слабее — возможно,
+    рынок насытился или менялись условия</span>
+
+<span class="bad">Одно усреднённое число скрывает всё это.
+При динамическом эффекте от 100 до 400
+«средний эффект 212» — статистика,
+не имеющая продуктового смысла.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Событийный график по когортам внедрения</div>
+    <div class="chsub">Рано внедрившие показывают растущий эффект, поздние — плоский. Наивная регрессия сжимает обе кривые в одно число 114.9, которое не описывает ни ту, ни другую</div>
+    <canvas id="c_stagger"></canvas>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Synthetic control: контроль, которого не было</h2></div>
+  <p class="slead">Когда обработанная единица одна и похожего контроля не существует, его можно собрать — как взвешенную комбинацию доступных, подобранную так, чтобы она повторяла предпериод.</p>
+
+  <div class="def">
+    <div class="def-t">Синтетический контроль</div>
+    <p><b>Устройство:</b> подбираются неотрицательные веса контрольных единиц, суммирующиеся в единицу, так чтобы взвешенная комбинация как можно точнее воспроизводила траекторию обработанной единицы <b>до</b> воздействия. После воздействия расхождение между фактом и синтетикой и есть оценка эффекта.</p>
+    <p><b>Чем лучше DiD:</b> не требует параллельности трендов — требует лишь, чтобы комбинация контролей хорошо ложилась на предпериод. Это проверяемое условие, в отличие от параллельности.</p>
+    <p><b>Ограничения:</b> веса неотрицательны и суммируются в единицу, поэтому синтетика не может выйти за пределы «оболочки» контролей. Если обработанная единица крайняя по любому измерению, хорошей подгонки не будет — и это сразу видно.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · построение и проверка синтетического контроля</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Подобранные веса. Обработан один регион, доноров 24.
+      <div class="calc"><span class="lbl">донор              вес</span>
+Санкт-Петербург    <span class="hl">0.41</span>
+Екатеринбург       <span class="hl">0.23</span>
+Новосибирск        <span class="hl">0.19</span>
+Казань             <span class="hl">0.17</span>
+остальные 20        0.00
+<span class="dim">──────────────────────────</span>
+сумма              <span class="res">1.00</span>
+
+<span class="dim">Разреженность типична: обычно ненулевые
+веса получают 3–6 доноров. Это плюс —
+результат можно объяснить словами.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Качество подгонки предпериода.
+      <div class="calc"><span class="lbl">период   факт    синтетика   разность</span>
+  −5     3 400     3 371        +29
+  −4     3 580     3 622        −42
+  −3     3 750     3 714        +36
+  −2     3 980     4 021        −41
+  −1     4 200     4 162        +38
+
+<span class="lbl">RMSE подгонки:</span>
+  √((29² + 42² + 36² + 41² + 38²)/5)
+  = √((841 + 1 764 + 1 296 + 1 681 + 1 444)/5)
+  = √(7 026/5) = √1 405.2 = <span class="res">37.5</span>
+
+<span class="lbl">относительно уровня 4 200:</span> <span class="res">0.89%</span>
+<span class="res">Отличная подгонка. Ниже 2% считается хорошей,
+выше 5% — повод усомниться в применимости.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Оценка эффекта.
+      <div class="calc"><span class="lbl">период   факт    синтетика   разрыв</span>
+  +1     4 850     4 538       <span class="hl">312</span>
+  +2     5 020     4 671       <span class="hl">349</span>
+  +3     5 180     4 802       <span class="hl">378</span>
+
+<span class="lbl">средний эффект:</span> (312 + 349 + 378)/3 = <span class="res">346.3</span>
+
+<span class="lbl">отношение постпериодного разрыва
+к предпериодной RMSE:</span>
+  346.3 / 37.5 = <span class="res">9.24</span>
+<span class="dim">чем больше это отношение, тем убедительнее:
+разрыв в девять раз превышает типичную
+ошибку подгонки</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Плацебо-тест вместо доверительного интервала.
+      <div class="calc"><span class="lbl">классических стандартных ошибок здесь нет —
+обработанная единица одна. Вместо них:
+применяем метод к каждому донору,
+делая вид, что обработан он.</span>
+
+<span class="lbl">отношение разрыва к RMSE у 25 единиц:</span>
+  настоящая обработанная:  <span class="res">9.24</span>  ← 1-е место
+  лучший плацебо:               4.11
+  медианный плацебо:            1.36
+  худший плацебо:               0.22
+
+<span class="lbl">p-значение как ранг:</span>
+  1 / 25 = <span class="res">0.04</span>
+
+<span class="res">Вероятность случайно получить такой
+разрыв — одна из двадцати пяти.</span>
+
+<span class="dim">Обратите внимание: p-значение здесь
+ограничено снизу величиной 1/(число доноров+1).
+При десяти донорах минимально достижимое
+p равно 0.091 — значимости не добиться в принципе.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Факт против синтетического контроля</div>
+    <div class="chsub">До воздействия линии совпадают с точностью 0.89% — это и есть проверяемое условие метода. После воздействия они расходятся</div>
+    <canvas id="c_sc"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Плацебо-тест: обработанная единица против доноров</div>
+    <div class="chsub">Каждая серая линия — донор, к которому метод применён как к «псевдообработанному». Красная выделяется явно, что и даёт ранговое p-значение 0.04</div>
+    <canvas id="c_placebo"></canvas>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Synthetic DiD: лучшее из обоих</h2></div>
+  <p class="slead">Метод, объединяющий взвешивание доноров из synthetic control с вычитанием общего сдвига из DiD. На практике он устойчивее обоих родителей.</p>
+
+  <div class="def">
+    <div class="def-t">Что добавляет Synthetic DiD</div>
+    <p><b>Веса единиц</b> — как в synthetic control: подбираются так, чтобы комбинация контролей была похожа на обработанную единицу.</p>
+    <p><b>Веса периодов</b> — новое: предпериоды, более похожие на постпериод, получают больший вес. Это защищает от того, что далёкое прошлое устроено иначе.</p>
+    <p><b>Структура DiD</b> — вычитается разность уровней, а не только траектория. Поэтому метод не требует <i>идеальной</i> подгонки предпериода: остаточное расхождение уровней сокращается второй разностью.</p>
+    <p>Практическое следствие: SDiD работает там, где synthetic control даёт плохую подгонку, и там, где DiD страдает от непараллельных трендов.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · три метода на данных с известным ответом</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Симуляция: истинный эффект известен и равен 285.
+      <div class="calc"><span class="lbl">метод                оценка   ошибка    se</span>
+DiD                     300      +15      95
+Synthetic control       312      +27     110
+<span class="res">Synthetic DiD</span>           <span class="res">289</span>       <span class="res">+4</span>      <span class="res">62</span>
+
+<span class="res">SDiD точнее по обоим измерениям:
+меньше смещение и уже интервал.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Почему DiD ошибся на 15.
+      <div class="calc"><span class="lbl">в данных заложено расхождение трендов
+на 3.7 за период; постпериод — 4 периода</span>
+
+  накопленное смещение:
+    3.7 × (1+2+3+4)/4 = 3.7 × 2.5 = <span class="hl">9.25</span>
+  плюс шум ≈ 6
+  итого ≈ <span class="hl">15</span> ✓
+
+<span class="dim">DiD переносит изменение контроля один в один,
+поэтому наследует всё расхождение трендов.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Почему synthetic control ошибся сильнее.
+      <div class="calc"><span class="lbl">подгонка предпериода была неидеальной:</span>
+  RMSE 62 при уровне 4 200 = <span class="bad">1.48%</span>
+
+<span class="dim">SC интерпретирует ВСЁ постпериодное
+расхождение как эффект, включая ту часть,
+что осталась от неидеальной подгонки.</span>
+
+<span class="lbl">систематическое расхождение
+в конце предпериода:</span> +24
+  <span class="bad">оно целиком перешло в оценку эффекта</span>
+
+<span class="res">SDiD вычитает его второй разностью —
+отсюда оценка 289 вместо 312.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Когда каждый метод предпочтителен.
+      <div class="calc"><span class="res">DiD</span> — контрольных единиц мало,
+  предтренды визуально параллельны,
+  нужна прозрачность для нетехнической аудитории.
+
+<span class="res">Synthetic control</span> — обработанная единица одна,
+  доноров много, подгонка предпериода
+  получается хорошей (RMSE ниже 2%).
+
+<span class="res">Synthetic DiD</span> — во всех остальных случаях,
+  особенно при неидеальной подгонке
+  или сомнениях в параллельности.
+
+<span class="lbl">цена SDiD:</span> объяснить его нетехническому
+заказчику заметно труднее, чем DiD.
+<span class="dim">Практика: считать всеми тремя. Если оценки
+близки — вывод устойчив. Если расходятся —
+это само по себе важный результат, и разбираться
+нужно в причинах расхождения, а не выбирать
+понравившееся число.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Три метода против известной истины</div>
+    <div class="chsub">Усы — 95% интервалы. Synthetic DiD ближе к истине и точнее обоих родителей, потому что снимает и расхождение трендов, и остаточную ошибку подгонки</div>
+    <canvas id="c_sdid"></canvas>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Инструментальные переменные</h2></div>
+  <p class="slead">Когда воздействие выбирается самими участниками, но есть нечто случайное, что <i>подталкивает</i> к выбору, — это нечто становится рычагом для оценки эффекта.</p>
+
+  <div class="def">
+    <div class="def-t">Инструмент</div>
+    <p>Переменная Z называется инструментом для воздействия D, если выполнены три условия:</p>
+    <p><b>1. Релевантность.</b> Z влияет на D. Проверяется данными.</p>
+    <p><b>2. Экзогенность.</b> Z не связана с ненаблюдаемыми причинами исхода. Обычно обеспечивается тем, что Z рандомизирована.</p>
+    <p><b>3. Исключающее ограничение.</b> Z влияет на Y <i>только</i> через D, без прямого канала. <b>Не проверяется данными вообще</b> — только содержательным рассуждением.</p>
+    <p>Оценка Вальда — отношение двух разностей:</p>
+    <p style="font-family:'SF Mono',Menlo,monospace;font-size:15px;text-align:center;color:var(--ac-d)">β = (Ȳ<sub>Z=1</sub> − Ȳ<sub>Z=0</sub>) / (D̄<sub>Z=1</sub> − D̄<sub>Z=0</sub>)</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · дизайн с поощрением</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Постановка. Нельзя заставить пользоваться новой функцией, но можно случайно разослать приглашение.
+      <div class="calc"><span class="lbl">Z — получил приглашение (рандомизировано 50/50)</span>
+<span class="lbl">D — начал пользоваться функцией</span>
+<span class="lbl">Y — выручка за квартал</span>
+
+<span class="lbl">первая стадия: влияние Z на D</span>
+  доля начавших с приглашением:  <span class="hl">0.34</span>
+  доля начавших без приглашения: <span class="hl">0.06</span>
+  разность:                      <span class="res">0.28</span>
+
+<span class="dim">6% начали бы и сами — они «всегда-берущие»
+и в оценку эффекта не входят.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Приведённая форма и оценка Вальда.
+      <div class="calc"><span class="lbl">влияние Z на Y (эффект намерения лечить, ITT):</span>
+  с приглашением:  5 240
+  без:             5 128
+  разность:        <span class="hl">112</span>
+
+<span class="lbl">оценка Вальда:</span>
+  β = 112 / 0.28 = <span class="res">400</span>
+
+<span class="lbl">читается так:</span>
+  <span class="res">эффект рассылки на всех: +112</span>
+  <span class="res">эффект самой функции на тех, кто начал
+  ею пользоваться из-за рассылки: +400</span>
+
+<span class="dim">Второе число больше, потому что рассылка
+подействовала лишь на 28% — на остальных
+эффекта не было по построению.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> На кого именно распространяется оценка.
+      <div class="calc"><span class="lbl">четыре типа пользователей:</span>
+  <span class="hl">всегда-берущие</span> (6%) — начали бы в любом случае
+  <span class="res">комплаеры</span> (28%) — начали из-за приглашения
+  <span class="hl">никогда-берущие</span> (66%) — не начали бы никак
+  <span class="bad">противящиеся</span> (0%) — предполагаются отсутствующими
+
+<span class="res">IV оценивает эффект ТОЛЬКО на комплаерах.
+Это называется локальным средним эффектом.</span>
+
+<span class="bad">Практическое следствие: если комплаеры
+отличаются от остальных, число 400 нельзя
+переносить на всю аудиторию. А отличаются
+они почти наверняка — это люди, чувствительные
+к рассылке.</span>
+
+<span class="lbl">кто такие комплаеры, описать можно:</span>
+  сравнить долю признаков при Z=1 и Z=0
+  среди начавших — разница и характеризует
+  комплаеров.</div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Слабый инструмент — главная техническая опасность.
+      <div class="calc"><span class="lbl">знаменатель стоит в оценке внизу.
+Чем он меньше, тем сильнее раздувается
+всё, включая смещение.</span>
+
+<span class="lbl">разность в первой   оценка   se    F первой
+стадии                                  стадии</span>
+   0.28              400      68      <span class="res">412</span>
+   0.15              747     143      <span class="hl">118</span>
+   0.08            1 400     312       <span class="hl">33</span>
+   0.03            3 733   1 240        <span class="bad">4.7</span>
+
+<span class="bad">При F ниже 10 инструмент считается слабым:
+оценка смещена в сторону наивной регрессии,
+а доверительный интервал не имеет
+заявленного покрытия.</span>
+
+<span class="res">Проверка обязательна и делается одной строкой:
+F-статистика первой стадии должна быть выше 10,
+а лучше выше 30.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Сила инструмента и надёжность оценки</div>
+    <div class="chsub">Логарифмическая ось. При слабой первой стадии оценка взлетает вместе с интервалом — и то, и другое перестаёт что-либо значить</div>
+    <canvas id="c_iv"></canvas>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Double ML: машинное обучение как инструмент, а не как ответ</h2></div>
+  <p class="slead">Соблазн понятен: взять бустинг, скормить ему воздействие и три сотни контролей, посмотреть на коэффициент. Так делать нельзя, и причина не в «интерпретируемости», а в конкретном смещении, которое считается.</p>
+
+  <div class="def">
+    <div class="def-t">Откуда берётся смещение регуляризации</div>
+    <p>Чтобы оценить эффект D на Y при контролях X, нужно убрать влияние X из обоих. Наивный путь — включить всё в одну модель с регуляризацией — приводит к тому, что регуляризация <b>сжимает и коэффициент при D</b>, а также оставляет в остатках часть влияния X, коррелированную с D.</p>
+    <p><b>Double ML</b> решает это двумя приёмами:</p>
+    <p><b>1. Ортогонализация.</b> Отдельно предсказываем Y по X и D по X, затем регрессируем остатки на остатки. Влияние X убрано из обеих частей симметрично, и смещение первого порядка исчезает.</p>
+    <p><b>2. Кросс-подгонка.</b> Предсказания для каждого наблюдения делаются моделью, не видевшей это наблюдение. Иначе переобучение вспомогательных моделей переносится в оценку эффекта.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · три способа посчитать один эффект</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Данные: 20 000 наблюдений, 300 контролей, истинный эффект 0.050.
+      <div class="calc"><span class="lbl">метод                             оценка   ошибка</span>
+лассо-регрессия со всем сразу      <span class="bad">0.081</span>    <span class="bad">+62%</span>
+ортогонализация без кросс-подгонки <span class="hl">0.063</span>    <span class="hl">+26%</span>
+<span class="res">Double ML с кросс-подгонкой</span>        <span class="res">0.051</span>     <span class="res">+2%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Механика ортогонализации на четырёх наблюдениях.
+      <div class="calc"><span class="lbl">остатки после вычитания предсказаний по X:</span>
+
+  Ỹ = Y − ĝ(X):   0.42,  −0.31,   0.18,  −0.29
+  D̃ = D − m̂(X):   0.60,  −0.50,   0.30,  −0.40
+
+<span class="lbl">регрессия остатков на остатки:</span>
+  Σ Ỹ·D̃ = 0.42×0.60 + (−0.31)(−0.50)
+        + 0.18×0.30 + (−0.29)(−0.40)
+        = 0.2520 + 0.1550 + 0.0540 + 0.1160
+        = <span class="hl">0.5770</span>
+
+  Σ D̃² = 0.36 + 0.25 + 0.09 + 0.16 = <span class="hl">0.86</span>
+
+  θ = 0.5770 / 0.86 = <span class="res">0.670930</span>
+
+<span class="dim">Простая одномерная регрессия — вся сложность
+уехала во вспомогательные модели ĝ и m̂,
+которыми может быть что угодно.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Почему кросс-подгонка обязательна.
+      <div class="calc"><span class="lbl">без неё модель ĝ видела наблюдение i
+при обучении и потому переобучилась на нём</span>
+
+  остаток Ỹ_i систематически занижен
+  <span class="dim">часть настоящего сигнала «съедена» подгонкой</span>
+
+<span class="lbl">замер смещения по числу контролей:</span>
+  контролей   без кросс-подгонки   с ней
+      20            +6%             +1%
+     100           +17%             +2%
+     300           <span class="bad">+26%</span>             <span class="res">+2%</span>
+   1 000           <span class="bad">+48%</span>             <span class="res">+3%</span>
+
+<span class="res">Чем гибче вспомогательная модель,
+тем важнее кросс-подгонка. Это та же логика,
+что в 1.15 и в обобщённом CUPED из 4.2.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Чего Double ML НЕ решает.
+      <div class="calc"><span class="bad">Он не заменяет рандомизацию.</span>
+
+<span class="lbl">DML корректно оценивает эффект ПРИ УСЛОВИИ,
+что в X попали все переменные, влияющие
+и на выбор воздействия, и на исход.</span>
+
+<span class="dim">Это предположение об отсутствии скрытых
+конфаундеров — то же самое, что у обычного
+матчинга. DML делает его выполнение
+технически аккуратным, но не устраняет.</span>
+
+<span class="bad">Триста контролей не гарантируют, что среди них
+есть нужный. Пропущенная переменная «менеджер
+включил тариф там, где ожидал роста» смещает
+оценку независимо от того, сколько контролей
+вы добавили и насколько аккуратно посчитали.</span>
+
+<span class="res">Проверка чувствительности: насколько сильным
+должен быть скрытый конфаундер, чтобы обнулить
+эффект. Если достаточно слабого — вывод хрупок.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Смещение оценки по числу контролей</div>
+    <div class="chsub">Без кросс-подгонки смещение растёт с гибкостью вспомогательных моделей; с ней остаётся в пределах пары процентов независимо от размерности</div>
+    <canvas id="c_dml"></canvas>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Гетерогенность эффекта без эксперимента</h2></div>
+  <p class="slead">Та же задача, что в 4.1, но на наблюдательных данных: не только «сколько в среднем», но и «кому именно». Инструмент тот же — причинный лес, — а предположения намного тяжелее.</p>
+
+  <div class="def">
+    <div class="def-t">Причинный лес</div>
+    <p><b>Идея:</b> дерево строится так, чтобы разбивать выборку не по однородности исхода, а по <b>различию эффекта</b>. В каждом листе эффект оценивается как локальный DiD или как разность средних между обработанными и контрольными при близких ковариатах.</p>
+    <p><b>Что добавляется по сравнению с экспериментом:</b> внутри листа обработанные и контрольные должны быть сопоставимы. Без рандомизации это обеспечивается только тем, что все важные переменные попали в X — то же предположение, что у DML.</p>
+    <p><b>Честная оценка:</b> дерево строится на одной половине данных, эффект в листьях оценивается на другой. Иначе разбиения подстраиваются под шум, и эффект в найденных листьях завышен.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · проверка причинного леса на наблюдательных данных</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Квантили предсказанного эффекта и фактический эффект в них.
+      <div class="calc"><span class="lbl">квантиль   предсказан   факт    факт при
+                                 честной оценке</span>
+  Q1 (низ)    −180       <span class="hl">−205</span>      <span class="hl">−142</span>
+  Q2           −40        <span class="hl">−58</span>       <span class="hl">−31</span>
+  Q3           +90        <span class="hl">+72</span>       <span class="hl">+61</span>
+  Q4          +210       <span class="hl">+238</span>      <span class="hl">+186</span>
+  Q5 (верх)   +420       <span class="res">+461</span>      <span class="res">+318</span>
+
+<span class="lbl">разброс между крайними квантилями:</span>
+  на обучающих данных: 461 − (−205) = <span class="bad">666</span>
+  на отложенных:       318 − (−142) = <span class="res">460</span>
+  <span class="bad">завышение на 45%</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Главная проверка: не найден ли конфаундер вместо эффекта.
+      <div class="calc"><span class="bad">Причинный лес не отличает «здесь эффект
+больше» от «здесь отбор в воздействие сильнее».</span>
+
+<span class="lbl">диагностика — посмотреть, чем различаются
+квантили по наблюдаемым признакам:</span>
+
+  Q5 против Q1:
+    доля крупных клиентов:  <span class="bad">62% против 8%</span>
+    средний стаж:           <span class="bad">3.4 года против 0.6</span>
+    доля обработанных:      <span class="bad">71% против 19%</span>
+
+<span class="bad">Последняя строка тревожна: в верхнем квантиле
+воздействие получили втрое чаще. Возможно, лес
+нашёл не «где эффект больше», а «где менеджеры
+чаще включали тариф» — то есть отбор.</span>
+
+<span class="res">Проверка: посчитать эффект отдельно внутри
+узкой страты по склонности к воздействию.
+Если гетерогенность сохранилась — она реальна.
+Если исчезла — это был отбор.</span>
+
+<span class="lbl">результат проверки в примере:</span>
+  разброс внутри страты по склонности: <span class="hl">210</span>
+  <span class="hl">вместо 460 — больше половины гетерогенности
+  объяснялось отбором</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что из этого следует для решений.
+      <div class="calc"><span class="lbl">оценка выигрыша от таргетирования:</span>
+
+  по наивному лесу:        <span class="bad">+461 на верхнем квантиле</span>
+  по честной оценке:       <span class="hl">+318</span>
+  внутри страты
+  по склонности:           <span class="res">+186</span>
+  проверено экспериментом
+  на подвыборке:           <span class="res">+171</span>
+
+<span class="res">Каждая следующая поправка приближает
+к экспериментальной истине.
+Наивная оценка завышена в 2.7 раза.</span>
+
+<span class="lbl">практический вывод:</span> причинный лес
+на наблюдательных данных годится, чтобы
+<span class="res">сформировать гипотезу</span> о сегментах,
+а не чтобы принять по ней решение.
+Подтверждать гипотезу нужно экспериментом
+на найденном сегменте — он маленький,
+и мощности часто хватает.</div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Гетерогенность: сколько её остаётся после проверок</div>
+    <div class="chsub">Каждая поправка — честная оценка, затем стратификация по склонности — снимает часть кажущейся гетерогенности. До эксперимента доживает 37% исходной</div>
+    <canvas id="c_forest"></canvas>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Разрывный дизайн: эксперимент, устроенный правилом</h2></div>
+  <p class="slead">Если воздействие назначается по порогу — скидка от суммы чека, статус от числа покупок, — то у самого порога объекты по обе стороны почти неразличимы. Это готовый эксперимент, который никто не проводил.</p>
+
+  <div class="def">
+    <div class="def-t">Regression discontinuity</div>
+    <p><b>Устройство:</b> есть переменная-«бегущая» (сумма чека) и порог (3 000 ₽). Всё выше порога получает воздействие, всё ниже — нет. Сравниваются объекты в узкой окрестности порога.</p>
+    <p><b>Предположение:</b> всё остальное меняется у порога непрерывно. Тогда скачок в исходе ровно на пороге объясняется только воздействием.</p>
+    <p><b>Что оценивается:</b> эффект <b>локально у порога</b>. Это его сила и его ограничение: у порога сопоставимость почти идеальна, но переносить результат на объекты далеко от порога нельзя.</p>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · оценка эффекта и проверка на манипуляцию</div>
+    <div class="tstep">
+      <b>Шаг 1.</b> Удержание по корзинам суммы чека вокруг порога 3 000 ₽.
+      <div class="calc"><span class="lbl">диапазон чека     удержание</span>
+2 800 – 2 899        0.398
+2 900 – 2 999        <span class="hl">0.412</span>
+<span class="dim">─────── порог 3 000 ───────</span>
+3 000 – 3 099        <span class="hl">0.478</span>
+3 100 – 3 199        0.484
+
+<span class="lbl">разрыв на пороге:</span>
+  0.478 − 0.412 = <span class="res">+0.066</span>
+
+<span class="dim">Слева и справа от порога зависимость плавная;
+скачок происходит ровно на нём.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 2.</b> Обязательная проверка: не манипулируют ли бегущей переменной.
+      <div class="calc"><span class="lbl">число заказов в корзинах:</span>
+2 800 – 2 849:   1 265
+2 850 – 2 899:   1 240
+2 900 – 2 949:   1 218
+2 950 – 2 999:   <span class="bad">1 190</span>
+<span class="dim">─────── порог ───────</span>
+3 000 – 3 049:   <span class="bad">1 810</span>
+3 050 – 3 099:   1 320
+3 100 – 3 149:   1 288
+
+<span class="bad">Скачок плотности: 1 190 → 1 810.</span>
+
+<span class="lbl">тест на разрыв плотности:</span>
+  отношение: 1 810 / 1 190 = <span class="bad">1.521</span>
+  <span class="bad">p &lt; 0.001 — манипуляция подтверждена</span>
+
+<span class="dim">Покупатели добирают корзину до 3 000,
+чтобы получить скидку. Значит, те, кто оказался
+чуть выше порога, отличаются от тех, кто чуть
+ниже, — мотивацией. Основное предположение
+нарушено.</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 3.</b> Что делать с манипуляцией.
+      <div class="calc"><span class="res">Donut RD: выбросить окрестность порога,
+где сосредоточены «дотянувшие», и оценивать
+разрыв по данным за её пределами.</span>
+
+<span class="lbl">ширина исключаемой зоны   оценка разрыва</span>
+   0 (обычный RD)              <span class="bad">0.066</span>
+   ±50 ₽                        0.052
+   ±100 ₽                       <span class="res">0.041</span>
+   ±150 ₽                       <span class="res">0.039</span>
+   ±200 ₽                       0.038
+
+<span class="res">Оценка стабилизируется около 0.040 —
+обычный RD завышал её на 65%.</span>
+
+<span class="lbl">проверка выбора зоны:</span> плотность должна
+стать непрерывной за её границами.
+  отношение плотностей при ±100: <span class="res">1.023</span>
+  <span class="res">манипуляция локализована в ±100 ₽</span></div>
+    </div>
+    <div class="tstep">
+      <b>Шаг 4.</b> Ещё две проверки, без которых RD не принимают.
+      <div class="calc"><span class="res">1. Непрерывность ковариат на пороге.</span>
+  <span class="dim">Возраст, стаж, город — всё, что не должно
+  меняться от воздействия, — обязано быть
+  непрерывным. Скачок в ковариате означает,
+  что порог совпал с чем-то ещё.</span>
+  замер: максимальный скачок 0.004 при se 0.009 <span class="res">✓</span>
+
+<span class="res">2. Ложные пороги.</span>
+  <span class="dim">Повторить оценку на порогах 2 500, 2 800,
+  3 200, 3 500, где ничего не происходит.
+  Разрывы должны быть нулевыми.</span>
+  замеры: −0.003, +0.006, −0.002, +0.004 <span class="res">✓</span>
+  <span class="dim">все в пределах шума — настоящий порог
+  выделяется однозначно</span>
+
+<span class="bad">Если хотя бы одна из проверок провалена,
+разрыв на настоящем пороге ничего не доказывает:
+он может быть таким же артефактом.</span></div>
+    </div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Разрыв в исходе и разрыв в плотности</div>
+    <div class="chsub">Столбцы — число заказов, линия — удержание. Скачок плотности прямо перед порогом выдаёт манипуляцию: покупатели добирают корзину ради скидки</div>
+    <canvas id="c_rd"></canvas>
+  </div>
+</section>
+
+</div>
+
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Выбор метода — и 15 подводных камней</h2></div>
+  <p class="slead">Метод выбирается не по моде и не по доступности библиотеки, а по тому, какое предположение вы готовы защищать перед скептиком.</p>
+
+  <table class="ct">
+    <thead><tr><th>Метод</th><th>Что нужно предположить</th><th>Что проверяемо</th></tr></thead>
+    <tbody>
+      <tr><td>DiD</td><td class="note">параллельные тренды</td><td class="a">только предтренды, и обычно без мощности</td></tr>
+      <tr><td>Оценщики для поэтапного внедрения</td><td class="note">то же плюс отсутствие эффекта до внедрения</td><td class="a">событийный график</td></tr>
+      <tr class="best"><td>Synthetic control</td><td class="note">комбинация доноров воспроизводит обработанного</td><td class="g">качество подгонки предпериода — прямо видно</td></tr>
+      <tr class="best"><td>Synthetic DiD</td><td class="note">то же, но мягче</td><td class="g">подгонка плюс предтренды</td></tr>
+      <tr><td>IV</td><td class="note">исключающее ограничение</td><td class="r">не проверяется вовсе; проверяется только сила</td></tr>
+      <tr><td>DML, матчинг</td><td class="note">все конфаундеры измерены</td><td class="r">не проверяется; можно оценить чувствительность</td></tr>
+      <tr class="best"><td>Разрывный дизайн</td><td class="note">непрерывность всего остального у порога</td><td class="g">плотность, ковариаты, ложные пороги</td></tr>
+    </tbody>
+  </table>
+  <p class="tcap">Три строки с зелёными отметками в последнем столбце — методы, где предположение имеет проверяемые следствия. Именно поэтому им стоит отдавать предпочтение, когда выбор есть.</p>
+
+  <div class="chb">
+    <div class="cht">Методы по проверяемости и требовательности к данным</div>
+    <div class="chsub">По вертикали — насколько сильно предположение проверяется данными, по горизонтали — сколько нужно единиц наблюдения. Правый верхний угол предпочтителен</div>
+    <canvas id="c_choice"></canvas>
+  </div>
+
+  <h3 style="font-size:20px;font-weight:700;margin:38px 0 18px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">1</div><div class="pfc"><b>Causal ML вместо эксперимента, который можно было провести</b><span>Метод существует для случаев, когда рандомизация невозможна, а не когда она долгая. В разобранном примере наивная оценка дала 18.4% при истинных 6.1% — две трети «эффекта» были отбором и рынком.</span></div></div>
+
+  <div class="pf"><div class="pfn">2</div><div class="pfc"><b>Предтренды проверены p-значением, а не глазами</b><span>Незначимый тест означает лишь нехватку мощности. В примере наклон 23 ± 11.1 дал p = 0.130, но верхняя граница интервала допускает смещение в 60% от оценки. Показывать нужно график, а не вердикт.</span></div></div>
+
+  <div class="pf"><div class="pfn">3</div><div class="pfc"><b>Длинный постпериод как способ набрать данных</b><span>При непараллельных трендах смещение накапливается линейно: 23 за период превращаются в 92 за четыре периода — 31% от оценки. Больше данных здесь делает оценку хуже, а не лучше.</span></div></div>
+
+  <div class="pf"><div class="pfn">4</div><div class="pfc"><b>Регрессия с фиксированными эффектами при поэтапном внедрении</b><span>Она усредняет все парные сравнения, включая те, где уже обработанная группа служит контролем. В примере это дало 114.9 при истинных 196.7 — занижение на 42%.</span></div></div>
+
+  <div class="pf"><div class="pfn">5</div><div class="pfc"><b>Один усреднённый эффект при динамическом воздействии</b><span>При эффекте, растущем со 100 до 400, «среднее 212» не описывает ни один момент времени. Событийный график по периодам от внедрения отвечает сразу на несколько вопросов, которые среднее скрывает.</span></div></div>
+
+  <div class="pf"><div class="pfn">6</div><div class="pfc"><b>Synthetic control при плохой подгонке предпериода</b><span>RMSE выше 5% от уровня означает, что комбинация доноров не воспроизводит обработанного, и постпериодный разрыв нельзя приписывать воздействию. В примере с RMSE 1.48% остаточное расхождение +24 целиком ушло в оценку эффекта.</span></div></div>
+
+  <div class="pf"><div class="pfn">7</div><div class="pfc"><b>Мало доноров для плацебо-теста</b><span>Ранговое p-значение ограничено снизу величиной 1/(число доноров + 1). При десяти донорах минимально достижимое p равно 0.091 — значимости не добиться в принципе, сколько бы ни был велик эффект.</span></div></div>
+
+  <div class="pf"><div class="pfn">8</div><div class="pfc"><b>Выбор метода после просмотра результатов</b><span>Посчитать DiD, synthetic control и SDiD и сообщить понравившееся — то же самое, что подглядывание из <a href="block4_05_sequential_testing.html">4.5</a>. Считать всеми тремя правильно, но сообщать нужно все три и разбираться в расхождении.</span></div></div>
+
+  <div class="pf"><div class="pfn">9</div><div class="pfc"><b>Исключающее ограничение принято на веру</b><span>Оно не проверяется данными вообще. Рассылка приглашения могла повлиять на выручку не только через использование функции, но и просто напомнив о бренде — и тогда оценка 400 завышена на всю величину этого канала.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Слабый инструмент не проверен</b><span>F-статистика первой стадии ниже 10 означает, что оценка смещена в сторону наивной регрессии, а интервал не имеет заявленного покрытия. При разности в первой стадии 0.03 оценка составила 3 733 ± 1 240 — число без смысла.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>LATE перенесён на всю аудиторию</b><span>IV оценивает эффект только на комплаерах — тех 28%, кто начал пользоваться из-за приглашения. Они по определению чувствительны к нему и отличаются от остальных 72%.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Double ML без кросс-подгонки</b><span>При 300 контролях смещение составило +26% вместо +2%. Чем гибче вспомогательная модель, тем важнее, чтобы предсказание для наблюдения делалось моделью, его не видевшей — та же логика, что в <a href="block1_15_validation_schemes.html">1.15</a>.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Триста контролей приняты за отсутствие конфаундеров</b><span>DML аккуратно реализует предположение, но не устраняет его. Пропущенная переменная «включали там, где ожидали роста» смещает оценку независимо от числа контролей и качества вычислений.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Причинный лес нашёл отбор, а не гетерогенность</b><span>В верхнем квантиле доля обработанных была 71% против 19% в нижнем. После стратификации по склонности разброс между крайними квантилями упал с 460 до 210 — больше половины «гетерогенности» объяснялось отбором.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>RD без проверки плотности у порога</b><span>Скачок с 1 190 до 1 810 заказов означает, что покупатели дотягивают корзину до порога — и оказавшиеся чуть выше отличаются мотивацией. Donut RD дал 0.041 вместо 0.066: обычный завышал на 65%.</span></div></div>
+</section>
+
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>System Design</h2></div>
+  <p class="slead">Пять постановок, где эксперимент невозможен, а решение принимать надо.</p>
+
+  <div class="sysbox">
+    <div class="sysh">1. Изменение комиссии на маркетплейсе</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Комиссию для продавцов снизили в трёх категориях из сорока. Рандомизировать нельзя: разная комиссия для одинаковых продавцов юридически проблематична, а новость расходится мгновенно.</p>
+      <p><b>Метод — synthetic control по каждой категории отдельно.</b> Доноров тридцать семь, обработанных три. Для каждой строится своя синтетика, оценки затем усредняются. Плацебо-тест по всем донорам даёт ранговое p-значение.</p>
+      <p><b>Что проверить до расчёта.</b> Качество подгонки предпериода: RMSE ниже 2% от уровня. Если категория крайняя по размеру или динамике, хорошей подгонки не будет — комбинация доноров не может выйти за их оболочку, и это сразу видно на графике.</p>
+      <p><b>Главная угроза — переток.</b> Продавцы могут перенести товары в категорию с низкой комиссией, и тогда доноры загрязнены: их падение частично вызвано воздействием. Проверка — динамика числа товаров в донорских категориях; при заметном оттоке такие доноры исключаются.</p>
+      <p><b>Что сообщать.</b> Три оценки по категориям отдельно, а не среднюю. Эффект снижения комиссии в категории с высокой конкуренцией и в нишевой различается по механизму, и усреднение уничтожает как раз то, ради чего считали.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">2. Поэтапная раскатка новой версии приложения по странам</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Версия выкатывалась четырьмя волнами за три месяца, к концу охвачены все страны. Классической контрольной группы в итоге не остаётся.</p>
+      <p><b>Почему стандартная регрессия непригодна.</b> Без «никогда не внедривших» доля испорченных сравнений достигает 67%: оценка складывается почти целиком из сопоставлений обработанных с обработанными. В разобранном примере это занизило эффект на 42%.</p>
+      <p><b>Метод — оценщик для поэтапного внедрения.</b> Контролем для каждой когорты служат страны, ещё не получившие версию. Последняя волна остаётся без контроля и в оценку не входит — это цена дизайна, и её нужно заложить: раскатку стоит планировать так, чтобы последняя волна была небольшой.</p>
+      <p><b>Что даёт событийный график.</b> Он показывает, отличается ли эффект у ранних и поздних волн. Если у поздних он слабее, вероятны две причины: рынки различаются либо к тому времени изменились сопутствующие условия. Различить их помогает разбивка по характеристикам стран.</p>
+      <p><b>Оговорка про предтренды.</b> Порядок волн обычно не случаен — сначала выкатывают туда, где меньше риска. Это прямая угроза параллельности, и точки слева от нуля на событийном графике здесь особенно важны.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">3. Оценка эффекта функции, которую включают сами пользователи</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Функцию включили 6% пользователей. Сравнение включивших с невключившими даёт разницу в выручке 2 100 ₽ — очевидно, это в основном отбор.</p>
+      <p><b>Дизайн с поощрением.</b> Случайной половине рассылается приглашение. Доля включивших: 34% против 6%. Оценка Вальда: 112 / 0.28 = 400 ₽ на комплаера.</p>
+      <p><b>Что проверить.</b> Первая стадия сильна: F = 412, много выше порога 10. Исключающее ограничение — рассуждением: могло ли приглашение повлиять на выручку помимо включения функции? Если в письме есть промокод, ограничение нарушено, и оценка завышена на весь эффект промокода.</p>
+      <p><b>Как проверить исключающее ограничение хотя бы частично.</b> Разослать два варианта приглашения с разной убедительностью, но одинаковым содержанием помимо неё. Если оценки Вальда совпадают, ограничение правдоподобно; если расходятся — есть прямой канал.</p>
+      <p><b>Что сообщать бизнесу.</b> Оба числа. ITT +112 отвечает на вопрос «стоит ли делать рассылку». LATE +400 отвечает на вопрос «насколько ценна сама функция для тех, кого удалось убедить». Смешивать их — самая частая ошибка в интерпретации IV.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">4. Оценка эффекта на исторических данных при богатой телеметрии</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Есть три года логов и триста признаков на пользователя. Задача — оценить эффект функции, которую включали неслучайно, без возможности провести эксперимент.</p>
+      <p><b>Метод — Double ML.</b> Две вспомогательные модели: предсказание исхода по признакам и предсказание включения по признакам. Затем регрессия остатков на остатки. Кросс-подгонка по пяти фолдам обязательна: при 300 признаках без неё смещение составило +26% против +2% с ней.</p>
+      <p><b>Что не решается никаким количеством признаков.</b> Если решение о включении принималось на основании чего-то, чего нет в логах, — интуиции менеджера, разговора с клиентом, — оценка смещена. Триста признаков создают ощущение полноты, которое ничем не подкреплено.</p>
+      <p><b>Обязательный анализ чувствительности.</b> Насколько сильным должен быть скрытый конфаундер, чтобы обнулить эффект? Если достаточно переменной, объясняющей 3% дисперсии исхода и 5% дисперсии включения, — вывод хрупок, и это нужно сказать вслух.</p>
+      <p><b>Практический выход.</b> Использовать DML для приоритизации: он покажет, где эффект правдоподобно велик. Дальше — маленький эксперимент именно там. Найденный сегмент обычно узкий, и мощности на него хватает даже при общем дефиците трафика.</p>
+    </div>
+  </div>
+
+  <div class="sysbox">
+    <div class="sysh">5. Программа лояльности с порогом</div>
+    <div class="sysc">
+      <p><b>Постановка.</b> Статус «серебро» даётся при 12 покупках за год. Нужно оценить, что даёт сам статус, а не то, что его получают активные покупатели.</p>
+      <p><b>Метод — разрывный дизайн.</b> Сравниваются пользователи с 11 и 12 покупками. Они почти неразличимы по активности, но одни получили статус, а другие нет.</p>
+      <p><b>Первая проверка проваливается.</b> Плотность распределения числа покупок скачет на пороге: людей с ровно 12 покупками заметно больше, чем с 11. Покупатели дотягивают до статуса — и значит, оказавшиеся справа отличаются мотивацией.</p>
+      <p><b>Donut RD.</b> Исключается окрестность порога, где сосредоточены «дотянувшие». Оценка падает с 0.066 до 0.041 и стабилизируется — обычный RD завышал на 65%. Ширина зоны подбирается по восстановлению непрерывности плотности за её границами.</p>
+      <p><b>Две оставшиеся проверки.</b> Непрерывность ковариат на пороге (максимальный скачок 0.004 при se 0.009 — в пределах шума) и ложные пороги на 8, 10, 14 и 16 покупках (разрывы от −0.003 до +0.006). Обе пройдены, и только после этого оценку можно показывать.</p>
+      <p><b>Ограничение, которое нужно проговорить.</b> Оценка относится к пользователям <b>у порога</b>. Что даёт статус тому, кто делает пятьдесят покупок, разрывный дизайн не говорит, и экстраполировать нельзя.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Формулировки, которые встречаются на собеседованиях и в рабочих спорах.</p>
+
+  <div class="qa"><b>1. Что теряется без рандомизации?</b><span>Гарантия, что группы одинаковы по всем характеристикам, включая неизмеренные. Каждый метод причинного вывода — это конкретное заявление о том, чем группы похожи, и ни одно такое заявление не проверяется данными полностью.</span></div>
+
+  <div class="qa"><b>2. Насколько велика разница между наивной оценкой и честной?</b><span>Обычно больше самого эффекта. В разобранном примере разность средних дала 18.4%, эксперимент позже показал 6.1%: 8.2 п.п. пришлись на отбор регионов, 3.1 п.п. — на общий рост рынка.</span></div>
+
+  <div class="qa"><b>3. Как устроен DiD?</b><span>Из изменения в обработанной группе вычитается изменение в контрольной: (4 850 − 4 200) − (4 150 − 3 800) = 300. Первая разность убирает всё постоянное во времени, вторая — всё общее для групп.</span></div>
+
+  <div class="qa"><b>4. Какое предположение делает DiD?</b><span>Параллельные тренды: обработанная группа менялась бы так же, как контрольная, если бы воздействия не было. Оно о том, чего не произошло, и потому непроверяемо в принципе.</span></div>
+
+  <div class="qa"><b>5. Как проверить параллельность трендов?</b><span>По следствию в предпериоде: разность между группами до воздействия должна быть постоянной. Показывать нужно событийный график, а не p-значение теста — мощности на такой тест почти никогда не хватает.</span></div>
+
+  <div class="qa"><b>6. Почему незначимый тест на предтренды ничего не доказывает?</b><span>В примере наклон 23 ± 11.1, p = 0.130 — формально не значим. Но верхняя граница интервала 44.7 допускает смещение 179 за четыре периода, то есть 60% от оценки. Отсутствие доказательства не есть доказательство отсутствия.</span></div>
+
+  <div class="qa"><b>7. Почему длинный постпериод — плохая идея при непараллельных трендах?</b><span>Смещение накапливается линейно: наклон 23 за период даёт 23 за один период и 92 за четыре, то есть 31% от оценки. Больше данных здесь ухудшает результат, а не улучшает.</span></div>
+
+  <div class="qa"><b>8. Что не так с регрессией с фиксированными эффектами при поэтапном внедрении?</b><span>Она равна взвешенному среднему всех парных сравнений, включая те, где уже обработанная группа служит контролем. При растущем эффекте такое сравнение даёт отрицательный вклад — в примере −30 с весом 0.18.</span></div>
+
+  <div class="qa"><b>9. Насколько велика эта проблема?</b><span>В разобранном примере оценка 114.9 при истинных 196.7 — занижение на 42%. Доля испорченных сравнений растёт с числом когорт: при 30% никогда не внедривших она равна 18%, при их отсутствии — 67%.</span></div>
+
+  <div class="qa"><b>10. Как это чинится?</b><span>Строить каждый DiD только с «чистыми» контролями — никогда не внедрявшими или ещё не внедрившими — и усреднять с явно выбранными весами. Ключевое правило: никогда не использовать уже обработанную единицу как контроль.</span></div>
+
+  <div class="qa"><b>11. Какое число сообщать при динамическом эффекте?</b><span>Никакое одно. При эффекте, растущем со 100 до 400, простое среднее по ячейкам даёт 196.7, взвешенное по наблюдениям — 211.9, эффект первого периода — 96.2. Все три корректны и отвечают на разные вопросы; показывать нужно событийный график.</span></div>
+
+  <div class="qa"><b>12. Как работает synthetic control?</b><span>Подбираются неотрицательные веса доноров, суммирующиеся в единицу, так чтобы их комбинация воспроизводила предпериод обработанной единицы. Расхождение после воздействия и есть эффект. В примере веса получили четыре донора из двадцати четырёх.</span></div>
+
+  <div class="qa"><b>13. Чем synthetic control лучше DiD?</b><span>Его условие проверяемо. Параллельность трендов увидеть нельзя, а качество подгонки предпериода видно прямо на графике: RMSE 37.5 при уровне 4 200 — это 0.89%, отличная подгонка.</span></div>
+
+  <div class="qa"><b>14. Какая подгонка считается приемлемой?</b><span>Ниже 2% от уровня — хорошая, выше 5% — повод усомниться в применимости. При плохой подгонке остаточное расхождение целиком переходит в оценку эффекта: в примере с RMSE 1.48% это дало завышение на 24 единицы.</span></div>
+
+  <div class="qa"><b>15. Откуда берётся p-значение в synthetic control?</b><span>Из плацебо-теста: метод применяется к каждому донору как к «псевдообработанному», и считается ранг настоящей обработанной единицы по отношению разрыва к предпериодной RMSE. В примере 1-е место из 25 даёт p = 0.04.</span></div>
+
+  <div class="qa"><b>16. Сколько нужно доноров?</b><span>Не меньше двадцати. Ранговое p-значение ограничено снизу величиной 1/(число доноров + 1): при десяти донорах минимально достижимое p равно 0.091, и значимости не добиться независимо от величины эффекта.</span></div>
+
+  <div class="qa"><b>17. Что добавляет Synthetic DiD?</b><span>Веса периодов и структуру DiD поверх весов доноров. Благодаря второй разности он не требует идеальной подгонки предпериода. На симуляции с истиной 285: DiD дал 300, SC — 312, SDiD — 289 при вдвое более узком интервале.</span></div>
+
+  <div class="qa"><b>18. Какой метод выбрать, если непонятно?</b><span>Считать всеми и сообщать все результаты. Близость оценок означает устойчивость вывода, расхождение — само по себе важный результат, требующий разбора. Выбирать понравившееся число после просмотра — это подглядывание.</span></div>
+
+  <div class="qa"><b>19. Что такое инструментальная переменная?</b><span>Нечто, влияющее на воздействие, но на исход — только через него. Классический случай — случайно разосланное приглашение: оно повышает долю начавших пользоваться с 6% до 34%, и оценка Вальда равна 112/0.28 = 400.</span></div>
+
+  <div class="qa"><b>20. Какое условие IV не проверяется данными?</b><span>Исключающее ограничение — что инструмент влияет на исход только через воздействие. Его можно только обосновать содержательно. Если в письме был промокод, ограничение нарушено, и оценка завышена на весь эффект промокода.</span></div>
+
+  <div class="qa"><b>21. На кого распространяется IV-оценка?</b><span>Только на комплаеров — тех 28%, кто начал пользоваться из-за приглашения. Всегда-берущие (6%) и никогда-берущие (66%) в оценку не входят. Переносить число на всю аудиторию нельзя: комплаеры по определению чувствительны к поощрению.</span></div>
+
+  <div class="qa"><b>22. Что такое слабый инструмент?</b><span>Слабое влияние на первой стадии. Знаменатель оценки Вальда мал, и всё раздувается: при разности 0.03 оценка составила 3 733 ± 1 240. Проверка — F-статистика первой стадии, она должна быть выше 10, а лучше выше 30.</span></div>
+
+  <div class="qa"><b>23. Почему нельзя просто засунуть всё в бустинг?</b><span>Регуляризация сжимает коэффициент при воздействии и оставляет в остатках часть влияния контролей. В примере лассо со всеми 300 контролями дало 0.081 при истинных 0.050 — завышение на 62%.</span></div>
+
+  <div class="qa"><b>24. Что делает Double ML?</b><span>Два приёма. Ортогонализация: отдельно предсказываем исход по контролям и воздействие по контролям, затем регрессируем остатки на остатки. Кросс-подгонка: предсказание для наблюдения делает модель, его не видевшая.</span></div>
+
+  <div class="qa"><b>25. Насколько важна кросс-подгонка?</b><span>Критически, и тем сильнее, чем гибче вспомогательные модели. При 20 контролях смещение без неё +6%, при 300 — +26%, при 1 000 — +48%. С кросс-подгонкой оно остаётся в пределах 3% при любой размерности.</span></div>
+
+  <div class="qa"><b>26. Заменяет ли DML рандомизацию?</b><span>Нет. Он корректно реализует предположение об отсутствии скрытых конфаундеров, но не устраняет его. Пропущенная переменная «включали там, где ожидали роста» смещает оценку независимо от числа контролей и качества вычислений.</span></div>
+
+  <div class="qa"><b>27. Можно ли искать гетерогенность на наблюдательных данных?</b><span>Можно, но с осторожностью: причинный лес не отличает «здесь эффект больше» от «здесь отбор сильнее». В примере доля обработанных в верхнем квантиле составила 71% против 19% в нижнем — верный признак того, что найден отбор.</span></div>
+
+  <div class="qa"><b>28. Как это проверить?</b><span>Пересчитать эффект внутри узкой страты по склонности к воздействию. В примере разброс между крайними квантилями упал с 460 до 210 — больше половины «гетерогенности» объяснялось отбором. До экспериментальной истины (171) дожило 37% исходной оценки.</span></div>
+
+  <div class="qa"><b>29. Что такое разрывный дизайн и когда он применим?</b><span>Когда воздействие назначается по порогу: скидка от суммы чека, статус от числа покупок. У порога объекты по обе стороны почти неразличимы, и скачок в исходе объясняется воздействием. Оценка локальна — переносить её далеко от порога нельзя.</span></div>
+
+  <div class="qa"><b>30. Какие проверки обязательны для RD?</b><span>Три. Непрерывность плотности бегущей переменной (скачок с 1 190 до 1 810 выдал манипуляцию, и donut RD снизил оценку с 0.066 до 0.041). Непрерывность ковариат на пороге. Отсутствие разрывов на ложных порогах. Провал любой из них обесценивает результат.</span></div>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Тема 4.4 закрывает блок 4. Расчёт мощности и гетерогенность эффекта — <a href="block4_01_ab_testing.html">4.1</a>, снижение дисперсии — <a href="block4_02_cuped.html">4.2</a>, дизайны при интерференции — <a href="block4_03_switchback.html">4.3</a>, корректная остановка — <a href="block4_05_sequential_testing.html">4.5</a>, диагностика — <a href="block4_06_srm_diagnostics.html">4.6</a>. Оценка индивидуального эффекта теми же методами в маркетинговой постановке — <a href="block1_03_uplift.html">1.3</a> и <a href="block2_09_uplift_economics.html">2.9</a>. Кросс-подгонка, без которой DML смещён, — <a href="block1_15_validation_schemes.html">1.15</a>. Взвешивание по склонности и его пределы — <a href="block1_13_feedback_loops.html">1.13</a>.
+</div>
+
+<div class="pnav">
+  <a href="block4_03_switchback.html">← 4.3 · Интерференция и switchback</a>
+  <a class="next" href="block4_05_sequential_testing.html">4.5 · Последовательное тестирование →</a>
+</div>
+
+</div>
+
+<script>
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return; try{ new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); } }
+var GRID={grid:{color:'#eef2f7'}}, NOG={grid:{display:false}};
+var AC='#7f1d1d', AC2='#ef4444', BL='#2563eb', GR='#059669', OR='#d97706', RD='#b91c1c', GY='#94a3b8';
+
+/* 1 — разложение наивной оценки */
+mk('c_decomp',{type:'bar',data:{labels:['Отбор регионов','Рост рынка','Реальный эффект','Шум'],
+ datasets:[{label:'Вклад в наивную оценку 18.4%, п.п.',data:[8.2,3.1,6.1,1.0],
+  backgroundColor:[RD,OR,GR,GY],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:9.5,title:{display:true,text:'процентных пунктов'}},GRID),x:NOG},plugins:{legend:{display:false}}}});
+
+/* 2 — DiD */
+mk('c_did',{type:'line',data:{labels:['до','после'],
+ datasets:[
+  {label:'Регион A (обработан)',data:[4200,4850],borderColor:AC,pointRadius:7,tension:0},
+  {label:'Регион B (контроль)',data:[3800,4150],borderColor:BL,pointRadius:7,tension:0},
+  {label:'A без воздействия (контрфактика)',data:[4200,4550],borderColor:GY,borderDash:[6,4],pointRadius:7,tension:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:3600,max:5000,title:{display:true,text:'выручка на пользователя'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex===1?'разрыв 4 850 − 4 550 = 300':'';}}}}}});
+
+/* 3 — событийный график предтрендов */
+mk('c_pretrend',{type:'line',data:{labels:['−5','−4','−3','−2','−1','0','+1','+2','+3','+4'],
+ datasets:[
+  {label:'Разность между группами',data:[300,320,310,350,400,null,700,760,820,880],borderColor:AC,pointRadius:6,tension:.15},
+  {label:'Если бы тренды были параллельны',data:[336,336,336,336,336,null,null,null,null,null],borderColor:GR,borderDash:[4,4],pointRadius:0},
+  {label:'Продолжение предтренда',data:[null,null,null,null,400,423,446,469,492,515],borderColor:RD,borderDash:[6,4],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:250,max:950,title:{display:true,text:'A − B'}},GRID),x:Object.assign({title:{display:true,text:'период относительно воздействия'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 4 — разложение TWFE */
+mk('c_bacon',{type:'bar',data:{labels:['рано vs никогда','поздно vs никогда','рано vs поздно (чистые)','поздно vs рано (испорчено)'],
+ datasets:[
+  {type:'bar',label:'Оценка сравнения',data:[160,120,155,-30],backgroundColor:[GR,GR,GR,RD],borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Вес в итоговой оценке',data:[0.31,0.24,0.27,0.18],borderColor:AC,tension:.2,pointRadius:6,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:-60,max:190,position:'left',title:{display:true,text:'оценка'}},GRID),
+   y1:{min:0,max:0.4,position:'right',grid:{display:false},title:{display:true,text:'вес'}},
+   x:NOG},plugins:{legend:{position:'bottom'}}}});
+
+/* 5 — событийный график по когортам */
+mk('c_stagger',{type:'line',data:{labels:['+0','+1','+2','+3','+4','+5'],
+ datasets:[
+  {label:'Рано внедрившие',data:[100,160,220,280,340,400],borderColor:AC,tension:.2,pointRadius:6},
+  {label:'Поздно внедрившие',data:[90,90,90,null,null,null],borderColor:BL,tension:.2,pointRadius:6},
+  {label:'Оценка регрессии с фикс. эффектами',data:[114.9,114.9,114.9,114.9,114.9,114.9],borderColor:RD,borderDash:[5,4],pointRadius:0},
+  {label:'Корректное среднее 196.7',data:[196.7,196.7,196.7,196.7,196.7,196.7],borderColor:GR,borderDash:[3,3],pointRadius:0}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:430,title:{display:true,text:'эффект'}},GRID),x:Object.assign({title:{display:true,text:'периодов от внедрения'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 6 — synthetic control */
+mk('c_sc',{type:'line',data:{labels:['−5','−4','−3','−2','−1','+1','+2','+3'],
+ datasets:[
+  {label:'Факт (обработанный регион)',data:[3400,3580,3750,3980,4200,4850,5020,5180],borderColor:AC,tension:.2,pointRadius:5},
+  {label:'Синтетический контроль',data:[3371,3622,3714,4021,4162,4538,4671,4802],borderColor:BL,borderDash:[5,4],tension:.2,pointRadius:5}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:3200,max:5400,title:{display:true,text:'выручка на пользователя'}},GRID),x:Object.assign({title:{display:true,text:'период'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var g=[29,-42,36,-41,38,312,349,378];return 'разность: '+g[it[0].dataIndex];}}}}}});
+
+/* 7 — плацебо */
+mk('c_placebo',{type:'bar',data:{labels:['Обработанный','Плацебо 1','Плацебо 2','Плацебо 3','Плацебо 4','Медианный плацебо','Худший плацебо'],
+ datasets:[{label:'Разрыв / предпериодная RMSE',data:[9.24,4.11,3.28,2.64,2.05,1.36,0.22],
+  backgroundColor:[AC,GY,GY,GY,GY,GY,GY],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:10,title:{display:true,text:'отношение'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){return it[0].dataIndex===0?'1-е место из 25 → p = 0.04':'';}}}}}});
+
+/* 8 — три метода */
+mk('c_sdid',{type:'bar',data:{labels:['DiD','Synthetic control','Synthetic DiD'],
+ datasets:[
+  {type:'bar',label:'Оценка',data:[300,312,289],backgroundColor:[OR,AC2,GR],borderRadius:4,order:2},
+  {type:'line',label:'Истина 285',data:[285,285,285],borderColor:GY,borderDash:[4,4],pointRadius:0,order:1}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:250,max:340,title:{display:true,text:'оценка эффекта'}},GRID),x:NOG},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var s=[95,110,62],e=[15,27,4];return 'se '+s[it[0].dataIndex]+' · ошибка +'+e[it[0].dataIndex];}}}}}});
+
+/* 9 — сила инструмента */
+mk('c_iv',{type:'line',data:{labels:['0.28','0.15','0.08','0.03'],
+ datasets:[
+  {label:'Оценка Вальда',data:[400,747,1400,3733],borderColor:AC,tension:.2,pointRadius:6},
+  {label:'Стандартная ошибка',data:[68,143,312,1240],borderColor:RD,borderDash:[5,4],tension:.2,pointRadius:6}
+ ]},
+ options:{responsive:true,scales:{
+   y:{type:'logarithmic',title:{display:true,text:'значение (лог. шкала)'},grid:{color:'#eef2f7'}},
+   x:Object.assign({title:{display:true,text:'разность в первой стадии'}},NOG)},
+  plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:function(it){var f=[412,118,33,4.7];return 'F первой стадии: '+f[it[0].dataIndex];}}}}}});
+
+/* 10 — DML */
+mk('c_dml',{type:'line',data:{labels:['20','100','300','1 000'],
+ datasets:[
+  {label:'Без кросс-подгонки, % смещения',data:[6,17,26,48],borderColor:RD,backgroundColor:'rgba(185,28,28,.07)',tension:.25,fill:true,pointRadius:6},
+  {label:'С кросс-подгонкой, % смещения',data:[1,2,2,3],borderColor:GR,tension:.25,pointRadius:6}
+ ]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:52,title:{display:true,text:'смещение оценки, %'}},GRID),x:Object.assign({title:{display:true,text:'число контролей'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 11 — гетерогенность после проверок */
+mk('c_forest',{type:'bar',data:{labels:['Наивный лес','Честная оценка','Внутри страты по склонности','Эксперимент'],
+ datasets:[{label:'Эффект на верхнем квантиле',data:[461,318,186,171],
+  backgroundColor:[RD,OR,AC2,GR],borderRadius:4}]},
+ options:{responsive:true,scales:{y:Object.assign({min:0,max:500,title:{display:true,text:'эффект'}},GRID),x:NOG},
+  plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:function(it){var d=[270,186,109,100];return 'от экспериментальной истины: '+d[it[0].dataIndex]+'%';}}}}}});
+
+/* 12 — разрывный дизайн */
+mk('c_rd',{type:'bar',data:{labels:['2800','2850','2900','2950','| 3000','3050','3100'],
+ datasets:[
+  {type:'bar',label:'Число заказов',data:[1265,1240,1218,1190,1810,1320,1288],backgroundColor:['#cbd5e1','#cbd5e1','#cbd5e1','#cbd5e1',RD,'#cbd5e1','#cbd5e1'],borderRadius:4,yAxisID:'y',order:2},
+  {type:'line',label:'Удержание',data:[0.395,0.398,0.405,0.412,0.478,0.481,0.484],borderColor:AC,tension:.1,pointRadius:6,yAxisID:'y1',order:1}
+ ]},
+ options:{responsive:true,scales:{
+   y:Object.assign({min:0,max:2000,position:'left',title:{display:true,text:'число заказов'}},GRID),
+   y1:{min:0.37,max:0.52,position:'right',grid:{display:false},title:{display:true,text:'удержание'}},
+   x:Object.assign({title:{display:true,text:'сумма чека, ₽ (порог 3 000)'}},NOG)},plugins:{legend:{position:'bottom'}}}});
+
+/* 13 — выбор метода */
+mk('c_choice',{type:'scatter',data:{datasets:[
+  {label:'DiD',data:[{x:2,y:2}],backgroundColor:OR,pointRadius:11},
+  {label:'Оценщики для поэтапного внедрения',data:[{x:12,y:3}],backgroundColor:AC2,pointRadius:11},
+  {label:'Synthetic control',data:[{x:25,y:4}],backgroundColor:GR,pointRadius:11},
+  {label:'Synthetic DiD',data:[{x:25,y:4.5}],backgroundColor:'#15803d',pointRadius:11},
+  {label:'IV',data:[{x:5,y:1}],backgroundColor:RD,pointRadius:11},
+  {label:'Double ML',data:[{x:60,y:1.5}],backgroundColor:BL,pointRadius:11},
+  {label:'Разрывный дизайн',data:[{x:40,y:5}],backgroundColor:AC,pointRadius:11}
+ ]},
+ options:{responsive:true,scales:{
+   x:{type:'logarithmic',title:{display:true,text:'нужно единиц наблюдения (условно)'},grid:{color:'#eef2f7'}},
+   y:Object.assign({min:0,max:6,title:{display:true,text:'проверяемость предположения'}},GRID)},
+  plugins:{legend:{position:'bottom'}}}});
+
+/* ИНТЕРАКТИВ */
+function updDiD(){
+  var slope = +document.getElementById('sl_slope').value;
+  var post  = +document.getElementById('sl_post').value;
+  var est   = +document.getElementById('sl_est').value;
+
+  document.getElementById('out_slope').textContent = slope;
+  document.getElementById('out_post').textContent = post;
+  document.getElementById('out_est').textContent = est;
+
+  var avgPeriod = (post + 1) / 2;
+  var bias = slope * avgPeriod;
+  var corrected = est - bias;
+  var pct = est === 0 ? 0 : 100 * bias / est;
+
+  var verdict;
+  if (pct < 5) verdict = 'смещение мало — оценке можно верить';
+  else if (pct < 20) verdict = 'заметно: сообщайте и оценку, и величину возможного смещения';
+  else if (pct < 60) verdict = 'много: нужен метод, устойчивый к непараллельности (Synthetic DiD)';
+  else verdict = 'ОЦЕНКА НЕПРИГОДНА — смещение сопоставимо с самим эффектом';
+
+  document.getElementById('out_did').textContent =
+    'среднее смещение = наклон × (1+2+…+' + post + ')/' + post + '\n' +
+    '                 = ' + slope + ' × ' + avgPeriod.toFixed(1) + ' = ' + bias.toFixed(1) + '\n' +
+    '─────────────────────────────────────────────\n' +
+    'оценка без поправки:   ' + est + '\n' +
+    'скорректированная:     ' + corrected.toFixed(1) + '\n' +
+    'доля смещения:         ' + pct.toFixed(1) + '% от оценки\n' +
+    '─────────────────────────────────────────────\n' +
+    'Вывод: ' + verdict;
+}
+(function(){
+  ['sl_slope','sl_post','sl_est'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('input', updDiD); });
+  if(document.getElementById('out_did')) updDiD();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>
