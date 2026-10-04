@@ -5,6 +5,7 @@ import { review, previewIntervals, fmtInterval } from '../lib/srs.js';
 import { topicHref } from '../lib/router.js';
 import { Bar, plural } from '../ui/ui.jsx';
 import Icon from '../ui/icons.jsx';
+import { haptic } from '../lib/haptics.js';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 // Экзамен: 60 с на вопрос — ориентир на вдумчивый ответ без подглядывания.
@@ -21,7 +22,6 @@ const GRADES = [
   { g: 4, label: 'Легко', cls: 'g4' },
 ];
 const Html = ({ html, className, as: Tag = 'div' }) => <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />;
-const vibrate = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch { /* нет вибро */ } };
 
 const mkItem = (q) => ({ q, order: q.type === 'mcq' ? (q.fixedOrder ? q.options.map((_, i) => i) : shuffle(q.options.map((_, i) => i))) : null, requeued: 0 });
 
@@ -53,6 +53,7 @@ export default function Session({ manifest, params }) {
       if (answers.length) saveAttempt({ id: 'a' + r.startedAt.toString(36), scope, mode, full: !n, startedAt: r.startedAt, finishedAt: Date.now(),
         total: answers.length, correct: answers.filter((a) => a.correct).length, answers });
     }
+    haptic('success');
     setRun({ ...r, done: true });
     window.scrollTo(0, 0);
   };
@@ -163,11 +164,12 @@ function McqItem({ item, mode, tq, onDone }) {
   const pick = (orig) => {
     if (locked) return;
     setChosen(orig);
+    if (exam) haptic('tap'); // в экзамене верность не показывается — и не ощущается
     if (!exam) {
       setLocked(true);
       const okk = orig === q.correct;
       review(q.id, okk ? 3 : 1, mode);
-      if (!okk) vibrate(40);
+      haptic(okk ? 'success' : 'error');
     }
   };
   const next = () => {
@@ -198,7 +200,7 @@ function McqItem({ item, mode, tq, onDone }) {
           if (show) cls += orig === q.correct ? ' opt-ok' : orig === chosen ? ' opt-bad' : ' opt-dim';
           else if (exam && orig === chosen) cls += ' opt-sel';
           return (
-            <button key={orig} className={cls} onClick={() => pick(orig)} disabled={show}>
+            <button key={orig} className={cls} onClick={() => pick(orig)} disabled={show} data-haptic="off">
               <span className="opt-l">{LETTERS[i]}</span>
               <Html as="span" className="opt-t" html={q.options[orig]} />
             </button>
@@ -228,7 +230,7 @@ function CardItem({ item, mode, tq, onDone }) {
 
   const grade = (g) => {
     review(q.id, g, mode);
-    if (g === 1) vibrate(40);
+    haptic(g === 1 ? 'error' : 'tap');
     onDone({ qid: q.id, type: 'card', grade: g, ok: g >= 3, ms: Date.now() - tq });
   };
 
@@ -269,7 +271,7 @@ function CardItem({ item, mode, tq, onDone }) {
       <div className="small muted swipe-hint">Свайп: вправо — знал, влево — не знал</div>
       <div className="grades">
         {GRADES.map((x) => (
-          <button key={x.g} className={'grade ' + x.cls} onClick={() => grade(x.g)}>
+          <button key={x.g} className={'grade ' + x.cls} onClick={() => grade(x.g)} data-haptic="off">
             <b>{labels ? labels[x.g] : x.label}</b>
             <span>{fmtInterval(intervals[x.g])}</span>
           </button>

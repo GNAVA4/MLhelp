@@ -4,7 +4,6 @@ import { useProgress, setFlag } from '../lib/progress.js';
 import { streak, todayInfo, dayKey, isMature } from '../lib/srs.js';
 import { sessionHref, topicHref } from '../lib/router.js';
 import { Bar, plural } from '../ui/ui.jsx';
-import Account from '../ui/Account.jsx';
 
 // Тема попадает в «слабые», если по ней не меньше 5 ответов — иначе доля верных слишком шумная.
 const WEAK_MIN_ANSWERS = 5;
@@ -20,8 +19,6 @@ export default function Stats({ manifest }) {
   return (
     <div className="page">
       <header className="page-head"><h1>Статистика</h1></header>
-
-      <Account />
 
       <section className="tiles">
         <Tile v={st.days} l={plural(st.days, 'день', 'дня', 'дней') + ' подряд'} />

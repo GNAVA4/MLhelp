@@ -10,8 +10,12 @@ import App from './App.jsx';
 import { initSync } from './lib/sync.js';
 import UpdateBanner from './ui/UpdateBanner.jsx';
 import { Capacitor } from '@capacitor/core';
+import { initBackButton } from './lib/back.js';
+import { initHaptics } from './lib/haptics.js';
 
 initSync();
+initBackButton();
+initHaptics();
 
 // В APK service worker не нужен: контент лежит внутри приложения, обновление — новым APK (ADR 011).
 createRoot(document.getElementById('root')).render(<><App />{!Capacitor.isNativePlatform() && <UpdateBanner />}</>);

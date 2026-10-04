@@ -141,7 +141,7 @@ async function attachAuth() {
   if (!Capacitor.isNativePlatform()) { try { await a.getRedirectResult(auth); } catch (e) { setStatus({ error: e.message }); } }
   a.onAuthStateChanged(auth, (u) => {
     if (u) {
-      setStatus({ user: { uid: u.uid, name: u.displayName, email: u.email } });
+      setStatus({ user: { uid: u.uid, name: u.displayName, email: u.email, photo: u.photoURL } });
       start(u.uid).catch((e) => setStatus({ phase: 'error', error: e.message }));
     } else { stop(); setStatus({ user: null, phase: 'signedOut' }); }
   });

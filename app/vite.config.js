@@ -41,6 +41,8 @@ export default defineConfig({
     }),
   ],
   base: './',
+  // дата сборки — в Профиле («Версия от …»)
+  define: { __BUILD_TIME__: JSON.stringify(Date.now()) },
   // файлы бандла — в static/, чтобы не смешиваться с public/assets (katex, mathjax, bridge.js без хешей в именах)
   // firebase — отдельным чанком: грузится лениво (lib/sync.js), только если на устройстве входили
   build: { assetsDir: 'static', chunkSizeWarningLimit: 1000, rollupOptions: { output: { manualChunks: { firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'] } } } },

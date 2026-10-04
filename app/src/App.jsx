@@ -6,6 +6,7 @@ import Topic from './pages/Topic.jsx';
 import Session from './pages/Session.jsx';
 import Train from './pages/Train.jsx';
 import Stats from './pages/Stats.jsx';
+import Profile from './pages/Profile.jsx';
 import TabBar from './ui/TabBar.jsx';
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
       <div className="shell-main">
         {route.name === 'train' && <Train manifest={manifest} />}
         {route.name === 'stats' && <Stats manifest={manifest} />}
+        {route.name === 'profile' && <Profile manifest={manifest} />}
         {route.name === 'catalog' && <Catalog manifest={manifest} />}
       </div>
     </div>

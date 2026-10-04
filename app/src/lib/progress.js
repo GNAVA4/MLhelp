@@ -10,7 +10,7 @@
 // log        = [{ q: qid, t: ms, g: 1..4, m: mode }] — журнал ответов (последние MAX_LOG)
 // marks      = { starred: { qid: ms }, flagged: { qid: { t: ms, note } }, removed: { 'star:qid'|'flag:qid': ms } }
 //              — избранное, «в вопросе ошибка» и время снятия (для слияния устройств, lib/merge.js)
-// settings   = { newPerDay, _t: ms последнего изменения }
+// settings   = { newPerDay, haptics?: false — вибрация выключена (APK), _t: ms последнего изменения }
 // Синхронизация с облаком — lib/sync.js (users/{uid}/state/{раздел}, attempts — отдельными документами).
 import { useSyncExternalStore } from 'react';
 

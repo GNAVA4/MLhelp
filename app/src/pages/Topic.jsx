@@ -4,6 +4,7 @@ import {
   setCompleted, setMark, setNote, topicPct,
 } from '../lib/progress.js';
 import { navigate, topicHref, sessionHref } from '../lib/router.js';
+import { useBackHandler } from '../lib/back.js';
 import { Bar, ContentBadge } from '../ui/ui.jsx';
 
 export default function Topic({ manifest, topic, sectionId }) {
@@ -13,6 +14,7 @@ export default function Topic({ manifest, topic, sectionId }) {
   const frame = useRef(null);
   const [current, setCurrent] = useState(null);
   const [drawer, setDrawer] = useState(false);
+  useBackHandler(drawer, () => setDrawer(false)); // «назад» сначала закрывает панель секций
   const ready = useRef(false);
 
   const idx = manifest.readable.findIndex((t) => t.id === topic.id);

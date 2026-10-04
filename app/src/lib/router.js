@@ -4,6 +4,7 @@
 //   #/train                — тренировка (хаб)
 //   #/train/s?mode=…&scope=…&n=…  — сессия тренировки
 //   #/stats                — статистика
+//   #/profile              — профиль (вход, синхронизация, настройки)
 import { useSyncExternalStore } from 'react';
 
 const subscribe = (cb) => { window.addEventListener('hashchange', cb); return () => window.removeEventListener('hashchange', cb); };
@@ -18,6 +19,7 @@ export function parseRoute(hash) {
   if (p[0] === 'train' && p[1] === 's') return { name: 'session', params };
   if (p[0] === 'train') return { name: 'train' };
   if (p[0] === 'stats') return { name: 'stats' };
+  if (p[0] === 'profile') return { name: 'profile' };
   // старые ссылки на тесты (session 003)
   if (p[0] === 'quiz' && p[2]) return { name: 'session', params: { mode: 'test', scope: (p[1] === 'block' ? 'b' : 't') + p[2] } };
   return { name: 'catalog' };

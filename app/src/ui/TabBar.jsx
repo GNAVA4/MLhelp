@@ -6,6 +6,7 @@ export default function TabBar({ active, dueCount }) {
     { id: 'catalog', href: '#/', label: 'Теория', ico: 'book' },
     { id: 'train', href: '#/train', label: 'Тренировка', ico: 'cards', badge: dueCount },
     { id: 'stats', href: '#/stats', label: 'Статистика', ico: 'chart' },
+    { id: 'profile', href: '#/profile', label: 'Профиль', ico: 'user' },
   ];
   return (
     <nav className="tabbar" aria-label="Разделы">
