@@ -72,6 +72,19 @@ const idFromFile = (f) => { const m = TOPIC_FILE.exec(f); return m ? m[1] + '.' 
 const CDN_CHART = /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/Chart\.js\/[\d.]+\/chart\.umd(?:\.min)?\.js"><\/script>/;
 const CDN_MATHJAX = /(<script src=")https:\/\/cdn\.jsdelivr\.net\/npm\/mathjax@3\/es5\/tex-mml-chtml\.js(")/;
 const BRIDGE = '<script src="../assets/bridge.js"></script>';
+// Старые темы (MathJax) на телефоне: широкая формула, код или таблица растягивали страницу и её таскало вбок —
+// теперь они прокручиваются сами. Графики с aspectRatio по умолчанию (2) на узком экране были сплющены.
+const MOBILE_CSS = '<style>/* build-content: телефон */mjx-container[display="true"]{display:block;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:2px 0}pre{max-width:100%;overflow-x:auto}:not(pre)>code{overflow-wrap:anywhere}.pout,.calc{max-width:100%;overflow-x:auto}mjx-assistive-mml{max-width:1px!important}@media (max-width:640px){[style*="grid-template-columns:repeat(4,1fr)"],[style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}</style>';
+// После отрисовки MathJax: формула внутри текста не переносится, а шаг расчёта (flex) не сжимается уже неё —
+// страницу таскало вбок. Только для того, что реально вылезает за экран: ближайший контейнер формулы и таблица
+// прокручиваются сами, flex/grid-предкам разрешается сжиматься (min-width:0).
+const MOBILE_FIT = '<script>(function(){function fit(){var W=document.documentElement.clientWidth,out=function(e){return e.getBoundingClientRect().right>W+1};' +
+  'var shrink=function(e){for(var a=e;a&&a!==document.body;a=a.parentElement){var d=getComputedStyle(a.parentElement||a).display;if(/flex|grid/.test(d))a.style.minWidth="0";}};' +
+  'document.querySelectorAll("mjx-container,table,pre").forEach(function(e){if(!out(e))return;var box=e.tagName==="MJX-CONTAINER"?e.parentElement:e;' +
+  'if(e.tagName==="TABLE")e.style.display="block";box.style.maxWidth="100%";box.style.overflowX="auto";box.style.overflowY="hidden";shrink(box);});}' +
+  'function go(){if(window.MathJax&&MathJax.startup&&MathJax.startup.promise)MathJax.startup.promise.then(fit);else fit();}' +
+  'if(document.readyState==="complete")go();else addEventListener("load",go);addEventListener("resize",fit);})();</script>';
+const MOBILE_CHART = 'Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;';
 
 function injectBridge(html, f) {
   const i = html.lastIndexOf('</body>');
@@ -89,7 +102,9 @@ function buildPage(f) {
     return 'src';
   }
   let h = fs.readFileSync(path.join(LEG, f), 'utf8');
-  if (CDN_CHART.test(h)) h = h.replace(CDN_CHART, '<script src="../assets/chart.umd.js"></script><script>Chart.defaults.animation=false;</script>');
+  if (CDN_CHART.test(h)) h = h.replace(CDN_CHART, '<script src="../assets/chart.umd.js"></script><script>Chart.defaults.animation=false;' + MOBILE_CHART + '</script>');
+  h = h.replace('</head>', MOBILE_CSS + '\n</head>');
+  { const i = h.lastIndexOf('</body>'); h = h.slice(0, i) + MOBILE_FIT + '\n' + h.slice(i); }
   h = h.replace(CDN_MATHJAX, '$1../assets/mathjax/tex-mml-chtml.js$2');
   if (/https:\/\/cdn/.test(h.match(/<script[^>]*src="[^"]*"/g)?.join(' ') || '')) throw new Error(f + ': остался CDN-скрипт');
   fs.writeFileSync(out, injectBridge(h, f));
@@ -169,7 +184,7 @@ for (const f of bank) {
       out.options = q.options.map(r); out.correct = q.correct;
       if (q.explanation) out.explanation = r(q.explanation);
       if (q.fixedOrder || q.options.some((o) => REFS_OPTIONS.test(o))) out.fixedOrder = true;
-    } else out.a = r(q.a);
+    } else { out.a = r(q.a); if (q.note) out.note = r(q.note); }
     if (q.tags) out.tags = q.tags;
     if (q.level) out.level = q.level;
     questions.push(out);

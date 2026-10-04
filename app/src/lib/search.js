@@ -22,7 +22,7 @@ function index(manifest, bank) {
   const questions = bank.all.map((q) => ({
     kind: 'q', q,
     head: norm(plain(q.q)),
-    body: norm(plain([...(q.options || []), q.a, q.explanation].filter(Boolean).join(' '))),
+    body: norm(plain([...(q.options || []), q.a, q.note, q.explanation].filter(Boolean).join(' '))),
   }));
   _idx = { topics, questions };
   _idxFor = bank;

@@ -1,5 +1,5 @@
 // Вопросы для тренировок (public/data/questions.json, собирается из банка questions/*.json) и очереди сессий.
-// Вопрос: { id, type: 'mcq'|'card', topicId, blockId, q, options?, correct?, explanation?, fixedOrder?, a?, tags? }
+// Вопрос: { id, type: 'mcq'|'card', topicId, blockId, q, options?, correct?, explanation?, fixedOrder?, a?, note?, tags? }
 import { useEffect, useState } from 'react';
 import { retrievability } from './srs.js';
 import { loadBankData } from './liveBank.js';

@@ -284,6 +284,7 @@ function CardItem({ item, mode, tq, onDone, restore, readLink }) {
         style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 40}deg)` : undefined, touchAction: 'pan-y' }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         <Html html={q.a} />
+        {q.note && <Html className="card-note" html={q.note} />}
       </div>
       {mode !== 'interview' && <a className="read-link" {...readLink({ shown: true })}>Почитать в теме →</a>}
       <div className="small muted swipe-hint">Свайп: вправо — знал, влево — не знал</div>
@@ -362,7 +363,7 @@ function Summary({ run, mode, manifest, bank, onRetry }) {
                       <div className="small"><span className="ok">Верно:</span> <Html as="span" html={q.options[q.correct]} /></div>
                       {q.explanation && <Html className="small muted" html={q.explanation} />}
                     </>
-                  ) : <Html className="small" html={q.a} />}
+                  ) : <><Html className="small" html={q.a} />{q.note && <Html className="small card-note" html={q.note} />}</>}
                   <a className="small link" href={topicHref(t.id)}>Тема {t.id} {t.title} →</a>
                 </div>
               </details>

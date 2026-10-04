@@ -4,7 +4,7 @@
 //     type: 'mcq' | 'card',
 //     q: HTML + TeX в $…$ / $$…$$ (TeX сырой),
 //     mcq:  options: [HTML+TeX] (2–6), correct: индекс, explanation?: HTML+TeX, fixedOrder?: true (варианты ссылаются друг на друга)
-//     card: a: HTML+TeX — ответ,
+//     card: a: HTML+TeX — ответ (общий, без чисел разобранного в теме кейса), note?: HTML+TeX — пример из темы с числами,
 //     tags?: [string], level?: 'junior'|'middle'|'senior', src?: откуда взят }
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
@@ -66,10 +66,10 @@ function validate(bank, topicIds) {
         if (!q.a || !String(q.a).trim()) problems.push(at + ': пустой ответ');
       } else problems.push(at + ': type должен быть mcq или card');
       const errs = [];
-      for (const s of [q.q, q.a, q.explanation, ...(q.options || [])]) renderMath(s, errs, at);
+      for (const s of [q.q, q.a, q.note, q.explanation, ...(q.options || [])]) renderMath(s, errs, at);
       problems.push(...errs);
       // нечётное число $ — почти наверняка незакрытая формула
-      for (const s of [q.q, q.a, q.explanation, ...(q.options || [])]) if (s && (String(s).replace(/\$\$/g, '').match(/\$/g) || []).length % 2) problems.push(at + ': непарный $');
+      for (const s of [q.q, q.a, q.note, q.explanation, ...(q.options || [])]) if (s && (String(s).replace(/\$\$/g, '').match(/\$/g) || []).length % 2) problems.push(at + ': непарный $');
     });
   }
   return problems;
