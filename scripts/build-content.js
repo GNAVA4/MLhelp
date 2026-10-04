@@ -170,6 +170,46 @@ for (const b of DATA) {
   blocks.push(block);
 }
 
+// ---------- формулы в тексте вопросов ----------
+// Тесты и Q&A старых страниц пишут формулы как $...$ / $$...$$ (рендерил MathJax). Для приложения рендерим их KaTeX
+// при сборке: приложению не нужен MathJax, а `<` внутри формулы (j<k) не ломает HTML.
+const katex = require(path.join(VENDOR, 'katex.min.js'));
+const KATEX_MACROS = { '\\E': '\\mathbb{E}', '\\Var': '\\operatorname{Var}', '\\Cov': '\\operatorname{Cov}', '\\P': '\\mathrm{P}' };
+const texStats = { ok: 0, failed: [] };
+const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+// isHtml=false: текст из *_quiz_data.js — в нём бывает «<» не как тег (p < 0.05), такие экранируем.
+const SAFE_TAG = /^<\/?(strong|b|em|i|code|br|sub|sup|span|u|small)\b[^<>]*>/i;
+function texify(s, isHtml, where) {
+  if (s == null) return s;
+  const out = [];
+  let rest = String(s);
+  const re = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/;
+  let m;
+  while ((m = re.exec(rest))) {
+    out.push(plain(rest.slice(0, m.index)));
+    const disp = m[1] != null, tex = disp ? m[1] : m[2];
+    try {
+      out.push(katex.renderToString(isHtml ? decode(tex) : tex, { displayMode: disp, throwOnError: true, output: 'html', macros: Object.assign({}, KATEX_MACROS), strict: false }));
+      texStats.ok++;
+    } catch (e) {
+      texStats.failed.push(where + ': ' + tex.slice(0, 60) + ' — ' + e.message.slice(0, 80));
+      out.push(plain(m[0]));
+    }
+    rest = rest.slice(m.index + m[0].length);
+  }
+  out.push(plain(rest));
+  return out.join('');
+  function plain(t) {
+    if (isHtml) return t;
+    let r = '';
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === '<') { const tag = SAFE_TAG.exec(t.slice(i)); if (tag) { r += tag[0]; i += tag[0].length - 1; } else r += '&lt;'; }
+      else r += t[i];
+    }
+    return r;
+  }
+}
+
 // ---------- банк вопросов ----------
 const questions = [];
 const pad = (n, w = 3) => String(n).padStart(w, '0');
@@ -198,16 +238,24 @@ for (const b of blocks) {
     const topicId = map[x.p];
     if (!topicId) throw new Error('block ' + b.id + ' q' + i + ': часть ' + x.p + ' без темы');
     if (!Array.isArray(x.o) || x.c == null || x.c < 0 || x.c >= x.o.length) throw new Error('block ' + b.id + ' q' + i + ': плохие варианты');
-    questions.push({ id: 'b' + b.id + '-q' + pad(i + 1), topicId, blockId: b.id, kind: 'mcq', q: x.q, options: x.o, correct: x.c, explanation: strip(x.e), source: b.quizFile });
+    const id = 'b' + b.id + '-q' + pad(i + 1);
+    // варианты ссылаются друг на друга («Верны A и C», «все перечисленные») — порядок менять нельзя
+    // («Клиент A», «модель B», «в 3 раза» — не ссылки на варианты)
+    const fixedOrder = x.o.some((o) => /(^|[^A-Za-zА-Яа-яЁё])[ABCDАБВГ] (и|или) [ABCDАБВГ]([^A-Za-zА-Яа-яЁё]|$)|вс[её] (выше)?перечисленн|все (варианты|ответы|утверждения) (верн|правильн)|ни один из (вариантов|перечисленн)|оба (варианта|ответа|утверждения) (верн|правильн)|ничего из перечисленн/i.test(o));
+    questions.push({ id, topicId, blockId: b.id, kind: 'mcq', q: texify(x.q, false, id), options: x.o.map((o) => texify(o, false, id)), correct: x.c, explanation: texify(strip(x.e), false, id), fixedOrder: fixedOrder || undefined, source: b.quizFile });
   });
   b.mcqCount = items.length;
 }
 for (const t of topics) {
   if (!pages[t.id]) continue;
   pages[t.id].qa.forEach((x, i) => {
-    questions.push({ id: 't' + t.id + '-qa-' + pad(i + 1, 2), topicId: t.id, blockId: t.blockId, kind: 'open', q: x.q, answer: x.answer, tags: x.tags.length ? x.tags : undefined, sectionRef: x.sectionRef, source: t.slug + '.html' });
+    const id = 't' + t.id + '-qa-' + pad(i + 1, 2);
+    // блок 0 уже отрендерен KaTeX при сборке; у старых страниц формулы $...$ — рендерим
+    const legacy = !fs.existsSync(path.join(SRC, t.slug + '.src.html'));
+    questions.push({ id, topicId: t.id, blockId: t.blockId, kind: 'open', q: legacy ? texify(x.q, false, id) : x.q, answer: legacy ? texify(x.answer, true, id) : x.answer, tags: x.tags.length ? x.tags : undefined, sectionRef: x.sectionRef, source: t.slug + '.html' });
   });
 }
+for (const t of topics) { const n = questions.filter((q) => q.kind === 'mcq' && q.topicId === t.id).length; if (n) t.mcqCount = n; }
 const ids = new Set(); for (const q of questions) { if (ids.has(q.id)) throw new Error('дубликат id ' + q.id); ids.add(q.id); }
 
 const body = { blocks, topics };
@@ -218,5 +266,7 @@ fs.writeFileSync(path.join(DIR.data, 'questions.json'), JSON.stringify({ version
 const withFile = topics.filter(t => t.file);
 console.log('content: тем ' + topics.length + ' (с файлом ' + withFile.length + ': из content-src ' + built.src + ', legacy ' + built.legacy + '), блоков ' + blocks.length);
 console.log('questions: mcq ' + questions.filter(q => q.kind === 'mcq').length + ', open ' + questions.filter(q => q.kind === 'open').length);
+console.log('формулы в вопросах: ' + texStats.ok + ' ok, ошибок ' + texStats.failed.length + (texStats.failed.length ? '\n  ' + texStats.failed.slice(0, 15).join('\n  ') : ''));
+console.log('mcq с фиксированным порядком вариантов: ' + questions.filter((q) => q.fixedOrder).length);
 console.log('без секций id="sN": ' + (withFile.filter(t => !t.sections.length).map(t => t.id).join(', ') || 'нет'));
 console.log('version ' + version + ', ' + ((Date.now() - t0) / 1000).toFixed(1) + ' с');

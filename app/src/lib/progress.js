@@ -4,13 +4,17 @@
 // topics[topicId] = { sectionsRead: string[], lastSection, maxScroll, startedAt, completedAt, updatedAt,
 //                     marks: { understood?: bool, revisit?: bool }, note? }
 // meta = { lastTopicId, lastOpenedAt }
+// attempts = [{ id, scope: 'block:1'|'topic:1.3', mode: 'all'|'random'|'wrong', startedAt, finishedAt,
+//               total, correct, answers: [{ qid, chosen, correct, ms }] }]  ← users/{uid}/attempts/{id}
 import { useSyncExternalStore } from 'react';
 
 const KEY = 'mlc:progress';
-const EMPTY = { topics: {}, meta: {} };
+const EMPTY = { topics: {}, meta: {}, attempts: [] };
+// Локально храним последние 300 попыток (~5–10 КБ каждая у тестов блока) — с запасом до лимита localStorage ~5 МБ.
+const MAX_ATTEMPTS = 300;
 
 function read() {
-  try { const v = JSON.parse(localStorage.getItem(KEY)); return v && v.topics ? v : EMPTY; } catch { return EMPTY; }
+  try { const v = JSON.parse(localStorage.getItem(KEY)); return v && v.topics ? { ...EMPTY, ...v } : EMPTY; } catch { return EMPTY; }
 }
 
 let state = read();
@@ -73,6 +77,19 @@ export function setMark(id, mark, value) {
 
 export function setNote(id, note) {
   patchTopic(id, (t) => ({ ...t, note }));
+}
+
+export function saveAttempt(a) {
+  const attempts = [...state.attempts, a].slice(-MAX_ATTEMPTS);
+  commit({ ...state, attempts });
+}
+
+// Лучшая и последняя попытка по области (scope = 'block:1' | 'topic:1.3'); считаются только полные прохождения (mode 'all').
+export function scopeResults(p, scope) {
+  const list = p.attempts.filter((a) => a.scope === scope);
+  const full = list.filter((a) => a.mode === 'all');
+  const best = full.reduce((b, a) => (!b || a.correct / a.total > b.correct / b.total ? a : b), null);
+  return { best, last: list[list.length - 1] || null, count: list.length };
 }
 
 // Доля прочитанного 0..1: по секциям, если они есть, иначе по прокрутке (блок 3 без id="sN").

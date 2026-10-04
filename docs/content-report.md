@@ -8,9 +8,9 @@
 
 | Файл | КБ | Секции | Q&A | Графики | CDN | Код | Проблемы |
 |---|--:|--:|--:|---|:-:|:-:|---|
-| block0_01_expectation_variance.html | 1420 | 15 | 30 | 15 / 15 |  | 0 |  |
-| block0_02_distributions.html | 1213 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_03_bayes.html | 1193 | 15 | 30 | 11 / 11 |  | 0 |  |
+| block0_01_expectation_variance.html | 1452 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_02_distributions.html | 1243 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_03_bayes.html | 1213 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useProgress, topicPct, topicStatus } from '../lib/progress.js';
-import { topicHref } from '../lib/router.js';
+import { useProgress, topicPct, topicStatus, scopeResults } from '../lib/progress.js';
+import { topicHref, quizHref } from '../lib/router.js';
 import { Bar, ContentBadge, Ring, plural, fmtMinutes } from '../ui/ui.jsx';
 
 const OPEN_KEY = 'mlc:openBlocks';
@@ -101,6 +101,7 @@ function BlockCard({ block, topics, progress, open, onToggle }) {
       </button>
       {open && (
         <div className="block-body">
+          {block.mcqCount > 0 && <QuizEntry block={block} progress={progress} />}
           {groups.map((g) => (
             <div key={g.key} className="group">
               {g.title && <div className="group-head"><b>{g.title}</b><span className="muted small">{g.summary}</span></div>}
@@ -110,6 +111,23 @@ function BlockCard({ block, topics, progress, open, onToggle }) {
         </div>
       )}
     </section>
+  );
+}
+
+function QuizEntry({ block, progress }) {
+  const r = scopeResults(progress, 'block:' + block.id);
+  return (
+    <a className="quiz-entry" href={quizHref('block', block.id)}>
+      <span className="quiz-ico">?</span>
+      <span className="trow-main">
+        <span className="trow-title">Тест блока</span>
+        <span className="trow-sum">{block.mcqCount} {plural(block.mcqCount, 'вопрос', 'вопроса', 'вопросов')} · по всем темам блока</span>
+      </span>
+      <span className="trow-side small">
+        {r.best ? <span className="nowrap">лучший <b>{Math.round((r.best.correct / r.best.total) * 100)}%</b></span> : <span className="muted">не пройден</span>}
+        <span className="continue-go">→</span>
+      </span>
+    </a>
   );
 }
 

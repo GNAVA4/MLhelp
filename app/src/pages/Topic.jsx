@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   useProgress, getProgress, openTopic, setCurrentSection, markSectionRead, setMaxScroll,
-  setCompleted, setMark, setNote, topicPct,
+  setCompleted, setMark, setNote, topicPct, scopeResults,
 } from '../lib/progress.js';
-import { navigate, topicHref } from '../lib/router.js';
+import { navigate, topicHref, quizHref } from '../lib/router.js';
 import { Bar, ContentBadge } from '../ui/ui.jsx';
 
 export default function Topic({ manifest, topic, sectionId }) {
@@ -98,6 +98,16 @@ export default function Topic({ manifest, topic, sectionId }) {
           ) : (
             <p className="muted small side-note">У этой страницы нет размеченных секций — прогресс считается по прокрутке.</p>
           )}
+
+          {topic.mcqCount > 0 && (() => {
+            const r = scopeResults(progress, 'topic:' + topic.id);
+            return (
+              <a className="side-quiz" href={quizHref('topic', topic.id)}>
+                <b>Тест по теме</b>
+                <span className="small muted">{topic.mcqCount} вопр.{r.best ? ' · лучший ' + Math.round((r.best.correct / r.best.total) * 100) + '%' : ''}</span>
+              </a>
+            );
+          })()}
 
           <div className="marks">
             <label className="mark"><input type="checkbox" checked={!!p?.completedAt} onChange={(e) => setCompleted(topic.id, e.target.checked)} /> Прочитана</label>
