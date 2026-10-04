@@ -1,12 +1,17 @@
 import { useManifest } from './lib/content.js';
 import { useRoute } from './lib/router.js';
+import { useProgress } from './lib/progress.js';
 import Catalog from './pages/Catalog.jsx';
 import Topic from './pages/Topic.jsx';
-import Quiz from './pages/Quiz.jsx';
+import Session from './pages/Session.jsx';
+import Train from './pages/Train.jsx';
+import Stats from './pages/Stats.jsx';
+import TabBar from './ui/TabBar.jsx';
 
 export default function App() {
   const { manifest, error } = useManifest();
   const route = useRoute();
+  const progress = useProgress();
 
   if (error) return <div className="screen-msg"><b>Не удалось загрузить курс.</b><span>{error.message}</span></div>;
   if (!manifest) return <div className="screen-msg"><span>Загрузка…</span></div>;
@@ -16,8 +21,21 @@ export default function App() {
     if (!topic || !topic.file) return <div className="screen-msg"><b>Тема не найдена</b><a href="#/">К каталогу</a></div>;
     return <Topic key={topic.id} manifest={manifest} topic={topic} sectionId={route.sectionId} />;
   }
-  if (route.name === 'quiz') {
-    return <Quiz key={route.scopeType + route.scopeId} manifest={manifest} scopeType={route.scopeType} scopeId={route.scopeId} />;
+  if (route.name === 'session') {
+    return <Session key={location.hash} manifest={manifest} params={route.params} />;
   }
-  return <Catalog manifest={manifest} />;
+
+  // счётчик «пора повторить» на вкладке — без загрузки банка, по памяти повторения
+  const now = Date.now();
+  const due = Object.values(progress.srs).filter((c) => c.due <= now).length;
+  return (
+    <div className="shell">
+      <TabBar active={route.name} dueCount={due} />
+      <div className="shell-main">
+        {route.name === 'train' && <Train manifest={manifest} />}
+        {route.name === 'stats' && <Stats manifest={manifest} />}
+        {route.name === 'catalog' && <Catalog manifest={manifest} />}
+      </div>
+    </div>
+  );
 }

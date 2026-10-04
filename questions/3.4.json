@@ -1,0 +1,266 @@
+{
+ "topic": "3.4",
+ "title": "Прогноз LTV",
+ "questions": [
+  {
+   "id": "qsp9dkbm",
+   "type": "mcq",
+   "q": "BG/NBD использует только... как входные данные?",
+   "options": [
+    "Демографию клиента и канал привлечения",
+    "RFM: Frequency (число покупок), Recency (время последней покупки), T (длина периода наблюдения)",
+    "Последовательность транзакций полностью",
+    "Email engagement и поведение на сайте"
+   ],
+   "correct": 1,
+   "explanation": "BG/NBD: только (x, t_x, T). x = frequency (число повторных покупок). t_x = recency (время последней покупки от старта). T = длина наблюдаемого периода. Это очень компактное представление — вся история сжата в 3 числа. Мощь модели в вероятностных предположениях, не в количестве признаков.",
+   "src": "block3_quiz.html#33"
+  },
+  {
+   "id": "qy9r2wco",
+   "type": "mcq",
+   "q": "Клиент: x=0 покупок, T=52 нед. Что предсказывает BG/NBD?",
+   "options": [
+    "Ошибка модели — нельзя применять без покупок",
+    "Очень низкая P(alive): клиент скорее всего \"умер\" (не вернётся). E[покупок] → ~0",
+    "Высокая P(alive): нулевые покупки нормальны",
+    "P(alive) = 0.5 по умолчанию"
+   ],
+   "correct": 1,
+   "explanation": "x=0 за весь год: либо клиент никогда не совершил покупку (зарегистрировался но не купил) или \"умер\" сразу. P(alive) будет очень низкой, E[покупок] близко к 0. BG/NBD: P(alive|x=0, T=52) = P(ещё не купил, но живой) / P(всё наблюдение). При λ~0.05/нед за 52 нед → E[покупок | живой] = 2.6. Ноль покупок при ожидаемых 2.6 → очень маловероятно что живой.",
+   "src": "block3_quiz.html#34"
+  },
+  {
+   "id": "qdiioc2c",
+   "type": "mcq",
+   "q": "Формула CLV с дисконтированием при постоянных m=500₽, r=0.9, d=0.05. Чему равен CLV?",
+   "options": [
+    "500₽",
+    "3,000₽",
+    "3,000₽ (точнее: 500 × 0.9/0.15 = 3,000₽)",
+    "5,000₽"
+   ],
+   "correct": 2,
+   "explanation": "CLV = m × r / (1 + d − r) = 500 × 0.9 / (1.05 − 0.9) = 500 × 0.9 / 0.15 = 500 × 6 = 3,000₽. Intuition: retention 90%, discount 5% → средняя \"жизнь\" клиента ≈ 10 периодов, но с дисконтом. LTV = ~6 × маржа в один период.",
+   "src": "block3_quiz.html#35"
+  },
+  {
+   "id": "qnheo7iy",
+   "type": "mcq",
+   "q": "В чём смысл shrinkage в Gamma-Gamma модели?",
+   "options": [
+    "Регуляризация весов нейронной сети",
+    "Оценка среднего чека клиента = взвешенное среднее его истории и популяционного среднего. При малом числе транзакций → сильнее тянемся к популяционному среднему",
+    "Сжатие модели для fast inference",
+    "Уменьшение batch size"
+   ],
+   "correct": 1,
+   "explanation": "E[M | m̄, x] = (p·γ + x·m̄) / (p·γ + x). При x=1: влияние популяционного prior p·γ сильное. При x=100: влияние почти нулевое — верим личной истории. Это Bayesian shrinkage: не доверяем одной наблюдению, усредняем с prior. Классический результат: \"один дорогой заказ не делает клиента VIP\".",
+   "src": "block3_quiz.html#36"
+  },
+  {
+   "id": "qxookkne",
+   "type": "mcq",
+   "q": "Почему Two-stage LTV модель лучше одной регрессии при 70% нулей?",
+   "options": [
+    "Two-stage быстрее обучается",
+    "Одна регрессия предсказывает среднее CLV ≈ 0.3 × E[value] для всех. Two-stage: Stage 1 отделяет нулей, Stage 2 точно моделирует распределение покупателей",
+    "Two-stage не требует feature engineering",
+    "Одна регрессия переобучается"
+   ],
+   "correct": 1,
+   "explanation": "LTV-распределение: смесь Point mass at 0 (70%) + continuous для покупателей (30%). Одна регрессия: плохо моделирует смесь, высокий RMSE. Two-stage: P(purchase) × E[value|purchase]. Стадия 1: binary classifier. Стадия 2: регрессор только на покупателях. Google использует это для Value-Based Bidding.",
+   "src": "block3_quiz.html#37"
+  },
+  {
+   "id": "q7k3urd0",
+   "type": "mcq",
+   "q": "LTV/CAC = 0.6 для канала TikTok Ads. Что делать?",
+   "options": [
+    "Масштабировать канал — высокий ROI",
+    "Остановить или резко сократить: тратим больше на привлечение чем получаем обратно",
+    "Подождать 12 месяцев и пересчитать",
+    "Увеличить CAC для роста качества"
+   ],
+   "correct": 1,
+   "explanation": "LTV/CAC &lt; 1 → каждый привлечённый клиент приносит убыток. Тратим 1₽ CAC → получаем 0.6₽ LTV. Правило: LTV/CAC > 3 = здоровый бизнес. 1-3 = инвестиционная фаза. &lt; 1 = убыточно, нужно или снизить CAC или найти клиентов с более высоким LTV в этом канале. TikTok нужно остановить.",
+   "src": "block3_quiz.html#38"
+  },
+  {
+   "id": "qdvncq0k",
+   "type": "mcq",
+   "q": "Почему продукту с бесплатным и платным тарифом опасно оценивать маркетинг по числу активных пользователей (MAU), и чем его заменяют?",
+   "options": [
+    "MAU сложно посчитать технически",
+    "MAU поощряет привлечение пользователей, которые никогда не заплатят; кампании лучше оценивать по ожидаемой ценности: P(перехода в платный тариф) × ожидаемый LTV платящего",
+    "MAU недооценивает выручку от рекламы",
+    "MAU подходит идеально, менять ничего не нужно"
+   ],
+   "correct": 1,
+   "explanation": "Метрика-цель определяет, кого покупает маркетинг. По MAU выгодно приводить дешёвых пользователей, которые не конвертируются. Ожидаемая ценность привлечённого пользователя — вероятность конверсии, умноженная на LTV платящего, — направляет бюджет в каналы с реальной отдачей.",
+   "src": "block3_quiz.html#39 (переписан: общий вопрос вместо кейса, session 004)"
+  },
+  {
+   "id": "qick6hce",
+   "type": "mcq",
+   "q": "Клиент А: P(churn)=0.9, CLV=5000₽. Клиент Б: P(churn)=0.3, CLV=20000₽. Кому приоритет в retention?",
+   "options": [
+    "Клиент А — выше вероятность ухода",
+    "Клиент Б — retention_priority = 0.3 × 20000 = 6000 >> 0.9 × 5000 = 4500",
+    "Одинаковые приоритеты — средние значения",
+    "Нужно ещё знать CAC"
+   ],
+   "correct": 1,
+   "explanation": "Retention priority = P(churn) × CLV. А: 0.9 × 5000 = 4500₽ expected loss. Б: 0.3 × 20000 = 6000₽ expected loss. Клиент Б важнее несмотря на меньший churn риск — потеря будет дороже. Это ключевое использование CLV: не просто \"кто уйдёт\" а \"кого важнее удержать\". Netflix, Spotify именно так приоритизируют retention campaigns.",
+   "src": "block3_quiz.html#40"
+  },
+  {
+   "id": "q4rtzhww",
+   "type": "mcq",
+   "q": "Как валидировать LTV модель без ожидания реального LTV?",
+   "options": [
+    "Нельзя — только ждать",
+    "Backtesting: обучаемся до T_train, предсказываем на [T_train, T_train+12m], сравниваем с реальными данными этого периода + cohort validation + percentile ranking (Spearman ρ)",
+    "Только по PR-AUC",
+    "Random train/test split"
+   ],
+   "correct": 1,
+   "explanation": "Валидация LTV: 1) Backtesting: train на данных до 12 месяцев назад, validate на последних 12 месяцах. 2) Cohort validation: predicted CLV когорты Q1-2024 vs реальные траты Q1-Q4 2024. 3) Rank correlation: Spearman ρ между predicted ranking и actual ranking. 4) Calibration curve: predicted CLV bucket vs actual mean. 5) Business A/B тест: retention campaign на top-CLV vs random.",
+   "src": "block3_quiz.html#41"
+  },
+  {
+   "id": "qhkbquuu",
+   "type": "mcq",
+   "q": "Платная подписка с бесплатной доставкой почти не окупается сама по себе. Как она может быть выгодной с точки зрения CLV?",
+   "options": [
+    "Никак — это всегда убыток, покрываемый другими бизнесами",
+    "Подписчики покупают чаще и дольше остаются: прирост маржи от дополнительных покупок и удержания превышает потери на самой подписке",
+    "Выгода только в том, что подписка оплачивается вперёд",
+    "Подписка выгодна, только если полностью покрывает стоимость доставки"
+   ],
+   "correct": 1,
+   "explanation": "Смотреть нужно не на юнит-экономику подписки, а на инкрементальный CLV подписчика: частота покупок, средний чек и удержание растут (эффект «уже заплатил — покупаю здесь»). Важно сравнивать с похожими неподписчиками, а не со всеми — подписку чаще берут и так самые активные клиенты (смещение отбора).",
+   "src": "block3_quiz.html#42 (переписан: общий вопрос вместо кейса, session 004)"
+  },
+  {
+   "id": "qwxehjha",
+   "type": "card",
+   "q": "Что такое CLV и зачем его предсказывать?",
+   "a": "<strong>CLV</strong> (Customer Lifetime Value) = суммарная чистая прибыль от клиента за всё время взаимодействия.<br><br>\n      <strong>Зачем предсказывать:</strong><br>\n      1. <strong>CAC обоснование:</strong> тратить на привлечение ≤ CLV/3. Без CLV не знаем допустимый CAC.<br>\n      2. <strong>Сегментация:</strong> VIP-клиенты (топ-10% CLV) требуют других стратегий чем массовый сегмент.<br>\n      3. <strong>Marketing bid optimization:</strong> Google/FB Value-Based Bidding — платить больше за пользователей с высоким predicted CLV.<br>\n      4. <strong>Product prioritization:</strong> фичи которые увеличивают CLV high-value сегмента = высокий приоритет.<br>\n      5. <strong>Retention targeting:</strong> высокий CLV + высокий churn risk = первый приоритет для retention кампании.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa1"
+  },
+  {
+   "id": "qaxo4mts",
+   "type": "card",
+   "q": "Что такое BG/NBD и как работает?",
+   "a": "<strong>BG/NBD</strong> = Beta-Geometric / Negative Binomial Distribution. Вероятностная модель для предсказания будущих покупок в non-contractual settings (интернет-магазин, кофейня).<br><br>\n      <strong>Предположения:</strong><br>\n      1. Пока живой → покупает по Poisson(λ)<br>\n      2. После каждой покупки может \"умереть\" с вероятностью p (Geometric)<br>\n      3. λ ~ Gamma(r,α) по клиентам (NBD часть)<br>\n      4. p ~ Beta(a,b) по клиентам (BG часть)<br><br>\n      <strong>Входные данные:</strong> только RFM — Frequency, Recency, T (длина наблюдаемого периода).<br><br>\n      <strong>Выходные данные:</strong> P(alive), E[покупок за следующие T недель].<br><br>\n      В Python: <code>from lifetimes import BetaGeoFitter; bgf.fit(frequency, recency, T); bgf.predict(52, frequency, recency, T)</code>",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa2"
+  },
+  {
+   "id": "qgz6ciam",
+   "type": "card",
+   "q": "В чём разница BG/NBD и Pareto/NBD?",
+   "a": "<strong>Pareto/NBD (1987):</strong> клиент может \"умереть\" в любой момент времени (continuous dropout). Lifetime ~ Exponential(μ). Теоретически более правдоподобен — уход происходит не только сразу после покупки.<br><br>\n      <strong>BG/NBD (2005):</strong> клиент может \"умереть\" только сразу после покупки (discrete Geometric). Упрощение которое даёт практически идентичные результаты.<br><br>\n      <strong>На практике:</strong> Fader et al. (2005) показали: MAE обеих моделей различается &lt;1% на стандартных датасетах. BG/NBD значительно проще реализовать и оценить параметры (MLE сходится быстрее).<br><br>\n      <strong>Выбор:</strong> в большинстве задач — BG/NBD. Для банков и академических работ — Pareto/NBD из-за более \"правдоподобного\" механизма ухода.",
+   "tags": [
+    "deep"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa3"
+  },
+  {
+   "id": "q3l0icuo",
+   "type": "card",
+   "q": "Что такое Gamma-Gamma модель?",
+   "a": "<strong>Gamma-Gamma</strong> — дополнение к BG/NBD для моделирования суммы транзакции.<br><br>\n      BG/NBD предсказывает количество покупок. Но CLV = количество × стоимость. Gamma-Gamma моделирует стоимость.<br><br>\n      <strong>Идея:</strong> стоимость транзакции ~ Gamma(p, v) где v ~ Gamma(q,γ) по клиентам. Оценка через shrinkage:<br>\n      $E[M | \\bar{m}, x] = \\frac{p\\gamma + x\\bar{m}}{p\\gamma + x}$<br><br>\n      <strong>Shrinkage:</strong> при малом x (мало покупок) → тянемся к популяционному среднему. При большом x → верим персональной истории.<br><br>\n      <strong>Python:</strong> <code>from lifetimes import GammaGammaFitter; ggf.fit(frequency, monetary_value); ggf.customer_lifetime_value(bgf, frequency, recency, T, monetary_value)</code>",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa4"
+  },
+  {
+   "id": "qksqudys",
+   "type": "card",
+   "q": "Когда ML лучше чем BG/NBD для предсказания LTV?",
+   "a": "<strong>ML (LightGBM) лучше когда:</strong><br>\n      1. Богатые признаки: engagement, поведение на сайте, продуктовые события, email-активность<br>\n      2. Нелинейные взаимодействия важны (CLV сильно зависит от комбинации источника + поведения + демо)<br>\n      3. Короткие горизонты прогноза (7-90 дней) — ML использует последние сигналы лучше<br>\n      4. Contractual business (SaaS) — нет \"незаметной смерти\", есть явный чurn момент<br><br>\n      <strong>BG/NBD лучше когда:</strong><br>\n      1. Только транзакционные данные доступны (RFM)<br>\n      2. Нужна интерпретируемость: P(alive) понятна бизнесу<br>\n      3. Длинные горизонты прогноза (3-5 лет)<br>\n      4. Non-contractual FMCG — классическая область применения<br><br>\n      <strong>Лучший результат:</strong> гибридный подход — BG/NBD P(alive) + expected_frequency как признаки для LightGBM.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa5"
+  },
+  {
+   "id": "qnr5cscy",
+   "type": "card",
+   "q": "Что такое LTV/CAC и почему он должен быть &gt; 3?",
+   "a": "<strong>CAC</strong> = Customer Acquisition Cost = сколько стоит привлечь одного клиента.<br>\n      <strong>LTV/CAC</strong> = соотношение ценности к стоимости привлечения.<br><br>\n      <strong>Почему LTV/CAC &gt; 3:</strong><br>\n      - Платим CAC сейчас, LTV получаем в будущем (time value of money)<br>\n      - Есть overhead: customer service, infrastructure, product development не включены в CAC<br>\n      - Нужен запас для экспериментов, маркетинговых промахов<br><br>\n      <strong>Бенчмарки:</strong><br>\n      - LTV/CAC &lt; 1: убыточно, сжигаем деньги<br>\n      - LTV/CAC 1-3: не устойчиво или инвестиционная фаза роста<br>\n      - LTV/CAC 3-5: хороший здоровый бизнес<br>\n      - LTV/CAC &gt; 5: масштабируй быстрее, недостаточно инвестируешь в growth<br><br>\n      У Airbnb, Spotify, Netflix: LTV/CAC &gt; 6-10 для органических каналов.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa6"
+  },
+  {
+   "id": "quucu4iq",
+   "type": "card",
+   "q": "Как интегрировать LTV в рекламные кампании?",
+   "a": "<strong>Google Ads — Value-Based Bidding:</strong><br>\n      1. Обучаем модель LTV на первые 7 дней после регистрации<br>\n      2. Передаём predicted_LTV как Conversion Value в Google Ads<br>\n      3. Smart Bidding (Target ROAS) автоматически платит больше за пользователей с высоким expected LTV<br><br>\n      <strong>Facebook/Meta — Value Optimization:</strong><br>\n      Facebook Conversions API: передаём value = predicted LTV при событии Registration/Purchase.<br>\n      Алгоритм оптимизирует на суммарный Value, не на Count конверсий.<br><br>\n      <strong>Результат (типично):</strong> ROAS вырастает на 20-40% при переходе от CPA (оплата за конверсию) к Value-Based (оплата за LTV).<br><br>\n      <strong>Важно:</strong> нельзя использовать actual LTV — он неизвестен в момент клика. Используем early predicted LTV (7-30 дневные сигналы).",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa7"
+  },
+  {
+   "id": "qrurjog0",
+   "type": "card",
+   "q": "Как построить LTV модель для нового продукта без истории?",
+   "a": "Cold start проблема: нет данных для обучения BG/NBD или ML модели.<br><br>\n      <strong>Решения (в порядке приоритета):</strong><br><br>\n      1. <strong>Analogous products:</strong> использовать модель похожего продукта того же класса как prior. \"Наш SaaS похож на продукт X → берём их LTV-параметры как начальное приближение\".<br>\n      2. <strong>Proxy метрики:</strong> ранние поведенческие сигналы коррелирующие с LTV: D7 retention, first purchase amount, email engagement. Проверяем на похожих продуктах.<br>\n      3. <strong>Bayesian прайор:</strong> начинаем с информативного prior для BG/NBD параметров (из индустрии) → обновляем по мере накопления данных (first 3-6 месяцев).<br>\n      4. <strong>Rapid experimentation:</strong> первые 3 когорты × LTV proxy метрики → базовая модель через 3-4 месяца. Обновляем по мере роста данных.",
+   "tags": [
+    "deep"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa8"
+  },
+  {
+   "id": "q8aqmbeo",
+   "type": "card",
+   "q": "Что такое shrinkage в Gamma-Gamma модели?",
+   "a": "<strong>Shrinkage</strong> = приближение индивидуальной оценки к популяционному среднему при малом количестве наблюдений.<br><br>\n      <strong>Формула Gamma-Gamma:</strong> $E[M | \\bar{m}, x] = \\frac{p\\gamma + x\\bar{m}}{p\\gamma + x}$<br><br>\n      <strong>Пример:</strong> популяционное среднее = 1,000₽. Клиент А: 1 покупка на 10,000₽.<br>\n      E[M|10000, x=1] = (p×γ + 10000)/(p×γ + 1).<br>\n      При p×γ=2 (аналог \"популяционный вес\"): E = (2000+10000)/(2+1) = 4,000₽.<br><br>\n      Клиент Б: 50 покупок по 10,000₽. E = (2000+500000)/(2+50) ≈ 9,654₽ — почти не сдвинулся.<br><br>\n      <strong>Смысл:</strong> одна дорогая покупка = ненадёжная оценка. 50 дорогих покупок = надёжная. Shrinkage реализует это автоматически.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa9"
+  },
+  {
+   "id": "qnec7pbo",
+   "type": "card",
+   "q": "Как CLV связан с churn prediction?",
+   "a": "CLV и churn — две стороны одной монеты:<br><br>\n      $\\text{CLV} = m \\cdot \\frac{1-\\text{churn\\_rate}}{1 + d - (1 - \\text{churn\\_rate})} = m \\cdot \\frac{r}{1+d-r}$<br><br>\n      При churn_rate↑ → retention r↓ → CLV↓.<br><br>\n      <strong>Практическое использование вместе:</strong><br>\n      - Churn model: P(уйти в следующие 30 дней)<br>\n      - CLV model: E[CLV если останется]<br>\n      - Retention priority score = P(churn) × CLV<br><br>\n      Пример: Клиент А: P(churn)=0.8, CLV=200₽ → score=160₽. Клиент Б: P(churn)=0.3, CLV=5000₽ → score=1500₽. Все ресурсы retention → Клиент Б!<br><br>\n      Именно так работают retention teams в Spotify, Netflix, SaaS-компаниях.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa10"
+  },
+  {
+   "id": "q1ao9ldk",
+   "type": "card",
+   "q": "Как оценить параметры BG/NBD?",
+   "a": "<strong>MLE (Maximum Likelihood Estimation)</strong>: максимизируем log-likelihood по параметрам {r, α, a, b}.<br><br>\n      Функция правдоподобия для одного клиента с историей (x, t_x, T):<br>\n      $L(r,\\alpha,a,b|x,t_x,T) = P(\\text{X=x}, \\text{alive at T}) + P(\\text{X=x}, \\text{dead at T})$<br><br>\n      Каждый компонент — интегралы по гамма и бета-распределениям → аналитически вычислимы через гипергеометрические функции (см. Fader et al. 2005, Appendix A).<br><br>\n      <strong>На практике:</strong><br>\n      <code>from lifetimes import BetaGeoFitter</code><br>\n      <code>bgf = BetaGeoFitter(penalizer_coef=0.0)</code><br>\n      <code>bgf.fit(df['frequency'], df['recency'], df['T'])</code><br>\n      <code>print(bgf.summary)</code>  # выводит r, α, a, b с SE и p-value<br><br>\n      Оптимизация: scipy.optimize.minimize с L-BFGS-B. Сходится за 50-100 итераций для 10k+ клиентов.",
+   "tags": [
+    "deep"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa11"
+  },
+  {
+   "id": "qjypzgjw",
+   "type": "card",
+   "q": "Как валидировать LTV модель?",
+   "a": "LTV-валидация сложна: нельзя проверить \"реальный LTV\" без ожидания.<br><br>\n      <strong>Стратегии валидации:</strong><br><br>\n      1. <strong>Backtesting:</strong> обучаемся на данных до момента T_train, предсказываем на [T_train, T_train+12m], сравниваем с реальными данными.<br>\n      2. <strong>Cohort validation:</strong> сравниваем predicted vs actual LTV для когорт (регистрации за квартал). Aggregate MAPE по когорте.<br>\n      3. <strong>Percentile ranking:</strong> предсказанный top-10% CLV должен соответствовать top-10% реальных покупок. Метрика: rank correlation (Spearman ρ).<br>\n      4. <strong>Calibration curve:</strong> predicted CLV bucketed vs actual average CLV в каждом бакете. Идеальная модель = диагональ.<br>\n      5. <strong>Business impact:</strong> A/B тест retention кампании на predicted top-CLV vs random. Если LTV модель хорошая → кампания на top-CLV даст ROI &gt;&gt; random baseline.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_04_ltv_prediction.html#qa12"
+  }
+ ]
+}

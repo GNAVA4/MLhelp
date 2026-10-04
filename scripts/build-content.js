@@ -4,11 +4,11 @@
 //                           Chart.js и MathJax вместо CDN) + подключённый мост assets/bridge.js
 //   assets/               — katex (css + woff2), chart.umd.js, mathjax (локальная копия), bridge.js
 //   data/manifest.json    — блоки, модули, темы, секции, время чтения
-//   data/questions.json   — банк вопросов: тесты блоков (mcq) + Q&A тем (open)
+//   data/questions.json   — вопросы для тренировок из банка questions/*.json (mcq + card), формулы отрендерены KaTeX
 // Флаг --if-missing: ничего не делать, если data/manifest.json уже есть (для predev).
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), { spawnSync } = require('child_process');
 const { JSDOM } = require('jsdom');
-const { extractConsts, loadQuizData } = require('./lib-extract.js');
+const { extractConsts } = require('./lib-extract.js');
 
 const ROOT = path.join(__dirname, '..');
 const LEG = path.join(ROOT, 'content-legacy'), SRC = path.join(ROOT, 'content-src'), VENDOR = path.join(ROOT, 'tools', 'vendor');
@@ -95,7 +95,7 @@ function buildPage(f) {
   return 'legacy';
 }
 
-// ---------- разбор страницы: секции, время чтения, Q&A ----------
+// ---------- разбор страницы: секции, время чтения ----------
 const clean = (s) => s.replace(/\s+/g, ' ').trim();
 function parsePage(file) {
   const doc = new JSDOM(fs.readFileSync(file, 'utf8')).window.document;
@@ -105,45 +105,22 @@ function parsePage(file) {
     if (!t) { const h = el.querySelector('h2,h3'); t = h ? clean(h.textContent) : el.id; }
     return { id: el.id, title: t };
   });
-  const qa = [];
-  const pushQA = (qEl, aHtml, tagEls, sectionEl) => {
-    const q = qEl.cloneNode(true);
-    q.querySelectorAll('.qch, .tag, .katex-mathml').forEach(x => x.remove());
-    const text = clean(q.textContent).replace(/^\d+\.\s*/, '');
-    if (!text) return;
-    const tags = [...tagEls].map(x => clean(x.textContent)).filter(Boolean);
-    qa.push({ q: text, answer: aHtml.trim(), tags, sectionRef: sectionEl ? sectionEl.id : undefined });
-  };
-  const secOf = (el) => { let p = el; while (p && !(p.id && /^s\d+$/.test(p.id))) p = p.parentElement; return p || null; };
-  for (const d of doc.querySelectorAll('details.qa, details.qi')) {
-    const sum = d.querySelector(':scope > summary'); if (!sum) continue;
-    const rest = [...d.children].filter(c => c !== sum).map(c => c.outerHTML).join('');
-    pushQA(sum, rest, sum.querySelectorAll('.tag'), secOf(d));
-  }
-  for (const d of doc.querySelectorAll('div.qa')) {
-    if (d.closest('details')) continue; // ответ внутри details.qi — уже учтён
-    const q = d.querySelector(':scope > .q') || d.querySelector(':scope > b, :scope > strong');
-    if (!q) continue;
-    const a = d.querySelector(':scope > .a');
-    const ans = a ? a.innerHTML : [...d.childNodes].filter(n => n !== q).map(n => n.outerHTML ?? n.textContent).join('');
-    pushQA(q, ans, [], secOf(d));
-  }
   const body = doc.body.cloneNode(true);
   body.querySelectorAll('script, style, noscript, .katex-mathml, .snav, nav').forEach(x => x.remove());
   const words = clean(body.textContent).split(' ').length;
   const title = clean((doc.querySelector('h1') || doc.querySelector('title') || { textContent: '' }).textContent);
-  return { sections, qa, words, title };
+  return { sections, words, title };
 }
 
 // ---------- сборка манифеста ----------
-const blocks = [], topics = [], pages = {};
+const blocks = [], topics = [];
 let built = { src: 0, legacy: 0 };
 for (const b of DATA) {
   const blockId = String(b.n);
   const block = { id: blockId, title: b.title, subtitle: b.sub || '', color: colorOf(b), topicIds: [] };
   let planIdx = 0;
   for (const t of b.topics) {
-    if (t.f && !TOPIC_FILE.test(t.f)) { if (/_quiz\.html$/.test(t.f)) block.quizFile = t.f; continue; } // план, тесты
+    if (t.f && !TOPIC_FILE.test(t.f)) continue; // план блока 0, страницы тестов (вопросы — в questions/)
     let id = t.f ? idFromFile(t.f) : (/^(\d+\.\d+)\s/.exec(t.t) || [])[1];
     if (!t.f && !id) { if (/^Тест|Тренажёр/.test(t.t)) continue; id = blockId + '.p' + (++planIdx); } // план без номера (блок 5)
     const topic = {
@@ -151,16 +128,14 @@ for (const b of DATA) {
       title: t.t.replace(/^\d+\.\d+\s+/, ''), summary: t.d || '',
       contentStatus: t.f ? t.st : 'planned',
       file: t.f ? 'content/' + t.f : null,
-      sections: [], readingMinutes: 0, qaCount: 0,
+      sections: [], readingMinutes: 0,
     };
     if (blockId === '0') { const p = T.find(x => x.id === id); if (p) { topic.module = p.m; if (!t.f) topic.title = p.t; } }
     if (t.f) {
       built[buildPage(t.f)]++;
       const info = parsePage(path.join(DIR.content, t.f));
-      pages[id] = info;
       topic.sections = info.sections;
       topic.readingMinutes = Math.max(1, Math.round(info.words / WPM));
-      topic.qaCount = info.qa.length;
     }
     topics.push(topic); block.topicIds.push(id);
   }
@@ -170,93 +145,46 @@ for (const b of DATA) {
   blocks.push(block);
 }
 
-// ---------- формулы в тексте вопросов ----------
-// Тесты и Q&A старых страниц пишут формулы как $...$ / $$...$$ (рендерил MathJax). Для приложения рендерим их KaTeX
-// при сборке: приложению не нужен MathJax, а `<` внутри формулы (j<k) не ломает HTML.
-const katex = require(path.join(VENDOR, 'katex.min.js'));
-const KATEX_MACROS = { '\\E': '\\mathbb{E}', '\\Var': '\\operatorname{Var}', '\\Cov': '\\operatorname{Cov}', '\\P': '\\mathrm{P}' };
-const texStats = { ok: 0, failed: [] };
-const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
-// isHtml=false: текст из *_quiz_data.js — в нём бывает «<» не как тег (p < 0.05), такие экранируем.
-const SAFE_TAG = /^<\/?(strong|b|em|i|code|br|sub|sup|span|u|small)\b[^<>]*>/i;
-function texify(s, isHtml, where) {
-  if (s == null) return s;
-  const out = [];
-  let rest = String(s);
-  const re = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/;
-  let m;
-  while ((m = re.exec(rest))) {
-    out.push(plain(rest.slice(0, m.index)));
-    const disp = m[1] != null, tex = disp ? m[1] : m[2];
-    try {
-      out.push(katex.renderToString(isHtml ? decode(tex) : tex, { displayMode: disp, throwOnError: true, output: 'html', macros: Object.assign({}, KATEX_MACROS), strict: false }));
-      texStats.ok++;
-    } catch (e) {
-      texStats.failed.push(where + ': ' + tex.slice(0, 60) + ' — ' + e.message.slice(0, 80));
-      out.push(plain(m[0]));
-    }
-    rest = rest.slice(m.index + m[0].length);
-  }
-  out.push(plain(rest));
-  return out.join('');
-  function plain(t) {
-    if (isHtml) return t;
-    let r = '';
-    for (let i = 0; i < t.length; i++) {
-      if (t[i] === '<') { const tag = SAFE_TAG.exec(t.slice(i)); if (tag) { r += tag[0]; i += tag[0].length - 1; } else r += '&lt;'; }
-      else r += t[i];
-    }
-    return r;
-  }
+// ---------- банк вопросов (questions/*.json — источник истины для тренировок) ----------
+// Формат и правила — scripts/lib-questions.js. Формулы $…$ рендерятся KaTeX здесь, приложению MathJax не нужен.
+const { loadBank, validate, renderMath } = require('./lib-questions.js');
+const bank = loadBank();
+{
+  const problems = validate(bank, new Set(topics.map((t) => t.id)));
+  if (problems.length) { console.error('банк вопросов: проблем ' + problems.length + ' (npm run questions)\n  ' + problems.slice(0, 20).join('\n  ')); process.exit(2); }
 }
-
-// ---------- банк вопросов ----------
+// варианты ссылаются друг на друга («Верны A и C», «все перечисленные») — порядок менять нельзя
+// («Клиент A», «модель B», «в 3 раза» — не ссылки на варианты)
+const REFS_OPTIONS = /(^|[^A-Za-zА-Яа-яЁё])[ABCDАБВГ] (и|или) [ABCDАБВГ]([^A-Za-zА-Яа-яЁё]|$)|вс[её] (выше)?перечисленн|все (варианты|ответы|утверждения) (верн|правильн)|ни один из (вариантов|перечисленн)|оба (варианта|ответа|утверждения) (верн|правильн)|ничего из перечисленн/i;
+const texErrors = [];
 const questions = [];
-const pad = (n, w = 3) => String(n).padStart(w, '0');
-const fileTopics = (blockId) => topics.filter(t => t.blockId === blockId && t.file).map(t => t.id);
-// Части теста → темы. По умолчанию часть i = i-я тема блока; исключения — где частей больше, чем тем.
-const PART_MAP = { '7': ['7.1', '7.1', '7.2', '7.3', '7.4'] };
-const strip = (s) => (s == null ? s : String(s));
-for (const b of blocks) {
-  if (!b.quizFile) continue;
-  const qf = path.join(LEG, b.quizFile);
-  let items, parts;
-  if (b.id === '3') {
-    items = extractConsts(qf, ['QUESTIONS']).QUESTIONS.map(x => ({ p: +x.t.slice(1) - 1, q: x.q, o: x.opts, c: x.ans, e: x.ex }));
-    parts = fileTopics('3');
-  } else if (b.id === '7') {
-    items = extractConsts(qf, ['Q']).Q;
-  } else {
-    items = loadQuizData(path.join(LEG, b.quizFile.replace(/\.html$/, '_data.js')));
+const topicById = Object.fromEntries(topics.map((t) => [t.id, t]));
+for (const f of bank) {
+  const t = topicById[f.topic];
+  for (const q of f.questions) {
+    const r = (s) => renderMath(s, texErrors, q.id);
+    const out = { id: q.id, type: q.type, topicId: f.topic, blockId: t.blockId, q: r(q.q) };
+    if (q.type === 'mcq') {
+      out.options = q.options.map(r); out.correct = q.correct;
+      if (q.explanation) out.explanation = r(q.explanation);
+      if (q.fixedOrder || q.options.some((o) => REFS_OPTIONS.test(o))) out.fixedOrder = true;
+    } else out.a = r(q.a);
+    if (q.tags) out.tags = q.tags;
+    if (q.level) out.level = q.level;
+    questions.push(out);
   }
-  const map = PART_MAP[b.id] || fileTopics(b.id);
-  if (!PART_MAP[b.id]) {
-    const nParts = b.id === '3' ? 4 : extractConsts(qf, ['PARTS']).PARTS.length;
-    if (nParts !== map.length) throw new Error('block ' + b.id + ': частей ' + nParts + ', тем ' + map.length + ' — нужен PART_MAP');
-  }
-  items.forEach((x, i) => {
-    const topicId = map[x.p];
-    if (!topicId) throw new Error('block ' + b.id + ' q' + i + ': часть ' + x.p + ' без темы');
-    if (!Array.isArray(x.o) || x.c == null || x.c < 0 || x.c >= x.o.length) throw new Error('block ' + b.id + ' q' + i + ': плохие варианты');
-    const id = 'b' + b.id + '-q' + pad(i + 1);
-    // варианты ссылаются друг на друга («Верны A и C», «все перечисленные») — порядок менять нельзя
-    // («Клиент A», «модель B», «в 3 раза» — не ссылки на варианты)
-    const fixedOrder = x.o.some((o) => /(^|[^A-Za-zА-Яа-яЁё])[ABCDАБВГ] (и|или) [ABCDАБВГ]([^A-Za-zА-Яа-яЁё]|$)|вс[её] (выше)?перечисленн|все (варианты|ответы|утверждения) (верн|правильн)|ни один из (вариантов|перечисленн)|оба (варианта|ответа|утверждения) (верн|правильн)|ничего из перечисленн/i.test(o));
-    questions.push({ id, topicId, blockId: b.id, kind: 'mcq', q: texify(x.q, false, id), options: x.o.map((o) => texify(o, false, id)), correct: x.c, explanation: texify(strip(x.e), false, id), fixedOrder: fixedOrder || undefined, source: b.quizFile });
-  });
-  b.mcqCount = items.length;
 }
 for (const t of topics) {
-  if (!pages[t.id]) continue;
-  pages[t.id].qa.forEach((x, i) => {
-    const id = 't' + t.id + '-qa-' + pad(i + 1, 2);
-    // блок 0 уже отрендерен KaTeX при сборке; у старых страниц формулы $...$ — рендерим
-    const legacy = !fs.existsSync(path.join(SRC, t.slug + '.src.html'));
-    questions.push({ id, topicId: t.id, blockId: t.blockId, kind: 'open', q: legacy ? texify(x.q, false, id) : x.q, answer: legacy ? texify(x.answer, true, id) : x.answer, tags: x.tags.length ? x.tags : undefined, sectionRef: x.sectionRef, source: t.slug + '.html' });
-  });
+  const mine = questions.filter((q) => q.topicId === t.id);
+  const m = mine.filter((q) => q.type === 'mcq').length, c = mine.length - m;
+  if (m) t.mcqCount = m;
+  if (c) t.cardCount = c;
 }
-for (const t of topics) { const n = questions.filter((q) => q.kind === 'mcq' && q.topicId === t.id).length; if (n) t.mcqCount = n; }
-const ids = new Set(); for (const q of questions) { if (ids.has(q.id)) throw new Error('дубликат id ' + q.id); ids.add(q.id); }
+for (const b of blocks) {
+  const mine = questions.filter((q) => q.blockId === b.id);
+  b.mcqCount = mine.filter((q) => q.type === 'mcq').length;
+  b.cardCount = mine.length - b.mcqCount;
+}
 
 const body = { blocks, topics };
 const version = crypto.createHash('sha1').update(JSON.stringify(body) + JSON.stringify(questions)).digest('hex').slice(0, 10);
@@ -265,8 +193,7 @@ fs.writeFileSync(path.join(DIR.data, 'questions.json'), JSON.stringify({ version
 
 const withFile = topics.filter(t => t.file);
 console.log('content: тем ' + topics.length + ' (с файлом ' + withFile.length + ': из content-src ' + built.src + ', legacy ' + built.legacy + '), блоков ' + blocks.length);
-console.log('questions: mcq ' + questions.filter(q => q.kind === 'mcq').length + ', open ' + questions.filter(q => q.kind === 'open').length);
-console.log('формулы в вопросах: ' + texStats.ok + ' ok, ошибок ' + texStats.failed.length + (texStats.failed.length ? '\n  ' + texStats.failed.slice(0, 15).join('\n  ') : ''));
-console.log('mcq с фиксированным порядком вариантов: ' + questions.filter((q) => q.fixedOrder).length);
+console.log('questions: mcq ' + questions.filter(q => q.type === 'mcq').length + ', card ' + questions.filter(q => q.type === 'card').length + ', с фиксированным порядком вариантов ' + questions.filter((q) => q.fixedOrder).length);
+if (texErrors.length) { console.error('ошибки TeX в банке: ' + texErrors.length + '\n  ' + texErrors.slice(0, 15).join('\n  ')); process.exit(2); }
 console.log('без секций id="sN": ' + (withFile.filter(t => !t.sections.length).map(t => t.id).join(', ') || 'нет'));
 console.log('version ' + version + ', ' + ((Date.now() - t0) / 1000).toFixed(1) + ' с');

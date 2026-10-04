@@ -1,0 +1,266 @@
+{
+ "topic": "3.3",
+ "title": "Антифрод",
+ "questions": [
+  {
+   "id": "qpwi4chy",
+   "type": "mcq",
+   "q": "Precision = 0.95, Recall = 0.60 для fraud detector. Что это означает?",
+   "options": [
+    "95% верно найденных фродов, но пропускаем 40% реального фрода",
+    "60% верно найденных фродов, 5% ложных тревог",
+    "Хорошая модель — оба значения высокие",
+    "Нужно использовать Accuracy вместо"
+   ],
+   "correct": 0,
+   "explanation": "Precision = TP/(TP+FP) = 95% → из всего что назвали fraud, 95% — реальный. Recall = TP/(TP+FN) = 60% → из всего реального фрода находим 60%, пропускаем 40% (FN). Для fraud detection критичен высокий Recall: пропущенный фрод = убыток для банка. Нужно снизить threshold.",
+   "src": "block3_quiz.html#23"
+  },
+  {
+   "id": "qgxdqlgq",
+   "type": "mcq",
+   "q": "F-beta с β=2 для fraud detection. Что означает β=2?",
+   "options": [
+    "Вес Recall вдвое больше чем Precision (Recall важнее)",
+    "Вес Precision вдвое больше чем Recall",
+    "β контролирует learning rate",
+    "β=2 означает балансировку классов"
+   ],
+   "correct": 0,
+   "explanation": "F_β = (1+β²)·PR / (β²·P + R). При β=2: β²=4. Recall получает вес 4/(4+1)=80%, Precision — 20%. Смысл: пропустить реальный фрод (FN) в 4 раза хуже чем ложная тревога (FP). Соответствует реальной стоимости ошибок: FN = потеря транзакции, FP = неудобство клиента.",
+   "src": "block3_quiz.html#24"
+  },
+  {
+   "id": "q9jhozz0",
+   "type": "mcq",
+   "q": "Почему PR-AUC лучше ROC-AUC при экстремальном дисбалансе классов (0.1% fraud)?",
+   "options": [
+    "PR-AUC быстрее вычисляется",
+    "ROC-AUC оптимистичен из-за большого TN: даже плохая модель имеет ROC-AUC ≈ 0.99. PR-AUC чувствительна к качеству предсказания для minority класса",
+    "PR-AUC не зависит от threshold",
+    "PR-AUC работает только с бинарной классификацией"
+   ],
+   "correct": 1,
+   "explanation": "ROC-AUC: TPR vs FPR. При 0.1% фрода: FPR = FP/(FP+TN). TN огромный → FPR маленький → ROC-AUC ≈ 0.99 даже для плохих моделей. PR-AUC: Precision vs Recall — оба зависят только от TP, FP, FN. Baseline PR-AUC = fraction of positives = 0.001. Хорошая модель: PR-AUC >> 0.001.",
+   "src": "block3_quiz.html#25"
+  },
+  {
+   "id": "qc4thbjm",
+   "type": "mcq",
+   "q": "Focal Loss: зачем (1−p_t)^γ в формуле FL = −α_t(1−p_t)^γ log(p_t)?",
+   "options": [
+    "Для нормализации градиентов",
+    "Downweights easy examples (легко классифицированные образцы): если p_t → 1 то (1−p_t)^γ → 0. Hard examples получают больший вес",
+    "Для ускорения обучения",
+    "Для работы с несбалансированными батчами"
+   ],
+   "correct": 1,
+   "explanation": "Стандартный CE: −log(p_t) — одинаково штрафует все примеры. При дисбалансе: большинство \"лёгких\" негативов доминируют градиент. Focal: (1−p_t)^γ ≈ 0 когда модель уверена (p_t высокий). Только \"трудные\" примеры (p_t низкий) получают полный вес. γ=2: типичное значение. Разработан Facebook для object detection (RetinaNet), применяется в fraud.",
+   "src": "block3_quiz.html#26"
+  },
+  {
+   "id": "qcvgtqhm",
+   "type": "mcq",
+   "q": "Velocity features: какие агрегаты нужны для детекции \"кардинга\" (серия мелких транзакций)?",
+   "options": [
+    "Только сумма транзакций за 30 дней",
+    "count_1h (число транзакций за 1 час), unique_merchants_1h, sum_1h — краткосрочные velocity окна",
+    "Средний чек за всё время",
+    "Географические признаки"
+   ],
+   "correct": 1,
+   "explanation": "Кардинг: мошенник проверяет украденные карты серией мелких транзакций (~&#36;1 каждая). Сигнал: 10+ транзакций за 1 час, разные мерчанты, маленькие суммы. Velocity features: count_1h, unique_merchants_1h, count_since_last_big_txn. При нормальном использовании: 1-2 транзакции в час, не 10+.",
+   "src": "block3_quiz.html#27"
+  },
+  {
+   "id": "qvoxs27w",
+   "type": "mcq",
+   "q": "Feature Store: что такое \"train-serve skew\" и как его избежать?",
+   "options": [
+    "Разные алгоритмы обучения и инференса",
+    "Фичи в обучении вычислены иначе чем в продакшне: разные временные окна, утечки данных, разный preprocessing → модель деградирует. Решение: единая feature pipeline",
+    "Разные threshold на train и serve",
+    "Разные версии Python"
+   ],
+   "correct": 1,
+   "explanation": "Train-serve skew: самая частая причина деградации ML в production. Например: в обучении rolling_mean_7d включает текущий день (leakage), в production — нет. Или в обучении использовали данные которых нет в real-time. Решение: Feature Store с единой логикой, point-in-time correct joins, feature logging + comparison.",
+   "src": "block3_quiz.html#28"
+  },
+  {
+   "id": "q21rlqt0",
+   "type": "mcq",
+   "q": "PSI (Population Stability Index) = 0.25. Что это означает?",
+   "options": [
+    "Модель стабильна, изменений нет",
+    "0.1 &lt; PSI &lt; 0.2 → умеренный сдвиг. PSI > 0.2 → значительный сдвиг, нужен реtraining",
+    "Нормальное значение, всё хорошо",
+    "PSI не применим для фрод-моделей"
+   ],
+   "correct": 1,
+   "explanation": "PSI = Σ(E_i − A_i)·ln(E_i/A_i). Интерпретация: PSI &lt; 0.1 → стабильно. 0.1 &lt; PSI &lt; 0.2 → умеренный сдвиг, мониторинг. PSI > 0.2 → значительный концептуальный дрейф, требуется анализ и скорее всего retraining. PSI=0.25 → нужно переобучать модель.",
+   "src": "block3_quiz.html#29"
+  },
+  {
+   "id": "qcovjmby",
+   "type": "mcq",
+   "q": "Антифрод для платежей в реальном времени. Какой порядок шагов при обработке транзакции наиболее разумен?",
+   "options": [
+    "Модель → правила → расчёт признаков → решение",
+    "Жёсткие правила (явные блокировки) → расчёт онлайн-признаков → скоринг моделью → решение по порогам → дополнительная проверка (step-up) для пограничных случаев",
+    "Расчёт признаков → дополнительная проверка для всех → модель → правила",
+    "Дополнительная аутентификация всех транзакций → модель → правила"
+   ],
+   "correct": 1,
+   "explanation": "Дешёвые детерминированные правила отсекают очевидное (заблокированные карты, страны) до дорогих шагов. Затем считаются онлайн-признаки (скорость транзакций по карте, устройству) — модель без них не может работать. Скор переводится в решение порогами с учётом стоимости ошибок, а пограничная зона уходит на step-up (например, 3-D Secure), чтобы не мучить проверками всех клиентов.",
+   "src": "block3_quiz.html#30 (переписан: общий вопрос вместо кейса, session 004)"
+  },
+  {
+   "id": "qdyg2lfc",
+   "type": "mcq",
+   "q": "Graph ML для fraud detection: что такое synthetic identity fraud?",
+   "options": [
+    "Фрод через синтетические изображения",
+    "Создание фиктивных личностей из комбинации реальных данных разных людей. GNN эффективна т.к. выявляет связи между аккаунтами использующими одни и те же email/phone/address",
+    "Автоматически генерированные транзакции",
+    "Deepfake видео для верификации"
+   ],
+   "correct": 1,
+   "explanation": "Synthetic identity fraud: мошенник берёт SSN ребёнка, имя из одного источника, адрес из другого → создаёт \"нового\" человека. Transactional ML: не замечает — история чистая. Graph ML: аккаунт шарит email с 3 другими аккаунтами, шарит phone с 5 → подозрительный кластер. GraphSAGE / GAT обнаруживают эти связи. FB, PayPal, Stripe используют GNN.",
+   "src": "block3_quiz.html#31"
+  },
+  {
+   "id": "qxzidkrm",
+   "type": "mcq",
+   "q": "Как cost-based threshold optimization работает лучше обычного 0.5?",
+   "options": [
+    "Снижает вычислительную стоимость",
+    "Выбирает threshold минимизирующий бизнес-стоимость: Cost = FN_cost × FN + FP_cost × FP. При FN_cost >> FP_cost → сдвигаем threshold вниз (ловим больше фрода, больше ложных тревог)",
+    "Автоматически балансирует классы",
+    "Работает только с XGBoost"
+   ],
+   "correct": 1,
+   "explanation": "Cost = 50×FN + 5×FP (пример: пропущенный фрод в 10× дороже ложной тревоги). Перебираем threshold [0, 0.01, ..., 1.0], вычисляем Cost = 50×FN + 5×FP для каждого. Выбираем threshold с минимальным Cost. Это может быть 0.2 или 0.35, а не стандартное 0.5.",
+   "src": "block3_quiz.html#32"
+  },
+  {
+   "id": "q0wqpy50",
+   "type": "card",
+   "q": "Почему accuracy — плохая метрика для fraud detection?",
+   "a": "При 0.1% fraud rate: модель \"всегда говорит легитимная\" имеет accuracy 99.9% — но ловит 0% мошенников!<br><br>\n      <strong>Правильные метрики:</strong><br>\n      - <strong>Recall (Sensitivity)</strong>: доля пойманного фрода. Максимизируем.<br>\n      - <strong>Precision</strong>: доля реального фрода среди заблокированных. Минимум FP.<br>\n      - <strong>F-beta score</strong>: баланс, обычно с β=2 (Recall вдвое важнее).<br>\n      - <strong>PR-AUC</strong>: площадь под Precision-Recall кривой. Более честна при дисбалансе чем ROC-AUC.<br>\n      - <strong>Business metrics</strong>: потери от фрода (&#36;) + потери от FP (&#36;) — конечная метрика оценки.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_03_fraud_detection.html#qa1"
+  },
+  {
+   "id": "qbazgbjs",
+   "type": "card",
+   "q": "Что такое velocity features и почему они важны?",
+   "a": "Velocity features = агрегаты поведения за скользящее временное окно.<br><br>\n      <strong>Примеры:</strong><br>\n      - card_txn_count_1h: количество транзакций по карте за час<br>\n      - card_amt_sum_24h: суммарная сумма за сутки<br>\n      - user_countries_distinct_6h: уникальные страны за 6 часов<br>\n      - ip_fraud_rate_30d: исторический % фрода с этого IP<br><br>\n      <strong>Почему важны:</strong> мошенник спешит (карту скоро заблокируют) → аномально высокая активность за короткое время. Статические признаки можно имитировать, поведение во времени — сложнее.<br><br>\n      В production-моделях velocity features занимают 60-70% SHAP importance.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_03_fraud_detection.html#qa2"
+  },
+  {
+   "id": "qu8reja0",
+   "type": "card",
+   "q": "Как организовать real-time inference с latency &lt;50ms?",
+   "a": "<strong>Архитектурные решения:</strong><br><br>\n      1. <strong>Pre-compute features:</strong> velocity features вычисляются непрерывно (Kafka→Flink→Redis). При запросе — только lookup, не вычисление.<br>\n      2. <strong>In-memory Feature Store:</strong> Redis или Aerospike. Latency p99 &lt;2ms. TTL на старые данные.<br>\n      3. <strong>ONNX/PMML inference:</strong> LightGBM конвертируется в ONNX. Inference на CPU ≈5ms. Не нужен Python runtime.<br>\n      4. <strong>Rule Engine первым:</strong> детерминированные правила (&lt;1ms) фильтруют ~15-20% случаев без ML.<br>\n      5. <strong>Async updates:</strong> обновление velocity counters — асинхронно после ответа клиенту.<br><br>\n      <strong>SLA decomposition:</strong> network 5ms + feature lookup 2ms + real-time features 2ms + inference 8ms + decision 1ms + buffer = ~25ms p50, 45ms p99.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_03_fraud_detection.html#qa3"
+  },
+  {
+   "id": "q5qc5qqs",
+   "type": "card",
+   "q": "Что такое concept drift и как его мониторить?",
+   "a": "<strong>Concept drift</strong> = изменение статистической зависимости P(Y|X) во времени. В fraud: мошенники меняют тактику → старая модель хуже ловит новые схемы.<br><br>\n      <strong>Типы дрифта:</strong><br>\n      - Sudden drift: новая схема фрода появляется резко (массовый phishing attack)<br>\n      - Gradual drift: постепенное изменение (инфляция меняет distribution сумм)<br>\n      - Adversarial drift: мошенники специально имитируют легитимные транзакции<br><br>\n      <strong>Мониторинг:</strong><br>\n      - PSI по каждому признаку: PSI &gt; 0.2 → ретрейн<br>\n      - Performance drift: Recall на rolling validation window. Снижение &gt;5% → alarm<br>\n      - Feature distribution shift: KL-divergence или Kolmogorov-Smirnov тест<br>\n      - Chargeback rate trend: рост chargebacks → модель пропускает новый тип фрода",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_03_fraud_detection.html#qa4"
+  },
+  {
+   "id": "q1rer9fc",
+   "type": "card",
+   "q": "Как бороться с дисбалансом классов в fraud?",
+   "a": "Порядок предпочтения на практике:<br><br>\n      1. <strong>scale_pos_weight = neg/pos</strong> в LightGBM: вес fraud-класса = 99900/100 = 999. Быстро, без изменения данных, хорошо работает.<br>\n      2. <strong>class_weight='balanced'</strong> в sklearn LogisticRegression/SVC<br>\n      3. <strong>Focal Loss</strong> в нейросетях: γ=2 подавляет лёгкие примеры<br>\n      4. <strong>SMOTE</strong> или <strong>ADASYN</strong> для синтетических примеров: помогает при очень малых классах (&lt;0.01%)<br>\n      5. <strong>Threshold optimization</strong>: оптимизировать threshold по бизнес-метрике (cost matrix), не 0.5<br><br>\n      <strong>Не рекомендую:</strong> random oversampling + undersampling вместе — приводит к переобучению на синтетических данных.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_03_fraud_detection.html#qa5"
+  },
+  {
+   "id": "qqvg0wr8",
+   "type": "card",
+   "q": "Как Feature Store решает проблему train-serve skew?",
+   "a": "<strong>Train-serve skew</strong>: при обучении признаки вычислены одним способом, при инференсе — другим. Результат: offline метрики хорошие, production — плохие.<br><br>\n      <strong>Feature Store решение:</strong><br>\n      1. <strong>Единое определение признака:</strong> \"card_txn_count_1h = count транзакций card_id за последний час до транзакции t (exclusive)\". Одна реализация, два использования.<br>\n      2. <strong>Point-in-time correct training:</strong> при генерации train set — для каждой строки берём feature values на момент timestamp транзакции из исторического хранилища.<br>\n      3. <strong>Online serving:</strong> те же feature definitions, но из live Redis.<br><br>\n      Популярные open-source: Feast, Hopsworks, Tecton. AWS: SageMaker Feature Store. GCP: Vertex AI Feature Store.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_03_fraud_detection.html#qa6"
+  },
+  {
+   "id": "qwigmbfw",
+   "type": "card",
+   "q": "Что такое card testing fraud и как его детектировать?",
+   "a": "<strong>Card testing</strong>: мошенник получил список украденных карт. Проверяет каждую маленькой транзакцией (0.01&#36;, 1&#36;) на легитимном мерчанте. Если прошла → использует для крупных покупок.<br><br>\n      <strong>Характерные паттерны:</strong><br>\n      - Очень маленькие суммы (outlier amount_percentile)<br>\n      - Высокая частота с одного IP/device (velocity!)<br>\n      - Новые карты без истории<br>\n      - Специфические мерчанты (парковки, donation sites — низкий порог)<br><br>\n      <strong>Detection signals:</strong><br>\n      - ip_txn_count_1h &gt; 10 → подозрительно<br>\n      - device_unique_cards_24h &gt; 5 → очень подозрительно<br>\n      - amount &lt; 2&#36; AND is_new_card → flag<br>\n      - merchant_card_testing_rate — исторический % card testing через этого мерчанта",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_03_fraud_detection.html#qa7"
+  },
+  {
+   "id": "qdltsmxw",
+   "type": "card",
+   "q": "Как использовать граф-признаки для fraud?",
+   "a": "<strong>Граф строится из сущностей:</strong> карты, IP-адреса, устройства, email, телефоны, мерчанты.<br><br>\n      <strong>Рёбра:</strong> \"карта X использовалась с IP Y\", \"IP Y также использовался карта Z\", etc.<br><br>\n      <strong>Простые граф-признаки (без GNN):</strong><br>\n      - degree(IP) = сколько карт использовали этот IP<br>\n      - fraud_rate(device) = доля фрода транзакций с этого устройства<br>\n      - shared_device_with_fraud_account: связан ли пользователь через устройство с известным фродером<br><br>\n      <strong>GNN подход (PayPal, JPMorgan):</strong><br>\n      GraphSAGE/GAT: каждый узел = embedding = функция(собственных признаков, агрегат признаков соседей). Новый узел \"заражается\" репутацией соседей.<br><br>\n      <strong>Результат:</strong> +10-20% AUC на synthetic identity fraud vs модель без графа.",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_03_fraud_detection.html#qa8"
+  },
+  {
+   "id": "qjtwyvas",
+   "type": "card",
+   "q": "Как выставить правильный threshold?",
+   "a": "<strong>Не используйте 0.5 по умолчанию!</strong> При дисбалансе 0.1% оптимальный threshold обычно 0.1-0.3.<br><br>\n      <strong>Метод 1: Cost-based оптимизация</strong><br>\n      Для каждого threshold τ: Cost(τ) = cost_FN × FN(τ) + cost_FP × FP(τ). Выбираем τ* = argmin Cost.<br><br>\n      <strong>Метод 2: F-beta максимизация</strong><br>\n      Максимизируем F₂ (если Recall важнее) на validation set по grid τ = [0.01, 0.02, ..., 0.99].<br><br>\n      <strong>Метод 3: Precision@K</strong><br>\n      Устанавливаем фиксированное число ручных проверок в день (K). Threshold = K-й percentile скоров.<br><br>\n      <strong>Метод 4: Multi-threshold</strong><br>\n      Разные threshold для разных сегментов: VIP-клиенты (высокий threshold), новые пользователи (низкий), транзакции в ночное время (средний).",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_03_fraud_detection.html#qa9"
+  },
+  {
+   "id": "qcgvvv1g",
+   "type": "card",
+   "q": "Что такое 3DS и как ML решает когда его использовать?",
+   "a": "<strong>3D Secure (3DS)</strong> = дополнительная аутентификация: SMS, push-уведомление, биометрия. Перекладывает ответственность на эмитента → chargeback платит банк, не мерчант.<br><br>\n      <strong>Проблема:</strong> 3DS фрикция → часть пользователей бросает покупку (abandonment rate 15-30%). Нельзя применять ко всем.<br><br>\n      <strong>ML-решение (Stripe, Adyen):</strong><br>\n      - Низкий fraud score (0-0.3): approve без 3DS<br>\n      - Средний (0.3-0.7): step-up → 3DS<br>\n      - Высокий (&gt;0.7): block немедленно<br><br>\n      <strong>Результат:</strong> оптимальный \"step-up\" использует 3DS только для 5-10% транзакций, ловя 80-90% фрода с минимальной фрикцией для честных клиентов.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_03_fraud_detection.html#qa10"
+  },
+  {
+   "id": "q007lxzc",
+   "type": "card",
+   "q": "Как оценить ROI от улучшения fraud модели?",
+   "a": "<strong>Формула ROI:</strong><br>\n      ΔRevenue = ΔRecall × fraud_volume × avg_fraud_amount<br>\n      ΔCost_FP = ΔFPR × legit_volume × cost_per_FP<br>\n      Net benefit = ΔRevenue − ΔCost_FP<br><br>\n      <strong>Пример:</strong><br>\n      Recall: 85% → 90% (+5%). Fraud volume: &#36;10M/год. avg fraud: &#36;500.<br>\n      ΔRecall = 5% → дополнительно поймали 0.05 × 10M/500 = 1,000 транзакций → &#36;500K сохранили.<br><br>\n      FPR: 0.5% → 0.6% (+0.1%). Legit volume: &#36;1B. Cost per FP: &#36;5.<br>\n      ΔFP = 0.001 × &#36;1B/avg_legit(&#36;200) = 5,000 доп. блокировок. Cost = 5,000 × &#36;5 = &#36;25K.<br><br>\n      Net benefit = &#36;500K − &#36;25K = <strong>&#36;475K/год</strong> от улучшения Recall на 5%.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_03_fraud_detection.html#qa11"
+  },
+  {
+   "id": "qmlafieg",
+   "type": "card",
+   "q": "Как обрабатывать delayed labels в fraud detection?",
+   "a": "<strong>Проблема:</strong> chargeback (подтверждение фрода) приходит через 30-90 дней после транзакции. Для онлайн-обучения нужна немедленная метка.<br><br>\n      <strong>Решения:</strong><br>\n      1. <strong>Proxy labels:</strong> использовать быстрые сигналы — пользователь позвонил в поддержку через 24ч, карта заблокирована через 48ч. Не идеальны но быстры.<br>\n      2. <strong>Batch retrain:</strong> переобучаем с реальными chargeback метками каждые 2-4 недели. Принятое решение в большинстве production-систем.<br>\n      3. <strong>Positive-unlabeled (PU) learning:</strong> знаем что часть \"легитимных\" (unlabeled) на самом деле фрод (еще не received chargeback). PU learning учитывает это при обучении.<br>\n      4. <strong>Active learning:</strong> отправлять подозрительные транзакции (score 0.4-0.7) на ручной review → быстрая разметка от аналитиков → онлайн обновление.",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_03_fraud_detection.html#qa12"
+  }
+ ]
+}

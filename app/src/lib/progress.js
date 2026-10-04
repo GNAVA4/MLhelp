@@ -4,17 +4,27 @@
 // topics[topicId] = { sectionsRead: string[], lastSection, maxScroll, startedAt, completedAt, updatedAt,
 //                     marks: { understood?: bool, revisit?: bool }, note? }
 // meta = { lastTopicId, lastOpenedAt }
-// attempts = [{ id, scope: 'block:1'|'topic:1.3', mode: 'all'|'random'|'wrong', startedAt, finishedAt,
+// attempts = [{ id, scope: 'b1,t1.3'|'all', mode: 'test'|'exam'|…, startedAt, finishedAt,
 //               total, correct, answers: [{ qid, chosen, correct, ms }] }]  ← users/{uid}/attempts/{id}
+// srs[qid]   = память FSRS по вопросу (компактно, см. lib/srs.js)        ← users/{uid}/cards/{qid}
+// log        = [{ q: qid, t: ms, g: 1..4, m: mode }] — журнал ответов (последние MAX_LOG)
+// marks      = { starred: { qid: ms }, flagged: { qid: { t: ms, note } } } — избранное и «в вопросе ошибка»
+// settings   = { newPerDay }
 import { useSyncExternalStore } from 'react';
 
 const KEY = 'mlc:progress';
-const EMPTY = { topics: {}, meta: {}, attempts: [] };
+// Новых вопросов в день по умолчанию: 20 — обычный старт в FSRS/Anki (~3–5 мин новых + их повторения).
+export const DEFAULT_NEW_PER_DAY = 20;
+const EMPTY = { topics: {}, meta: {}, attempts: [], srs: {}, log: [], marks: { starred: {}, flagged: {} }, settings: { newPerDay: DEFAULT_NEW_PER_DAY } };
 // Локально храним последние 300 попыток (~5–10 КБ каждая у тестов блока) — с запасом до лимита localStorage ~5 МБ.
 const MAX_ATTEMPTS = 300;
 
 function read() {
-  try { const v = JSON.parse(localStorage.getItem(KEY)); return v && v.topics ? { ...EMPTY, ...v } : EMPTY; } catch { return EMPTY; }
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY));
+    if (!v || !v.topics) return EMPTY;
+    return { ...EMPTY, ...v, marks: { ...EMPTY.marks, ...v.marks }, settings: { ...EMPTY.settings, ...v.settings } };
+  } catch { return EMPTY; }
 }
 
 let state = read();
@@ -32,6 +42,22 @@ window.addEventListener('storage', (e) => { if (e.key === KEY) { state = read();
 const subscribe = (cb) => { listeners.add(cb); return () => listeners.delete(cb); };
 export const useProgress = () => useSyncExternalStore(subscribe, () => state);
 export const getProgress = () => state;
+// Общий апдейтер для модулей поверх стора (srs.js и др.)
+export function updateState(fn) { commit(fn(state)); }
+
+export function toggleStar(qid) {
+  const starred = { ...state.marks.starred };
+  if (starred[qid]) delete starred[qid]; else starred[qid] = Date.now();
+  commit({ ...state, marks: { ...state.marks, starred } });
+}
+export function setFlag(qid, note) {
+  const flagged = { ...state.marks.flagged };
+  if (note == null) delete flagged[qid]; else flagged[qid] = { t: Date.now(), note };
+  commit({ ...state, marks: { ...state.marks, flagged } });
+}
+export function setSetting(key, value) {
+  commit({ ...state, settings: { ...state.settings, [key]: value } });
+}
 
 function patchTopic(id, fn) {
   const now = Date.now();
@@ -84,10 +110,10 @@ export function saveAttempt(a) {
   commit({ ...state, attempts });
 }
 
-// Лучшая и последняя попытка по области (scope = 'block:1' | 'topic:1.3'); считаются только полные прохождения (mode 'all').
+// Лучшая и последняя попытка по области (scope = 'b1' | 't1.3' | …); «лучшая» — среди тестов на все вопросы области.
 export function scopeResults(p, scope) {
   const list = p.attempts.filter((a) => a.scope === scope);
-  const full = list.filter((a) => a.mode === 'all');
+  const full = list.filter((a) => a.full);
   const best = full.reduce((b, a) => (!b || a.correct / a.total > b.correct / b.total ? a : b), null);
   return { best, last: list[list.length - 1] || null, count: list.length };
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useProgress, topicPct, topicStatus, scopeResults } from '../lib/progress.js';
-import { topicHref, quizHref } from '../lib/router.js';
+import { useProgress, topicPct, topicStatus } from '../lib/progress.js';
+import { topicHref, sessionHref } from '../lib/router.js';
 import { Bar, ContentBadge, Ring, plural, fmtMinutes } from '../ui/ui.jsx';
 
 const OPEN_KEY = 'mlc:openBlocks';
@@ -91,7 +91,7 @@ function BlockCard({ block, topics, progress, open, onToggle }) {
           <span className="muted small">{block.subtitle}</span>
           <span className="block-meta small">
             {readable.length ? <>{done} / {readable.length} прочитано · {fmtMinutes(minutes)}</> : 'ещё не написан'}
-            {block.mcqCount ? <> · тест {block.mcqCount} {plural(block.mcqCount, 'вопрос', 'вопроса', 'вопросов')}</> : null}
+            {block.mcqCount + block.cardCount ? <> · {block.mcqCount + block.cardCount} {plural(block.mcqCount + block.cardCount, 'вопрос', 'вопроса', 'вопросов')}</> : null}
           </span>
         </span>
         <span className="block-right">
@@ -101,7 +101,7 @@ function BlockCard({ block, topics, progress, open, onToggle }) {
       </button>
       {open && (
         <div className="block-body">
-          {block.mcqCount > 0 && <QuizEntry block={block} progress={progress} />}
+          {block.mcqCount + block.cardCount > 0 && <QuizEntry block={block} />}
           {groups.map((g) => (
             <div key={g.key} className="group">
               {g.title && <div className="group-head"><b>{g.title}</b><span className="muted small">{g.summary}</span></div>}
@@ -114,20 +114,21 @@ function BlockCard({ block, topics, progress, open, onToggle }) {
   );
 }
 
-function QuizEntry({ block, progress }) {
-  const r = scopeResults(progress, 'block:' + block.id);
+// Ссылка из теории во вкладку «Тренировка» с областью = этот блок.
+function QuizEntry({ block }) {
+  const kinds = [block.mcqCount ? block.mcqCount + ' с вариантами' : null, block.cardCount ? block.cardCount + ' карточек' : null].filter(Boolean).join(' · ');
   return (
-    <a className="quiz-entry" href={quizHref('block', block.id)}>
-      <span className="quiz-ico">?</span>
+    <div className="quiz-entry">
+      <span className="quiz-ico">🎯</span>
       <span className="trow-main">
-        <span className="trow-title">Тест блока</span>
-        <span className="trow-sum">{block.mcqCount} {plural(block.mcqCount, 'вопрос', 'вопроса', 'вопросов')} · по всем темам блока</span>
+        <span className="trow-title">Тренировать блок</span>
+        <span className="trow-sum">{kinds}</span>
       </span>
       <span className="trow-side small">
-        {r.best ? <span className="nowrap">лучший <b>{Math.round((r.best.correct / r.best.total) * 100)}%</b></span> : <span className="muted">не пройден</span>}
-        <span className="continue-go">→</span>
+        {block.mcqCount > 0 && <a className="btn btn-sm" href={sessionHref('test', 'b' + block.id, 20)}>Тест</a>}
+        {block.cardCount > 0 && <a className="btn btn-sm" href={sessionHref('cards', 'b' + block.id, 20)}>Карточки</a>}
       </span>
-    </a>
+    </div>
   );
 }
 

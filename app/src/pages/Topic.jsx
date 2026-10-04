@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   useProgress, getProgress, openTopic, setCurrentSection, markSectionRead, setMaxScroll,
-  setCompleted, setMark, setNote, topicPct, scopeResults,
+  setCompleted, setMark, setNote, topicPct,
 } from '../lib/progress.js';
-import { navigate, topicHref, quizHref } from '../lib/router.js';
+import { navigate, topicHref, sessionHref } from '../lib/router.js';
 import { Bar, ContentBadge } from '../ui/ui.jsx';
 
 export default function Topic({ manifest, topic, sectionId }) {
@@ -99,15 +99,15 @@ export default function Topic({ manifest, topic, sectionId }) {
             <p className="muted small side-note">У этой страницы нет размеченных секций — прогресс считается по прокрутке.</p>
           )}
 
-          {topic.mcqCount > 0 && (() => {
-            const r = scopeResults(progress, 'topic:' + topic.id);
-            return (
-              <a className="side-quiz" href={quizHref('topic', topic.id)}>
-                <b>Тест по теме</b>
-                <span className="small muted">{topic.mcqCount} вопр.{r.best ? ' · лучший ' + Math.round((r.best.correct / r.best.total) * 100) + '%' : ''}</span>
-              </a>
-            );
-          })()}
+          {(topic.mcqCount || topic.cardCount) > 0 && (
+            <div className="side-quiz">
+              <b>Тренировать тему</b>
+              <span className="side-quiz-btns">
+                {topic.mcqCount > 0 && <a className="btn btn-sm" href={sessionHref('test', 't' + topic.id)}>Тест · {topic.mcqCount}</a>}
+                {topic.cardCount > 0 && <a className="btn btn-sm" href={sessionHref('cards', 't' + topic.id)}>Карточки · {topic.cardCount}</a>}
+              </span>
+            </div>
+          )}
 
           <div className="marks">
             <label className="mark"><input type="checkbox" checked={!!p?.completedAt} onChange={(e) => setCompleted(topic.id, e.target.checked)} /> Прочитана</label>

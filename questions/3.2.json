@@ -1,0 +1,280 @@
+{
+ "topic": "3.2",
+ "title": "Прогнозирование спроса",
+ "questions": [
+  {
+   "id": "q7gotjmg",
+   "type": "mcq",
+   "q": "MAPE не работает корректно если...",
+   "options": [
+    "Значения целевой переменной близки к нулю (division by zero)",
+    "Данных меньше 1000 записей",
+    "Использовать LightGBM вместо Prophet",
+    "Есть сезонность"
+   ],
+   "correct": 0,
+   "explanation": "MAPE = mean(|y - ŷ| / |y|). При y → 0: деление на ноль или бесконечно большие значения. Например y=0.1, ŷ=1 → MAPE = 900%. Альтернативы при нулях: SMAPE, sMAPE, RMSSE, MAE.",
+   "src": "block3_quiz.html#12"
+  },
+  {
+   "id": "qqe3yiau",
+   "type": "mcq",
+   "q": "WRMSSE в M5 Challenge: что означает \"W\" (weighted)?",
+   "options": [
+    "Взвешенная по количеству наблюдений",
+    "Взвешенная по выручке каждой серии (dollar-weighted)",
+    "Взвешенная по иерархическому уровню",
+    "Взвешенная по сезонности"
+   ],
+   "correct": 1,
+   "explanation": "WRMSSE = Σ_i w_i · RMSSE_i, где w_i = (revenue_i / Σ revenue) — доля выручки каждой серии. Ошибки на дорогих/популярных товарах штрафуются сильнее. M5 winner WRMSSE = 0.527 (LightGBM, 28 direct models).",
+   "src": "block3_quiz.html#13"
+  },
+  {
+   "id": "qxlyfpu0",
+   "type": "mcq",
+   "q": "Hierarchical forecasting: что такое Bottom-Up подход?",
+   "options": [
+    "Прогноз делается на верхнем уровне, потом disaggregation вниз",
+    "Прогноз на каждом листовом уровне, суммирование вверх",
+    "Прогноз на среднем уровне, потом вверх и вниз",
+    "Оптимальное согласование через матрицу"
+   ],
+   "correct": 1,
+   "explanation": "Bottom-Up: прогнозируем каждую листовую серию (SKU×Store), суммируем вверх для получения агрегатов. Плюс: точные базовые прогнозы. Минус: нет знаний об агрегированных паттернах, ошибки накапливаются вверх.",
+   "src": "block3_quiz.html#14"
+  },
+  {
+   "id": "qfxyn9ug",
+   "type": "mcq",
+   "q": "MinT (Minimum Trace) reconciliation лучше Bottom-Up потому что:",
+   "options": [
+    "Всегда быстрее вычисляется",
+    "Минимизирует суммарную дисперсию прогнозов с учётом ковариационной структуры",
+    "Не требует прогнозов на каждом уровне",
+    "Работает только для 2-уровневой иерархии"
+   ],
+   "correct": 1,
+   "explanation": "MinT: ỹ_h = S(S^T W_h^{-1} S)^{-1} S^T W_h^{-1} ŷ_h. Оптимально согласует прогнозы всех уровней минимизируя trace ковариационной матрицы ошибок. Учитывает корреляции между сериями. Превосходит Bottom-Up и Top-Down на большинстве датасетов.",
+   "src": "block3_quiz.html#15"
+  },
+  {
+   "id": "qrungvdk",
+   "type": "mcq",
+   "q": "Temporal leakage через rolling mean: почему df[\"avg_7d\"] = df[\"sales\"].rolling(7).mean() — ОШИБКА?",
+   "options": [
+    "rolling() медленнее чем groupby",
+    "Включает текущий день в окно → информация из будущего просачивается в обучение",
+    "rolling(7) даёт слишком маленькое окно",
+    "Нужно использовать ewm вместо rolling"
+   ],
+   "correct": 1,
+   "explanation": "rolling(7) на строке t включает значения t, t-1, ..., t-6 — включая текущий день t. Цель тоже sales[t] → leakage. Правильно: .rolling(7).mean().shift(1) — окно заканчивается на t-1, не включает текущий момент.",
+   "src": "block3_quiz.html#16"
+  },
+  {
+   "id": "qorqedl0",
+   "type": "mcq",
+   "q": "TimeSeriesSplit vs обычный KFold для временных рядов: почему KFold неверен?",
+   "options": [
+    "KFold медленнее",
+    "KFold смешивает прошлое и будущее: модель обучается на будущих данных, предсказывает прошлые → нереалистично",
+    "KFold работает только для классификации",
+    "KFold не поддерживает временные признаки"
+   ],
+   "correct": 1,
+   "explanation": "KFold: fold может взять training=данные с t>1000 и validation=t&lt;500. Модель \"видит будущее\" на обучении. TimeSeriesSplit всегда: train=[0..k], val=[k+1..m]. Иначе метрики оптимистично завышены, модель на production хуже чем в CV.",
+   "src": "block3_quiz.html#17"
+  },
+  {
+   "id": "qbaldlvg",
+   "type": "mcq",
+   "q": "Prophet: формула модели y(t) = g(t) + s(t) + h(t) + ε. Что такое s(t)?",
+   "options": [
+    "Общий тренд (линейный или логистический)",
+    "Сезонная компонента через ряды Фурье",
+    "Эффект праздников и событий",
+    "Остаток (шум)"
+   ],
+   "correct": 1,
+   "explanation": "g(t) — тренд (линейный или насыщающийся логистический). s(t) — seasonality через Фурье ряды: s(t) = Σ_n [a_n cos(2πnt/P) + b_n sin(2πnt/P)]. h(t) — holidays (индикаторные переменные). ε_t — ошибка.",
+   "src": "block3_quiz.html#18"
+  },
+  {
+   "id": "qo5czdbk",
+   "type": "mcq",
+   "q": "N-BEATS: что такое \"doubly residual stacking\"?",
+   "options": [
+    "Два отдельных слоя нормализации",
+    "Каждый блок предсказывает backcast (объяснение входа) и forecast, вычитая backcast из входа перед следующим блоком",
+    "Skip connections как в ResNet",
+    "Двойной dropout для регуляризации"
+   ],
+   "correct": 1,
+   "explanation": "N-BEATS: блок_k → backcast_k (объясняет входной сигнал) + forecast_k (вклад в прогноз). Вход для блок_{k+1} = вход_k − backcast_k. Doubly residual: 1) вычитаем backcast из входа (residual stack), 2) суммируем forecasts (residual block). Позволяет интерпретировать тренд и сезонность через отдельные стеки.",
+   "src": "block3_quiz.html#19"
+  },
+  {
+   "id": "qwllgbfo",
+   "type": "mcq",
+   "q": "Почему LightGBM выиграл M5 Challenge (WRMSSE=0.527) а не чистые DL модели?",
+   "options": [
+    "DL модели были запрещены",
+    "LightGBM хорошо работает с табличными данными + ручное feature engineering + 28 прямых моделей (по 1 на каждый horion)",
+    "Prophet дал аналогичный результат",
+    "Random Forest показал лучшие результаты"
+   ],
+   "correct": 1,
+   "explanation": "M5 winner (Walmart): LightGBM, 28 direct models (один на каждый из 28 дней горизонта). Мощное feature engineering: lag_1/7/28, rolling_mean_7/28/90 с shift(1), calendar features (SNAP дни, мероприятия), price ratio. DL модели требуют много данных, плохо масштабируются на 42k серий, хуже захватывают irregular events.",
+   "src": "block3_quiz.html#20"
+  },
+  {
+   "id": "qq1ulauu",
+   "type": "mcq",
+   "q": "Pinball loss для квантильного прогноза: зачем несимметричная штрафная функция?",
+   "options": [
+    "Для ускорения градиентного спуска",
+    "Асимметрия позволяет по-разному штрафовать переоценку и недооценку — критично для inventory (недостаток товара дороже излишка или наоборот)",
+    "Pinball loss выпуклая, MAE нет",
+    "Позволяет предсказывать несколько квантилей одновременно"
+   ],
+   "correct": 1,
+   "explanation": "Pinball_τ(y, ŷ) = τ·max(y−ŷ, 0) + (1−τ)·max(ŷ−y, 0). При τ=0.9: переоценка (ŷ>y) штрафуется слабее чем недооценка (ŷ&lt;y) → оптимизирует 90-й квантиль. Для inventory: stockout (недостаток) обходится дороже → τ=0.95 лучше чем τ=0.5.",
+   "src": "block3_quiz.html#21"
+  },
+  {
+   "id": "qcwamveq",
+   "type": "mcq",
+   "q": "Прогноз спроса для сети: товары × магазины, с агрегатами по категориям, магазинам и регионам. Почему такую задачу решают как иерархическую?",
+   "options": [
+    "Чтобы уменьшить число рядов, которые нужно прогнозировать",
+    "Потому что прогнозы нижнего уровня всегда точнее",
+    "Прогнозы на разных уровнях должны быть согласованы (сумма по магазинам = прогноз региона), а верхние уровни сглаженнее и помогают уточнить зашумлённые нижние",
+    "Иерархия нужна только для визуализации отчётов"
+   ],
+   "correct": 2,
+   "explanation": "Решения принимаются на разных уровнях (закупка — по региону, выкладка — по магазину), и прогнозы должны сходиться. Верхние уровни агрегированы и меньше шумят, нижние разреженные (много нулей). Методы согласования (bottom-up, top-down, MinT) используют информацию со всех уровней. Рядов при этом становится больше, а не меньше.",
+   "src": "block3_quiz.html#22 (переписан: общий вопрос вместо кейса, session 004)"
+  },
+  {
+   "id": "qb1xlshe",
+   "type": "card",
+   "q": "Что такое иерархическое прогнозирование и зачем согласование?",
+   "a": "<strong>Иерархическое прогнозирование</strong> — когда временные ряды имеют структуру суммирования: продажи по магазинам суммируются в регион, регионы — в страну.<br><br>\n      <strong>Проблема без согласования:</strong> прогноз страны = 1000, сумма регионов = 1050. Какому верить? Бизнес-логика нарушена.<br><br>\n      <strong>Методы согласования:</strong><br>\n      - Bottom-Up: прогнозируем внизу → суммируем. Согласован по определению.<br>\n      - Top-Down: прогнозируем вверху → распределяем пропорционально.<br>\n      - MinT: математически оптимальное согласование, минимизирует дисперсию ошибок.<br><br>\n      <strong>Результат:</strong> согласованные прогнозы позволяют оптимизировать запасы одновременно на всех уровнях — от центрального склада до конкретного магазина.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa1"
+  },
+  {
+   "id": "qe38f8fe",
+   "type": "card",
+   "q": "Как избежать temporal leakage при создании признаков?",
+   "a": "<strong>Главные правила:</strong><br><br>\n      1. <strong>Всегда shift перед rolling:</strong> <code>df['roll_7'] = df['sales'].shift(1).rolling(7).mean()</code><br>\n      2. <strong>Кросс-валидация только TimeSeriesSplit</strong> — никогда KFold<br>\n      3. <strong>Target encoding:</strong> fit только на train, transform на val/test отдельно<br>\n      4. <strong>Тест на leakage:</strong> если перемешать строки по дате → метрика должна упасть. Если не упала → leakage!<br>\n      5. <strong>Проверяйте correlation:</strong> признак с корреляцией к target &gt;0.99 → подозрительно.<br><br>\n      <strong>Золотое правило:</strong> признак должен быть доступен в момент инференса. Если в production у тебя нет этого признака в нужное время → он не должен быть в модели.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa2"
+  },
+  {
+   "id": "qdrylk9e",
+   "type": "card",
+   "q": "В чём разница Bottom-Up, Top-Down и MinT?",
+   "a": "<strong>Bottom-Up:</strong> прогнозируем каждый SKU×Store → суммируем вверх. Согласован автоматически. Работает плохо для новых SKU (нет истории). Шум нижних уровней влияет на верхние.<br><br>\n      <strong>Top-Down:</strong> прогнозируем Total/Category → распределяем по историческим долям. Хорошо улавливает тренды. Проблема: доли меняются (новый магазин, изменение ассортимента).<br><br>\n      <strong>MinT:</strong> математически оптимальное согласование через GLS. Учитывает качество прогнозов на каждом уровне. Теоретически лучший, практически сложнее. Требует оценку матрицы ковариаций ошибок.<br><br>\n      <strong>На практике:</strong> M5 победители используют Bottom-Up LightGBM + MinT reconciliation в постпроцессинге.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa3"
+  },
+  {
+   "id": "qojdv61o",
+   "type": "card",
+   "q": "Почему LightGBM выиграл M5 а не нейросети?",
+   "a": "Несколько причин:<br><br>\n      1. <strong>Feature engineering pays off:</strong> M5 — tabular задача с возможностью создать 400+ признаков (lag, rolling, calendar, price, SNAP). LightGBM эффективно использует все взаимодействия.<br>\n      2. <strong>Категориальные признаки:</strong> store_id, item_id, dept_id — LightGBM обрабатывает нативно через histogram binning. Нейросети требуют embeddings + больше данных для обучения.<br>\n      3. <strong>Скорость итераций:</strong> LGBM тренируется за часы, DL — за дни. Больше экспериментов за то же время.<br>\n      4. <strong>Interpretability и debugging:</strong> SHAP позволяет находить и исправлять temporal leakage, проверять бизнес-логику.<br><br>\n      <strong>Когда нейросети выигрывают:</strong> длинные однородные ряды без богатых внешних признаков, нужна uncertainty estimation, cold start задачи.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa4"
+  },
+  {
+   "id": "qczcqfy4",
+   "type": "card",
+   "q": "Как Prophet обрабатывает праздники?",
+   "a": "Prophet моделирует праздники через дополнительный регрессор $h(t)$:<br><br>\n      <strong>Механика:</strong> для каждого праздника создаётся окно [дата − lower_window, дата + upper_window] дней. В эти дни вводится dummy-признак = 1. Обучается коэффициент (intercept) для каждого праздника.<br><br>\n      <strong>Встроенные calendars:</strong> <code>Prophet(holidays=holidays_df)</code> — любой DataFrame с колонками 'ds' (дата) и 'holiday' (название).<br><br>\n      <strong>Кастомные праздники:</strong><br>\n      <code>playoffs = pd.DataFrame({'holiday': 'playoff', 'ds': pd.to_datetime(['2008-01-13']), 'lower_window': 0, 'upper_window': 1})</code><br><br>\n      <strong>Пример:</strong> для ретейла критичны Black Friday, Christmas Eve, NYE. Prophet автоматически подбирает magnitude (+30%, +50%) и shape (pre/post эффекты) для каждого.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa5"
+  },
+  {
+   "id": "qa7ym4ju",
+   "type": "card",
+   "q": "Что такое N-BEATS и чем отличается от LSTM?",
+   "a": "<strong>N-BEATS (Oreshkin et al., 2019):</strong> глубокая нейросеть с doubly residual stacking, специально для одномерных временных рядов. Двойной output: backcast + forecast.<br><br>\n      <strong>Отличия от LSTM:</strong><br>\n      - Нет рекуррентности → быстрее тренируется, лучше параллелизм<br>\n      - Doubly residual → стабильнее обучение чем LSTM с deep stacks<br>\n      - Interpretable stack → явная декомпозиция тренд + сезонность (как STL но обучаемая)<br>\n      - Без exogenous features нативно (в отличие от TFT)<br><br>\n      <strong>Где N-BEATS выигрывает:</strong> univariate forecasting без внешних признаков, длинные ряды с чистыми паттернами, M4 sMAPE (победитель 2018).<br><br>\n      <strong>N-HiTS (2022):</strong> улучшение N-BEATS с иерархическими интерполяциями — ещё лучше на длинных горизонтах.",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa6"
+  },
+  {
+   "id": "qa6uthde",
+   "type": "card",
+   "q": "Как выбрать метрику для demand forecasting?",
+   "a": "<strong>Нет нулей + сравниваем SKU:</strong> MAPE — привычна, интерпретируема.<br><br>\n      <strong>Есть нули (intermittent demand):</strong> RMSSE или MASE. MAPE = undefined или inf.<br><br>\n      <strong>Нужен бизнес-смысл:</strong> MAE в рублях = сколько денег теряем от ошибки прогноза.<br><br>\n      <strong>Иерархические прогнозы:</strong> WRMSSE (как в M5) — взвешивает ряды по выручке.<br><br>\n      <strong>Вероятностный прогноз:</strong> Pinball Loss (Quantile Loss) — асимметрично штрафует за под- или переоценку квантиля.<br><br>\n      <strong>Практическое правило:</strong> оптимизируй бизнес-метрику напрямую. Если цель — минимизировать storage costs + stockout costs → кастомная asymmetric loss функция.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa7"
+  },
+  {
+   "id": "q9jljxjw",
+   "type": "card",
+   "q": "Что такое intermittent demand и как с ним работать?",
+   "a": "<strong>Intermittent demand</strong> — спрос с многочисленными нулями. Товар продаётся редко и случайно.<br><br>\n      <strong>Примеры:</strong> запчасти (самолёт продаётся 2 раза в год), сезонные товары, B2B оборудование.<br><br>\n      <strong>Модели для intermittent demand:</strong><br>\n      - <strong>Croston's Method:</strong> разделяет интервалы между продажами и размер продажи. Предсказывает оба отдельно.<br>\n      - <strong>ITSB (Improved Croston):</strong> исправляет bias исходного Croston<br>\n      - <strong>Poisson regression:</strong> count-модель, y ~ Poisson(λ), λ = exp(Xβ)<br>\n      - <strong>Zero-Inflated Poisson:</strong> mixture = \"продажа происходит с вероятностью p\" + \"если продажа, то Poisson(λ)\"<br><br>\n      <strong>Практически:</strong> LightGBM + Tweedie distribution (специальная loss для count data с нулями) — хорошо работает на практике без специальных методов.",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa8"
+  },
+  {
+   "id": "qergkn3g",
+   "type": "card",
+   "q": "Как построить forecast pipeline в production?",
+   "a": "<strong>Production pipeline для 10,000+ SKU:</strong><br><br>\n      1. <strong>Data ingestion:</strong> ETL продаж → Feature Store (исторические лаги, rolling stats) → ежедневное обновление<br>\n      2. <strong>Model training:</strong> еженедельный retrain (глобальная LGBM модель на всех SKU). Параллелизация через Spark/Dask.<br>\n      3. <strong>Validation:</strong> backtesting на последние 4 недели. MAPE threshold: если &gt; baseline × 1.2 → alarm.<br>\n      4. <strong>Inference:</strong> ежедневный batch прогноз. 10,000 SKU × 28 дней = 280,000 прогнозов за &lt;1 минуты (CPU).<br>\n      5. <strong>Reconciliation:</strong> MinT согласование по иерархии.<br>\n      6. <strong>Output:</strong> P10/P50/P90 → supply chain system → automatic reorder.<br><br>\n      <strong>Стек:</strong> Python + LightGBM + Spark + MLflow (tracking) + Airflow (оркестрация).",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa9"
+  },
+  {
+   "id": "qmp6nh4e",
+   "type": "card",
+   "q": "Как обрабатывать промо-акции в прогнозировании?",
+   "a": "Промо — самый сложный фактор demand forecasting. Два типа промо признаков:<br><br>\n      <strong>1. Известные заранее (future promo):</strong><br>\n      - Промо планируется маркетингом за 3-4 недели → это допустимая фича без leakage!<br>\n      - Признаки: <code>is_promo_t+1, days_to_promo, promo_depth_pct</code><br>\n      - Это главный аргумент для Prophet/TFT: они принимают future regressors<br><br>\n      <strong>2. Промо в прошлом (historical):</strong><br>\n      - Лаговые промо-признаки: <code>was_promo_lag_7</code> — была ли акция неделю назад<br>\n      - Post-promo dip: после промо обычно спад (\"cannibalized future demand\")<br><br>\n      <strong>Ключевая задача:</strong> отделить \"базовые продажи\" от \"лифта промо\". Causal inference подходы (Uplift modeling) помогают оценить чистый промо-эффект.",
+   "tags": [
+    "deep dive"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa10"
+  },
+  {
+   "id": "qrqcm9mi",
+   "type": "card",
+   "q": "Что такое safety stock и как forecast uncertainty в него переводится?",
+   "a": "<strong>Safety Stock</strong> — страховой запас на случай ошибок прогноза и variability спроса.<br><br>\n      <strong>Формула:</strong> &#36;SS = z_\\alpha \\cdot \\sigma_d \\cdot \\sqrt{L}&#36;<br><br>\n      - &#36;z_\\alpha&#36; — z-квантиль (1.65 для 95% service level, 2.33 для 99%)<br>\n      - &#36;\\sigma_d&#36; — стандартное отклонение спроса за период<br>\n      - &#36;L&#36; — lead time (время поставки в периодах)<br><br>\n      <strong>Связь с прогнозом:</strong> &#36;\\sigma_d&#36; = forecast error std. Точный прогноз → меньше &#36;\\sigma_d&#36; → меньше safety stock → меньше замороженного капитала.<br><br>\n      <strong>Пример:</strong> Amazon при уменьшении MAPE на 2% → &#36;\\sigma&#36; уменьшается → safety stock снижается на 5-8% → при &#36;150B запасов = &#36;7-12B высвобождается.",
+   "tags": [
+    "популярный"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa11"
+  },
+  {
+   "id": "q2y1mc68",
+   "type": "card",
+   "q": "Как диагностировать плохой прогноз — с чего начать?",
+   "a": "<strong>Диагностика по шагам:</strong><br><br>\n      1. <strong>Временной анализ ошибок:</strong> MAPE по времени — если ошибка в праздники резко растёт → плохо захватываем holiday effects.<br>\n      2. <strong>Анализ по сегментам:</strong> MAPE по категориям, магазинам. Если один магазин всегда хуже → специфический паттерн не захвачен моделью.<br>\n      3. <strong>Проверка residuals:</strong> остатки должны быть белым шумом (нет автокорреляции). ACF(residuals) не должен иметь значимых пиков.<br>\n      4. <strong>SHAP анализ ошибочных прогнозов:</strong> для самых больших ошибок — какой признак внёс наибольший вклад? Иногда находим logical errors в признаках.<br>\n      5. <strong>Leakage check:</strong> train vs val performance gap &gt; 3× → подозрение на leakage.",
+   "tags": [
+    "практика"
+   ],
+   "src": "block3_02_demand_forecasting.html#qa12"
+  }
+ ]
+}
