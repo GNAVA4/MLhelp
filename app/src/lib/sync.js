@@ -30,7 +30,10 @@ let _fb = null;
 function fb() {
   if (!_fb) _fb = (async () => {
     const [appMod, a, f, cfg] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore'), cfgImport()]);
-    const app = appMod.initializeApp(cfg.firebaseConfig);
+    // На Firebase Hosting вход идёт через свой же домен (/__/auth/handler): с чужим authDomain redirect-вход ломается
+    // в Safari/iOS-PWA из-за разделения хранилища третьих сторон. Локально — authDomain из конфига.
+    const onHosting = /\.(web\.app|firebaseapp\.com)$/.test(location.hostname);
+    const app = appMod.initializeApp(onHosting ? { ...cfg.firebaseConfig, authDomain: location.hostname } : cfg.firebaseConfig);
     const auth = a.getAuth(app);
     let db;
     try { db = f.initializeFirestore(app, { localCache: f.persistentLocalCache({ tabManager: f.persistentMultipleTabManager() }) }); }

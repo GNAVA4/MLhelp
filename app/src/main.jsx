@@ -8,7 +8,8 @@ import '@fontsource/onest/700.css';
 import './index.css';
 import App from './App.jsx';
 import { initSync } from './lib/sync.js';
+import UpdateBanner from './ui/UpdateBanner.jsx';
 
 initSync();
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<><App /><UpdateBanner /></>);
