@@ -2,7 +2,7 @@
 
 Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-04. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 77 страниц, без проблем — 73, с проблемами — 4.
+**Итого:** 78 страниц, без проблем — 74, с проблемами — 4.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -12,7 +12,8 @@
 | block0_02_distributions.html | 1284 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_03_bayes.html | 1274 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1183 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_05_likelihood_mle_map.html | 1313 | 15 | 30 | 16 / 16 |  | 0 |  |
+| block0_05_likelihood_mle_map.html | 1315 | 15 | 30 | 16 / 16 |  | 0 |  |
+| block0_06_hypothesis_testing.html | 1081 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
@@ -84,4 +85,4 @@
 | block9_05_finetuning.html | 255 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block9_06_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 58 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 59 | 0 | 0 | 0 / 0 |  | 0 |  |
