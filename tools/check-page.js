@@ -32,10 +32,10 @@ Object.defineProperty(w.HTMLElement.prototype,'clientHeight',{get(){return 400}}
 w.ResizeObserver=class{observe(){}unobserve(){}disconnect(){}};
 if(!/Chart\.js 4\.4\.1 \(MIT\)/.test(html)) w.eval(fs.readFileSync(path.join(__dirname,'vendor','chart.umd.js'),'utf8'));
 // Все скрипты страницы (инлайн + локальные src, напр. blockN_quiz_data.js) — ОДНИМ eval: const/let верхнего уровня
-// в отдельных eval не видны друг другу (на тестах давало ложное «PARTS is not defined»). CDN-скрипты (MathJax) пропускаются.
+// в отдельных eval не видны друг другу (на тестах давало ложное «PARTS is not defined»). CDN-скрипты и MathJax пропускаются.
 const code=[...w.document.querySelectorAll('script')].map(s=>{
   const u=s.getAttribute('src'); if(!u) return s.textContent;
-  if(/^https?:/i.test(u)) return '';
+  if(/^https?:/i.test(u)||/mathjax/i.test(u)) return ''; // MathJax (CDN или локальный в app) в jsdom не нужен
   const p=path.join(path.dirname(f),u); if(fs.existsSync(p)) return fs.readFileSync(p,'utf8');
   errs.push('missing script '+u); return '';
 }).join('\n;\n');

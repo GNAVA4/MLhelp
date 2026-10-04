@@ -1,8 +1,11 @@
 // Прогон tools/check-page.js по всем страницам content-legacy/ (кроме _archive) и сводный отчёт.
-// Запуск: node tools/check-all.js [docs/content-report.md]   Код выхода 2, если хоть одна страница с проблемами.
+// Запуск: node tools/check-all.js [--dir=content-legacy] [report.md]   Код выхода 2, если хоть одна страница с проблемами.
+// Для страниц приложения: node tools/check-all.js --dir=app/public/content <report.md>
 const fs=require('fs'), path=require('path'), {spawnSync}=require('child_process');
-const root=path.join(__dirname,'..'), dir=path.join(root,'content-legacy');
-const out=process.argv[2]||path.join(root,'docs','content-report.md');
+const root=path.join(__dirname,'..');
+const argDir=process.argv.find(a=>a.startsWith('--dir=')), pos=process.argv.slice(2).filter(a=>!a.startsWith('--dir='));
+const dir=path.resolve(root,argDir?argDir.slice(6):'content-legacy');
+const out=pos[0]?path.resolve(pos[0]):path.join(root,'docs','content-report.md');
 const files=fs.readdirSync(dir).filter(f=>f.endsWith('.html')).sort();
 const rows=[]; let bad=0;
 for(const f of files){
@@ -25,7 +28,7 @@ for(const f of files){
 }
 const ok=rows.length-bad;
 let md='# Отчёт о состоянии контента\n\n';
-md+='Сгенерирован `node tools/check-all.js` '+new Date().toISOString().slice(0,10)+'. ';
+md+='Каталог `'+path.relative(root,dir).split(path.sep).join('/')+'`. Сгенерирован `node tools/check-all.js` '+new Date().toISOString().slice(0,10)+'. ';
 md+='Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).\n\n';
 md+='**Итого:** '+rows.length+' страниц, без проблем — '+ok+', с проблемами — '+bad+'.\n\n';
 md+='Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.\n\n';

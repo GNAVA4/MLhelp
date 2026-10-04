@@ -1,6 +1,6 @@
 # Отчёт о состоянии контента
 
-Сгенерирован `node tools/check-all.js` 2026-10-04. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
+Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-04. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
 **Итого:** 75 страниц, без проблем — 71, с проблемами — 4.
 
