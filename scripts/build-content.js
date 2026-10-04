@@ -4,6 +4,7 @@
 //                           Chart.js и MathJax вместо CDN) + подключённый мост assets/bridge.js
 //   assets/               — katex (css + woff2), chart.umd.js, mathjax (локальная копия), bridge.js
 //   data/manifest.json    — блоки, модули, темы, секции, время чтения
+//   data/version.json     — { qv, schema, builtAt, count } банка (проверка обновлений в APK)
 //   data/questions.json   — вопросы для тренировок из банка questions/*.json (mcq + card), формулы отрендерены KaTeX
 // Флаг --if-missing: ничего не делать, если data/manifest.json уже есть (для predev).
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), { spawnSync } = require('child_process');
@@ -187,9 +188,16 @@ for (const b of blocks) {
 }
 
 const body = { blocks, topics };
+// Формат вопроса в questions.json. Менять при несовместимых изменениях полей (тогда старые APK не возьмут новый банк).
+const BANK_SCHEMA = 1;
 const version = crypto.createHash('sha1').update(JSON.stringify(body) + JSON.stringify(questions)).digest('hex').slice(0, 10);
 fs.writeFileSync(path.join(DIR.data, 'manifest.json'), JSON.stringify({ version, ...body }));
-fs.writeFileSync(path.join(DIR.data, 'questions.json'), JSON.stringify({ version, questions }));
+// qv — версия только банка вопросов: по ней APK решает, скачивать ли свежий банк с сайта (app/src/lib/liveBank.js, ADR 012).
+// schema — формат вопроса; APK со старым кодом не берёт банк новой схемы.
+const qv = crypto.createHash('sha1').update(JSON.stringify(questions)).digest('hex').slice(0, 10);
+const builtAt = Date.now();
+fs.writeFileSync(path.join(DIR.data, 'questions.json'), JSON.stringify({ version, qv, schema: BANK_SCHEMA, questions }));
+fs.writeFileSync(path.join(DIR.data, 'version.json'), JSON.stringify({ qv, schema: BANK_SCHEMA, builtAt, count: questions.length }));
 
 const withFile = topics.filter(t => t.file);
 console.log('content: тем ' + topics.length + ' (с файлом ' + withFile.length + ': из content-src ' + built.src + ', legacy ' + built.legacy + '), блоков ' + blocks.length);

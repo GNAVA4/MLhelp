@@ -7,7 +7,9 @@ import { navigate, topicHref, sessionHref } from '../lib/router.js';
 import { useBackHandler } from '../lib/back.js';
 import { Bar, ContentBadge } from '../ui/ui.jsx';
 
-export default function Topic({ manifest, topic, sectionId }) {
+export default function Topic({ manifest, topic, sectionId, from }) {
+  // адрес возврата запоминаем при входе: переходы по секциям меняют адрес темы и теряли бы ?from
+  const [back] = useState(from);
   const block = manifest.blockById[topic.blockId];
   const progress = useProgress();
   const p = progress.topics[topic.id];
@@ -68,7 +70,7 @@ export default function Topic({ manifest, topic, sectionId }) {
   return (
     <div className="reader" style={{ '--c': block.color }}>
       <header className="rbar">
-        <a className="rbar-back" href="#/" title="К каталогу">←</a>
+        <a className="rbar-back" href={back || '#/'} title={back ? 'Назад' : 'К каталогу'}>←</a>
         <div className="rbar-title">
           <span className="tid" style={{ color: block.color }}>{topic.id}</span>
           <span className="rbar-name">{topic.title}</span>

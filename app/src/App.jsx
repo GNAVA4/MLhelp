@@ -7,6 +7,7 @@ import Session from './pages/Session.jsx';
 import Train from './pages/Train.jsx';
 import Stats from './pages/Stats.jsx';
 import Profile from './pages/Profile.jsx';
+import Search from './pages/Search.jsx';
 import TabBar from './ui/TabBar.jsx';
 
 export default function App() {
@@ -20,8 +21,9 @@ export default function App() {
   if (route.name === 'topic') {
     const topic = manifest.byId[route.topicId];
     if (!topic || !topic.file) return <div className="screen-msg"><b>Тема не найдена</b><a href="#/">К каталогу</a></div>;
-    return <Topic key={topic.id} manifest={manifest} topic={topic} sectionId={route.sectionId} />;
+    return <Topic key={topic.id} manifest={manifest} topic={topic} sectionId={route.sectionId} from={route.from} />;
   }
+  if (route.name === 'search') return <Search manifest={manifest} initial={route.q} />;
   if (route.name === 'session') {
     return <Session key={location.hash} manifest={manifest} params={route.params} />;
   }

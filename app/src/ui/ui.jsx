@@ -35,11 +35,16 @@ export function Ring({ pct, color, size = 22 }) {
   );
 }
 
-export const plural = (n, one, few, many) => {
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-  return many;
-};
+export { plural } from '../lib/plural.js';
 
 export const fmtMinutes = (m) => (m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60 ? (m % 60) + ' мин' : '') : m + ' мин').trim();
+
+// Строка «Поиск…» — вход на экран поиска (#/search).
+export function SearchEntry() {
+  return (
+    <a className="search-entry" href="#/search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
+      <span>Поиск по темам и вопросам</span>
+    </a>
+  );
+}

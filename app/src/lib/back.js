@@ -21,7 +21,7 @@ export function useBackHandler(active, fn) {
 }
 
 const TABS = ['train', 'stats', 'profile'];
-const PARENT = { topic: '#/', session: '#/train' };
+const PARENT = { topic: '#/', session: '#/train', search: '#/' };
 
 let installed = false;
 export function initBackButton() {

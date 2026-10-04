@@ -3,7 +3,7 @@ import { useQuestions, modeCounts, parseScope, MODES } from '../lib/questions.js
 import { useProgress, setSetting, DEFAULT_NEW_PER_DAY } from '../lib/progress.js';
 import { streak, todayInfo } from '../lib/srs.js';
 import { sessionHref } from '../lib/router.js';
-import { plural } from '../ui/ui.jsx';
+import { plural, SearchEntry } from '../ui/ui.jsx';
 
 // Выбор области и размера сессии — удобство конкретного зрителя, храним в localStorage.
 const SCOPE_KEY = 'mlc:trainScope', N_KEY = 'mlc:trainN';
@@ -47,6 +47,7 @@ export default function Train({ manifest }) {
         <h1>Тренировка</h1>
         <p className="muted">{total} {plural(total, 'вопрос', 'вопроса', 'вопросов')} · изучено {seen}</p>
       </header>
+      <SearchEntry />
 
       <section className="today">
         <div className="today-top">

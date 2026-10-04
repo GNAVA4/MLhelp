@@ -23,6 +23,15 @@ const GRADES = [
 ];
 const Html = ({ html, className, as: Tag = 'div' }) => <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 
+// Прохождение, из которого ушли читать тему: при возврате (тот же адрес) продолжаем с того же вопроса
+// и в том же состоянии (выбранный ответ / открытый ответ карточки). Живёт в памяти, пока открыто приложение.
+let kept = null; // { hash, run, answer: { chosen } | { shown } | null }
+// свойства ссылки «в тему»: адрес с возвратом сюда; прохождение запоминается только по нажатию
+const readLinkProps = (topicId, answer, run) => ({
+  href: topicHref(topicId) + '?from=' + encodeURIComponent(window.location.hash),
+  onClick: () => { kept = { hash: window.location.hash, run, answer }; },
+});
+
 const mkItem = (q) => ({ q, order: q.type === 'mcq' ? (q.fixedOrder ? q.options.map((_, i) => i) : shuffle(q.options.map((_, i) => i))) : null, requeued: 0 });
 
 export default function Session({ manifest, params }) {
@@ -30,7 +39,8 @@ export default function Session({ manifest, params }) {
   const mode = MODES[params.mode] ? params.mode : 'test';
   const scope = params.scope || 'all';
   const n = params.n ? parseInt(params.n, 10) : 0;
-  const [run, setRun] = useState(null);
+  const [restored] = useState(() => { const k = kept && kept.hash === window.location.hash ? kept : null; kept = null; return k; });
+  const [run, setRun] = useState(restored ? restored.run : null);
 
   useEffect(() => {
     if (!bank || run) return;
@@ -75,7 +85,8 @@ export default function Session({ manifest, params }) {
     <div className="quiz">
       {header}
       <main className="qmain">
-        {!run.done && <Runner key={run.idx + ':' + run.items.length} run={run} setRun={setRun} mode={mode} manifest={manifest} onFinish={finish} />}
+        {!run.done && <Runner key={run.idx + ':' + run.items.length} run={run} setRun={setRun} mode={mode} manifest={manifest} onFinish={finish}
+          restoreAnswer={restored && restored.run.idx === run.idx ? restored.answer : null} />}
         {run.done && <Summary run={run} mode={mode} manifest={manifest} bank={bank} onRetry={(qs) => setRun(newRun(qs))} />}
       </main>
     </div>
@@ -108,11 +119,14 @@ function Stopwatch({ since }) {
   return <span className="timer">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>;
 }
 
-function Runner({ run, setRun, mode, manifest, onFinish }) {
+function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
   const item = run.items[run.idx];
   const q = item.q;
-  const t = manifest.byId[q.topicId];
+  // банк в APK может быть свежее манифеста (lib/liveBank.js) — тема могла ещё не попасть в каталог
+  const t = manifest.byId[q.topicId] || { id: q.topicId, title: '' };
   const progress = useProgress();
+  const [flagForm, setFlagForm] = useState(false);
+  const [note, setNote] = useState('');
   const starred = !!progress.marks.starred[q.id];
   const flagged = progress.marks.flagged[q.id];
 
@@ -123,11 +137,10 @@ function Runner({ run, setRun, mode, manifest, onFinish }) {
     window.scrollTo(0, 0);
   };
 
-  const flag = () => {
-    if (flagged) { if (confirm('Снять пометку «в вопросе ошибка»?')) setFlag(q.id, null); return; }
-    const note = prompt('Что не так с вопросом? (уйдёт в список на исправление)', '');
-    if (note != null) setFlag(q.id, note.trim() || '—');
-  };
+  // пометка «в вопросе ошибка» — формой в карточке: prompt/confirm в Android-приложении не показываются
+  const flag = () => { setNote(''); setFlagForm((v) => !v); };
+  const saveFlag = () => { setFlag(q.id, note.trim() || '—'); setFlagForm(false); };
+  const unflag = () => { setFlag(q.id, null); setFlagForm(false); };
 
   const answered = run.results.length;
   const ok = run.results.filter((x) => x.ok).length;
@@ -136,7 +149,7 @@ function Runner({ run, setRun, mode, manifest, onFinish }) {
       <Bar value={run.idx / run.items.length} color="var(--c)" thin />
       <div className="qcard">
         <div className="qmeta small muted">
-          <a href={topicHref(t.id)} title="Открыть тему">{t.id} {t.title}</a>
+          <a {...readLinkProps(t.id, null, run)} title="Открыть тему (вернётесь к этому вопросу)">{t.id} {t.title}</a>
           <span className="qtools">
             {mode === 'interview' && <Stopwatch since={run.tq} />}
             {mode !== 'exam' && answered > 0 && <span className="nowrap">{ok} / {answered}</span>}
@@ -144,21 +157,24 @@ function Runner({ run, setRun, mode, manifest, onFinish }) {
             <button className={'icon ' + (flagged ? 'on-flag' : '')} onClick={flag} title="В вопросе ошибка" aria-pressed={!!flagged}><Icon name="flag" size={18} /></button>
           </span>
         </div>
+        {flagForm && (flagged
+          ? <div className="flag-form"><span className="small">Вопрос помечен: {flagged.note}</span><span className="flag-btns"><button className="btn btn-sm" onClick={unflag}>Снять пометку</button><button className="btn btn-sm" onClick={() => setFlagForm(false)}>Закрыть</button></span></div>
+          : <div className="flag-form"><input className="flag-input" autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="Что не так с вопросом?" onKeyDown={(e) => e.key === 'Enter' && saveFlag()} /><span className="flag-btns"><button className="btn btn-sm btn-primary" onClick={saveFlag}>Отметить</button><button className="btn btn-sm" onClick={() => setFlagForm(false)}>Отмена</button></span></div>)}
         {item.requeued > 0 && <div className="tag-again small">повтор</div>}
         <Html className="qtext" html={q.q} />
         {q.type === 'mcq'
-          ? <McqItem item={item} mode={mode} tq={run.tq} onDone={(res) => advance(res, false)} />
-          : <CardItem item={item} mode={mode} tq={run.tq} onDone={(res) => advance(res, (mode === 'today' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} />}
+          ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} />
+          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'today' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} />}
       </div>
     </>
   );
 }
 
-function McqItem({ item, mode, tq, onDone }) {
+function McqItem({ item, mode, tq, onDone, restore, readLink }) {
   const q = item.q;
   const exam = mode === 'exam';
-  const [chosen, setChosen] = useState(null);
-  const [locked, setLocked] = useState(false);
+  const [chosen, setChosen] = useState(restore && restore.chosen != null ? restore.chosen : null);
+  const [locked, setLocked] = useState(!!(restore && restore.chosen != null && !exam));
   const nextRef = useRef(null);
 
   const pick = (orig) => {
@@ -211,6 +227,7 @@ function McqItem({ item, mode, tq, onDone }) {
         <div className={'expl ' + (chosen === q.correct ? 'expl-ok' : 'expl-bad')}>
           <b>{chosen === q.correct ? 'Верно' : 'Неверно'}</b>
           {q.explanation && <Html html={q.explanation} />}
+          <a className="read-link" {...readLink({ chosen })}>Почитать в теме →</a>
         </div>
       )}
       {(show || (exam && chosen != null)) && (
@@ -220,9 +237,9 @@ function McqItem({ item, mode, tq, onDone }) {
   );
 }
 
-function CardItem({ item, mode, tq, onDone }) {
+function CardItem({ item, mode, tq, onDone, restore, readLink }) {
   const q = item.q;
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(!!(restore && restore.shown));
   const [dx, setDx] = useState(0);
   const start = useRef(null);
   const intervals = useMemo(() => (shown ? previewIntervals(q.id) : null), [shown]);
@@ -268,6 +285,7 @@ function CardItem({ item, mode, tq, onDone }) {
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         <Html html={q.a} />
       </div>
+      {mode !== 'interview' && <a className="read-link" {...readLink({ shown: true })}>Почитать в теме →</a>}
       <div className="small muted swipe-hint">Свайп: вправо — знал, влево — не знал</div>
       <div className="grades">
         {GRADES.map((x) => (

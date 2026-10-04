@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useProgress, topicPct, topicStatus } from '../lib/progress.js';
 import { topicHref, sessionHref } from '../lib/router.js';
-import { Bar, ContentBadge, Ring, plural, fmtMinutes } from '../ui/ui.jsx';
+import { Bar, ContentBadge, Ring, plural, fmtMinutes, SearchEntry } from '../ui/ui.jsx';
 
 const OPEN_KEY = 'mlc:openBlocks';
 function loadOpen() { try { return JSON.parse(localStorage.getItem(OPEN_KEY)) || null; } catch { return null; } }
@@ -39,6 +39,7 @@ export default function Catalog({ manifest }) {
           <Stat value={Math.round(totalPct * 100) + '%'} label="курса пройдено" />
         </div>
       </header>
+      <SearchEntry />
 
       {last && last.file && <ContinueCard topic={last} block={blockById[last.blockId]} p={progress.topics[last.id]} />}
 

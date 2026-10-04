@@ -2,14 +2,15 @@
 // Вопрос: { id, type: 'mcq'|'card', topicId, blockId, q, options?, correct?, explanation?, fixedOrder?, a?, tags? }
 import { useEffect, useState } from 'react';
 import { retrievability } from './srs.js';
+import { loadBankData } from './liveBank.js';
 
 let _bank = null;
 let _promise = null;
 
 export function loadQuestions() {
   if (!_promise) {
-    _promise = fetch('data/questions.json', { cache: 'no-cache' })
-      .then((r) => { if (!r.ok) throw new Error('questions.json: HTTP ' + r.status); return r.json(); })
+    // в APK — встроенный или скачанный с сайта банк (lib/liveBank.js), на сайте — data/questions.json
+    _promise = loadBankData()
       .then((d) => {
         _bank = { all: d.questions, byId: Object.fromEntries(d.questions.map((q) => [q.id, q])) };
         return _bank;
@@ -62,6 +63,24 @@ export function lastGrades(p) {
   return m;
 }
 
+// Ошибки по каждому вопросу из журнала: { qid: { n, wrong } } (оценка 1 = не знал / неверно).
+export function answerStats(p) {
+  const m = {};
+  for (const x of p.log) { const s = m[x.q] || (m[x.q] = { n: 0, wrong: 0 }); s.n++; if (x.g === 1) s.wrong++; }
+  return m;
+}
+
+// «Слабость» вопроса 0..1 — для режима «Слабые места». Главное — доля ошибок, сглаженная априорными
+// 1 ошибкой на 2 ответа (один случайный промах не делает вопрос худшим в курсе); добавки — трудность FSRS
+// (d от 1 до 10) и риск забыть (1 − R). Веса 0.6 / 0.25 / 0.15: ошибки важнее, остальное различает равных.
+export function weakness(c, st, now = new Date()) {
+  const err = ((st?.wrong || 0) + 1) / ((st?.n || 0) + 2);
+  const diff = Math.min(1, Math.max(0, ((c?.d ?? 5) - 1) / 9));
+  return 0.6 * err + 0.25 * diff + 0.15 * (1 - retrievability(c, now));
+}
+// В «Слабые места» попадают изученные вопросы, где была хоть одна ошибка или «забывание» в FSRS.
+const isWeak = (c, st) => !!c && ((st && st.wrong > 0) || c.l > 0);
+
 // Сколько всего показывать к повторению за день. 200 — потолок, чтобы после перерыва сессия не превращалась в марафон.
 export const MAX_REVIEWS_PER_DAY = 200;
 
@@ -72,7 +91,7 @@ export const MODES = {
   interview: { title: 'Собеседование', desc: 'Открытые вопросы вперемешку, на время, без подсказок' },
   exam: { title: 'Экзамен', desc: 'Тест на время, результаты только в конце' },
   mistakes: { title: 'Работа над ошибками', desc: 'Вопросы, на которые последний ответ был неверным' },
-  weak: { title: 'Слабые места', desc: 'Изученные вопросы, которые вы вспомните с наименьшей вероятностью' },
+  weak: { title: 'Слабые места', desc: 'Где вы ошибаетесь чаще всего: по доле ошибок, трудности и риску забыть' },
   starred: { title: 'Избранное', desc: 'Отмеченные звёздочкой' },
 };
 
@@ -114,8 +133,9 @@ export function buildQueue({ mode, bank, progress, manifest, scope, n }) {
     case 'interview': return take(shuffle(pool.filter((q) => q.type === 'card')));
     case 'mistakes': { const lg = lastGrades(progress); return take(shuffle(pool.filter((q) => lg[q.id] === 1))); }
     case 'weak': {
-      const seen = pool.filter((q) => srs[q.id]);
-      return take(seen.map((q) => [q, retrievability(srs[q.id])]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
+      const st = answerStats(progress);
+      const weak = pool.filter((q) => isWeak(srs[q.id], st[q.id]));
+      return take(weak.map((q) => [q, weakness(srs[q.id], st[q.id], new Date(now))]).sort((a, b) => b[1] - a[1]).map((x) => x[0]));
     }
     case 'starred': return take(shuffle(pool.filter((q) => progress.marks.starred[q.id])));
     default: return [];
@@ -134,7 +154,7 @@ export function modeCounts({ bank, progress, manifest, scope }) {
     cards: pool.filter((q) => q.type === 'card').length,
     interview: pool.filter((q) => q.type === 'card').length,
     mistakes: pool.filter((q) => lg[q.id] === 1).length,
-    weak: pool.filter((q) => progress.srs[q.id]).length,
+    weak: (() => { const st = answerStats(progress); return pool.filter((q) => isWeak(progress.srs[q.id], st[q.id])).length; })(),
     starred: pool.filter((q) => progress.marks.starred[q.id]).length,
     due: bank.all.filter((q) => progress.srs[q.id] && progress.srs[q.id].due <= now).length,
     fresh: pool.filter((q) => !progress.srs[q.id]).length,
