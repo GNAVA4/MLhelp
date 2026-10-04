@@ -86,6 +86,7 @@ function RDrows(rows){
 }
 const TXW_CSS='<style>/* build.js: блочные формулы с переносом */.tx-w{display:flex;flex-direction:column;align-items:center;gap:.3em;margin:.35em 0}.tx-row{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;row-gap:.35em;max-width:100%}.tx-ch,.tx-rg{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:baseline;row-gap:.35em;max-width:100%}.tx-p{white-space:nowrap}.tx-rel{margin-left:.2778em}.tx-gap{margin-left:1em}.tx-wide{margin-left:2em}.tx-aln{display:none}@media (max-width:600px){.fbox .katex{font-size:1.12em}.tx-wide{margin-left:1.2em}.tx-al .tx-alw{display:none}.tx-al .tx-aln{display:block}}</style>';
 s=s.replace(/<texd>([\s\S]*?)<\/texd>/g,(m,t)=>RD(t));
+if(!/<\/head>/i.test(s)) s=s.replace(/<body/i,'</head>\n<body'); // без </head> стили переноса формул терялись (так было в 0.4)
 s=s.replace('</head>',TXW_CSS+'\n</head>');
 s=s.replace(/<tex>([\s\S]*?)<\/tex>/g,(m,t)=>R(t,false));
 let css=fs.readFileSync(path.join(V,'katex.min.css'),'utf8');
