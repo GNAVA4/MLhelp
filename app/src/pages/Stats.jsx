@@ -22,11 +22,13 @@ export default function Stats({ manifest }) {
 
       <section className="tiles">
         <Tile v={st.days} l={plural(st.days, 'день', 'дня', 'дней') + ' подряд'} />
-        <Tile v={today.answered} l="ответов сегодня" />
-        <Tile v={data.seen + ' / ' + bank.all.length} l="вопросов изучено" />
+        <Tile v={today.answered} l={plural(today.answered, 'ответ', 'ответа', 'ответов') + ' сегодня'} />
+        <Tile v={data.seenMcq + ' / ' + data.totalMcq} l="тестов изучено" />
+        <Tile v={data.seenCard + ' / ' + data.totalCard} l="карточек изучено" />
         <Tile v={data.mature} l="выучено надолго (≥ 21 дня)" />
         <Tile v={data.acc7 == null ? '—' : Math.round(data.acc7 * 100) + '%'} l="верных за 7 дней" />
         <Tile v={data.due} l="пора повторить" />
+        <Tile v={Object.keys(p.marks.starred).filter((id) => bank.byId[id]).length} l="в избранном" />
       </section>
 
       <section className="qcard">
@@ -147,5 +149,7 @@ function compute(bank, p, manifest) {
   });
   const weak = manifest.topics.filter((t) => t.mcqCount || t.cardCount).map((t) => ({ t, ...accBy((q) => q.topicId === t.id) }))
     .filter((x) => x.n >= WEAK_MIN_ANSWERS && x.acc < 0.75).sort((a, b) => a.acc - b.acc).slice(0, 8);
-  return { seen: seenIds.length, due, mature, acc7, activity, forecast, blocks, weak };
+  const byType = (t) => ({ total: bank.all.filter((q) => q.type === t).length, seen: seenIds.filter((id) => bank.byId[id].type === t).length });
+  const mcq = byType('mcq'), card = byType('card');
+  return { seenMcq: mcq.seen, totalMcq: mcq.total, seenCard: card.seen, totalCard: card.total, due, mature, acc7, activity, forecast, blocks, weak };
 }
