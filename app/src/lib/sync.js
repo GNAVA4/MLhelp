@@ -9,6 +9,11 @@
 import { useSyncExternalStore } from 'react';
 import { getProgress, updateState, subscribeProgress } from './progress.js';
 import { mergeProgress } from './merge.js';
+// APK (Capacitor, ADR 011): в WebView Google запрещает вход попапом/редиректом (disallowed_useragent) —
+// idToken даёт нативный Google Sign-In, а входит им web-SDK (его использует Firestore).
+// Плагин импортируется статически: ленивый import() плагинов в WebView виснет (опыт Life OS, session 014). Вес — тонкий мост.
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 const SIGNED_KEY = 'mlc:signedIn';
 const SECTIONS = ['srs', 'log', 'marks', 'topics', 'meta', 'settings'];
@@ -132,7 +137,8 @@ function stop() {
 // ---- вход / выход ----
 async function attachAuth() {
   const { auth, a } = await fb();
-  try { await a.getRedirectResult(auth); } catch (e) { setStatus({ error: e.message }); }
+  // в APK редиректа не бывает (вход нативный), а getRedirectResult там бросает operation-not-supported
+  if (!Capacitor.isNativePlatform()) { try { await a.getRedirectResult(auth); } catch (e) { setStatus({ error: e.message }); } }
   a.onAuthStateChanged(auth, (u) => {
     if (u) {
       setStatus({ user: { uid: u.uid, name: u.displayName, email: u.email } });
@@ -158,6 +164,15 @@ export async function login() {
   try { localStorage.setItem(SIGNED_KEY, '1'); } catch { /* не критично */ }
   const { auth, a } = await fb();
   if (!attached) { attached = true; await attachAuth(); }
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = res.credential && res.credential.idToken;
+      if (!idToken) throw new Error('Google не вернул idToken');
+      await a.signInWithCredential(auth, a.GoogleAuthProvider.credential(idToken));
+    } catch (e) { if (!/cancel/i.test(e.message || '')) setStatus({ error: e.message }); }
+    return;
+  }
   const provider = new a.GoogleAuthProvider();
   try { await a.signInWithPopup(auth, provider); }
   catch (e) {
@@ -171,6 +186,7 @@ export async function login() {
 export async function logout() {
   try { localStorage.removeItem(SIGNED_KEY); } catch { /* не критично */ }
   stop();
+  if (Capacitor.isNativePlatform()) { try { await FirebaseAuthentication.signOut(); } catch { /* нативная сессия уже закрыта */ } }
   const { auth, a } = await fb();
   await a.signOut(auth);
 }
