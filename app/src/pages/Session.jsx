@@ -4,6 +4,7 @@ import { useProgress, getProgress, saveAttempt, toggleStar, setFlag } from '../l
 import { review, previewIntervals, fmtInterval } from '../lib/srs.js';
 import { topicHref } from '../lib/router.js';
 import { Bar, plural } from '../ui/ui.jsx';
+import Icon from '../ui/icons.jsx';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 // Экзамен: 60 с на вопрос — ориентир на вдумчивый ответ без подглядывания.
@@ -85,9 +86,9 @@ function Empty({ mode }) {
     today: 'На сегодня всё: повторять нечего, лимит новых вопросов исчерпан. Можно пройти тест или карточки по любой теме.',
     mistakes: 'Ошибок нет — или вы ещё не отвечали на вопросы в этой области.',
     weak: 'Пока нет изученных вопросов в этой области.',
-    starred: 'В избранном пока пусто. Отмечайте вопросы звёздочкой ☆ во время тренировки.',
+    starred: 'В избранном пока пусто. Отмечайте вопросы звёздочкой во время тренировки.',
   }[mode] || 'В этой области нет подходящих вопросов.';
-  return <div className="qcard qscore"><div className="qscore-big">✓</div><p>{msg}</p><a className="btn btn-primary" href="#/train">К тренировке</a></div>;
+  return <div className="qcard qscore"><p>{msg}</p><a className="btn btn-primary" href="#/train">К тренировке</a></div>;
 }
 
 function Countdown({ deadline, onExpire }) {
@@ -138,8 +139,8 @@ function Runner({ run, setRun, mode, manifest, onFinish }) {
           <span className="qtools">
             {mode === 'interview' && <Stopwatch since={run.tq} />}
             {mode !== 'exam' && answered > 0 && <span className="nowrap">{ok} / {answered}</span>}
-            <button className={'icon ' + (starred ? 'on-star' : '')} onClick={() => toggleStar(q.id)} title="В избранное" aria-pressed={starred}>{starred ? '★' : '☆'}</button>
-            <button className={'icon ' + (flagged ? 'on-flag' : '')} onClick={flag} title="В вопросе ошибка" aria-pressed={!!flagged}>⚑</button>
+            <button className={'icon ' + (starred ? 'on-star' : '')} onClick={() => toggleStar(q.id)} title="В избранное" aria-pressed={starred}><Icon name="star" size={18} fill={starred} /></button>
+            <button className={'icon ' + (flagged ? 'on-flag' : '')} onClick={flag} title="В вопросе ошибка" aria-pressed={!!flagged}><Icon name="flag" size={18} /></button>
           </span>
         </div>
         {item.requeued > 0 && <div className="tag-again small">повтор</div>}
@@ -206,7 +207,7 @@ function McqItem({ item, mode, tq, onDone }) {
       </div>
       {show && (
         <div className={'expl ' + (chosen === q.correct ? 'expl-ok' : 'expl-bad')}>
-          <b>{chosen === q.correct ? '✓ Верно' : '✗ Неверно'}</b>
+          <b>{chosen === q.correct ? 'Верно' : 'Неверно'}</b>
           {q.explanation && <Html html={q.explanation} />}
         </div>
       )}

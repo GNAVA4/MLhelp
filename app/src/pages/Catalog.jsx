@@ -119,7 +119,6 @@ function QuizEntry({ block }) {
   const kinds = [block.mcqCount ? block.mcqCount + ' с вариантами' : null, block.cardCount ? block.cardCount + ' карточек' : null].filter(Boolean).join(' · ');
   return (
     <div className="quiz-entry">
-      <span className="quiz-ico">🎯</span>
       <span className="trow-main">
         <span className="trow-title">Тренировать блок</span>
         <span className="trow-sum">{kinds}</span>

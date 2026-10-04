@@ -8,14 +8,16 @@
 //               total, correct, answers: [{ qid, chosen, correct, ms }] }]  ← users/{uid}/attempts/{id}
 // srs[qid]   = память FSRS по вопросу (компактно, см. lib/srs.js)        ← users/{uid}/cards/{qid}
 // log        = [{ q: qid, t: ms, g: 1..4, m: mode }] — журнал ответов (последние MAX_LOG)
-// marks      = { starred: { qid: ms }, flagged: { qid: { t: ms, note } } } — избранное и «в вопросе ошибка»
-// settings   = { newPerDay }
+// marks      = { starred: { qid: ms }, flagged: { qid: { t: ms, note } }, removed: { 'star:qid'|'flag:qid': ms } }
+//              — избранное, «в вопросе ошибка» и время снятия (для слияния устройств, lib/merge.js)
+// settings   = { newPerDay, _t: ms последнего изменения }
+// Синхронизация с облаком — lib/sync.js (users/{uid}/state/{раздел}, attempts — отдельными документами).
 import { useSyncExternalStore } from 'react';
 
 const KEY = 'mlc:progress';
 // Новых вопросов в день по умолчанию: 20 — обычный старт в FSRS/Anki (~3–5 мин новых + их повторения).
 export const DEFAULT_NEW_PER_DAY = 20;
-const EMPTY = { topics: {}, meta: {}, attempts: [], srs: {}, log: [], marks: { starred: {}, flagged: {} }, settings: { newPerDay: DEFAULT_NEW_PER_DAY } };
+const EMPTY = { topics: {}, meta: {}, attempts: [], srs: {}, log: [], marks: { starred: {}, flagged: {}, removed: {} }, settings: { newPerDay: DEFAULT_NEW_PER_DAY } };
 // Локально храним последние 300 попыток (~5–10 КБ каждая у тестов блока) — с запасом до лимита localStorage ~5 МБ.
 const MAX_ATTEMPTS = 300;
 
@@ -42,21 +44,24 @@ window.addEventListener('storage', (e) => { if (e.key === KEY) { state = read();
 const subscribe = (cb) => { listeners.add(cb); return () => listeners.delete(cb); };
 export const useProgress = () => useSyncExternalStore(subscribe, () => state);
 export const getProgress = () => state;
+export const subscribeProgress = subscribe;
 // Общий апдейтер для модулей поверх стора (srs.js и др.)
 export function updateState(fn) { commit(fn(state)); }
 
 export function toggleStar(qid) {
-  const starred = { ...state.marks.starred };
-  if (starred[qid]) delete starred[qid]; else starred[qid] = Date.now();
-  commit({ ...state, marks: { ...state.marks, starred } });
+  const now = Date.now();
+  const starred = { ...state.marks.starred }, removed = { ...state.marks.removed };
+  if (starred[qid]) { delete starred[qid]; removed['star:' + qid] = now; } else starred[qid] = now;
+  commit({ ...state, marks: { ...state.marks, starred, removed } });
 }
 export function setFlag(qid, note) {
-  const flagged = { ...state.marks.flagged };
-  if (note == null) delete flagged[qid]; else flagged[qid] = { t: Date.now(), note };
-  commit({ ...state, marks: { ...state.marks, flagged } });
+  const now = Date.now();
+  const flagged = { ...state.marks.flagged }, removed = { ...state.marks.removed };
+  if (note == null) { delete flagged[qid]; removed['flag:' + qid] = now; } else flagged[qid] = { t: now, note };
+  commit({ ...state, marks: { ...state.marks, flagged, removed } });
 }
 export function setSetting(key, value) {
-  commit({ ...state, settings: { ...state.settings, [key]: value } });
+  commit({ ...state, settings: { ...state.settings, [key]: value, _t: Date.now() } });
 }
 
 function patchTopic(id, fn) {
@@ -94,7 +99,8 @@ export function setMaxScroll(id, pct) {
 }
 
 export function setCompleted(id, done) {
-  patchTopic(id, (t) => ({ ...t, completedAt: done ? Date.now() : undefined }));
+  // снятие — явный null (а не отсутствие поля), чтобы оно пережило слияние устройств (lib/merge.js)
+  patchTopic(id, (t) => ({ ...t, completedAt: done ? Date.now() : null }));
 }
 
 export function setMark(id, mark, value) {

@@ -10,7 +10,6 @@ const SCOPE_KEY = 'mlc:trainScope', N_KEY = 'mlc:trainN';
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* не критично */ } };
 const SIZES = [10, 20, 50, 0];
-const ICONS = { test: '?', cards: '⇄', interview: '🎙', exam: '⏱', mistakes: '✗', weak: '↓', starred: '★' };
 
 export default function Train({ manifest }) {
   const { bank, error } = useQuestions();
@@ -62,7 +61,7 @@ export default function Train({ manifest }) {
           </div>
         </div>
         <a className={'btn btn-primary btn-big' + (counts.due + newLeft ? '' : ' btn-off')} href={sessionHref('today', scope)}>
-          {counts.due + newLeft ? 'Начать: ' + (counts.due + newLeft) + ' ' + plural(counts.due + newLeft, 'вопрос', 'вопроса', 'вопросов') : 'На сегодня всё ✓'}
+          {counts.due + newLeft ? 'Начать: ' + (counts.due + newLeft) + ' ' + plural(counts.due + newLeft, 'вопрос', 'вопроса', 'вопросов') : 'На сегодня всё'}
         </a>
         <div className="small muted">Повторения — по всему изученному; новые вопросы — из выбранной области ниже, по порядку курса.</div>
       </section>
@@ -72,7 +71,7 @@ export default function Train({ manifest }) {
         <div className="chips">
           <button className={'chip-b' + (sc.all ? ' on' : '')} onClick={() => setScope('all')}>Весь курс</button>
           {qBlocks.map((b) => (
-            <button key={b.id} className={'chip-b' + (sc.blocks.has(b.id) ? ' on' : '')} style={{ '--c': b.color }} onClick={() => toggle('b' + b.id)}>
+            <button key={b.id} className={'chip-b' + (sc.blocks.has(b.id) ? ' on' : '')} onClick={() => toggle('b' + b.id)}>
               <span className="chip-n">{b.id}</span>{b.title}
             </button>
           ))}
@@ -87,7 +86,7 @@ export default function Train({ manifest }) {
                   {b.topicIds.map((id) => manifest.byId[id]).filter((t) => t.mcqCount || t.cardCount).map((t) => {
                     const on = sc.topics.has(t.id) || sc.blocks.has(b.id);
                     return (
-                      <button key={t.id} className={'chip-t' + (on ? ' on' : '')} style={{ '--c': b.color }} disabled={sc.blocks.has(b.id)} onClick={() => toggle('t' + t.id)} title={t.title}>
+                      <button key={t.id} className={'chip-t' + (on ? ' on' : '')} disabled={sc.blocks.has(b.id)} onClick={() => toggle('t' + t.id)} title={t.title}>
                         {t.id} {t.title}
                       </button>
                     );
@@ -108,7 +107,6 @@ export default function Train({ manifest }) {
           const c = counts[m];
           return (
             <a key={m} className={'mode' + (c ? '' : ' mode-off')} href={c ? sessionHref(m, scope, n) : undefined} aria-disabled={!c}>
-              <span className="mode-ico">{ICONS[m]}</span>
               <span className="mode-body">
                 <b>{MODES[m].title}</b>
                 <span className="small muted">{MODES[m].desc}</span>
