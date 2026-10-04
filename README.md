@@ -8,8 +8,9 @@
 content-src/      исходники тем нового стандарта (LaTeX в <tex>/<texd>)
 content-legacy/   готовые HTML тем, тесты (blockN_quiz*), index_roadmap, block0_plan
 tools/            build.js (сборка темы), check-page.js / check-all.js (проверка), vendor/ (KaTeX, Chart.js)
-scripts/          контент-пайплайн приложения: build-content.js, bridge.js, lib-extract.js
-app/              приложение: Vite + React (JS)
+questions/        банк вопросов для тренировок (по файлу на тему, правила — questions/README.md)
+scripts/          контент-пайплайн приложения: build-content.js, bridge.js; банк: check/add-questions
+app/              приложение: Vite + React (JS) — теория, тренировка (FSRS), статистика
 docs/             ML_COURSE_HANDOFF.md (ТЗ и план), content-report.md (состояние страниц)
 COURSE_STANDARD.md  правила оформления тем
 ```
@@ -23,7 +24,14 @@ npm run content             # собрать app/public/{content,assets,data}
 npm run dev                 # http://localhost:5173
 ```
 
-`npm run content` собирает страницы тем для приложения (общие KaTeX / Chart.js / MathJax вместо CDN и встраивания, мост `bridge.js`), а также `data/manifest.json` (блоки, темы, секции) и `data/questions.json` (вопросы тестов + Q&A тем). Результат в git не хранится.
+`npm run content` собирает страницы тем для приложения (общие KaTeX / Chart.js / MathJax вместо CDN и встраивания, мост `bridge.js`), а также `data/manifest.json` (блоки, темы, секции) и `data/questions.json` (из банка `questions/`, формулы отрендерены). Результат в git не хранится.
+
+## Банк вопросов
+
+```bash
+npm run questions                                   # проверка банка
+node scripts/add-questions.js new.json              # добавить вопросы в тему (id выдаются сами)
+```
 
 ## Контент
 
