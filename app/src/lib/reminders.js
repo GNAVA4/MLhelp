@@ -39,7 +39,7 @@ export async function reschedule() {
     if (perm.display !== 'granted') { set({ next: null }); return; }
     const list = nextTimes(p.settings.remindAt).map((at, i) => {
       const t = reminderText(p, at);
-      return t && { id: BASE_ID + i, title: t.title, body: t.body, channelId: CHANNEL, schedule: { at, allowWhileIdle: true }, extra: { href: sessionHref('today', 'all') } };
+      return t && { id: BASE_ID + i, title: t.title, body: t.body, channelId: CHANNEL, schedule: { at, allowWhileIdle: true }, extra: { href: sessionHref('review', 'all') } };
     }).filter(Boolean);
     if (list.length) await withTimeout(LocalNotifications.schedule({ notifications: list }));
     set({ next: list[0] ? { at: +list[0].schedule.at, body: list[0].body } : null, error: null });

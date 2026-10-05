@@ -2,7 +2,7 @@
 //   #/                     — теория (каталог)
 //   #/t/<topicId>[/<sN>][?from=<адрес>] — тема (from — куда вернёт «←», например к вопросу тренировки)
 //   #/train                — тренировка (хаб)
-//   #/train/s?mode=…&scope=…&n=…  — сессия тренировки
+//   #/train/s?mode=…&scope=…&n=…&kind=mcq|card|all  — сессия тренировки (kind — для «Повторение» и «Новое»)
 //   #/stats                — статистика
 //   #/search[?q=…]        — поиск по темам и вопросам
 //   #/profile              — профиль (вход, синхронизация, настройки)
@@ -32,5 +32,5 @@ export function useRoute() {
 }
 
 export const topicHref = (id, sectionId) => '#/t/' + encodeURIComponent(id) + (sectionId ? '/' + sectionId : '');
-export const sessionHref = (mode, scope, n) => '#/train/s?' + new URLSearchParams({ mode, ...(scope ? { scope } : {}), ...(n ? { n: String(n) } : {}) }).toString();
+export const sessionHref = (mode, scope, n, kind) => '#/train/s?' + new URLSearchParams({ mode, ...(scope ? { scope } : {}), ...(n ? { n: String(n) } : {}), ...(kind ? { kind } : {}) }).toString();
 export const navigate = (href) => { window.location.hash = href.replace(/^#/, ''); };

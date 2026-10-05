@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuestions, buildQueue, shuffle, scopeLabel, MODES } from '../lib/questions.js';
+import { useQuestions, buildQueue, shuffle, scopeLabel, MODES, KINDS } from '../lib/questions.js';
 import { useProgress, getProgress, saveAttempt, toggleStar, setFlag } from '../lib/progress.js';
 import { review, previewIntervals, fmtInterval } from '../lib/srs.js';
 import { topicHref } from '../lib/router.js';
@@ -10,7 +10,7 @@ import { haptic } from '../lib/haptics.js';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 // Экзамен: 60 с на вопрос — ориентир на вдумчивый ответ без подглядывания.
 const EXAM_SEC_PER_Q = 60;
-// Карточку с оценкой «не знал» в сессиях «Сегодня» и «Карточки» показываем ещё раз в конце (не больше 2 раз):
+// Карточку с оценкой «не знал» в сессиях «Повторение», «Новое» и «Карточки» показываем ещё раз в конце (не больше 2 раз):
 // у FSRS первый шаг переучивания — минуты, а не дни.
 const MAX_REQUEUE = 2;
 // Свайп: смещение в пикселях, после которого карточка засчитывается.
@@ -36,7 +36,10 @@ const mkItem = (q) => ({ q, order: q.type === 'mcq' ? (q.fixedOrder ? q.options.
 
 export default function Session({ manifest, params }) {
   const { bank, error } = useQuestions();
-  const mode = MODES[params.mode] ? params.mode : 'test';
+  // 'today' (повторение + новые одной сессией) убран в session 018 — старые ссылки (напоминания) ведут на повторение
+  const mode = params.mode === 'today' ? 'review' : MODES[params.mode] ? params.mode : 'test';
+  const kind = KINDS[params.kind] ? params.kind : 'all';
+  const title = MODES[mode].title + ((mode === 'review' || mode === 'new') && kind !== 'all' ? ': ' + KINDS[kind] : '');
   const scope = params.scope || 'all';
   const n = params.n ? parseInt(params.n, 10) : 0;
   const [restored] = useState(() => { const k = kept && kept.hash === window.location.hash ? kept : null; kept = null; return k; });
@@ -44,10 +47,10 @@ export default function Session({ manifest, params }) {
 
   useEffect(() => {
     if (!bank || run) return;
-    const qs = buildQueue({ mode, bank, progress: getProgress(), manifest, scope, n });
+    const qs = buildQueue({ mode, bank, progress: getProgress(), manifest, scope, n, kind });
     setRun(newRun(qs));
   }, [bank]);
-  useEffect(() => { document.title = MODES[mode].title + ' · Applied ML'; return () => { document.title = 'Applied ML'; }; }, [mode]);
+  useEffect(() => { document.title = title + ' · Applied ML'; return () => { document.title = 'Applied ML'; }; }, [mode]);
 
   function newRun(qs) {
     return { items: qs.map(mkItem), idx: 0, results: [], startedAt: Date.now(), tq: Date.now(), done: false,
@@ -71,7 +74,7 @@ export default function Session({ manifest, params }) {
   const header = (
     <header className="qbar">
       <a className="rbar-back" href="#/train" title="К тренировке">←</a>
-      <div className="rbar-title"><span className="rbar-name">{MODES[mode].title}<span className="muted small"> · {scopeLabel(manifest, scope)}</span></span></div>
+      <div className="rbar-title"><span className="rbar-name">{title}<span className="muted small"> · {scopeLabel(manifest, scope)}</span></span></div>
       {!run.done && run.items.length > 0 && <span className="small muted nowrap">{Math.min(run.idx + 1, run.items.length)} / {run.items.length}</span>}
       {!run.done && run.deadline && <Countdown deadline={run.deadline} onExpire={() => finish(run)} />}
     </header>
@@ -95,7 +98,8 @@ export default function Session({ manifest, params }) {
 
 function Empty({ mode }) {
   const msg = {
-    today: 'На сегодня всё: повторять нечего, лимит новых вопросов исчерпан. Можно пройти тест или карточки по любой теме.',
+    review: 'Повторять нечего: всё, что пора вспомнить, уже повторено. Можно взять новые вопросы.',
+    new: 'В выбранных темах новых вопросов этого типа не осталось.',
     mistakes: 'Ошибок нет — или вы ещё не отвечали на вопросы в этой области.',
     weak: 'Пока нет изученных вопросов в этой области.',
     starred: 'В избранном пока пусто. Отмечайте вопросы звёздочкой во время тренировки.',
@@ -164,7 +168,7 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
         <Html className="qtext" html={q.q} />
         {q.type === 'mcq'
           ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} />
-          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'today' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} />}
+          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} />}
       </div>
     </>
   );

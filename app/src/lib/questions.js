@@ -84,8 +84,13 @@ const isWeak = (c, st) => !!c && ((st && st.wrong > 0) || c.l > 0);
 // Сколько всего показывать к повторению за день. 200 — потолок, чтобы после перерыва сессия не превращалась в марафон.
 export const MAX_REVIEWS_PER_DAY = 200;
 
+// Тип вопросов в сессиях «Повторение» и «Новое»: тесты (mcq), карточки (card) или все.
+export const KINDS = { mcq: 'тесты', card: 'карточки', all: 'всё' };
+const ofKind = (kind) => (q) => !kind || kind === 'all' || q.type === kind;
+
 export const MODES = {
-  today: { title: 'Сегодня', desc: 'Повторение того, что пора вспомнить, плюс новые вопросы' },
+  review: { title: 'Повторение', desc: 'То, что пора вспомнить по памяти повторения' },
+  new: { title: 'Новое', desc: 'Вопросы, которые вы ещё не видели, по порядку курса' },
   test: { title: 'Тест', desc: 'Вопросы с вариантами, объяснение сразу после ответа' },
   cards: { title: 'Карточки', desc: 'Вопрос → вспоминаешь → ответ → самооценка' },
   interview: { title: 'Собеседование', desc: 'Открытые вопросы вперемешку, на время, без подсказок' },
@@ -96,29 +101,23 @@ export const MODES = {
 };
 
 // Очередь вопросов для сессии. Возвращает массив вопросов.
-export function buildQueue({ mode, bank, progress, manifest, scope, n }) {
+export function buildQueue({ mode, bank, progress, manifest, scope, n, kind }) {
   const sc = parseScope(scope);
   const pool = bank.all.filter((q) => inScope(q, sc));
   const now = Date.now();
   const srs = progress.srs;
   const take = (arr) => (n ? arr.slice(0, n) : arr);
   switch (mode) {
-    case 'today': {
-      // повторения — по всему курсу (память не делится по областям); новые — из выбранной области, в порядке курса
-      const due = bank.all.filter((q) => srs[q.id] && srs[q.id].due <= now).sort((a, b) => srs[a.id].due - srs[b.id].due).slice(0, MAX_REVIEWS_PER_DAY);
-      const sod = new Date(); sod.setHours(0, 0, 0, 0);
-      const newToday = Object.values(srs).filter((c) => c.fr >= +sod).length;
-      const left = Math.max(0, (progress.settings.newPerDay || 0) - newToday);
+    case 'review': {
+      // сначала самые просроченные; область по умолчанию — весь курс (память не делится по темам)
+      const due = pool.filter((q) => ofKind(kind)(q) && srs[q.id] && srs[q.id].due <= now).sort((a, b) => srs[a.id].due - srs[b.id].due);
+      return due.slice(0, n || MAX_REVIEWS_PER_DAY);
+    }
+    case 'new': {
+      // ещё не виденные, в порядке курса; внутри темы — вперемешку. Дневной ориентир новых здесь не ограничивает —
+      // экран тренировки только предупреждает, что повторений станет больше (решение владельца, session 018)
       const rank = courseRank(manifest);
-      // внутри темы — вперемешку, чтобы тест и карточки чередовались
-      const fresh = shuffle(pool.filter((q) => !srs[q.id])).sort((a, b) => (rank[a.topicId] ?? 1e9) - (rank[b.topicId] ?? 1e9)).slice(0, left);
-      // новые вставляем равномерно между повторениями
-      const out = [];
-      const step = fresh.length ? Math.max(1, Math.round(due.length / fresh.length)) : Infinity;
-      let fi = 0;
-      due.forEach((q, i) => { out.push(q); if ((i + 1) % step === 0 && fi < fresh.length) out.push(fresh[fi++]); });
-      while (fi < fresh.length) out.push(fresh[fi++]);
-      return out;
+      return take(shuffle(pool.filter((q) => ofKind(kind)(q) && !srs[q.id])).sort((a, b) => (rank[a.topicId] ?? 1e9) - (rank[b.topicId] ?? 1e9)));
     }
     case 'test': return take(shuffle(pool.filter((q) => q.type === 'mcq')));
     case 'exam': return take(shuffle(pool.filter((q) => q.type === 'mcq')));
@@ -156,7 +155,30 @@ export function modeCounts({ bank, progress, manifest, scope }) {
     mistakes: pool.filter((q) => lg[q.id] === 1).length,
     weak: (() => { const st = answerStats(progress); return pool.filter((q) => isWeak(progress.srs[q.id], st[q.id])).length; })(),
     starred: pool.filter((q) => progress.marks.starred[q.id]).length,
-    due: bank.all.filter((q) => progress.srs[q.id] && progress.srs[q.id].due <= now).length,
-    fresh: pool.filter((q) => !progress.srs[q.id]).length,
   };
+}
+
+// Счётчики по каждой теме: всего / новых / пора повторить — отдельно для тестов и карточек; seen — изучено (оба типа).
+// { [topicId]: { mcq: {all, fresh, due}, card: {all, fresh, due}, seen, all } }
+export function topicStats({ bank, progress, now = Date.now() }) {
+  const m = {};
+  for (const q of bank.all) {
+    const s = m[q.topicId] || (m[q.topicId] = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 }, seen: 0, all: 0, blockId: q.blockId });
+    const k = s[q.type === 'mcq' ? 'mcq' : 'card'];
+    const c = progress.srs[q.id];
+    k.all++; s.all++;
+    if (!c) k.fresh++; else { s.seen++; if (c.due <= now) k.due++; }
+  }
+  return m;
+}
+
+// Сумма счётчиков по области: { mcq: {all, fresh, due}, card: {…} }.
+export function sumStats(stats, scope) {
+  const sc = parseScope(scope);
+  const out = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 } };
+  for (const [tid, s] of Object.entries(stats)) {
+    if (!(sc.all || sc.topics.has(tid) || sc.blocks.has(s.blockId))) continue;
+    for (const k of ['mcq', 'card']) for (const f of ['all', 'fresh', 'due']) out[k][f] += s[k][f];
+  }
+  return out;
 }
