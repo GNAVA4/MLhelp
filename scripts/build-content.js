@@ -16,9 +16,11 @@ const LEG = path.join(ROOT, 'content-legacy'), SRC = path.join(ROOT, 'content-sr
 const OUT = path.join(ROOT, 'app', 'public');
 const DIR = { content: path.join(OUT, 'content'), assets: path.join(OUT, 'assets'), data: path.join(OUT, 'data') };
 
-// Скорость чтения технического текста с формулами, слов в минуту. Обычная проза на русском ~180–200;
-// для плотного текста с формулами берём ниже. Используется только для оценки «~N мин» в каталоге.
-const WPM = 150;
+// Оценка «~N ч M мин» в каталоге — время вдумчивого разбора темы (задачи, трассировки, Q&A), а не беглого чтения.
+// Скорость по тексту без формул — 60 слов в минуту (владелец, session 020: «150 слишком много, где-то 60 норм»;
+// обычная проза на русском ~180–200). Формулы считаются отдельно: строчная (чаще всего одно обозначение) — как слово,
+// блочная (вывод, расчёт) — 30 с. Калибровка по владельцу: тема 0.1 ≈ 3 ч.
+const WPM = 60, MIN_PER_INLINE = 1 / WPM, MIN_PER_DISPLAY = 0.5;
 // Блок 0 в роадмапе окрашен #0c4a6e — на тёмном фоне почти не виден; берём акцент того же оттенка (sky-500).
 const BLOCK0_COLOR = '#0ea5e9';
 
@@ -122,10 +124,20 @@ function parsePage(file) {
     return { id: el.id, title: t };
   });
   const body = doc.body.cloneNode(true);
-  body.querySelectorAll('script, style, noscript, .katex-mathml, .snav, nav').forEach(x => x.remove());
-  const words = clean(body.textContent).split(' ').length;
+  body.querySelectorAll('script, style, noscript, .snav, nav').forEach(x => x.remove());
+  // формулы считаются отдельно от слов. Блок 0: KaTeX уже отрисован (.tx-d / .tx-w — блочные, остальные .katex — строчные);
+  // старые темы: сырой TeX для MathJax ($$…$$ — блочные, $…$ — строчные)
+  const disp = [...body.querySelectorAll('.tx-d, .tx-w')].filter(el => !el.parentElement.closest('.tx-d, .tx-w'));
+  const inl = [...body.querySelectorAll('.katex')].filter(el => !el.closest('.tx-d, .tx-w') && !el.parentElement.closest('.katex'));
+  let formulas = { display: disp.length, inline: inl.length };
+  disp.concat(inl).forEach(x => x.remove());
+  let text = clean(body.textContent);
+  // длина ограничена: непарный разделитель иначе «съедает» абзацы обычного текста (блок 3 пишет \( … \))
+  text = text.replace(/\$\$[^$]{1,600}?\$\$|\\\[.{1,600}?\\\]/g, () => { formulas.display++; return ' '; })
+    .replace(/\$[^$]{1,150}?\$|\\\(.{1,150}?\\\)/g, () => { formulas.inline++; return ' '; });
+  const words = clean(text).split(' ').length;
   const title = clean((doc.querySelector('h1') || doc.querySelector('title') || { textContent: '' }).textContent);
-  return { sections, words, title };
+  return { sections, words, formulas, title };
 }
 
 // ---------- сборка манифеста ----------
@@ -151,7 +163,8 @@ for (const b of DATA) {
       built[buildPage(t.f)]++;
       const info = parsePage(path.join(DIR.content, t.f));
       topic.sections = info.sections;
-      topic.readingMinutes = Math.max(1, Math.round(info.words / WPM));
+      const mins = info.words / WPM + info.formulas.inline * MIN_PER_INLINE + info.formulas.display * MIN_PER_DISPLAY;
+      topic.readingMinutes = Math.max(5, Math.round(mins / 5) * 5);
     }
     topics.push(topic); block.topicIds.push(id);
   }
