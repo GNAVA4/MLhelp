@@ -8,7 +8,7 @@
 
 | Файл | КБ | Секции | Q&A | Графики | CDN | Код | Проблемы |
 |---|--:|--:|--:|---|:-:|:-:|---|
-| block0_01_expectation_variance.html | 1565 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_01_expectation_variance.html | 1780 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_02_distributions.html | 1283 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_03_bayes.html | 1274 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1183 | 15 | 30 | 13 / 13 |  | 0 |  |
