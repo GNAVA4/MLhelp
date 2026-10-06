@@ -45,9 +45,23 @@
       var id = best ? best.id : null;
       if (id !== current) { current = id; if (id) post('section', { id: id }); }
     }
+    // Полоса секций страницы (.snav) прокручивается вбок сама: активная секция — по центру полосы.
+    // Подсветку ставит скрипт страницы (класс act); если его нет — берём текущую секцию моста.
+    var nav = document.querySelector('.snav'), navLink = null;
+    function followNav() {
+      if (!nav) return;
+      var a = nav.querySelector('a.act') || (current && nav.querySelector('a[href="#' + current + '"]'));
+      if (!a || a === navLink) return;
+      navLink = a;
+      var box = nav.getBoundingClientRect(), r = a.getBoundingClientRect();
+      var left = nav.scrollLeft + (r.left - box.left) - (box.width - r.width) / 2;
+      try { nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' }); } catch (e) { nav.scrollLeft = Math.max(0, left); }
+    }
     var lastPct = -1;
     function onScroll() {
       pickCurrent();
+      // после обработчика страницы, который переставляет класс act
+      if (nav) (window.requestAnimationFrame || setTimeout)(followNav);
       var h = document.documentElement.scrollHeight - window.innerHeight;
       var pct = h > 0 ? Math.round(Math.min(100, Math.max(0, window.scrollY / h * 100))) : 100;
       if (pct !== lastPct) { lastPct = pct; post('scroll', { pct: pct }); }

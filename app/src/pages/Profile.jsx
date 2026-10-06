@@ -42,6 +42,14 @@ export default function Profile({ manifest }) {
         {firstAnswer && firstAnswer !== Infinity && <p className="small muted">Учитесь с {fmtDate(firstAnswer)}</p>}
       </section>
 
+      <section className="qcard profile-sec">
+        <h3 className="profile-h">Тренировка</h3>
+        <label className="switch-row">
+          <span><b>Углублённые вопросы</b><span className="small muted">Выводы, доказательства и задачи-головоломки. Для собеседований обычно не нужны — по умолчанию скрыты</span></span>
+          <input type="checkbox" className="switch" checked={!!p.settings.showDeep} onChange={(e) => setSetting('showDeep', e.target.checked)} />
+        </label>
+      </section>
+
       {HAPTICS_NATIVE && (
         <section className="qcard profile-sec">
           <h3 className="profile-h">Настройки</h3>

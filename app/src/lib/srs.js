@@ -6,7 +6,23 @@ import { getProgress, updateState } from './progress.js';
 
 // request_retention 0.9 — стандарт FSRS: повторение назначается, когда шанс вспомнить падает до 90%.
 // enable_fuzz — небольшой разброс интервалов, чтобы карточки одного дня не повторялись потом всегда вместе.
-const F = fsrs(generatorParameters({ request_retention: 0.9, enable_fuzz: true }));
+// learning_steps / relearning_steps пустые: без минутных шагов («не знал» → через 1 мин) — в курсе вопрос
+// возвращается не раньше завтра, а повтор внутри сессии делает Session.jsx (решение владельца, session 022).
+const F = fsrs(generatorParameters({ request_retention: 0.9, enable_fuzz: true, learning_steps: [], relearning_steps: [] }));
+// Первый ответ на новый вопрос — фиксированная сетка в днях (владелец, session 022): не знал — завтра,
+// с трудом — послезавтра, знал — через 5, легко — через 9. Стабильность = интервалу (при retention 0.9
+// FSRS назначает интервал ≈ стабильности), дальше расписание ведёт FSRS.
+const FIRST_DAYS = { 1: 1, 2: 2, 3: 5, 4: 9 };
+const DAY_MS = 86400000;
+
+// Карточки, оставшиеся в минутных шагах прежней схемы (Learning/Relearning), без сетки получили бы 1 день
+// на любую оценку — для них сетка тоже работает как для первого ответа.
+function nextCard(prev, grade, now) {
+  const { card } = F.next(prev ? toCard(prev) : createEmptyCard(now), now, grade);
+  if (prev && !isLearning(prev)) return card;
+  const days = FIRST_DAYS[grade];
+  return { ...card, due: new Date(+now + days * DAY_MS), scheduled_days: days, stability: days };
+}
 // Журнал ответов: последние 8000 (~40 байт каждый ≈ 320 КБ) — хватает для статистики за месяцы.
 const MAX_LOG = 8000;
 // «Выучено»: стабильность ≥ 21 дня (термин Anki «mature»).
@@ -25,8 +41,7 @@ function fromCard(c, first) {
 export function review(qid, grade, mode, now = new Date()) {
   updateState((s) => {
     const prev = s.srs[qid];
-    const cur = prev ? toCard(prev) : createEmptyCard(now);
-    const { card } = F.next(cur, now, grade);
+    const card = nextCard(prev, grade, now);
     const log = s.log.length >= MAX_LOG ? s.log.slice(-MAX_LOG + 1) : s.log.slice();
     log.push({ q: qid, t: +now, g: grade, m: mode });
     return { ...s, srs: { ...s.srs, [qid]: fromCard(card, prev?.fr ?? +now) }, log };
@@ -36,8 +51,9 @@ export function review(qid, grade, mode, now = new Date()) {
 // Когда вопрос будет показан снова при каждой из оценок — подписи на кнопках («10 мин», «4 дн»).
 export function previewIntervals(qid, now = new Date()) {
   const c = getProgress().srs[qid];
-  const rep = F.repeat(c ? toCard(c) : createEmptyCard(now), now);
-  return { 1: +rep[1].card.due - +now, 2: +rep[2].card.due - +now, 3: +rep[3].card.due - +now, 4: +rep[4].card.due - +now };
+  const out = {};
+  for (const g of [1, 2, 3, 4]) out[g] = +nextCard(c, g, now).due - +now;
+  return out;
 }
 
 export function retrievability(c, now = new Date()) {

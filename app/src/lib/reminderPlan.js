@@ -17,8 +17,9 @@ export function nextTimes(remindAt, now = new Date(), days = DAYS_AHEAD) {
 }
 
 // Текст напоминания на момент `at` по памяти повторения. null — напоминать не о чем.
-export function reminderText(p, at, now = new Date()) {
-  const due = Object.values(p.srs).filter((c) => c.due <= +at).length;
+// counts(qid) — участвует ли вопрос в повторении (тема не выключена, вопрос не скрыт; lib/questions.js).
+export function reminderText(p, at, now = new Date(), counts = () => true) {
+  const due = Object.entries(p.srs).filter(([qid, c]) => c.due <= +at && counts(qid)).length;
   const sameDay = at.toDateString() === now.toDateString();
   const sod = new Date(now); sod.setHours(0, 0, 0, 0);
   const newToday = sameDay ? Object.values(p.srs).filter((c) => c.fr >= +sod).length : 0;

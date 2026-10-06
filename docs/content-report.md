@@ -1,15 +1,15 @@
 # Отчёт о состоянии контента
 
-Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-05. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
+Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-06. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 81 страниц, без проблем — 77, с проблемами — 4.
+**Итого:** 81 страниц, без проблем — 81, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
 | Файл | КБ | Секции | Q&A | Графики | CDN | Код | Проблемы |
 |---|--:|--:|--:|---|:-:|:-:|---|
-| block0_01_expectation_variance.html | 1567 | 15 | 30 | 15 / 15 |  | 0 |  |
-| block0_02_distributions.html | 1284 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_01_expectation_variance.html | 1565 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_02_distributions.html | 1283 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_03_bayes.html | 1274 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1183 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_05_likelihood_mle_map.html | 1315 | 15 | 30 | 16 / 16 |  | 0 |  |
@@ -41,7 +41,7 @@
 | block2_05_nbo.html | 172 | 15 | 30 | 8 / 8 | да | 0 |  |
 | block2_06_basket_analysis.html | 170 | 15 | 30 | 9 / 9 | да | 0 |  |
 | block2_07_attribution_mmm.html | 211 | 15 | 30 | 12 / 12 | да | 0 |  |
-| block2_08_behavioral_segmentation.html | 190 | 15 | 30 | 13 / 13 | да | 2 | div 545/546 |
+| block2_08_behavioral_segmentation.html | 190 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block2_09_uplift_economics.html | 206 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block2_10_subscription_b2b.html | 196 | 15 | 30 | 14 / 14 | да | 0 |  |
 | block2_11_hierarchical_clv.html | 175 | 15 | 30 | 14 / 14 | да | 0 |  |
@@ -52,14 +52,14 @@
 | block3_04_ltv_prediction.html | 75 | 0 | 12 | 4 / 4 | да | 0 |  |
 | block3_quiz.html | 52 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block4_01_ab_testing.html | 151 | 15 | 30 | 14 / 14 | да | 0 |  |
-| block4_02_cuped.html | 124 | 15 | 30 | 13 / 13 | да | 2 | div 261/262 |
+| block4_02_cuped.html | 124 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block4_03_switchback.html | 124 | 15 | 30 | 12 / 12 | да | 0 |  |
-| block4_04_causal_ml.html | 132 | 15 | 30 | 13 / 13 | да | 2 | div 280/281 |
+| block4_04_causal_ml.html | 132 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block4_05_sequential_testing.html | 197 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block4_06_srm_diagnostics.html | 181 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block4_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block6_01_collab_filtering.html | 276 | 15 | 30 | 14 / 14 | да | 0 |  |
-| block6_02_two_tower.html | 225 | 15 | 30 | 12 / 12 | да | 2 | div 671/670 |
+| block6_02_two_tower.html | 225 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block6_03_cold_start.html | 249 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block6_04_graph_ml.html | 228 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block6_05_system_design.html | 256 | 15 | 30 | 12 / 12 | да | 0 |  |

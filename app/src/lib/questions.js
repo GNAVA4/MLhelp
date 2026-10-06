@@ -1,5 +1,5 @@
 // Вопросы для тренировок (public/data/questions.json, собирается из банка questions/*.json) и очереди сессий.
-// Вопрос: { id, type: 'mcq'|'card', topicId, blockId, q, options?, correct?, explanation?, fixedOrder?, a?, note?, tags? }
+// Вопрос: { id, type: 'mcq'|'card', topicId, blockId, q, options?, correct?, explanation?, fixedOrder?, a?, note?, tags?, deep? }
 import { useEffect, useState } from 'react';
 import { retrievability } from './srs.js';
 import { loadBankData } from './liveBank.js';
@@ -18,6 +18,9 @@ export function loadQuestions() {
   }
   return _promise;
 }
+
+// Банк, если уже загружен (без загрузки) — для счётчика на вкладке.
+export const peekBank = () => _bank;
 
 export function useQuestions() {
   const [state, setState] = useState({ bank: _bank, error: null });
@@ -42,6 +45,14 @@ export function scopeLabel(manifest, str) {
     .concat([...sc.topics].map((t) => t + (sc.topics.size === 1 && !sc.blocks.size ? ' · ' + (manifest.byId[t]?.title || '') : '')));
   return parts.join(', ');
 }
+
+// Что видно в тренировке (session 022, решения владельца):
+// - deep: углублённый вопрос (вывод, доказательство, задача-головоломка) — скрыт, пока в Профиле не включены
+//   «Углублённые вопросы» (settings.showDeep);
+// - settings.reviewOff[topicId]: тема выключена из повторения — её вопросы не попадают в «Повторить»,
+//   в счётчики «пора вспомнить» и в напоминания; «Новое» и «Практика» её по-прежнему берут.
+export const shownFor = (settings) => (q) => !q.deep || !!settings?.showDeep;
+export const reviewOffFor = (settings) => (q) => !!settings?.reviewOff?.[q.topicId];
 
 export function shuffle(arr) {
   const a = arr.slice();
@@ -103,14 +114,16 @@ export const MODES = {
 // Очередь вопросов для сессии. Возвращает массив вопросов.
 export function buildQueue({ mode, bank, progress, manifest, scope, n, kind }) {
   const sc = parseScope(scope);
-  const pool = bank.all.filter((q) => inScope(q, sc));
+  const shown = shownFor(progress.settings);
+  const pool = bank.all.filter((q) => inScope(q, sc) && shown(q));
   const now = Date.now();
   const srs = progress.srs;
+  const off = reviewOffFor(progress.settings);
   const take = (arr) => (n ? arr.slice(0, n) : arr);
   switch (mode) {
     case 'review': {
       // сначала самые просроченные; область по умолчанию — весь курс (память не делится по темам)
-      const due = pool.filter((q) => ofKind(kind)(q) && srs[q.id] && srs[q.id].due <= now).sort((a, b) => srs[a.id].due - srs[b.id].due);
+      const due = pool.filter((q) => ofKind(kind)(q) && !off(q) && srs[q.id] && srs[q.id].due <= now).sort((a, b) => srs[a.id].due - srs[b.id].due);
       return due.slice(0, n || MAX_REVIEWS_PER_DAY);
     }
     case 'new': {
@@ -144,7 +157,8 @@ export function buildQueue({ mode, bank, progress, manifest, scope, n, kind }) {
 // Сколько вопросов доступно в каждом режиме (для плиток на экране тренировки).
 export function modeCounts({ bank, progress, manifest, scope }) {
   const sc = parseScope(scope);
-  const pool = bank.all.filter((q) => inScope(q, sc));
+  const shown = shownFor(progress.settings);
+  const pool = bank.all.filter((q) => inScope(q, sc) && shown(q));
   const lg = lastGrades(progress);
   const now = Date.now();
   return {
@@ -159,15 +173,19 @@ export function modeCounts({ bank, progress, manifest, scope }) {
 }
 
 // Счётчики по каждой теме: всего / новых / пора повторить — отдельно для тестов и карточек; seen — изучено (оба типа).
-// { [topicId]: { mcq: {all, fresh, due}, card: {all, fresh, due}, seen, all } }
+// Тема выключена из повторения (off) — её due = 0, а сколько ждало бы, лежит в offDue.
+// { [topicId]: { mcq: {all, fresh, due}, card: {all, fresh, due}, seen, all, off, offDue } }
 export function topicStats({ bank, progress, now = Date.now() }) {
   const m = {};
+  const shown = shownFor(progress.settings);
+  const offMap = progress.settings?.reviewOff || {};
   for (const q of bank.all) {
-    const s = m[q.topicId] || (m[q.topicId] = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 }, seen: 0, all: 0, blockId: q.blockId });
+    if (!shown(q)) continue;
+    const s = m[q.topicId] || (m[q.topicId] = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 }, seen: 0, all: 0, blockId: q.blockId, off: !!offMap[q.topicId], offDue: 0 });
     const k = s[q.type === 'mcq' ? 'mcq' : 'card'];
     const c = progress.srs[q.id];
     k.all++; s.all++;
-    if (!c) k.fresh++; else { s.seen++; if (c.due <= now) k.due++; }
+    if (!c) k.fresh++; else { s.seen++; if (c.due <= now) { if (s.off) s.offDue++; else k.due++; } }
   }
   return m;
 }

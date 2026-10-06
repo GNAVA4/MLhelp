@@ -9,6 +9,7 @@ import Stats from './pages/Stats.jsx';
 import Profile from './pages/Profile.jsx';
 import Search from './pages/Search.jsx';
 import TabBar from './ui/TabBar.jsx';
+import { peekBank, shownFor, reviewOffFor } from './lib/questions.js';
 
 export default function App() {
   const { manifest, error } = useManifest();
@@ -28,9 +29,13 @@ export default function App() {
     return <Session key={location.hash} manifest={manifest} params={route.params} />;
   }
 
-  // счётчик «пора повторить» на вкладке — без загрузки банка, по памяти повторения
+  // счётчик «пора повторить» на вкладке — без загрузки банка, по памяти повторения; если банк уже загружен,
+  // без выключенных из повторения тем и скрытых углублённых вопросов (как на вкладке «Повторить»)
   const now = Date.now();
-  const due = Object.values(progress.srs).filter((c) => c.due <= now).length;
+  const bank = peekBank();
+  const shown = shownFor(progress.settings), off = reviewOffFor(progress.settings);
+  const counts = (qid) => { const q = bank?.byId[qid]; return !q || (shown(q) && !off(q)); };
+  const due = Object.entries(progress.srs).filter(([qid, c]) => c.due <= now && counts(qid)).length;
   return (
     <div className="shell">
       <TabBar active={route.name} dueCount={due} />

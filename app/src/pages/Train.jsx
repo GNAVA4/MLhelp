@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useQuestions, modeCounts, parseScope, inScope, topicStats, sumStats, MODES } from '../lib/questions.js';
+import { useQuestions, modeCounts, parseScope, inScope, topicStats, sumStats, shownFor, reviewOffFor, MODES } from '../lib/questions.js';
 import { useProgress, setSetting, DEFAULT_NEW_PER_DAY } from '../lib/progress.js';
 import { streak, todayInfo } from '../lib/srs.js';
 import { sessionHref } from '../lib/router.js';
@@ -85,12 +85,13 @@ function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicke
   // прогноз: сколько станет «пора повторить» до конца завтрашнего дня и за 7 дней (в той же области)
   const fc = useMemo(() => {
     const sc = parseScope(scope);
+    const shown = shownFor(progress.settings), off = reviewOffFor(progress.settings);
     const now = Date.now();
     const eot = new Date(); eot.setHours(0, 0, 0, 0); const endTomorrow = +eot + 2 * DAY;
     let tomorrow = 0, week = 0;
     for (const q of bank.all) {
       const c = progress.srs[q.id];
-      if (!c || c.due <= now || !inScope(q, sc)) continue;
+      if (!c || c.due <= now || !inScope(q, sc) || !shown(q) || off(q)) continue;
       if (c.due < endTomorrow) tomorrow++;
       if (c.due < now + 7 * DAY) week++;
     }
@@ -125,12 +126,57 @@ function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicke
         </div>
       </section>
 
+      <ReviewTopics manifest={manifest} stats={stats} progress={progress} />
+
       <section className="tbox">
-        <div className="lbl">Повторять из</div>
+        <div className="lbl">Повторять из нескольких тем</div>
         <PickRow manifest={manifest} scope={scope} onOpen={openPicker} onReset={() => setScope('all')} />
-        <span className="small muted">Необязательно: можно повторить только выбранные темы, остальное подождёт.</span>
+        <span className="small muted">Необязательно: счётчик и кнопки вверху будут только по выбранным темам.</span>
       </section>
     </>
+  );
+}
+
+// Изученные темы списком: нажатие — повторить только эту тему, переключатель — повторять ли тему вообще
+// (settings.reviewOff, синхронизируется между устройствами). Сначала темы, где есть что повторить.
+function ReviewTopics({ manifest, stats, progress }) {
+  const off = progress.settings.reviewOff || {};
+  const rows = useMemo(() => manifest.blocks.flatMap((b) => b.topicIds.map((id) => manifest.byId[id]).filter((t) => t && stats[t.id]?.seen)
+    .map((t) => ({ t, b, s: stats[t.id], due: stats[t.id].mcq.due + stats[t.id].card.due }))), [manifest, stats]);
+  const [all, setAll] = useState(false);
+  if (!rows.length) return null;
+  // выключенные темы видны всегда — иначе тема исчезает из списка сразу после нажатия на переключатель
+  const list = all ? rows : rows.filter((r) => r.due > 0 || off[r.t.id]);
+  const setOff = (id, v) => { const o = { ...off }; if (v) o[id] = true; else delete o[id]; setSetting('reviewOff', o); };
+  return (
+    <section className="tbox">
+      <div className="lbl">По темам</div>
+      {list.length ? (
+        <div className="rv-list">
+          {list.map(({ t, b, s, due }) => {
+            const isOff = !!off[t.id];
+            return (
+              <div key={t.id} className={'rv-row' + (isOff ? ' rv-off' : '')} style={{ '--c': b.color }}>
+                <a className={'rv-main' + (due ? '' : ' rv-nodue')} href={due ? sessionHref('review', 't' + t.id, 0, 'all') : undefined} aria-disabled={!due}>
+                  <span className="tp-t"><span className="tid">{t.id}</span> {t.title}</span>
+                  <span className="small muted">
+                    {isOff ? 'не повторяется' + (s.offDue ? ' · ждут ' + s.offDue : '')
+                      : due ? 'повторить: тестов ' + s.mcq.due + ', карточек ' + s.card.due : 'повторять нечего · изучено ' + s.seen + ' из ' + s.all}
+                  </span>
+                </a>
+                {due > 0 && <span className="tbadge b-due">{due}</span>}
+                <input type="checkbox" className="switch" checked={!isOff} onChange={(e) => setOff(t.id, !e.target.checked)}
+                  aria-label={(isOff ? 'Включить' : 'Выключить') + ' повторение темы ' + t.id} />
+              </div>
+            );
+          })}
+        </div>
+      ) : <p className="small muted tmsg">Сейчас ни в одной теме нечего повторять.</p>}
+      <button className="link-btn small" onClick={() => setAll((v) => !v)}>
+        {all ? 'Только темы, где есть что повторить' : 'Все изученные темы · ' + rows.length}
+      </button>
+      <span className="small muted">Переключатель выключает тему из повторения: её вопросы не придут в «Повторить» и в напоминания, пока не включите снова.</span>
+    </section>
   );
 }
 

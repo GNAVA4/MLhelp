@@ -200,6 +200,7 @@ for (const f of bank) {
     } else { out.a = r(q.a); if (q.note) out.note = r(q.note); }
     if (q.tags) out.tags = q.tags;
     if (q.level) out.level = q.level;
+    if (q.deep) out.deep = true;
     questions.push(out);
   }
 }

@@ -5,7 +5,8 @@
 //     q: HTML + TeX в $…$ / $$…$$ (TeX сырой),
 //     mcq:  options: [HTML+TeX] (2–6), correct: индекс, explanation?: HTML+TeX, fixedOrder?: true (варианты ссылаются друг на друга)
 //     card: a: HTML+TeX — ответ (общий, без чисел разобранного в теме кейса), note?: HTML+TeX — пример из темы с числами,
-//     tags?: [string], level?: 'junior'|'middle'|'senior', src?: откуда взят }
+//     tags?: [string], level?: 'junior'|'middle'|'senior', src?: откуда взят,
+//     deep?: true — углублённый (вывод, доказательство, задача-головоломка): в приложении скрыт, пока не включён в Профиле }
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const QDIR = path.join(ROOT, 'questions');

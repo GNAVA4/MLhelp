@@ -11,6 +11,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { getProgress, subscribeProgress } from './progress.js';
 import { navigate, sessionHref } from './router.js';
 import { nextTimes, reminderText } from './reminderPlan.js';
+import { loadQuestions, shownFor, reviewOffFor } from './questions.js';
 
 export const REMINDERS_NATIVE = Capacitor.isNativePlatform();
 export { DEFAULT_REMIND_AT } from './reminderPlan.js';
@@ -37,8 +38,12 @@ export async function reschedule() {
     const perm = await withTimeout(LocalNotifications.checkPermissions());
     set({ permission: perm.display });
     if (perm.display !== 'granted') { set({ next: null }); return; }
+    // выключенные из повторения темы и скрытые углублённые вопросы не считаются
+    const bank = await loadQuestions().catch(() => null);
+    const shown = shownFor(p.settings), off = reviewOffFor(p.settings);
+    const counts = (qid) => { const q = bank?.byId[qid]; return !q || (shown(q) && !off(q)); };
     const list = nextTimes(p.settings.remindAt).map((at, i) => {
-      const t = reminderText(p, at);
+      const t = reminderText(p, at, new Date(), counts);
       return t && { id: BASE_ID + i, title: t.title, body: t.body, channelId: CHANNEL, schedule: { at, allowWhileIdle: true }, extra: { href: sessionHref('review', 'all') } };
     }).filter(Boolean);
     if (list.length) await withTimeout(LocalNotifications.schedule({ notifications: list }));

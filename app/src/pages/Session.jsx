@@ -10,9 +10,9 @@ import { haptic } from '../lib/haptics.js';
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 // Экзамен: 60 с на вопрос — ориентир на вдумчивый ответ без подглядывания.
 const EXAM_SEC_PER_Q = 60;
-// Карточку с оценкой «не знал» в сессиях «Повторение», «Новое» и «Карточки» показываем ещё раз в конце (не больше 2 раз):
-// у FSRS первый шаг переучивания — минуты, а не дни.
-const MAX_REQUEUE = 2;
+// Карточку с оценкой «не знал» в сессиях «Повторение», «Новое» и «Карточки» показываем ещё раз в конце — один раз
+// (владелец, session 022: в памяти она вернётся завтра; лишнее можно пропустить).
+const MAX_REQUEUE = 1;
 // Свайп: смещение в пикселях, после которого карточка засчитывается.
 const SWIPE_PX = 90;
 const GRADES = [
@@ -134,9 +134,10 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
   const starred = !!progress.marks.starred[q.id];
   const flagged = progress.marks.flagged[q.id];
 
+  // result = null — вопрос пропущен: ни в память, ни в результаты сессии
   const advance = (result, requeue) => {
     const items = requeue ? [...run.items, { ...item, requeued: item.requeued + 1 }] : run.items;
-    const next = { ...run, results: [...run.results, result], items, idx: run.idx + 1, tq: Date.now() };
+    const next = { ...run, results: result ? [...run.results, result] : run.results, items, idx: run.idx + 1, tq: Date.now() };
     if (next.idx >= items.length) onFinish(next); else setRun(next);
     window.scrollTo(0, 0);
   };
@@ -167,14 +168,14 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
         {item.requeued > 0 && <div className="tag-again small">повтор</div>}
         <Html className="qtext" html={q.q} />
         {q.type === 'mcq'
-          ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} />
-          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} />}
+          ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} onSkip={() => advance(null, false)} />
+          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} onSkip={() => advance(null, false)} />}
       </div>
     </>
   );
 }
 
-function McqItem({ item, mode, tq, onDone, restore, readLink }) {
+function McqItem({ item, mode, tq, onDone, onSkip, restore, readLink }) {
   const q = item.q;
   const exam = mode === 'exam';
   const [chosen, setChosen] = useState(restore && restore.chosen != null ? restore.chosen : null);
@@ -237,11 +238,12 @@ function McqItem({ item, mode, tq, onDone, restore, readLink }) {
       {(show || (exam && chosen != null)) && (
         <div className="qnext"><button ref={nextRef} className="btn btn-primary" onClick={next}>Дальше →</button></div>
       )}
+      {chosen == null && <SkipBtn onSkip={onSkip} />}
     </>
   );
 }
 
-function CardItem({ item, mode, tq, onDone, restore, readLink }) {
+function CardItem({ item, mode, tq, onDone, onSkip, restore, readLink }) {
   const q = item.q;
   const [shown, setShown] = useState(!!(restore && restore.shown));
   const [dx, setDx] = useState(0);
@@ -279,6 +281,7 @@ function CardItem({ item, mode, tq, onDone, restore, readLink }) {
     return (
       <div className="qnext qnext-reveal">
         <button className="btn btn-primary" onClick={() => setShown(true)}>Показать ответ</button>
+        <SkipBtn onSkip={onSkip} />
       </div>
     );
   }
@@ -300,8 +303,14 @@ function CardItem({ item, mode, tq, onDone, restore, readLink }) {
           </button>
         ))}
       </div>
+      <SkipBtn onSkip={onSkip} />
     </>
   );
+}
+
+// Пропустить: вопрос уходит из сессии без оценки, память повторения не меняется (владелец, session 022).
+function SkipBtn({ onSkip }) {
+  return <button className="link-btn small skip-btn" onClick={onSkip}>Пропустить</button>;
 }
 
 function verdict(p) {
