@@ -12,7 +12,7 @@
 | block0_02_distributions.html | 1283 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_03_bayes.html | 1274 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1183 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_05_likelihood_mle_map.html | 1315 | 15 | 30 | 16 / 16 |  | 0 |  |
+| block0_05_likelihood_mle_map.html | 1719 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_06_hypothesis_testing.html | 1081 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_07_entropy_kl.html | 1282 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_08_linear_algebra.html | 1418 | 15 | 30 | 16 / 16 |  | 0 |  |
