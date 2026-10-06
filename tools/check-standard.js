@@ -151,6 +151,10 @@ function check(file) {
     if (noW) W('§7.10', `шпаргалка: ${noW} строк без обозначений (.cs-w)`);
   }
 
+  // Инструменты: заголовки .ct th набраны капсом (text-transform) — формула внутри th становится заглавной (e → E)
+  if (!/\.ct th \.katex\{text-transform:none\}/.test(src))
+    for (const th of $$('th')) if (th.querySelector('tex, texd')) E('Инструменты', `формула в заголовке <th> станет заглавной — нужен CSS .ct th .katex{text-transform:none}: «${short(txt(th), 30)}»`);
+
   // Инструменты: колонки grid на телефоне
   if (/grid-template-columns:\s*1fr\b(?!\s*\))/.test(src.replace(/minmax\(0,\s*1fr\)/g, ''))) W('Инструменты', 'grid-template-columns:1fr без minmax(0,1fr)');
 
