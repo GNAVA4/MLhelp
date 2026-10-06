@@ -137,45 +137,81 @@ function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicke
   );
 }
 
-// Изученные темы списком: нажатие — повторить только эту тему, переключатель — повторять ли тему вообще
-// (settings.reviewOff, синхронизируется между устройствами). Сначала темы, где есть что повторить.
+// Какие темы повторять — как выбор тем на «Новом»: блоки с галочкой (вкл / частично / выкл) раскрываются в темы.
+// Галочка = тема участвует в повторении (settings.reviewOff — выключенные, синхронизируется между устройствами).
+// Галочка блока переключает все его темы, в том числе ещё не изученные — выключенный блок останется выключенным.
+// «Повторить N ›» у темы — сессия повторения только этой темы.
 function ReviewTopics({ manifest, stats, progress }) {
   const off = progress.settings.reviewOff || {};
-  const rows = useMemo(() => manifest.blocks.flatMap((b) => b.topicIds.map((id) => manifest.byId[id]).filter((t) => t && stats[t.id]?.seen)
-    .map((t) => ({ t, b, s: stats[t.id], due: stats[t.id].mcq.due + stats[t.id].card.due }))), [manifest, stats]);
-  const [all, setAll] = useState(false);
-  if (!rows.length) return null;
-  // выключенные темы видны всегда — иначе тема исчезает из списка сразу после нажатия на переключатель
-  const list = all ? rows : rows.filter((r) => r.due > 0 || off[r.t.id]);
-  const setOff = (id, v) => { const o = { ...off }; if (v) o[id] = true; else delete o[id]; setSetting('reviewOff', o); };
+  const blocks = useMemo(() => manifest.blocks
+    .map((b) => ({ b, topics: b.topicIds.map((id) => manifest.byId[id]).filter((t) => t && stats[t.id]?.seen) }))
+    .filter((x) => x.topics.length), [manifest, stats]);
+  const due = (t) => stats[t.id].mcq.due + stats[t.id].card.due;
+  const [only, setOnly] = useState(false);
+  // раскрыт первый блок, где есть что повторить
+  const [open, setOpen] = useState(() => { const f = blocks.find((x) => x.topics.some((t) => due(t) > 0)); return new Set(f ? [f.b.id] : []); });
+  if (!blocks.length) return null;
+  const save = (o) => setSetting('reviewOff', o);
+  const toggleTopic = (id) => { const o = { ...off }; if (o[id]) delete o[id]; else o[id] = true; save(o); };
+  const toggleBlock = (b, allOn) => { const o = { ...off }; b.topicIds.forEach((id) => (allOn ? (o[id] = true) : delete o[id])); save(o); };
+  const toggleOpen = (id) => { const s = new Set(open); if (s.has(id)) s.delete(id); else s.add(id); setOpen(s); };
+  const nOff = Object.keys(off).filter((id) => stats[id]?.seen).length;
+
   return (
     <section className="tbox">
-      <div className="lbl">По темам</div>
-      {list.length ? (
-        <div className="rv-list">
-          {list.map(({ t, b, s, due }) => {
-            const isOff = !!off[t.id];
-            return (
-              <div key={t.id} className={'rv-row' + (isOff ? ' rv-off' : '')} style={{ '--c': b.color }}>
-                <a className={'rv-main' + (due ? '' : ' rv-nodue')} href={due ? sessionHref('review', 't' + t.id, 0, 'all') : undefined} aria-disabled={!due}>
-                  <span className="tp-t"><span className="tid">{t.id}</span> {t.title}</span>
+      <div className="lbl">Какие темы повторять</div>
+      <div className="tp-tools">
+        <span className="small muted rv-sum">{nOff ? 'Выключено из повторения: ' + nTopics(nOff) : 'Повторяются все изученные темы'}</span>
+        <button className={'chip' + (only ? ' on' : '')} onClick={() => setOnly((v) => !v)} aria-pressed={only}>Есть что повторить</button>
+      </div>
+      <div className="tp-list">
+        {blocks.map(({ b, topics }) => {
+          const shown = only ? topics.filter((t) => due(t) > 0) : topics;
+          if (!shown.length) return null;
+          const nOn = b.topicIds.filter((id) => !off[id]).length;
+          const allOn = nOn === b.topicIds.length;
+          const bDue = topics.reduce((a, t) => a + due(t), 0);
+          const bOffDue = topics.reduce((a, t) => a + stats[t.id].offDue, 0);
+          const seenOn = topics.filter((t) => !off[t.id]).length;
+          const expanded = only || open.has(b.id);
+          return (
+            <div key={b.id} className="tp-block" style={{ '--c': b.color }}>
+              <div className="tp-row tp-brow">
+                <button className={'cb' + (allOn ? ' on' : nOn ? ' part' : '')} onClick={() => toggleBlock(b, allOn)}
+                  aria-label={(allOn ? 'Не повторять' : 'Повторять') + ' блок ' + b.id} />
+                <button className="tp-main" onClick={() => toggleOpen(b.id)} aria-expanded={expanded}>
+                  <span className="tp-t"><span className="tid">{b.id}</span> {b.title}</span>
                   <span className="small muted">
-                    {isOff ? 'не повторяется' + (s.offDue ? ' · ждут ' + s.offDue : '')
-                      : due ? 'повторить: тестов ' + s.mcq.due + ', карточек ' + s.card.due : 'повторять нечего · изучено ' + s.seen + ' из ' + s.all}
+                    {!seenOn ? 'не повторяется' : 'повторяется ' + seenOn + ' из ' + topics.length + ' ' + plural(topics.length, 'темы', 'тем', 'тем')}
+                    {bDue ? ' · пора ' + bDue : ''}{bOffDue ? (seenOn ? ' · в выключенных ждут ' : ' · ждут ') + bOffDue : ''}
                   </span>
-                </a>
-                {due > 0 && <span className="tbadge b-due">{due}</span>}
-                <input type="checkbox" className="switch" checked={!isOff} onChange={(e) => setOff(t.id, !e.target.checked)}
-                  aria-label={(isOff ? 'Включить' : 'Выключить') + ' повторение темы ' + t.id} />
+                </button>
+                {bDue > 0 && <span className="tbadge b-due">{bDue}</span>}
+                <span className={'tp-chev' + (expanded ? ' open' : '')} aria-hidden="true">›</span>
               </div>
-            );
-          })}
-        </div>
-      ) : <p className="small muted tmsg">Сейчас ни в одной теме нечего повторять.</p>}
-      <button className="link-btn small" onClick={() => setAll((v) => !v)}>
-        {all ? 'Только темы, где есть что повторить' : 'Все изученные темы · ' + rows.length}
-      </button>
-      <span className="small muted">Переключатель выключает тему из повторения: её вопросы не придут в «Повторить» и в напоминания, пока не включите снова.</span>
+              {expanded && shown.map((t) => {
+                const s = stats[t.id], on = !off[t.id], d = due(t);
+                return (
+                  <div key={t.id} className={'tp-row tp-trow' + (on ? '' : ' tp-off')} role="button" tabIndex={0} aria-pressed={on}
+                    onClick={() => toggleTopic(t.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toggleTopic(t.id))}>
+                    <span className={'cb' + (on ? ' on' : '')} aria-hidden="true" />
+                    <span className="tp-main">
+                      <span className="tp-t"><span className="tid">{t.id}</span> {t.title}</span>
+                      <span className="small muted">
+                        {!on ? 'не повторяется' + (s.offDue ? ' · ждут ' + s.offDue : '')
+                          : d ? 'пора: тестов ' + s.mcq.due + ', карточек ' + s.card.due : 'повторять нечего · изучено ' + s.seen + ' из ' + s.all}
+                      </span>
+                    </span>
+                    {on && d > 0 && <a className="rv-go" href={sessionHref('review', 't' + t.id, 0, 'all')} onClick={(e) => e.stopPropagation()}
+                      title={'Повторить только тему ' + t.id}>{d} ›</a>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+      <span className="small muted">Снятая галочка выключает тему из повторения: её вопросы не придут в «Повторить» и в напоминания. Галочка блока — все его темы сразу. «N ›» у темы — повторить только её.</span>
     </section>
   );
 }
