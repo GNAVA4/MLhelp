@@ -685,6 +685,91 @@
    "explanation": "Крупный токен содержит больше информации, и неопределённость на токен выше без ухудшения модели. Сравнивают при одном токенизаторе или в битах на символ либо байт.",
    "src": "authored session 017",
    "id": "qntkyejm"
+  },
+  {
+   "type": "mcq",
+   "q": "Что выведет код?<pre><code>from scipy.stats import entropy\nprint(round(entropy([1, 1, 2, 4]), 3))</code></pre>",
+   "options": [
+    "<code>1.75</code>",
+    "<code>1.213</code>",
+    "<code>-6.931</code>",
+    "<code>ValueError</code>"
+   ],
+   "correct": 1,
+   "explanation": "<code>entropy</code> сам нормирует веса: $[1,1,2,4] \\to (0.125, 0.125, 0.25, 0.5)$, и по умолчанию берёт натуральный логарифм. Энтропия этого распределения — 1.75 бита, в натах $1.75\\cdot\\ln 2 = 1.213$. 1.75 получилось бы с <code>base=2</code>; ошибки нет — сумма не обязана быть 1.",
+   "tags": [
+    "что выведет код"
+   ],
+   "src": "код проверен запуском: numpy 2.5, scipy 1.18, sklearn 1.9",
+   "id": "qejwhazm"
+  },
+  {
+   "type": "mcq",
+   "q": "Что выведет код?<pre><code>from scipy.stats import entropy\np, q = [0.5, 0.5], [0.9, 0.1]\nprint(round(entropy(p, q, base=2), 3))</code></pre>",
+   "options": [
+    "<code>1.0</code>",
+    "<code>0.531</code>",
+    "<code>1.737</code>",
+    "<code>0.737</code>"
+   ],
+   "correct": 3,
+   "explanation": "С двумя аргументами <code>entropy(p, q)</code> считает не кросс-энтропию, а KL-дивергенцию $D_{KL}(p\\,\\|\\,q) = 0.5\\log_2\\frac{0.5}{0.9} + 0.5\\log_2\\frac{0.5}{0.1} = 0.737$ бита. 0.531 — обратное направление $D_{KL}(q\\|p)$, 1.737 — кросс-энтропия $H(p, q) = H(p) + D_{KL}$, 1.0 — энтропия самой $p$.",
+   "tags": [
+    "что выведет код"
+   ],
+   "src": "код проверен запуском: numpy 2.5, scipy 1.18, sklearn 1.9",
+   "id": "q2jtc0b3"
+  },
+  {
+   "type": "mcq",
+   "q": "Что выведет код?<pre><code>from sklearn.metrics import log_loss\n# второй аргумент — вероятность класса 1; у первого объекта класс 1, а прогноз 0\nprint(round(log_loss([1, 0], [0.0, 0.0]), 2))</code></pre>",
+   "options": [
+    "<code>18.02</code>",
+    "<code>inf</code>",
+    "<code>nan</code>",
+    "<code>34.54</code>"
+   ],
+   "correct": 0,
+   "explanation": "Первому объекту (класс 1) модель дала 0 — без защиты штраф $-\\ln 0 = \\infty$. sklearn обрезает вероятности до $[\\varepsilon, 1-\\varepsilon]$ с $\\varepsilon$ = машинная точность float64 $\\approx 2.2\\cdot10^{-16}$: штраф $-\\ln\\varepsilon = 36.04$, второй объект — 0, среднее 18.02. 34.54 — это $-\\ln 10^{-15}$, старая обрезка. Итог зависит от выбранного $\\varepsilon$ — сравнивать log-loss разных систем можно только при одинаковой обрезке.",
+   "tags": [
+    "что выведет код"
+   ],
+   "src": "код проверен запуском: numpy 2.5, scipy 1.18, sklearn 1.9",
+   "id": "qsf0c9nt"
+  },
+  {
+   "type": "mcq",
+   "q": "Что выведет код?<pre><code>from sklearn.metrics import mutual_info_score\nx = [0, 0, 1, 1]\ny = [1, 1, 0, 0]\nprint(round(mutual_info_score(x, y), 3))</code></pre>",
+   "options": [
+    "<code>1.0</code>",
+    "<code>-0.693</code>",
+    "<code>0.693</code>",
+    "<code>0.0</code>"
+   ],
+   "correct": 2,
+   "explanation": "$y$ полностью определяется $x$ (это $1 - x$), поэтому $I(X; Y) = H(Y)$ — энтропия монетки 50/50. sklearn считает в натах: $\\ln 2 = 0.693$, а не 1 бит. Знак связи для взаимной информации не важен — она не бывает отрицательной; 0 был бы при независимости.",
+   "tags": [
+    "что выведет код"
+   ],
+   "src": "код проверен запуском: numpy 2.5, scipy 1.18, sklearn 1.9",
+   "id": "qbtrbckx"
+  },
+  {
+   "type": "mcq",
+   "q": "Что выведет код?<pre><code>import numpy as np\np = np.array([0.5, 0.5, 0.0])\nprint(-(p * np.log2(p)).sum())</code></pre>",
+   "options": [
+    "<code>1.0</code>",
+    "<code>nan</code>",
+    "<code>inf</code>",
+    "<code>ZeroDivisionError</code>"
+   ],
+   "correct": 1,
+   "explanation": "<code>np.log2(0)</code> даёт <code>-inf</code> (с предупреждением, без исключения), а $0\\cdot(-\\infty)$ в плавающей точке — <code>nan</code>, и сумма тоже <code>nan</code>. В формуле энтропии слагаемое $0\\log 0$ по соглашению равно 0 — в коде его надо выкинуть самому (<code>p[p &gt; 0]</code>) или взять <code>scipy.stats.entropy(p, base=2)</code>, тогда будет 1.0.",
+   "tags": [
+    "что выведет код"
+   ],
+   "src": "код проверен запуском: numpy 2.5, scipy 1.18, sklearn 1.9",
+   "id": "qzj7s2pr"
   }
  ]
 }
