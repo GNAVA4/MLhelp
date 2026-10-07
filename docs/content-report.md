@@ -10,7 +10,7 @@
 |---|--:|--:|--:|---|:-:|:-:|---|
 | block0_01_expectation_variance.html | 2069 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_02_distributions.html | 1655 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_03_bayes.html | 1274 | 15 | 30 | 11 / 11 |  | 0 |  |
+| block0_03_bayes.html | 1615 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1471 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_05_likelihood_mle_map.html | 1719 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_06_hypothesis_testing.html | 1390 | 15 | 30 | 13 / 13 |  | 0 |  |
