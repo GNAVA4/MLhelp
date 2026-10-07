@@ -45,6 +45,9 @@ function check(file) {
   for (const m of src.matchAll(/<texd?>([\s\S]*?)<\/texd?>/g)) {
     if (/&lt;|&gt;/.test(m[1])) E('Инструменты', `&lt;/&gt; внутри <tex> — писать \\lt/\\gt: ${short(m[1], 40)}`);
     if (/&&\s*\\text/.test(m[1])) E('Инструменты', `комментарий внутри aligned (&&\\text): ${short(m[1], 40)}`);
+    // команда без обратного слэша (gt вместо \gt) — KaTeX молча рисует буквы (баг 0.9, session 036)
+    const bare = m[1].replace(/\\(?:text|mathrm|operatorname)\{[^}]*\}/g, '').match(/(?:^|[^\\a-zA-Z])(gt|lt|leq?|geq?|neq|cdot|frac|sqrt|ln|log|exp|sigma|lambda)(?![a-zA-Z])/);
+    if (bare) E('Инструменты', `«${bare[1]}» без обратного слэша внутри <tex> — KaTeX нарисует буквы: ${short(m[1], 40)}`);
   }
 
   // §2 карточки формул: 15–20, у каждой расшифровка
