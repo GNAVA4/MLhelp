@@ -16,7 +16,7 @@
 | block0_06_hypothesis_testing.html | 1422 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_07_entropy_kl.html | 1661 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_08_linear_algebra.html | 1881 | 15 | 30 | 16 / 16 |  | 0 |  |
-| block0_09_gradients.html | 1966 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_09_gradients.html | 1993 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |

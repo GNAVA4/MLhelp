@@ -18,7 +18,7 @@ const SKIP = new Set(('mid sum int prod Rightarrow Longleftrightarrow Leftrighta
   'operatorname left right big Big bigg cdot cdots dots ldots times quad qquad sqrt to infty in notin subset begin end gathered aligned cases ' +
   'mathbf boldsymbol bm displaystyle textstyle limits lim max min arg log ln exp sim propto pm mp colon vert lVert rVert Vert langle rangle ' +
   'underbrace overbrace underset overset stackrel hline tag nonumber phantom vphantom hspace mathcal mathbb tilde widetilde hat widehat bar overline ' +
-  'prime partial nabla xrightarrow forall exists equiv circ star ast cup cap emptyset varnothing setminus binom choose top intercal T').split(' '));
+  'prime partial nabla xrightarrow bigl bigr Bigl Bigr biggl biggr forall exists equiv circ star ast cup cap emptyset varnothing setminus binom choose top intercal T').split(' '));
 // Общие синонимы: обозначение считается названным, если в блоке встретилось одно из этих начал слов.
 const ALIAS = {
   '\\sigma': ['станд', 'отклон', 'разбро', 'диспер', 'сигм', 'сингуляр'], '\\mu': ['средн', 'матож', 'ожидан'],

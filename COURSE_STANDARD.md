@@ -108,6 +108,7 @@
 
 1. `node tools/build.js content-src/<file>.src.html` — `errors: 0`.
 2. `node tools/check-page.js content-legacy/<file>.html` — код 0; `node tools/check-standard.js content-src/<file>.src.html` — 0 ошибок.
+2a. `node tools/check-notation.js content-src/<file>.src.html` — 0 блоков (§7.11: символы из справки названы в каждой задаче, трассировке, камне; у формулы — все буквы в «где»). Это эвристика: ложное срабатывание лечится формулировкой «<tex>…</tex> — пояснение», а не правкой проверки ради нуля; `npm run check:notation` — все темы.
 3. Ссылки: все `href="…#sN"` ведут на существующие файл и id (скрипт: собрать href из исходника, проверить `content-legacy/<file>` и `id="sN"` в нём).
 4. Все новые числа пересчитаны node/python.
 4a. Каждое «Решение» начинается с `.fr` (формула + «где» с числами задачи), шпаргалка — с названиями (7.9, 7.10).
