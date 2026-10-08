@@ -65,7 +65,7 @@ function audit(file) {
     const td = tr.querySelectorAll('td'); if (td.length < 2) continue;
     const syms = texSymbols(texOf(td[0])); if (/(^|[^A-Za-z])SE([^A-Za-z]|$)/.test(td[0].textContent)) syms.add('SE');
     const d = td[1].cloneNode(true); d.querySelectorAll('tex, .gl-ex').forEach((x) => x.remove());
-    const words = (d.textContent.split(/[;(]/)[0].match(/[а-яё-]{4,}/gi) || []).filter((w) => !STOP.has(w.toLowerCase())).slice(0, 3).map(stem);
+    const words = (d.textContent.split(/[;.]\s/)[0].match(/[а-яё-]{4,}/gi) || []).filter((w) => !STOP.has(w.toLowerCase())).slice(0, 8).map(stem);
     for (const s of syms) dict[s] = [...new Set([...(dict[s] || []), ...words, ...(ALIAS[s] || []).map(stem)])];
   }
   const units = [];
@@ -79,7 +79,13 @@ function audit(file) {
     const used = texSymbols(texOf(el));
     const plain = el.cloneNode(true); plain.querySelectorAll('tex, texd').forEach((x) => x.remove());
     const text = plain.textContent.toLowerCase().replace(/ё/g, 'е') + ' ' + [...el.querySelectorAll('tex, texd')].map((t) => (t.textContent.match(/\\text\{([^}]*)\}/g) || []).join(' ')).join(' ').toLowerCase();
-    const missing = [...used].filter((s) => dict[s] && !dict[s].some((w) => text.includes(w)));
+    // явное определение в блоке: «<tex>…символ…</tex> — пояснение» или «<tex>…</tex> (пояснение)»
+    const defined = new Set();
+    for (const t of el.querySelectorAll('tex')) {
+      const nx = t.nextSibling;
+      if (nx && nx.nodeType === 3 && /^\s*(—|–|\(|-\s)/.test(nx.textContent)) texSymbols(t.textContent).forEach((s) => defined.add(s));
+    }
+    const missing = [...used].filter((s) => dict[s] && !defined.has(s) && !dict[s].some((w) => text.includes(w)));
     const noWhere = [...el.querySelectorAll('.fr')].filter((fr) => !fr.querySelector('.fr-w')).length;
     if (missing.length || noWhere) units.push({ sec, cls: el.className.split(' ')[0], label: label(el), missing, noWhere });
   }
