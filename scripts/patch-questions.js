@@ -1,6 +1,6 @@
 // Правка существующих вопросов по id: node scripts/patch-questions.js <patch.json> [--dry]
 // patch.json — массив [{ id, options?, correct?, q?, explanation?, a?, note?, deep? }]; меняются только переданные поля
-// (note: null / deep: null — удалить поле),
+// (note: null / deep: null — удалить поле; { id, delete: true } — удалить вопрос вместе с его памятью повторения),
 // id и место вопроса в файле сохраняются (на id держится память повторения).
 // Выгрузка темы для правки: node scripts/patch-questions.js --dump <topicId> [--all]  (по умолчанию — только вопросы с подсказкой)
 const fs = require('fs'), path = require('path');
@@ -40,6 +40,10 @@ let n = 0;
 for (const p of patch) {
   const hit = byId.get(p.id);
   if (!hit) { console.error('нет вопроса ' + p.id); process.exit(2); }
+  if (p.delete === true) {
+    hit.f.questions.splice(hit.f.questions.indexOf(hit.q), 1);
+    byId.delete(p.id); touched.add(hit.f); n++; continue;
+  }
   if (hit.q.type !== 'mcq' && p.options) { console.error(p.id + ': не mcq'); process.exit(2); }
   if (hit.q.type !== 'card' && (p.a != null || p.note != null)) { console.error(p.id + ': a/note — только у card'); process.exit(2); }
   if (p.options && p.correct == null && p.options.length !== hit.q.options.length) {
@@ -60,7 +64,7 @@ const problems = validate(bank);
 if (problems.length) { console.error(problems.join('\n')); process.exit(2); }
 
 let still = 0;
-for (const p of patch) { const q = byId.get(p.id).q; if (q.type !== 'mcq') continue; const a = audit(q); if (a.bad) { still++; console.log('  всё ещё подсказка: ' + p.id + ' ' + a.flags.join(',') + ' ' + a.ratio.toFixed(2)); } }
+for (const p of patch) { if (!byId.has(p.id)) continue; const q = byId.get(p.id).q; if (q.type !== 'mcq') continue; const a = audit(q); if (a.bad) { still++; console.log('  всё ещё подсказка: ' + p.id + ' ' + a.flags.join(',') + ' ' + a.ratio.toFixed(2)); } }
 if (!args.includes('--dry')) {
   for (const f of touched) { const { file: fp, ...data } = f; fs.writeFileSync(fp, JSON.stringify(data, null, 1) + '\n'); }
 }
