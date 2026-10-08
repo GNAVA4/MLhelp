@@ -92,7 +92,7 @@ function audit(file) {
   // Карточки формул: каждая буква/команда формулы должна встретиться в расшифровке .where/.fnote (7.11, п.1).
   const letters = (tex) => {
     const out = texSymbols(tex);
-    const bare = tex.replace(/\\(text|mathrm|operatorname|textbf|begin|end)\{[^}]*\}/g, ' ').replace(/\\[A-Za-z]+/g, ' ');
+    const bare = tex.replace(/p\s*\\text\{-value\}/g, ' ').replace(/\\(text|mathrm|operatorname|textbf|begin|end)\{[^}]*\}/g, ' ').replace(/\\[A-Za-z]+/g, ' ');
     for (const m of bare.matchAll(/(^|[^A-Za-z])([a-z])(?![A-Za-z])/g)) out.add(m[2]);
     return out;
   };
