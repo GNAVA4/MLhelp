@@ -34,7 +34,7 @@ for (const f of bank) for (const q of f.questions) byId.set(q.id, { f, q });
 const stems = (s) => new Set((s.toLowerCase().replace(/<[^>]+>/g, ' ').replace(/\\[a-z]+/g, ' ').match(/[a-zа-яё0-9.]+/g) || []).filter((w) => w.length > 2).map((w) => w.slice(0, 5)));
 const sim = (a, b) => { const A = stems(a), B = stems(b); let k = 0; for (const w of A) if (B.has(w)) k++; return k / Math.max(1, Math.min(A.size, B.size)); };
 
-const FIELDS = ['options', 'correct', 'q', 'explanation', 'a', 'note', 'deep'];
+const FIELDS = ['options', 'correct', 'q', 'explanation', 'a', 'note', 'deep', 'sec'];
 const touched = new Set();
 let n = 0;
 for (const p of patch) {

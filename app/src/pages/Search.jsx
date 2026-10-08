@@ -72,7 +72,7 @@ function QResult({ q, manifest }) {
       {open && (q.type === 'mcq'
         ? <div className="expl expl-ok"><Html html={q.options[q.correct]} />{q.explanation && <Html className="small" html={q.explanation} />}</div>
         : <div className="answer"><Html html={q.a} />{q.note && <Html className="card-note" html={q.note} />}</div>)}
-      {open && t?.file && <a className="read-link" href={toTopic(q.topicId)}>Почитать в теме →</a>}
+      {open && t?.file && <a className="read-link" href={toTopic(q.topicId, q.sec || t.sections?.[0]?.id)}>Почитать в теме →</a>}
     </div>
   );
 }

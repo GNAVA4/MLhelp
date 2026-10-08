@@ -6,7 +6,8 @@
 //     mcq:  options: [HTML+TeX] (2–6), correct: индекс, explanation?: HTML+TeX, fixedOrder?: true (варианты ссылаются друг на друга)
 //     card: a: HTML+TeX — ответ (общий, без чисел разобранного в теме кейса), note?: HTML+TeX — пример из темы с числами,
 //     tags?: [string], level?: 'junior'|'middle'|'senior', src?: откуда взят,
-//     deep?: true — углублённый (вывод, доказательство, задача-головоломка): в приложении скрыт, пока не включён в Профиле }
+//     deep?: true — углублённый (вывод, доказательство, задача-головоломка): в приложении скрыт, пока не включён в Профиле,
+//     sec?: 'sN' — секция темы, где разобрано то, что проверяет вопрос: туда ведёт «Почитать в теме» (session 042) }
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const QDIR = path.join(ROOT, 'questions');
@@ -66,6 +67,7 @@ function validate(bank, topicIds) {
       } else if (q.type === 'card') {
         if (!q.a || !String(q.a).trim()) problems.push(at + ': пустой ответ');
       } else problems.push(at + ': type должен быть mcq или card');
+      if (q.sec != null && !/^s\d{1,2}$/.test(q.sec)) problems.push(at + ': sec — номер секции вида s7');
       const errs = [];
       for (const s of [q.q, q.a, q.note, q.explanation, ...(q.options || [])]) renderMath(s, errs, at);
       problems.push(...errs);

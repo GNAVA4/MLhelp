@@ -26,9 +26,11 @@ const Html = ({ html, className, as: Tag = 'div' }) => <Tag className={className
 // Прохождение, из которого ушли читать тему: при возврате (тот же адрес) продолжаем с того же вопроса
 // и в том же состоянии (выбранный ответ / открытый ответ карточки). Живёт в памяти, пока открыто приложение.
 let kept = null; // { hash, run, answer: { chosen } | { shown } | null }
-// свойства ссылки «в тему»: адрес с возвратом сюда; прохождение запоминается только по нажатию
-const readLinkProps = (topicId, answer, run) => ({
-  href: topicHref(topicId) + '?from=' + encodeURIComponent(window.location.hash),
+// свойства ссылки «в тему»: адрес с возвратом сюда; прохождение запоминается только по нажатию.
+// Секция — где разобран вопрос (q.sec); без неё — начало темы, а не место последнего чтения (иначе любой вопрос
+// уводил туда, где человек остановился, session 042).
+const readLinkProps = (t, sec, answer, run) => ({
+  href: topicHref(t.id, sec || (t.sections?.length ? t.sections[0].id : undefined)) + '?from=' + encodeURIComponent(window.location.hash),
   onClick: () => { kept = { hash: window.location.hash, run, answer }; },
 });
 
@@ -155,7 +157,7 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
       <Bar value={run.idx / run.items.length} color="var(--c)" thin />
       <div className="qcard">
         <div className="qmeta small muted">
-          <a {...readLinkProps(t.id, null, run)} title="Открыть тему (вернётесь к этому вопросу)">{t.id} {t.title}</a>
+          <a {...readLinkProps(t, q.sec, null, run)} title="Открыть тему (вернётесь к этому вопросу)">{t.id} {t.title}</a>
           <span className="qtools">
             {mode === 'interview' && <Stopwatch since={run.tq} />}
             {mode !== 'exam' && answered > 0 && <span className="nowrap">{ok} / {answered}</span>}
@@ -169,8 +171,8 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
         {item.requeued > 0 && <div className="tag-again small">повтор</div>}
         <Html className="qtext" html={q.q} />
         {q.type === 'mcq'
-          ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} onSkip={() => advance(null, false)} />
-          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'again' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} onSkip={() => advance(null, false)} />}
+          ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t, q.sec, answer, run)} onDone={(res) => advance(res, false)} onSkip={() => advance(null, false)} />
+          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t, q.sec, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'again' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} onSkip={() => advance(null, false)} />}
       </div>
     </>
   );

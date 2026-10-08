@@ -202,6 +202,10 @@ for (const f of bank) {
     if (q.tags) out.tags = q.tags;
     if (q.level) out.level = q.level;
     if (q.deep) out.deep = true;
+    if (q.sec) {
+      if (!t.sections.some((s) => s.id === q.sec)) throw new Error(q.id + ': в теме ' + f.topic + ' нет секции ' + q.sec);
+      out.sec = q.sec;
+    }
     questions.push(out);
   }
 }
