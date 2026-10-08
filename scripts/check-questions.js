@@ -24,6 +24,22 @@ for (const f of bank) for (const q of f.questions) {
   const a = audit(q);
   if (a.bad) problems.push(f.topic + ' ' + q.id + ': верный вариант выделяется формой (' + a.flags.join(',') + ', длиннее в ' + a.ratio.toFixed(2) + ' раза) — выровнять варианты');
 }
+// темы нового стандарта (есть исходник в content-src): у каждого вопроса — sec, и такая секция есть в теме
+// («Почитать в теме» ведёт туда; без sec вопрос открывал место последнего чтения — session 042, правило 15 README)
+const fs = require('fs');
+const SRC = path.join(ROOT, 'content-src');
+for (const file of fs.readdirSync(SRC).filter((x) => x.endsWith('.src.html'))) {
+  const m = /^block(\d+)_(\d+)_/.exec(file);
+  if (!m) continue;
+  const topic = m[1] + '.' + (+m[2]);
+  const f = bank.find((b) => b.topic === topic);
+  if (!f) continue;
+  const secs = new Set([...fs.readFileSync(path.join(SRC, file), 'utf8').matchAll(/<section id="(s\d+)"/g)].map((x) => x[1]));
+  for (const q of f.questions) {
+    if (!q.sec) problems.push(topic + ' ' + q.id + ': нет sec — секции темы, где разобран вопрос');
+    else if (!secs.has(q.sec)) problems.push(topic + ' ' + q.id + ': секции ' + q.sec + ' нет в ' + file);
+  }
+}
 const all = bank.flatMap((f) => f.questions);
 console.log('банк: файлов ' + bank.length + ', вопросов ' + all.length + ' (mcq ' + all.filter((q) => q.type === 'mcq').length + ', card ' + all.filter((q) => q.type === 'card').length + ')');
 if (problems.length) { console.log('проблем: ' + problems.length); problems.slice(0, 40).forEach((p) => console.log('  ' + p)); process.exit(2); }

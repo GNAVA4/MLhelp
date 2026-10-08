@@ -9,14 +9,14 @@
 | Файл | КБ | Секции | Q&A | Графики | CDN | Код | Проблемы |
 |---|--:|--:|--:|---|:-:|:-:|---|
 | block0_01_expectation_variance.html | 2094 | 15 | 30 | 15 / 15 |  | 0 |  |
-| block0_02_distributions.html | 1689 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_02_distributions.html | 1704 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_03_bayes.html | 1653 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1511 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_05_likelihood_mle_map.html | 1764 | 15 | 30 | 16 / 16 |  | 0 |  |
-| block0_06_hypothesis_testing.html | 1422 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_05_likelihood_mle_map.html | 1775 | 15 | 30 | 16 / 16 |  | 0 |  |
+| block0_06_hypothesis_testing.html | 1425 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_07_entropy_kl.html | 1661 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_08_linear_algebra.html | 1881 | 15 | 30 | 16 / 16 |  | 0 |  |
-| block0_09_gradients.html | 1993 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_09_gradients.html | 1995 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
