@@ -12,7 +12,8 @@ const K = { tab: 'mlc:trainTab', review: 'mlc:reviewScope', fresh: 'mlc:newScope
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* не критично */ } };
 const useStored = (k, d) => { const [v, set] = useState(() => load(k, d)); return [v, (x) => { set(x); save(k, x); }]; };
-const SIZES = [10, 20, 50, 0];
+// Шаг счётчика «сколько вопросов»: по 5 (до 5 — по одному); число можно ввести и вручную (владелец, session 046).
+const COUNT_STEP = 5;
 const TABS = [['review', 'Повторить'], ['new', 'Новое'], ['practice', 'Практика']];
 const PRACTICE = ['test', 'cards', 'interview', 'exam', 'mistakes', 'weak', 'starred'];
 const DAY = 86400000;
@@ -227,9 +228,9 @@ function AgainBox({ s, scope, n, setN, note }) {
   if (!s.mcq.seen && !s.card.seen) return null;
   return (
     <section className="tbox">
-      <div className="lbl">Пройти изученное заново</div>
-      <div className="seg seg-w">
-        {SIZES.map((x) => <button key={x} className={n === x ? 'on' : ''} onClick={() => setN(x)}>{x || 'Все'}</button>)}
+      <div className="tbox-top count-row">
+        <div className="lbl">Пройти изученное заново</div>
+        <Count n={n} setN={setN} max={Math.max(s.mcq.seen, s.card.seen)} compact />
       </div>
       <div className="two">
         <a className={'kbtn' + (s.mcq.seen ? '' : ' btn-off')} href={sessionHref('again', scope, n, 'mcq')}>Тесты<span>{nQ(cnt('mcq'))}</span></a>
@@ -247,8 +248,9 @@ function NewTab({ manifest, stats, progress, today, scope, setScope, kind, setKi
   const planned = n ? Math.min(n, avail) : avail;
   const newPerDay = progress.settings.newPerDay ?? DEFAULT_NEW_PER_DAY;
   const over = today.newToday + planned > newPerDay;
-  const what = kind === 'mcq' ? plural(planned, 'новый тест', 'новых теста', 'новых тестов') : plural(planned, 'новую карточку', 'новые карточки', 'новых карточек');
+  const what = kind === 'mcq' ? plural(planned, 'тест', 'теста', 'тестов') : plural(planned, 'карточка', 'карточки', 'карточек');
   const metric = useMemo(() => newMetric(kind), [kind]);
+  const seenN = n ? Math.min(n, s[kind].seen) : s[kind].seen;
 
   return (
     <>
@@ -261,24 +263,22 @@ function NewTab({ manifest, stats, progress, today, scope, setScope, kind, setKi
         <TopicPicker manifest={manifest} stats={stats} value={scope} onChange={setScope} metric={metric}
           filter={{ label: 'Есть новые', pred: (x) => x[kind].fresh > 0 }} />
         <div className="tfoot">
-          <div className="small muted">
-            {scope === 'all' ? 'Темы не выбраны: берём по порядку курса' : 'Выбрано: ' + pickLabel(manifest, scope)} · {avail} новых
-          </div>
-          <div className="seg seg-w">
-            {SIZES.map((x) => <button key={x} className={n === x ? 'on' : ''} onClick={() => setN(x)}>{x || 'Все'}</button>)}
-          </div>
-          <a className={'btn btn-primary btn-big' + (planned ? '' : ' btn-off')} href={sessionHref('new', scope, n, kind)}>
-            {planned ? 'Учить: ' + planned + ' ' + what : 'Новых здесь нет'}
-          </a>
-          {s[kind].seen > 0 && (
-            <a className="btn btn-ghost-w" href={sessionHref('again', scope, n, kind)}>
-              Пройти изученные заново · {kind === 'mcq' ? nQ(Math.min(n || Infinity, s[kind].seen)) : nCard(Math.min(n || Infinity, s[kind].seen))}
+          <div className="launch">
+            <Count n={n} setN={setN} max={avail} />
+            <a className={'btn btn-primary launch-go' + (planned ? '' : ' btn-off')} href={sessionHref('new', scope, n, kind)}>
+              <b>{planned ? 'Учить новые' : 'Новых здесь нет'}</b>
+              <span>{planned ? planned + ' ' + what + ' · ' : ''}{scope === 'all' ? 'по порядку курса' : pickLabel(manifest, scope)}</span>
             </a>
-          )}
-          <div className={'small ' + (over ? 'twarn' : 'muted')}>
-            {over
-              ? 'Сегодня уже взято новых: ' + today.newToday + ' при ориентире ' + newPerDay + '. Каждый новый вопрос вернётся на повторение, поэтому завтра повторений будет больше.'
-              : 'Сегодня взято новых: ' + today.newToday + ' из ' + newPerDay + '.'}
+          </div>
+          <div className="launch-sub small">
+            <span className={over ? 'twarn' : 'muted'}>
+              Сегодня новых {today.newToday} из {newPerDay}{over ? ' — завтра повторений будет больше' : ''}
+            </span>
+            {s[kind].seen > 0 && (
+              <a className="again-link" href={sessionHref('again', scope, n, kind)} title="Пройти изученные вопросы заново, не дожидаясь срока">
+                <AgainIcon />Изученные заново · {seenN}
+              </a>
+            )}
           </div>
         </div>
       </section>
@@ -299,14 +299,15 @@ function NewTab({ manifest, stats, progress, today, scope, setScope, kind, setKi
 // ---------- Практика ----------
 function PracticeTab({ bank, progress, manifest, scope, setScope, n, setN, openPicker }) {
   const counts = useMemo(() => modeCounts({ bank, progress, manifest, scope }), [bank, progress, scope]);
+  const most = Math.max(0, ...PRACTICE.map((m) => counts[m] || 0));
   return (
     <>
       <section className="tbox">
         <div className="lbl">Темы</div>
         <PickRow manifest={manifest} scope={scope} onOpen={openPicker} onReset={() => setScope('all')} />
-        <div className="lbl">Вопросов в сессии</div>
-        <div className="seg seg-w">
-          {SIZES.map((x) => <button key={x} className={n === x ? 'on' : ''} onClick={() => setN(x)}>{x || 'Все'}</button>)}
+        <div className="tbox-top count-row">
+          <div className="lbl">Вопросов в сессии</div>
+          <Count n={n} setN={setN} max={most} compact />
         </div>
       </section>
       <section className="modes">
@@ -326,6 +327,33 @@ function PracticeTab({ bank, progress, manifest, scope, setScope, n, setN, openP
       <span className="small muted">Практика не смотрит на новизну: берёт любые вопросы выбранных тем. Ответы всё равно идут в память повторения.</span>
     </>
   );
+}
+
+// ---------- счётчик «сколько вопросов» ----------
+// n = 0 — «все» (так хранится и уходит в адрес сессии). Число больше доступного тоже означает «все».
+function Count({ n, setN, max, compact }) {
+  const v = n && (!max || n < max) ? n : max;
+  const [text, setText] = useState(null); // пока вводят с клавиатуры
+  const put = (x) => setN(max && x >= max ? 0 : Math.max(1, x));
+  const dec = () => put(v <= COUNT_STEP ? v - 1 : v % COUNT_STEP ? v - (v % COUNT_STEP) : v - COUNT_STEP);
+  const inc = () => put(v < COUNT_STEP ? v + 1 : v - (v % COUNT_STEP) + COUNT_STEP);
+  const commit = () => { const x = parseInt(text, 10); if (x > 0) put(x); setText(null); };
+  return (
+    <div className={'count' + (compact ? ' count-sm' : '') + (max ? '' : ' count-off')}>
+      <button onClick={dec} disabled={!max || v <= 1} aria-label="Меньше вопросов" data-haptic="off">−</button>
+      <label className="count-v">
+        <input inputMode="numeric" aria-label="Сколько вопросов" value={text ?? String(v)} disabled={!max}
+          onFocus={(e) => e.target.select()} onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 4))}
+          onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && e.target.blur()} />
+        {!compact && <span>{!n || n >= max ? 'все' : 'из ' + max}</span>}
+      </label>
+      <button onClick={inc} disabled={!max || !n || n >= max} aria-label="Больше вопросов" data-haptic="off">+</button>
+    </div>
+  );
+}
+
+function AgainIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>;
 }
 
 // ---------- выбор тем ----------
