@@ -102,6 +102,7 @@ const ofKind = (kind) => (q) => !kind || kind === 'all' || q.type === kind;
 export const MODES = {
   review: { title: 'Повторение', desc: 'То, что пора вспомнить по памяти повторения' },
   new: { title: 'Новое', desc: 'Вопросы, которые вы ещё не видели, по порядку курса' },
+  again: { title: 'Заново', desc: 'Уже изученные вопросы — внепланово, не дожидаясь срока повторения' },
   test: { title: 'Тест', desc: 'Вопросы с вариантами, объяснение сразу после ответа' },
   cards: { title: 'Карточки', desc: 'Вопрос → вспоминаешь → ответ → самооценка' },
   interview: { title: 'Собеседование', desc: 'Открытые вопросы вперемешку, на время, без подсказок' },
@@ -131,6 +132,12 @@ export function buildQueue({ mode, bank, progress, manifest, scope, n, kind }) {
       // экран тренировки только предупреждает, что повторений станет больше (решение владельца, session 018)
       const rank = courseRank(manifest);
       return take(shuffle(pool.filter((q) => ofKind(kind)(q) && !srs[q.id])).sort((a, b) => (rank[a.topicId] ?? 1e9) - (rank[b.topicId] ?? 1e9)));
+    }
+    case 'again': {
+      // уже изученные — внепланово (владелец, session 038): сначала те, что раньше подойдут к повторению.
+      // Выключенные из повторения темы берём, только если их выбрали явно (область не «весь курс»).
+      const seen = pool.filter((q) => ofKind(kind)(q) && srs[q.id] && !(sc.all && off(q)));
+      return take(shuffle(seen).sort((a, b) => srs[a.id].due - srs[b.id].due));
     }
     case 'test': return take(shuffle(pool.filter((q) => q.type === 'mcq')));
     case 'exam': return take(shuffle(pool.filter((q) => q.type === 'mcq')));
@@ -174,29 +181,30 @@ export function modeCounts({ bank, progress, manifest, scope }) {
 
 // Счётчики по каждой теме: всего / новых / пора повторить — отдельно для тестов и карточек; seen — изучено (оба типа).
 // Тема выключена из повторения (off) — её due = 0, а сколько ждало бы, лежит в offDue.
-// { [topicId]: { mcq: {all, fresh, due}, card: {all, fresh, due}, seen, all, off, offDue } }
+// { [topicId]: { mcq: {all, fresh, due, seen}, card: {…}, seen, all, off, offDue } }
 export function topicStats({ bank, progress, now = Date.now() }) {
   const m = {};
   const shown = shownFor(progress.settings);
   const offMap = progress.settings?.reviewOff || {};
   for (const q of bank.all) {
     if (!shown(q)) continue;
-    const s = m[q.topicId] || (m[q.topicId] = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 }, seen: 0, all: 0, blockId: q.blockId, off: !!offMap[q.topicId], offDue: 0 });
+    const s = m[q.topicId] || (m[q.topicId] = { mcq: { all: 0, fresh: 0, due: 0, seen: 0 }, card: { all: 0, fresh: 0, due: 0, seen: 0 }, seen: 0, all: 0, blockId: q.blockId, off: !!offMap[q.topicId], offDue: 0 });
     const k = s[q.type === 'mcq' ? 'mcq' : 'card'];
     const c = progress.srs[q.id];
     k.all++; s.all++;
-    if (!c) k.fresh++; else { s.seen++; if (c.due <= now) { if (s.off) s.offDue++; else k.due++; } }
+    if (!c) k.fresh++; else { s.seen++; k.seen++; if (c.due <= now) { if (s.off) s.offDue++; else k.due++; } }
   }
   return m;
 }
 
-// Сумма счётчиков по области: { mcq: {all, fresh, due}, card: {…} }.
+// Сумма счётчиков по области: { mcq: {all, fresh, due, seen}, card: {…} }.
 export function sumStats(stats, scope) {
   const sc = parseScope(scope);
-  const out = { mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 } };
+  const out = { mcq: { all: 0, fresh: 0, due: 0, seen: 0 }, card: { all: 0, fresh: 0, due: 0, seen: 0 } };
   for (const [tid, s] of Object.entries(stats)) {
     if (!(sc.all || sc.topics.has(tid) || sc.blocks.has(s.blockId))) continue;
-    for (const k of ['mcq', 'card']) for (const f of ['all', 'fresh', 'due']) out[k][f] += s[k][f];
+    // seen — для «Заново»: по всему курсу без выключенных из повторения тем (как buildQueue)
+    for (const k of ['mcq', 'card']) for (const f of ['all', 'fresh', 'due', 'seen']) if (!(f === 'seen' && sc.all && s.off)) out[k][f] += s[k][f];
   }
   return out;
 }

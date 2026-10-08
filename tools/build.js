@@ -88,6 +88,12 @@ const TXW_CSS='<style>/* build.js: блочные формулы с перено
 s=s.replace(/<texd>([\s\S]*?)<\/texd>/g,(m,t)=>RD(t));
 if(!/<\/head>/i.test(s)) s=s.replace(/<body/i,'</head>\n<body'); // без </head> стили переноса формул терялись (так было в 0.4)
 s=s.replace('</head>',TXW_CSS+'\n</head>');
+// Таблицы на телефоне (владелец, session 038): широкая таблица вылезала за экран и обрезалась карточкой.
+// Каждая таблица — в контейнере со своей горизонтальной прокруткой; на ≤600px ячейки компактнее, чтобы больше помещалось целиком.
+// Шпаргалку .ct.cs не трогаем — на телефоне она и так становится карточками.
+const TBL_CSS='<style>/* build.js: таблицы с прокруткой */.tbl-x{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}@media (max-width:600px){.tbl-x>.ct:not(.cs) th{padding:8px 8px;letter-spacing:0}.tbl-x>.ct:not(.cs) td{padding:8px 8px}}</style>';
+s=s.replace('</head>',TBL_CSS+'\n</head>');
+s=s.replace(/<table\b[\s\S]*?<\/table>/g,(m)=>'<div class="tbl-x">'+m+'</div>');
 s=s.replace(/<tex>([\s\S]*?)<\/tex>/g,(m,t)=>R(t,false));
 let css=fs.readFileSync(path.join(V,'katex.min.css'),'utf8');
 css=css.replace(/url\(fonts\/([^)]+?\.woff2)\)\s*format\("woff2"\)/g,(m,f)=>'url(data:font/woff2;base64,'+fs.readFileSync(path.join(V,'fonts',f)).toString('base64')+') format("woff2")');

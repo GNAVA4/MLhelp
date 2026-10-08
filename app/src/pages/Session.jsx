@@ -39,7 +39,7 @@ export default function Session({ manifest, params }) {
   // 'today' (повторение + новые одной сессией) убран в session 018 — старые ссылки (напоминания) ведут на повторение
   const mode = params.mode === 'today' ? 'review' : MODES[params.mode] ? params.mode : 'test';
   const kind = KINDS[params.kind] ? params.kind : 'all';
-  const title = MODES[mode].title + ((mode === 'review' || mode === 'new') && kind !== 'all' ? ': ' + KINDS[kind] : '');
+  const title = MODES[mode].title + ((mode === 'review' || mode === 'new' || mode === 'again') && kind !== 'all' ? ': ' + KINDS[kind] : '');
   const scope = params.scope || 'all';
   const n = params.n ? parseInt(params.n, 10) : 0;
   const [restored] = useState(() => { const k = kept && kept.hash === window.location.hash ? kept : null; kept = null; return k; });
@@ -100,6 +100,7 @@ function Empty({ mode }) {
   const msg = {
     review: 'Повторять нечего: всё, что пора вспомнить, уже повторено. Можно взять новые вопросы.',
     new: 'В выбранных темах новых вопросов этого типа не осталось.',
+    again: 'В выбранных темах ещё нет изученных вопросов этого типа.',
     mistakes: 'Ошибок нет — или вы ещё не отвечали на вопросы в этой области.',
     weak: 'Пока нет изученных вопросов в этой области.',
     starred: 'В избранном пока пусто. Отмечайте вопросы звёздочкой во время тренировки.',
@@ -169,7 +170,7 @@ function Runner({ run, setRun, mode, manifest, onFinish, restoreAnswer }) {
         <Html className="qtext" html={q.q} />
         {q.type === 'mcq'
           ? <McqItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, false)} onSkip={() => advance(null, false)} />
-          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} onSkip={() => advance(null, false)} />}
+          : <CardItem item={item} mode={mode} tq={run.tq} restore={restoreAnswer} readLink={(answer) => readLinkProps(t.id, answer, run)} onDone={(res) => advance(res, (mode === 'review' || mode === 'new' || mode === 'again' || mode === 'cards') && res.grade === 1 && item.requeued < MAX_REQUEUE)} onSkip={() => advance(null, false)} />}
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 # Отчёт о состоянии контента
 
-Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-07. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
+Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-08. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
 **Итого:** 81 страниц, без проблем — 81, с проблемами — 0.
 
@@ -8,14 +8,14 @@
 
 | Файл | КБ | Секции | Q&A | Графики | CDN | Код | Проблемы |
 |---|--:|--:|--:|---|:-:|:-:|---|
-| block0_01_expectation_variance.html | 2069 | 15 | 30 | 15 / 15 |  | 0 |  |
-| block0_02_distributions.html | 1655 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_03_bayes.html | 1615 | 15 | 30 | 11 / 11 |  | 0 |  |
+| block0_01_expectation_variance.html | 2070 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_02_distributions.html | 1656 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_03_bayes.html | 1616 | 15 | 30 | 11 / 11 |  | 0 |  |
 | block0_04_lln_clt.html | 1471 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_05_likelihood_mle_map.html | 1719 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_06_hypothesis_testing.html | 1390 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_07_entropy_kl.html | 1631 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_08_linear_algebra.html | 1847 | 15 | 30 | 16 / 16 |  | 0 |  |
+| block0_07_entropy_kl.html | 1632 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_08_linear_algebra.html | 1848 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_09_gradients.html | 1966 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |

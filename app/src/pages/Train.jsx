@@ -60,7 +60,7 @@ export default function Train({ manifest }) {
         ))}
       </div>
 
-      {tab === 'review' && <ReviewTab {...{ bank, progress, manifest, stats, scope: reviewScope, setScope: setReviewScope, openPicker: () => setSheet('review') }} />}
+      {tab === 'review' && <ReviewTab {...{ bank, progress, manifest, stats, scope: reviewScope, setScope: setReviewScope, n, setN, openPicker: () => setSheet('review') }} />}
       {tab === 'new' && <NewTab {...{ manifest, stats, progress, today, scope: newScope, setScope: setNewScope, kind, setKind, n, setN }} />}
       {tab === 'practice' && <PracticeTab {...{ bank, progress, manifest, scope: practiceScope, setScope: setPracticeScope, n, setN, openPicker: () => setSheet('practice') }} />}
 
@@ -79,7 +79,7 @@ export default function Train({ manifest }) {
 }
 
 // ---------- Повторить ----------
-function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicker }) {
+function ReviewTab({ bank, progress, manifest, stats, scope, setScope, n, setN, openPicker }) {
   const s = sumStats(stats, scope);
   const total = s.mcq.due + s.card.due;
   // прогноз: сколько станет «пора повторить» до конца завтрашнего дня и за 7 дней (в той же области)
@@ -114,7 +114,7 @@ function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicke
             {s.mcq.due > 0 && s.card.due > 0 && <a className="btn btn-ghost-w" href={sessionHref('review', scope, 0, 'all')}>Всё вперемешку · {total}</a>}
           </>
         ) : (
-          <p className="small muted tmsg">Повторять нечего. {fc.tomorrow ? 'До конца завтрашнего дня подойдёт ' + nQ(fc.tomorrow) + '.' : 'Можно взять новые вопросы на вкладке «Новое».'}</p>
+          <p className="small muted tmsg">Повторять нечего. {fc.tomorrow ? 'До конца завтрашнего дня подойдёт ' + nQ(fc.tomorrow) + '.' : 'Можно взять новые на вкладке «Новое».'} Или пройти изученное заново — ниже.</p>
         )}
       </section>
 
@@ -125,6 +125,9 @@ function ReviewTab({ bank, progress, manifest, stats, scope, setScope, openPicke
           <div><b>{fc.week}</b><span className="small muted">за 7 дней</span></div>
         </div>
       </section>
+
+      <AgainBox s={s} scope={scope} n={n} setN={setN}
+        note={scope === 'all' ? 'Всё изученное, кроме выключенных из повторения тем.' : 'Изученное в выбранных темах.'} />
 
       <ReviewTopics manifest={manifest} stats={stats} progress={progress} />
 
@@ -204,6 +207,8 @@ function ReviewTopics({ manifest, stats, progress }) {
                     </span>
                     {on && d > 0 && <a className="rv-go" href={sessionHref('review', 't' + t.id, 0, 'all')} onClick={(e) => e.stopPropagation()}
                       title={'Повторить только тему ' + t.id}>{d} ›</a>}
+                    {d === 0 && s.seen > 0 && <a className="rv-go rv-again" href={sessionHref('again', 't' + t.id, 0, 'all')} onClick={(e) => e.stopPropagation()}
+                      title={'Пройти заново изученное в теме ' + t.id}>заново ›</a>}
                   </div>
                 );
               })}
@@ -211,7 +216,26 @@ function ReviewTopics({ manifest, stats, progress }) {
           );
         })}
       </div>
-      <span className="small muted">Снятая галочка выключает тему из повторения: её вопросы не придут в «Повторить» и в напоминания. Галочка блока — все его темы сразу. «N ›» у темы — повторить только её.</span>
+      <span className="small muted">Снятая галочка выключает тему из повторения: её вопросы не придут в «Повторить» и в напоминания. Галочка блока — все его темы сразу. «N ›» у темы — повторить только её, «заново ›» — пройти изученное в ней внепланово.</span>
+    </section>
+  );
+}
+
+// Внепланово: уже изученные вопросы, не дожидаясь срока (владелец, session 038). Ответы идут в память, как везде.
+function AgainBox({ s, scope, n, setN, note }) {
+  const cnt = (k) => (n ? Math.min(n, s[k].seen) : s[k].seen);
+  if (!s.mcq.seen && !s.card.seen) return null;
+  return (
+    <section className="tbox">
+      <div className="lbl">Пройти изученное заново</div>
+      <div className="seg seg-w">
+        {SIZES.map((x) => <button key={x} className={n === x ? 'on' : ''} onClick={() => setN(x)}>{x || 'Все'}</button>)}
+      </div>
+      <div className="two">
+        <a className={'kbtn' + (s.mcq.seen ? '' : ' btn-off')} href={sessionHref('again', scope, n, 'mcq')}>Тесты<span>{nQ(cnt('mcq'))}</span></a>
+        <a className={'kbtn' + (s.card.seen ? '' : ' btn-off')} href={sessionHref('again', scope, n, 'card')}>Карточки<span>{nCard(cnt('card'))}</span></a>
+      </div>
+      <span className="small muted">{note} Не дожидаясь срока; сначала то, что раньше подойдёт к повторению.</span>
     </section>
   );
 }
@@ -246,6 +270,11 @@ function NewTab({ manifest, stats, progress, today, scope, setScope, kind, setKi
           <a className={'btn btn-primary btn-big' + (planned ? '' : ' btn-off')} href={sessionHref('new', scope, n, kind)}>
             {planned ? 'Учить: ' + planned + ' ' + what : 'Новых здесь нет'}
           </a>
+          {s[kind].seen > 0 && (
+            <a className="btn btn-ghost-w" href={sessionHref('again', scope, n, kind)}>
+              Пройти изученные заново · {kind === 'mcq' ? nQ(Math.min(n || Infinity, s[kind].seen)) : nCard(Math.min(n || Infinity, s[kind].seen))}
+            </a>
+          )}
           <div className={'small ' + (over ? 'twarn' : 'muted')}>
             {over
               ? 'Сегодня уже взято новых: ' + today.newToday + ' при ориентире ' + newPerDay + '. Каждый новый вопрос вернётся на повторение, поэтому завтра повторений будет больше.'
@@ -311,9 +340,9 @@ const reviewMetric = (s) => {
 };
 const practiceMetric = (s) => ({ sub: 'тестов ' + s.mcq.all + ' · карточек ' + s.card.all + ' · изучено ' + Math.round((s.seen / s.all) * 100) + '%', badge: 0, cls: '', off: false });
 
-const ZERO = () => ({ mcq: { all: 0, fresh: 0, due: 0 }, card: { all: 0, fresh: 0, due: 0 }, seen: 0, all: 0 });
+const ZERO = () => ({ mcq: { all: 0, fresh: 0, due: 0, seen: 0 }, card: { all: 0, fresh: 0, due: 0, seen: 0 }, seen: 0, all: 0 });
 function addStats(a, b) {
-  for (const k of ['mcq', 'card']) for (const f of ['all', 'fresh', 'due']) a[k][f] += b[k][f];
+  for (const k of ['mcq', 'card']) for (const f of ['all', 'fresh', 'due', 'seen']) a[k][f] += b[k][f];
   a.seen += b.seen; a.all += b.all;
   return a;
 }
