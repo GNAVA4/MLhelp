@@ -48,7 +48,8 @@ function texSymbols(tex) {
   }
   if (/(^|[^A-Za-z\\])SE([^A-Za-z]|$)/.test(tex)) out.add('SE');
   // одиночные заглавные латинские буквы (H, L, D, I, C…) — вне \text{…} и не часть слова/команды
-  const bare = tex.replace(/\\(text|mathrm|operatorname|textbf)\{[^}]*\}/g, ' ');
+  const bare = tex.replace(/\\(text|mathrm|operatorname|textbf)\{[^}]*\}/g, ' ')
+    .replace(/\\mathcal\s*\{?[A-Z]\}?/g, ' ').replace(/_\{[^}]*\}|_[A-Za-z]/g, ' '); // ℒ и нижние индексы (H_L) — не обозначения из справки
   const re2 = /(^|[^\\A-Za-z])([A-Z])(?![A-Za-z])/g;
   while ((m = re2.exec(bare))) if (!'XYAB'.includes(m[2])) out.add(m[2]);
   return out;

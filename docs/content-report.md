@@ -14,7 +14,7 @@
 | block0_04_lln_clt.html | 1511 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_05_likelihood_mle_map.html | 1764 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_06_hypothesis_testing.html | 1422 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_07_entropy_kl.html | 1632 | 15 | 30 | 13 / 13 |  | 0 |  |
+| block0_07_entropy_kl.html | 1661 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_08_linear_algebra.html | 1848 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_09_gradients.html | 1966 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
