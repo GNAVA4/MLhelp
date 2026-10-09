@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.11 · Постановка обучения: риск, обобщение, bias–variance</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#e879f9; --ac-d:#f0abfc; --ac-l:rgba(232,121,249,.08); --ac-b:rgba(232,121,249,.35); --ac-m:#d946ef; --ac-s:#2e0a33;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#4ade80; --okl:rgba(74,222,128,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(232,121,249,.24),transparent 60%),linear-gradient(135deg,#020617,#240a2b 55%,#2e0a33);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(232,121,249,.14);border:1px solid rgba(240,171,252,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#fae8ff;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#4ade80;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#4ade80;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(232,121,249,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(74,222,128,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(232,121,249,.07),rgba(129,140,248,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 0 · тема 11 · с нуля</div>
+    <h1>Постановка обучения: риск, обобщение, bias–variance</h1>
+    <p>Аналитик выбрал модель сезонности, которая прошла через все десять точек прошлого года без единой ошибки. На новых неделях она ошибается в 47 раз сильнее простой кубической кривой, а в начале января предсказывает продажи в 33 тысячи вместо нуля. Ошибка на обучении ничего не говорит о качестве на новых данных. В теме — язык, на котором говорит весь ML: что такое модель и функция потерь, истинный и эмпирический риск, обобщение и переобучение, ёмкость класса моделей, разложение ошибки на смещение, разброс и шум, зачем данные делят на обучение, валидацию и тест, кросс-валидация, кривые обучения и сложности, диагностика недо- и переобучения и утечка как нарушение постановки задачи.</p>
+    <div class="meta">
+      <span>15 секций</span><span>18 формул с задачами</span><span>15 графиков</span><span>песочница «степень и объём выборки»</span><span>15 подводных камней</span><span>5 задач у доски</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Проблема</a>
+    <a href="#s2">2 · Постановка</a>
+    <a href="#s3">3 · Риск</a>
+    <a href="#s4">4 · Обобщение</a>
+    <a href="#s5">5 · Ёмкость</a>
+    <a href="#s6">6 · Bias–variance</a>
+    <a href="#s7">7 · На полиномах</a>
+    <a href="#s8">8 · Train/val/test</a>
+    <a href="#s9">9 · Кросс-валидация</a>
+    <a href="#s10">10 · Кривые</a>
+    <a href="#s11">11 · Диагностика</a>
+    <a href="#s12">12 · Утечка</a>
+    <a href="#s13">13 · В ML и ошибки</a>
+    <a href="#s14">14 · Задачи у доски</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Проблема: модель без единой ошибки провалилась на новых данных</h2></div>
+  <p class="slead">Три модели сезонности, одни и те же десять точек. Та, что прошла через все точки, на новых неделях оказалась худшей — и с большим отрывом. Чтобы заранее понимать, какой модели верить, нужно точно сказать, что мы минимизируем и что на самом деле хотим.</p>
+
+  <div class="story">
+    <p>Аналитик строит модель сезонности продаж. <tex>x</tex> — момент года в долях: 0 — начало января, 0.5 — начало июля, 1 — конец декабря. <tex>y</tex> — отклонение недельных продаж от среднего за год, тысячи штук. Есть 10 недель прошлого года, равномерно разбросанных по году. Кандидаты — полиномы от <tex>x</tex> степени 1 (прямая), 3 и 9, каждый подобран методом наименьших квадратов.</p>
+    <p style="margin:0">Средний квадрат ошибки на этих 10 неделях: прямая — <b>0.243</b>, кубическая кривая — <b>0.087</b>, полином степени 9 — <b>ровно 0</b>: он проходит через каждую точку. Аналитик выбирает степень 9 и спрашивает: «Ошибка ноль — что может быть лучше?» Через год проверяем на новых неделях. Средний квадрат ошибки полинома степени 9 — <b>12.78</b>, у кубической кривой — <b>0.273</b>. В первую неделю января полином степени 9 предсказывает отклонение +33.1 тысячи, а на деле там около нуля.</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>x</th><th>y</th><th>x</th><th>y</th></tr>
+    <tr><td class="k">0.05</td><td class="k">0.48</td><td class="k">0.55</td><td class="k">−0.09</td></tr>
+    <tr><td class="k">0.15</td><td class="k">1.22</td><td class="k">0.65</td><td class="k">−1.08</td></tr>
+    <tr><td class="k">0.25</td><td class="k">1.17</td><td class="k">0.75</td><td class="k">−0.71</td></tr>
+    <tr><td class="k">0.35</td><td class="k">0.16</td><td class="k">0.85</td><td class="k">−0.63</td></tr>
+    <tr><td class="k">0.45</td><td class="k">0.76</td><td class="k">0.95</td><td class="k">−0.16</td></tr>
+  </table>
+  <table class="ct">
+    <tr><th>Степень</th><th>Параметров</th><th>Ошибка на обучении</th><th>Ошибка на новых неделях</th></tr>
+    <tr><td>1</td><td class="k">2</td><td class="k">0.243</td><td class="k">0.459</td></tr>
+    <tr class="best"><td>3</td><td class="k">4</td><td class="k">0.087</td><td class="g">0.273</td></tr>
+    <tr class="worst"><td>9</td><td class="k">10</td><td class="g">0.000</td><td class="r">12.78</td></tr>
+  </table>
+  <p class="tcap">Пример модельный: данные сгенерированы из известной зависимости <tex>y = \sin 2\pi x + \varepsilon</tex>, где <tex>\varepsilon</tex> — шум со стандартным отклонением 0.5. Поэтому «ошибку на новых неделях» можно посчитать точно — как среднее по всему году и по шуму, а не по случайной горстке новых точек. В реальной работе истинную зависимость никто не знает, и эту ошибку приходится оценивать. Как — главный вопрос темы. Все числа посчитаны расчётом.</p>
+
+  <div class="chb">
+    <div class="cht">Три модели на одних и тех же точках</div>
+    <div class="chsub">Пунктир — истинная сезонность sin 2πx. Прямая слишком проста и не повторяет волну. Кубическая кривая близка к истине. Полином степени 9 проходит через все 10 точек, но между ними и особенно у краёв года уходит далеко за пределы графика: в x = 0 его значение 33.1.</div>
+    <canvas id="c_story"></canvas>
+  </div>
+
+  <p class="lead">Ошибка на обучении отвечает на вопрос «насколько хорошо модель запомнила эти 10 чисел». Нас же интересует другое: как модель ошибается на объектах, которых она не видела. Полином степени 9 имеет 10 параметров и может пройти через любые 10 точек — вместе с их случайным шумом. Он выучил шум как закономерность. Это и есть <b>переобучение</b>, и обнаружить его по обучающим данным нельзя: на них такая модель выглядит идеальной.</p>
+
+  <p>Отсюда вопросы темы. Что именно мы хотим минимизировать, если ошибка на обучении врёт? Можно ли её оценить и насколько точно? Почему сложная модель проигрывает простой, а слишком простая тоже проигрывает? Из каких частей складывается ошибка на новых данных? Как выбирать модель и честно сообщать её качество, если данные одни? Как по графикам понять, чего модели не хватает — сложности или данных? И почему модель, которая на проверке почти идеальна, иногда проваливается в работе?</p>
+
+  <table class="ct">
+    <tr><th>Вопрос из работы</th><th>Инструмент темы</th></tr>
+    <tr><td>Что модель должна минимизировать на самом деле?</td><td>истинный риск — средняя потеря на будущих данных</td></tr>
+    <tr><td>Почему ошибка на обучении занижена?</td><td>эмпирический риск, разрыв обобщения, оптимизм</td></tr>
+    <tr><td>Ниже какой ошибки не опуститься никакой моделью?</td><td>шум и лучшая возможная модель</td></tr>
+    <tr><td>Сложнее модель — лучше или хуже?</td><td>ёмкость класса, разложение bias² + variance + шум</td></tr>
+    <tr><td>Почему качество лучшей из 100 настроек завышено?</td><td>отбор по шумной оценке, отдельный тест</td></tr>
+    <tr><td>Как оценить модель, если данных мало?</td><td>кросс-валидация</td></tr>
+    <tr><td>Поможет ли собрать больше данных?</td><td>кривая обучения</td></tr>
+    <tr><td>Почему на проверке всё отлично, а в работе плохо?</td><td>утечка, несоответствие проверки и применения</td></tr>
+  </table>
+
+  <div class="intuition"><b>План темы.</b> Сначала словарь: объект, признаки, ответ, модель и функция потерь (секция 2). Затем главное определение — истинный риск как средняя потеря на будущих данных — и его оценка по выборке, эмпирический риск (3). Почему ошибка на обучении занижена и как это измерить — обобщение и переобучение (4); какую роль играет богатство класса моделей — ёмкость (5). Центральный результат — разложение ошибки на смещение, разброс и шум (6) и его расчёт на наших полиномах (7). Дальше практика: зачем три части данных (8), кросс-валидация (9), кривые обучения и сложности (10), диагностика недо- и переобучения (11) и утечка — самая дорогая ошибка постановки (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>x</tex>, <tex>y</tex>, <tex>(x_i, y_i)</tex></td><td>Признаки объекта; ответ (целевая переменная); <tex>i</tex>-й объект выборки (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>x_1 = 0.05</tex>, <tex>y_1 = 0.48</tex> — первая неделя секции 1</span></td></tr>
+      <tr><td><tex>h</tex>, <tex>\hat y = h(x)</tex>, <tex>\mathbf{w}</tex></td><td>Модель — правило «признаки → прогноз»; прогноз; веса (параметры) модели (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: прямая <tex>h(x) = w_0 + w_1x</tex> — два веса</span></td></tr>
+      <tr><td><tex>L(y, \hat y)</tex></td><td>Функция потерь — штраф за прогноз <tex>\hat y</tex> при факте <tex>y</tex> на одном объекте (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: квадратичная <tex>L = (3 - 5)^2 = 4</tex></span></td></tr>
+      <tr><td><tex>\mathcal{D}</tex>, <tex>(X, Y) \sim \mathcal{D}</tex></td><td>Распределение данных — откуда приходят объекты, в том числе будущие; случайный объект из него (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>X</tex> — случайная неделя года, <tex>Y</tex> — её продажи</span></td></tr>
+      <tr><td><tex>R(h)</tex></td><td>Истинный риск — средняя потеря модели на всех будущих объектах; число (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: у кубической кривой секции 1 <tex>R = 0.273</tex></span></td></tr>
+      <tr><td><tex>\hat R_n(h)</tex></td><td>Эмпирический риск — средняя потеря на <tex>n</tex> объектах выборки; случайная величина (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: на обучении у прямой <tex>\hat R_{10} = 0.243</tex></span></td></tr>
+      <tr><td><tex>\hat h</tex></td><td>Модель, обученная на конкретной выборке: шляпка — «зависит от данных» (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: другая выборка — другой <tex>\hat h</tex></span></td></tr>
+      <tr><td><tex>f(x)</tex>, <tex>\varepsilon</tex>, <tex>\sigma^2</tex></td><td>Истинная зависимость; шум — случайная часть ответа; дисперсия шума (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>f = \sin 2\pi x</tex>, <tex>\sigma^2 = 0.25</tex></span></td></tr>
+      <tr><td><tex>h^*</tex>, <tex>R^*</tex></td><td>Лучшая возможная модель и её риск — нижняя граница для любой модели (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: для квадратичной потери <tex>R^* = \sigma^2 = 0.25</tex></span></td></tr>
+      <tr><td><tex>\mathcal{H}</tex>, <tex>h_{\mathcal H}</tex></td><td>Класс моделей — из чего выбираем; лучшая модель класса (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>\mathcal{H}</tex> — все прямые</span></td></tr>
+      <tr><td><tex>n</tex>, <tex>p</tex>, <tex>d</tex></td><td>Число объектов; число параметров модели (не вероятность и не p-value); степень полинома (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: полином степени <tex>d = 3</tex> — <tex>p = 4</tex> параметра</span></td></tr>
+      <tr><td><tex>\bar h(x)</tex>, <tex>\operatorname{bias}</tex>, <tex>\Var</tex></td><td>Средний прогноз по всем возможным выборкам; смещение — его отклонение от истины; разброс прогнозов по выборкам (<a href="#s6">секция 6</a>)<br><span class="gl-ex">Пример: прогнозы 0.6, 1.0, 1.4, 1.8 — <tex>\bar h = 1.2</tex>, <tex>\Var = 0.2</tex></span></td></tr>
+      <tr><td><tex>\alpha</tex></td><td>Сила сжатия оценки к нулю (<a href="#s6">секция 6</a>)<br><span class="gl-ex">Пример: <tex>\alpha = 0.8</tex> — прогноз 80% от выборочного среднего</span></td></tr>
+      <tr><td><tex>M</tex>, <tex>m</tex>, <tex>\text{acc}</tex></td><td>Число проверенных настроек; размер проверочной выборки; точность (accuracy) (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>M = 100</tex> настроек на <tex>m = 500</tex> объектах</span></td></tr>
+      <tr><td><tex>k</tex>, <tex>\text{CV}_k</tex></td><td>Число фолдов; оценка кросс-валидации (<a href="#s9">секция 9</a>). В секции 10 <tex>k</tex> — число соседей в kNN<br><span class="gl-ex">Пример: <tex>k = 5</tex> — пять частей по 20%</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём со словаря: что такое объект, модель и потеря — и почему выбор потери уже решает, какую модель считать лучшей.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Обучение с учителем: признаки, ответ, модель, потеря</h2></div>
+  <p class="slead">Обучение с учителем — это поиск правила «признаки → ответ» по примерам, где ответ известен. Чтобы слово «лучшее правило» имело смысл, нужно договориться, как штрафовать ошибку одного прогноза. Этот штраф — функция потерь.</p>
+
+  <p>Любую задачу с учителем можно записать одинаково. Есть <b>объекты</b>: недели, клиенты, транзакции. У каждого — <b>признаки</b> <tex>x</tex>, которые известны в момент прогноза (момент года, возраст клиента, сумма платежа), и <b>ответ</b> <tex>y</tex>, который мы хотим предсказывать (продажи, уйдёт ли клиент, мошенничество ли это). Есть <b>выборка</b> — <tex>n</tex> объектов, у которых ответ уже известен. По ней подбирают <b>модель</b> <tex>h</tex>: функцию, которая для новых признаков выдаёт прогноз. Регрессия — ответ число, классификация — ответ класс, и тогда прогнозом часто служит вероятность класса.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · модель и потеря</div>
+    <texd>\hat y = h(x;\ \mathbf{w}) \qquad \text{штраф за объект: } L(y,\ \hat y) \ge 0</texd>
+    <div class="where">где <tex>x</tex> — признаки объекта, <tex>\mathbf{w}</tex> — веса (параметры) модели, которые подбирают по выборке, <tex>h</tex> — модель, <tex>\hat y</tex> — прогноз, <tex>y</tex> — фактический ответ, <tex>L</tex> — функция потерь: насколько плох прогноз <tex>\hat y</tex>, если на самом деле <tex>y</tex>. Потеря ноль — прогноз точный. Пример: полином степени 3 из секции 1 — модель <tex>h(x;\ \mathbf{w}) = w_0 + w_1x + w_2x^2 + w_3x^3</tex> с четырьмя весами.</div>
+  </div>
+
+  <p>Функцию потерь выбирают под задачу. Она отвечает на вопрос, какие ошибки дороже. Квадратичная потеря растёт как квадрат ошибки: одна ошибка на 10 стоит столько же, сколько сто ошибок на 1. Абсолютная растёт линейно и к редким большим ошибкам терпимее. Для вероятностей класса берут log-loss: он сильно штрафует уверенный неверный прогноз. Каждая из этих потерь — не произвол: квадратичная соответствует гауссову шуму, log-loss — правдоподобию Бернулли (<a href="block0_05_likelihood_mle_map.html#s8">0.5, секция 8</a>).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · основные функции потерь</div>
+    <texd>(y - \hat y)^2 \qquad |y - \hat y| \qquad -y\ln\hat p - (1 - y)\ln(1 - \hat p) \qquad \mathbb{1}[y \ne \hat y]</texd>
+    <div class="where">Слева направо: квадратичная (регрессия, её среднее — MSE), абсолютная (среднее — MAE), log-loss (классификация: <tex>y \in \{0, 1\}</tex> — класс, <tex>\hat p</tex> — прогноз вероятности класса 1, <tex>\ln</tex> — натуральный логарифм), 0–1 потеря: <tex>\mathbb{1}[\cdot]</tex> — индикатор, 1 при ошибке класса и 0 при попадании; её среднее — доля ошибок, <tex>1 - \text{accuracy}</tex>. Пример: при <tex>y = 1</tex> и <tex>\hat p = 0.9</tex> log-loss равен <tex>-\ln0.9 = 0.105</tex>, при <tex>\hat p = 0.1</tex> — <tex>-\ln0.1 = 2.303</tex>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Как потери штрафуют ошибку регрессии</div>
+    <div class="chsub">По горизонтали — ошибка r = y − ŷ. Квадратичная потеря при |r| &lt; 1 мягче абсолютной, при |r| &gt; 1 — жёстче, и чем дальше, тем сильнее: ошибка 3 стоит 9 против 3. Поэтому MSE тянет модель к выбросам, а MAE — нет.</div>
+    <canvas id="c_loss"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Какая модель лучше — зависит от потери</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Четыре дня продаж: факт <tex>y = 2, 4, 6, 20</tex> тысяч (последний день — распродажа). Модель А прогнозирует <tex>2, 4, 6, 8</tex>: идеально в обычные дни и сильно мимо в распродажу. Модель Б прогнозирует <tex>4, 6, 8, 13</tex>: везде немного мимо, но распродажу частично ловит.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Средний квадрат ошибки (MSE) и среднюю абсолютную ошибку (MAE) каждой модели. Какая модель лучше?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Считаем ошибки <tex>y - \hat y</tex>, затем средние двух потерь формулы 2. Квадрат сильнее наказывает одну большую ошибку, модуль — нет.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s2">Формула 2</a> · квадратичная и абсолютная потери</div>
+        <texd>\text{MSE} = \frac1n\sum_i (y_i - \hat y_i)^2 \qquad \text{MAE} = \frac1n\sum_i |y_i - \hat y_i|</texd>
+        <div class="fr-w">где <tex>y_i</tex> — факт: 2, 4, 6, 20; <tex>\hat y_i</tex> — прогноз модели; <tex>n = 4</tex> дня.</div></div>
+      <texd>\text{А: ошибки } 0,\ 0,\ 0,\ 12 \qquad \text{MSE} = \frac{0 + 0 + 0 + 144}{4} = 36 \qquad \text{MAE} = \frac{0 + 0 + 0 + 12}{4} = 3</texd>
+      <texd>\text{Б: ошибки } {-2},\ {-2},\ {-2},\ 7 \qquad \text{MSE} = \frac{4 + 4 + 4 + 49}{4} = 15.25 \qquad \text{MAE} = \frac{2 + 2 + 2 + 7}{4} = 3.25</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">По MSE лучше <b>Б</b> (15.25 против 36), по MAE лучше <b>А</b> (3 против 3.25). «Лучшая модель» не существует без функции потерь. Если промах в распродажу дорог (нехватка товара на складе), нужна потеря, которая его сильно штрафует. Если важна типичная точность обычного дня, подойдёт MAE. Потерю выбирают до обучения: она задаёт, к чему модель будет стремиться.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · функция потерь и метрика качества</div>
+    <p><b>Функция потерь</b> — то, что минимизирует алгоритм обучения: она должна быть гладкой или хотя бы удобной для оптимизации (log-loss, MSE). <b>Метрика</b> — то, чем качество измеряют и сообщают бизнесу: доля ошибок, AUC, MAPE. Они могут не совпадать: логистическую регрессию учат на log-loss, а отчитываются точностью. Пример: прогнозы 0.51 и 0.99 для объекта класса 1 дают одинаковую 0–1 потерю (обе верные, потеря 0), но log-loss 0.673 и 0.010. Всё, что сказано в теме про риск, верно для любой потери — и для той, на которой учим, и для той, которой измеряем.</p>
+  </div>
+
+  <p class="next">Потеря задана для одного объекта. Но модель будет работать на тысячах будущих объектов. Что значит «модель хорошая» для всех них сразу — и можно ли это посчитать?</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Истинный и эмпирический риск</h2></div>
+  <p class="slead">Цель обучения — малая средняя потеря на будущих объектах. Это истинный риск: число, которое нельзя посчитать, потому что будущих данных нет. Его оценивают средней потерей на выборке — эмпирическим риском. Для готовой модели такая оценка честная, а для модели, подобранной на тех же данных, — нет.</p>
+
+  <p>Представим, что модель будет работать вечно, и каждый день приходит новый объект из того же источника. Средняя потеря за всё это время — то, что мы на самом деле хотим сделать малым. Источник объектов описывают распределением <tex>\mathcal{D}</tex>: в нём заложено, какие признаки встречаются и какие ответы при них бывают. Будущий объект — случайная пара <tex>(X, Y)</tex> из этого распределения, а средняя потеря на нём — матожидание (<a href="block0_01_expectation_variance.html#s5">0.1, секция 5</a>).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · истинный риск</div>
+    <texd>R(h) = \E_{(X, Y) \sim \mathcal{D}}\, L\bigl(Y,\ h(X)\bigr)</texd>
+    <div class="where">где <tex>h</tex> — модель, <tex>L</tex> — функция потерь, <tex>(X, Y)</tex> — случайный будущий объект: признаки и ответ, <tex>\mathcal{D}</tex> — распределение, из которого приходят объекты, <tex>\E</tex> — матожидание, то есть среднее по всем возможным объектам с их вероятностями. <tex>R(h)</tex> — одно число для данной модели. Пример: у кубической кривой секции 1 <tex>R = 0.273</tex> — средний квадрат ошибки на всех неделях года с учётом шума.</div>
+  </div>
+
+  <p>Посчитать <tex>R(h)</tex> нельзя: распределение <tex>\mathcal{D}</tex> неизвестно. Есть только выборка — <tex>n</tex> объектов из него. Естественная замена матожидания — выборочное среднее. Его и называют <b>эмпирическим риском</b>, а обучение как поиск модели с наименьшим эмпирическим риском — <b>минимизацией эмпирического риска</b> (ERM). Почти все алгоритмы ML устроены так: линейная регрессия минимизирует средний квадрат ошибки на выборке, логистическая — средний log-loss.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · эмпирический риск и его минимизация</div>
+    <texd>\hat R_n(h) = \frac1n\sum_{i=1}^n L\bigl(y_i,\ h(x_i)\bigr) \qquad \hat h = \arg\min_{h \in \mathcal{H}} \hat R_n(h)</texd>
+    <div class="where">где <tex>(x_i, y_i)</tex> — <tex>i</tex>-й объект выборки, <tex>n</tex> — их число, <tex>L</tex> — функция потерь, <tex>\hat R_n(h)</tex> — средняя потеря модели <tex>h</tex> на выборке. <tex>\mathcal{H}</tex> — класс моделей, из которого выбираем (например, все полиномы степени 3), <tex>\arg\min</tex> — «та модель, на которой достигается минимум», <tex>\hat h</tex> — обученная модель; шляпка означает, что она зависит от выборки. Пример: у прямой секции 1 на обучающих 10 неделях <tex>\hat R_{10} = 0.243</tex>.</div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · истинный риск R и эмпирический риск R с крышкой</div>
+    <p><tex>R(h)</tex> — <b>число</b>: свойство модели и распределения данных, оно не зависит от того, какая выборка нам досталась. <tex>\hat R_n(h)</tex> — <b>случайная величина</b>: другая выборка — другое значение. Это оценка <tex>R(h)</tex>, как выборочное среднее — оценка матожидания. Пример: модель «прогноз всегда 0» для сезонности секции 1 имеет <tex>R = 0.75</tex>, а её средняя потеря на 10 обучающих неделях — 0.579 (задача 2). На другой десятке недель было бы другое число, а <tex>R</tex> остался бы 0.75.</p>
+  </div>
+
+  <p>Насколько точно эмпирический риск оценивает истинный? Для <b>фиксированной</b> модели, которую не подбирали по этим данным, потери на объектах выборки — независимые величины с общим средним <tex>R(h)</tex>. Тогда эмпирический риск — обычное выборочное среднее: он несмещён, по закону больших чисел приближается к <tex>R(h)</tex>, а его разброс измеряется стандартной ошибкой.</p>
+
+  <div class="prim">
+    <div class="prim-t">Минимум про стандартную ошибку, чтобы читать дальше</div>
+    <p><b>Что это.</b> Выборочное среднее <tex>n</tex> независимых величин со стандартным отклонением <tex>s</tex> само случайно, и его стандартное отклонение — стандартная ошибка (SE) — равно <tex>s/\sqrt n</tex>. Оно показывает, на сколько среднее обычно отклоняется от того, что оно оценивает.</p>
+    <p><b>На числах.</b> Если потери на объектах разбросаны со стандартным отклонением <tex>s = 0.6</tex>, то средняя по 10 объектам ошибается обычно на <tex>0.6/\sqrt{10} = 0.19</tex>, по 1000 объектам — на <tex>0.6/\sqrt{1000} = 0.019</tex>. Чтобы уменьшить ошибку вдвое, данных нужно вчетверо больше.</p>
+    <p><b>Интервал.</b> По центральной предельной теореме среднее примерно нормально, и интервал «оценка ± 2 SE» накрывает истину примерно в 95% случаев. Подробно — <a href="block0_04_lln_clt.html#s5">0.4, секция 5</a> (стандартная ошибка) и <a href="block0_04_lln_clt.html#s10">0.4, секция 10</a> (доверительный интервал).</p>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · точность эмпирического риска фиксированной модели</div>
+    <texd>\E\hat R_n(h) = R(h) \qquad \operatorname{SE}\bigl(\hat R_n\bigr) = \frac{s_L}{\sqrt n}</texd>
+    <div class="where">где <tex>\hat R_n(h)</tex> — эмпирический риск на <tex>n</tex> новых для модели объектах, <tex>R(h)</tex> — истинный риск, <tex>\E</tex> — среднее по всем возможным выборкам, <tex>\operatorname{SE}</tex> — стандартная ошибка, <tex>s_L</tex> — стандартное отклонение потерь отдельных объектов (на практике — выборочное). Условие: модель не подбиралась по этим объектам. Пример: <tex>s_L = 0.567</tex>, <tex>n = 10</tex> — <tex>\operatorname{SE} = 0.179</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Насколько можно верить средней ошибке на 10 неделях</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Простейшая модель для сезонности секции 1 — «отклонение всегда 0», <tex>h(x) = 0</tex>. Её потеря на неделе — <tex>(y - 0)^2 = y^2</tex>. На 10 неделях секции 1 потери: 0.230, 1.488, 1.369, 0.026, 0.578, 0.008, 1.166, 0.504, 0.397, 0.026. Истинный риск этой модели известен из устройства примера: <tex>R = 0.75</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Эмпирический риск <tex>\hat R_{10}</tex> (средняя потеря по 10 неделям), его стандартную ошибку и насколько оценка отклонилась от истины.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Модель «всегда 0» не подбиралась по данным, поэтому её средняя потеря на выборке — честная оценка риска с разбросом по формуле 5.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 4 и формула 5</a> · эмпирический риск и его стандартная ошибка</div>
+        <texd>\hat R_n = \frac1n\sum_i L_i \qquad \operatorname{SE} = \frac{s_L}{\sqrt n}</texd>
+        <div class="fr-w">где <tex>L_i = y_i^2</tex> — потери 10 недель, <tex>n = 10</tex>, <tex>s_L</tex> — их выборочное стандартное отклонение (делим на <tex>n - 1</tex>).</div></div>
+      <texd>\hat R_{10} = \frac{0.230 + 1.488 + 1.369 + 0.026 + 0.578 + 0.008 + 1.166 + 0.504 + 0.397 + 0.026}{10} = \frac{5.792}{10} = 0.579</texd>
+      <texd>s_L = \sqrt{\frac{\sum_i (L_i - 0.579)^2}{9}} = \sqrt{\frac{2.894}{9}} = 0.567 \qquad \operatorname{SE} = \frac{0.567}{\sqrt{10}} = \frac{0.567}{3.162} = 0.179</texd>
+      <texd>R - \hat R_{10} = 0.75 - 0.579 = 0.171 = 0.95\cdot\operatorname{SE}</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Оценка <b>0.579 ± 0.179</b> при истине 0.75: промах на одну стандартную ошибку — обычное дело для 10 объектов. Эмпирический риск фиксированной модели честен в среднем, но на маленькой выборке шумит: две модели, отличающиеся на 0.05, по 10 объектам не различить. Для этого нужны сотни и тысячи объектов — к этому вернёмся в секции 8.</div></div>
+  </div>
+
+  <p>Есть ли предел, ниже которого риск не опустить никакой моделью? Есть, и он задан самими данными. Ответ <tex>Y</tex> при одних и тех же признаках бывает разным: продажи в одну и ту же неделю года зависят ещё от погоды, акций конкурентов, случайности. Если признаки этого не содержат, то лучшее, что может сделать модель, — предсказать среднее ответа при данных признаках. Это <b>условное матожидание</b>.</p>
+
+  <div class="prim">
+    <div class="prim-t">Минимум про условное матожидание, чтобы читать дальше</div>
+    <p><b>Что значит запись.</b> <tex>\E[Y \mid X = x]</tex> — среднее ответа <tex>Y</tex> среди объектов с признаками ровно <tex>x</tex>: черта читается «при условии». Это число для каждого <tex>x</tex>, а вместе — функция от <tex>x</tex>.</p>
+    <p><b>Простейший случай.</b> Клиенты двух городов: в городе А средний чек 1000, в Б — 1500. Тогда <tex>\E[\text{чек} \mid \text{город} = А] = 1000</tex>. Если про клиента известен только город, лучший прогноз чека в смысле квадратичной потери — 1000 или 1500, а оставшийся разброс чеков внутри города не убрать ничем.</p>
+    <p><b>Почему это оптимум.</b> Среднее — число, ближе всего к значениям в смысле среднего квадрата отклонения; условное среднее — то же внутри каждой группы. Подробно — <a href="block0_01_expectation_variance.html#s10">0.1, секция 10</a>, а разложение разброса на объяснимую и необъяснимую части — <a href="block0_01_expectation_variance.html#s11">0.1, секция 11</a>.</p>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · лучшая возможная модель и шум</div>
+    <texd>Y = f(X) + \varepsilon,\quad \E[\varepsilon \mid X] = 0 \qquad h^*(x) = f(x) = \E[Y \mid X = x] \qquad R^* = R(h^*) = \sigma^2</texd>
+    <div class="where">где <tex>f(x)</tex> — истинная зависимость, среднее ответа при признаках <tex>x</tex>; <tex>\varepsilon</tex> — шум, всё, что признаки не объясняют, в среднем ноль; <tex>\sigma^2</tex> — дисперсия шума (если она одинакова при всех <tex>x</tex>; иначе <tex>R^* = \E\Var(Y \mid X)</tex>). <tex>h^*</tex> — лучшая возможная модель для квадратичной потери, <tex>R^*</tex> — её риск: ниже него не опустится никакая модель на этих признаках. Пример секции 1: <tex>f = \sin 2\pi x</tex>, <tex>\sigma = 0.5</tex>, <tex>R^* = 0.25</tex>. Для других потерь оптимум другой: для абсолютной — условная медиана, для log-loss — истинная вероятность класса.</div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · E[Y | X = x] и E[Y | X]</div>
+    <p><tex>\E[Y \mid X = x]</tex> — <b>число</b>: средний ответ при конкретных признаках <tex>x</tex>. <tex>\E[Y \mid X]</tex> — <b>случайная величина</b>: то же правило, применённое к случайному объекту <tex>X</tex>. Пример секции 1: <tex>\E[Y \mid X = 0.25] = \sin(2\pi\cdot0.25) = \sin\frac\pi2 = 1</tex> — средние продажи в начале апреля; а <tex>\E[Y \mid X] = \sin 2\pi X</tex> — то, что предскажет идеальная модель для случайно выбранной недели. Её среднее <tex>\E\bigl[\E[Y \mid X]\bigr] = \E Y = 0</tex>.</p>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Можно ли выполнить план «ошибка не больше 0.2»</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Руководитель требует, чтобы модель сезонности секции 1 на новых неделях имела средний квадрат ошибки не больше 0.2. Повторные замеры одних и тех же недель в разные годы показывают, что при одинаковом <tex>x</tex> продажи разбросаны со стандартным отклонением 0.5 тысячи. Кубическая кривая секции 1 даёт истинный риск 0.273.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Нижнюю границу риска <tex>R^*</tex>. Выполним ли план? Сколько ещё можно выиграть, улучшая модель на тех же признаках?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Разброс продаж при одинаковом <tex>x</tex> — шум, его признак «момент года» не объясняет. По формуле 6 риск лучшей модели равен дисперсии шума.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 6</a> · риск лучшей возможной модели</div>
+        <texd>R^* = \sigma^2</texd>
+        <div class="fr-w">где <tex>\sigma = 0.5</tex> — стандартное отклонение продаж при одинаковом моменте года (шум), <tex>R^*</tex> — наименьший возможный средний квадрат ошибки.</div></div>
+      <texd>R^* = 0.5^2 = 0.25 \gt 0.2 \qquad R(\hat h) - R^* = 0.273 - 0.25 = 0.023</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">План <b>невыполним</b> на этих признаках: даже идеальная модель, знающая истинную сезонность, ошибается в среднем на 0.25. Кубическая кривая уже в 0.023 от предела, и усложнять модель почти бессмысленно. Снизить ошибку можно только новыми признаками, объясняющими часть шума: погода, акции, праздники. Тогда <tex>\sigma^2</tex> — разброс <b>при новых признаках</b> — станет меньше. Шум — свойство признаков, а не данных вообще.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Честная и нечестная оценка риска</div>
+    <div class="chsub">20 000 повторов эксперимента. Голубое — средний квадрат ошибки готовой кубической кривой секции 1 на 10 новых неделях: в среднем 0.273, ровно её истинный риск. Фуксия — ошибка на обучении у кубической кривой, заново подобранной на каждой десятке: в среднем 0.153, хотя её истинный риск в среднем 0.360. Оценка на тех же данных, по которым подбирали модель, систематически занижена.</div>
+    <canvas id="c_emp"></canvas>
+  </div>
+
+  <p>График показывает главный подвох. Эмпирический риск честен, только если модель не видела этих объектов. Обучение же специально подбирает модель так, чтобы потеря на выборке была малой: модель подстраивается и под закономерность, и под случайный шум этих конкретных точек. Шум следующей выборки будет другим, и подстройка под старый шум на ней не сработает.</p>
+
+  <p class="next">Значит, ошибка на обучении занижена — но насколько? И от чего зависит, сколько модель «украдёт» у шума? Это вопрос обобщения.</p>
+</section>
+
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Обобщение и переобучение</h2></div>
+  <p class="slead">Модель обобщает, если её ошибка на новых данных близка к ошибке на обучении. Разница между ними — разрыв обобщения. У переобученной модели он огромен: она подогнана под шум выборки. У линейной модели его средний размер можно посчитать заранее.</p>
+
+  <p>Обучение подбирает модель по выборке, а пользоваться ею будут на других объектах. Насколько хорошо выученное переносится на новые данные, называют <b>обобщением</b> (generalization). Количественно это разница между истинным риском обученной модели и её ошибкой на обучении.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · разрыв обобщения</div>
+    <texd>\text{gap}(\hat h) = R(\hat h) - \hat R_{\text{train}}(\hat h)</texd>
+    <div class="where">где <tex>\hat h</tex> — модель, обученная на выборке; <tex>R(\hat h)</tex> — её истинный риск (средняя потеря на будущих объектах, формула 3); <tex>\hat R_{\text{train}}(\hat h)</tex> — средняя потеря на той же обучающей выборке (формула 4); gap — разрыв обобщения. Обычно он положителен: модель на обучении выглядит лучше, чем есть. Пример секции 1: у кубической кривой <tex>0.273 - 0.087 = 0.186</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · полиномы степени 1, 3, 9 на 10 точках: обучение против новых данных</div>
+    <div class="tstep"><b>Шаг 1. Ошибка на обучении.</b> По 10 неделям секции 1 метод наименьших квадратов даёт средний квадрат ошибки (эмпирический риск <tex>\hat R_{\text{train}}</tex>): степень 1 — 0.243, степень 3 — 0.087, степень 9 — 0.000. Чем больше параметров, тем меньше: класс полиномов степени 9 содержит все полиномы степени 3, и минимум по нему не может быть выше.</div>
+    <div class="tstep"><b>Шаг 2. Истинный риск.</b> Средний квадрат ошибки на всех неделях года с шумом <tex>\sigma^2 = 0.25</tex>: 0.459, 0.273, 12.784. Порядок другой: лучшая — степень 3.</div>
+    <div class="tstep"><b>Шаг 3. Разрыв обобщения</b> по формуле 7.<div class="calc">степень 1: 0.459 − 0.243 = <span class="hl">0.216</span>
+степень 3: 0.273 − 0.087 = <span class="hl">0.186</span>
+степень 9: 12.784 − 0.000 = <span class="bad">12.784</span></div></div>
+    <div class="tstep"><b>Шаг 4. Одна выборка шумит — усредним.</b> На 20 000 случайных десятках недель средний разрыв: степень 1 — 0.113, степень 3 — 0.208, степень 9 — 41.0. В среднем разрыв растёт со сложностью: на нашей выборке у прямой он случайно оказался больше, чем у кубической кривой.</div>
+    <div class="tstep"><b>Шаг 5. Вывод.</b> Ошибка на обучении монотонно падает с ростом степени, а истинный риск сначала падает, потом растёт. Выбирать сложность по ошибке на обучении — всегда выбирать самую сложную модель, то есть <span class="res">гарантированно переобучаться</span>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ошибка на обучении и на новых данных для степеней 0–9</div>
+    <div class="chsub">Те же 10 недель секции 1; шкала обрезана на 1, степени 8 и 9 уходят за верхний край. Обучающая ошибка падает до нуля. Истинная ошибка минимальна при степени 3 (0.273), медленно растёт до степени 7 (0.386) и резко — со степени 8 (4.79). Пунктир — предел шума 0.25: ниже него истинная ошибка не опускается.</div>
+    <canvas id="c_optim"></canvas>
+  </div>
+
+  <p>Два слова для двух провалов. <b>Переобучение</b> (overfitting) — модель хорошо описывает обучающую выборку и заметно хуже новые данные; более простая модель на новых данных была бы лучше. <b>Недообучение</b> (underfitting) — модель плоха и там и там: она слишком проста, чтобы ухватить закономерность. Прямая для волны — недообучение: на обучении 0.243, на новых данных 0.459, и обе цифры далеко от предела 0.25. Степень 9 — переобучение.</p>
+
+  <p>Насколько занижена ошибка на обучении в среднем? Для линейной модели с <tex>p</tex> параметрами (полином тоже линеен по своим весам), когда в классе есть истинная зависимость, ответ точный. Каждый параметр позволяет модели подогнать под себя одну «долю» шума выборки: метод наименьших квадратов проецирует ответы на пространство размерности <tex>p</tex> (<a href="block0_08_linear_algebra.html#s7">0.8, секция 7</a>), и <tex>p</tex> из <tex>n</tex> направлений шума модель съедает целиком.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · оптимизм ошибки на обучении линейной модели</div>
+    <texd>\E\hat R_{\text{train}} = \sigma^2\Bigl(1 - \frac pn\Bigr) \qquad \E\hat R_{\text{new}} = \sigma^2\Bigl(1 + \frac pn\Bigr) \qquad \text{разница} = \frac{2\sigma^2p}{n}</texd>
+    <div class="where">где <tex>\hat R_{\text{train}}</tex> — средний квадрат ошибки на обучении, <tex>\hat R_{\text{new}}</tex> — на новых ответах в тех же точках <tex>x</tex>; <tex>\E</tex> — среднее по всем выборкам; <tex>\sigma^2</tex> — дисперсия шума; <tex>p</tex> — число параметров модели; <tex>n</tex> — число объектов. Условия: модель линейна по весам, обучена МНК, истинная зависимость лежит в классе (смещения нет). Пример: у полиномов степени 5–9 на 10 точках секции 1 средняя по 20 000 выборкам ошибка на обучении — 0.0996, 0.0745, 0.0496, 0.0250 и 0, а формула <tex>0.25\cdot(1 - p/10)</tex> даёт 0.100, 0.075, 0.050, 0.025 и 0. На этой формуле основаны поправки Cp и AIC (<a href="block0_05_likelihood_mle_map.html#s9">0.5, секция 9</a>).</div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · p — число параметров, вероятность и p-value</div>
+    <p>В этой теме <tex>p</tex> — <b>число параметров</b> модели (у полинома степени <tex>d</tex> их <tex>p = d + 1</tex>). Вероятность класса обозначена <tex>\hat p</tex> (формула 2), а p-value из проверки гипотез (<a href="block0_06_hypothesis_testing.html#s4">0.6, секция 4</a>) здесь не встречается. Пример: в формуле 8 при <tex>p = 10</tex> и <tex>n = 50</tex> множитель <tex>1 - p/n = 0.8</tex> — это доля шума, которая осталась в ошибке на обучении, а не «вероятность 0.8».</p>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Насколько хуже станет модель на новых данных</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Линейная регрессия прогнозирует время доставки по 10 признакам (<tex>p = 10</tex> весов) и обучена на <tex>n = 50</tex> заказах. Дисперсия случайной части времени доставки <tex>\sigma^2 = 4</tex> мин² (стандартное отклонение 2 минуты). Зависимость действительно линейна.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Какую среднюю квадратичную ошибку ждать на обучении и на новых заказах с теми же признаками? Насколько обучающая ошибка обманывает?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Модель линейна по весам и смещения нет — подходит формула 8. Обучение «съедает» долю шума <tex>p/n</tex>, а на новых данных к шуму добавляется та же доля ошибки весов.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 8</a> · оптимизм ошибки на обучении</div>
+        <texd>\E\hat R_{\text{train}} = \sigma^2\Bigl(1 - \frac pn\Bigr) \qquad \E\hat R_{\text{new}} = \sigma^2\Bigl(1 + \frac pn\Bigr)</texd>
+        <div class="fr-w">где <tex>\sigma^2 = 4</tex> — дисперсия шума, <tex>p = 10</tex> — число весов, <tex>n = 50</tex> — заказов в обучении; <tex>p/n = 10/50 = 0.2</tex>.</div></div>
+      <texd>\E\hat R_{\text{train}} = 4\cdot(1 - 0.2) = 4\cdot0.8 = 3.2 \qquad \E\hat R_{\text{new}} = 4\cdot(1 + 0.2) = 4\cdot1.2 = 4.8</texd>
+      <texd>\text{разница} = 4.8 - 3.2 = 1.6 = \frac{2\cdot4\cdot10}{50}</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">На обучении ждём <b>3.2</b> мин², на новых заказах — <b>4.8</b> мин², в полтора раза больше. Даже правильная по форме модель без всякой «переподгонки» выглядит на обучении на 33% лучше, чем на деле. Если бы мы сравнивали модели с разным числом признаков по обучающей ошибке, выиграла бы та, что с большим числом признаков, — даже бесполезных. Чем больше <tex>n</tex> на один параметр, тем меньше обман: при <tex>n = 500</tex> множители 0.98 и 1.02.</div></div>
+  </div>
+
+  <p class="next">Число параметров — грубая мера того, насколько модель способна подстроиться под данные. Нужно понятие точнее: что может выучить класс моделей и чем за это платят.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Класс моделей и его ёмкость</h2></div>
+  <p class="slead">Обучение выбирает модель из заранее заданного класса. Богатый класс может приблизить сложную закономерность, но может подстроиться и под шум. Ошибка обученной модели складывается из двух частей: насколько далёк от истины лучший член класса и насколько мы промахнулись, выбирая его по конечной выборке.</p>
+
+  <p>Обучение никогда не ищет «любую функцию». Сначала выбирают <b>класс моделей</b> <tex>\mathcal{H}</tex> — все прямые, все полиномы степени 3, все деревья глубины 5, все сети данной архитектуры, — а потом по выборке находят в нём лучшую. Выбор класса — главное решение, и оно делается до обучения. <b>Ёмкость</b> (capacity) класса — насколько разнообразные зависимости он способен описать. Удобная проверка ёмкости — способность класса подогнать произвольные данные, даже чистый шум.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · сколько точек класс может запомнить</div>
+    <texd>\text{полиномы степени } d:\ p = d + 1 \text{ точек} \qquad \text{дерево глубины } d:\ \text{до } 2^d \text{ листьев}</texd>
+    <div class="where">где <tex>d</tex> — степень полинома или глубина дерева, <tex>p</tex> — число параметров полинома. Полином с <tex>p</tex> коэффициентами проходит через любые <tex>p</tex> точек с разными <tex>x</tex>: это система из <tex>p</tex> уравнений с <tex>p</tex> неизвестными. Дерево глубины <tex>d</tex> делит объекты на не более чем <tex>2^d</tex> листьев, и если каждый объект в своём листе, то прогноз листа — его собственный ответ. Пример: полином степени 9 запоминает любые 10 точек, дерево глубины 10 — до 1024 объектов.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Подгонка под чистый шум</div>
+    <div class="chsub">10 точек, ответы — чистый шум с дисперсией 0.25, закономерности нет. Средний квадрат ошибки на обучении по 2000 таким выборкам (точки) совпадает с формулой 8: 0.25·(1 − p/10) (линия). Каждый новый параметр «объясняет» ещё десятую часть шума, хотя объяснять нечего. Степень 9 объясняет весь шум.</div>
+    <canvas id="c_cap"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Какой глубины дерево запомнит всю выборку</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Решающее дерево обучают на 1000 клиентах; у всех клиентов разные значения признаков. Ограничение глубины — параметр <tex>d</tex>, его подбирают.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">При какой наименьшей глубине дерево может получить нулевую ошибку на обучении при любых ответах — даже случайных? Что говорит нулевая ошибка такого дерева о его качестве?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Ноль ошибки при любых ответах возможен, если каждый объект может попасть в свой лист. По формуле 9 листьев не больше <tex>2^d</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 9</a> · ёмкость дерева</div>
+        <texd>2^d \ge n</texd>
+        <div class="fr-w">где <tex>d</tex> — глубина дерева, <tex>2^d</tex> — наибольшее число листьев, <tex>n = 1000</tex> — объектов.</div></div>
+      <texd>2^9 = 512 \lt 1000 \qquad 2^{10} = 1024 \ge 1000 \;\Rightarrow\; d = 10</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Глубины <b>10</b> достаточно, чтобы запомнить 1000 объектов с любыми ответами. Нулевая ошибка на обучении у такого дерева <b>ничего не говорит</b> о качестве: она была бы нулевой и на случайных метках. Дерево без ограничения глубины растёт, пока листья не станут однородными, и почти всегда запоминает выборку. Поэтому деревья ограничивают (глубина, минимум объектов в листе) и проверяют на отложенных данных.</div></div>
+  </div>
+
+  <p><b>В коде.</b> У <code>DecisionTreeRegressor()</code> и <code>DecisionTreeClassifier()</code> в sklearn по умолчанию <code>max_depth=None</code>: дерево делится, пока в листе не останутся одинаковые ответы. На выборке с различными признаками <code>model.score(X, y)</code> на тех же данных даёт 1.0 — для регрессии это <tex>R^2</tex> (доля объяснённой дисперсии) — даже если <code>y</code> — чистый шум. То же у kNN с одним соседом: ближайший сосед объекта обучающей выборки — он сам. Метрика на обучающих данных у таких моделей бессмысленна.</p>
+
+  <p>Ёмкость — не только число параметров. Модель с миллионом весов и сильной L2-регуляризацией может быть «проще» полинома степени 9: штраф не даёт весам вырасти (<a href="block0_10_convexity.html#s11">0.10, секция 11</a>). У kNN параметров нет, а ёмкость задаётся числом соседей: при одном соседе она максимальна. У бустинга ёмкость растёт с числом деревьев, у нейросети — с числом шагов обучения. Поэтому говорят об <b>эффективной сложности</b> и регулируют её гиперпараметрами: степенью, глубиной, силой штрафа, числом соседей, ранней остановкой.</p>
+
+  <p>Чем платят за ёмкость, видно из разложения ошибки на две части. Лучшая модель класса <tex>h_{\mathcal H}</tex> — та, у которой истинный риск в классе наименьший. Её мы не знаем: по выборке находим <tex>\hat h</tex>, и она хуже.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 10 · ошибка аппроксимации и ошибка оценивания</div>
+    <texd>R(\hat h) - R^* = \underbrace{R(h_{\mathcal H}) - R^*}_{\text{аппроксимация}} + \underbrace{R(\hat h) - R(h_{\mathcal H})}_{\text{оценивание}}</texd>
+    <div class="where">где <tex>R(\hat h)</tex> — истинный риск обученной модели, <tex>R^*</tex> — риск лучшей возможной модели (формула 6), <tex>h_{\mathcal H}</tex> — лучшая модель класса <tex>\mathcal{H}</tex> по истинному риску. <b>Ошибка аппроксимации</b> — плата за бедность класса: она падает с ростом ёмкости и не зависит от числа данных. <b>Ошибка оценивания</b> — плата за то, что лучшую модель класса ищем по конечной выборке: она растёт с ёмкостью и падает с ростом <tex>n</tex>. Пример: у прямой на 10 неделях <tex>0.209 = 0.196 + 0.013</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Из чего состоит лишняя ошибка трёх полиномов</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модели секции 1 имеют истинный риск <tex>R(\hat h)</tex>: степень 1 — 0.459, степень 3 — 0.2735, степень 9 — 12.784. Предел шума <tex>R^* = 0.25</tex>. Лучшая прямая для волны <tex>\sin 2\pi x</tex> на всём году ошибается в среднем на 0.196 сверх шума, лучший полином степени 3 — на 0.0044, полином степени 9 приближает волну практически точно (0.0000).</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Разложить лишнюю ошибку <tex>R(\hat h) - R^*</tex> каждой модели на аппроксимацию и оценивание. Что мешает каждой модели?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Аппроксимация — это ошибка лучшего члена класса сверх шума, она дана. Оценивание — всё остальное, по формуле 10.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 10</a> · аппроксимация + оценивание</div>
+        <texd>\text{оценивание} = \bigl(R(\hat h) - R^*\bigr) - \bigl(R(h_{\mathcal H}) - R^*\bigr)</texd>
+        <div class="fr-w">где <tex>R(\hat h)</tex> — 0.459, 0.2735, 12.784; <tex>R^* = 0.25</tex>; аппроксимация <tex>R(h_{\mathcal H}) - R^*</tex> — 0.196, 0.0044, 0.0000.</div></div>
+      <texd>\text{степень 1: } (0.459 - 0.25) - 0.196 = 0.209 - 0.196 = 0.013</texd>
+      <texd>\text{степень 3: } (0.2735 - 0.25) - 0.0044 = 0.0235 - 0.0044 = 0.0191</texd>
+      <texd>\text{степень 9: } (12.784 - 0.25) - 0 = 12.534</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прямой мешает <b>аппроксимация</b>: 0.196 из 0.209 — класс прямых просто не умеет рисовать волну, и больше данных не поможет. Полиному степени 9 мешает <b>оценивание</b>: класс умеет всё, но 10 точек не хватает, чтобы найти в нём правильную кривую. Степень 3 — компромисс, обе части малы. Это и есть выбор ёмкости: нужно достаточно богатый класс, но не богаче, чем позволяют данные.</div></div>
+  </div>
+
+  <p class="next">Ошибка оценивания — это последствие того, что модель зависит от случайной выборки. Если представить много выборок, у каждой будет своя модель. Как они разбросаны и где их среднее — вопрос разложения на смещение и разброс.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Разложение ошибки: bias² + variance + шум</h2></div>
+  <p class="slead">Ожидаемая квадратичная ошибка прогноза в точке раскладывается на три слагаемых. Смещение — насколько средний по выборкам прогноз далёк от истины. Разброс — насколько прогнозы разных выборок отличаются друг от друга. Шум — то, что не предскажет никто. Простые модели страдают от первого, сложные — от второго.</p>
+
+  <p>Мысленный эксперимент. Представим, что выборку из 10 недель можно получить много раз — каждый год новую. По каждой выборке обучаем модель одного и того же класса и смотрим на её прогноз в одной фиксированной точке <tex>x</tex>, скажем в начале апреля. Прогноз <tex>\hat h(x)</tex> — случайная величина: от выборки к выборке он разный. У неё есть среднее <tex>\bar h(x) = \E\hat h(x)</tex> и дисперсия. Ошибка на новом объекте в этой точке зависит от трёх вещей: насколько среднее прогноза далеко от истины, насколько прогноз скачет вокруг своего среднего и насколько скачет сам ответ.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 11 · разложение bias–variance в точке</div>
+    <texd>\E\bigl(Y - \hat h(x)\bigr)^2 = \underbrace{\bigl(f(x) - \bar h(x)\bigr)^2}_{\operatorname{bias}^2} + \underbrace{\E\bigl(\hat h(x) - \bar h(x)\bigr)^2}_{\Var\hat h(x)} + \underbrace{\sigma^2}_{\text{шум}}</texd>
+    <div class="where">где <tex>x</tex> — фиксированная точка; <tex>Y = f(x) + \varepsilon</tex> — новый ответ в ней: <tex>f(x)</tex> — истинное среднее, <tex>\varepsilon</tex> — шум с дисперсией <tex>\sigma^2</tex>; <tex>\hat h(x)</tex> — прогноз модели, обученной на случайной выборке; <tex>\bar h(x)</tex> — средний прогноз по всем выборкам; <tex>\E</tex> слева — среднее и по выборкам, и по новому шуму. <tex>\operatorname{bias}^2</tex> — квадрат смещения, <tex>\Var</tex> — разброс (variance) прогноза. Пример: прогнозы 0.6, 1.0, 1.4, 1.8 при <tex>f(x) = 1</tex> и <tex>\sigma^2 = 0.25</tex> дают <tex>0.04 + 0.2 + 0.25 = 0.49</tex> (задача 7).</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Вывод по шагам · откуда три слагаемых</div>
+    <div class="tstep"><b>Шаг 1. Разбиваем ошибку на три куска.</b> Прибавим и вычтем <tex>f(x)</tex> и <tex>\bar h(x)</tex>: <tex>Y - \hat h = \underbrace{(Y - f)}_{\varepsilon} + \underbrace{(f - \bar h)}_{\text{смещение}} + \underbrace{(\bar h - \hat h)}_{\text{отклонение}}</tex>. Здесь <tex>f - \bar h</tex> — число, а <tex>\varepsilon</tex> и <tex>\bar h - \hat h</tex> — случайные.</div>
+    <div class="tstep"><b>Шаг 2. Квадрат суммы трёх слагаемых</b> — три квадрата и три удвоенных произведения: <tex>\varepsilon^2 + (f - \bar h)^2 + (\bar h - \hat h)^2 + 2\varepsilon(f - \bar h) + 2\varepsilon(\bar h - \hat h) + 2(f - \bar h)(\bar h - \hat h)</tex>.</div>
+    <div class="tstep"><b>Шаг 3. Берём среднее.</b> Квадраты дают <tex>\sigma^2</tex>, <tex>\operatorname{bias}^2</tex> и <tex>\Var\hat h(x)</tex> по определениям. Произведения исчезают: новый шум <tex>\varepsilon</tex> не зависит от обучающей выборки и в среднем ноль, поэтому <tex>\E[\varepsilon\cdot\text{что угодно из выборки}] = 0</tex>; а <tex>\E[\bar h - \hat h] = \bar h - \bar h = 0</tex>, и число <tex>f - \bar h</tex> выносится за среднее.</div>
+    <div class="tstep"><b>Шаг 4. Итог.</b> <tex>\E(Y - \hat h)^2 = \operatorname{bias}^2 + \Var\hat h + \sigma^2</tex>. Тот же приём, что в разложении ошибки оценки на смещение и дисперсию (<a href="block0_04_lln_clt.html#s9">0.4, секция 9</a>), только оцениваем не число, а прогноз, и добавляется шум нового ответа. <span class="res">Разложение точное, но только для квадратичной потери.</span></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · bias модели, bias оценки и bias нейрона</div>
+    <p><b>Смещение модели</b> здесь — разница между средним прогнозом по всем выборкам и истиной в точке, <tex>f(x) - \bar h(x)</tex>: систематическая ошибка, которую не уберёт никакое число данных при том же классе. <b>Смещение оценки</b> в статистике (<a href="block0_04_lln_clt.html#s3">0.4, секция 3</a>) — то же для оценки числа: <tex>\E\hat\theta - \theta</tex>. А <b>bias в нейросетях</b> и линейных моделях — просто свободный член <tex>b</tex> в <tex>\mathbf{w}^\top x + b</tex>, к разложению отношения не имеет.</p>
+    <p>И <b>variance модели</b> — разброс <b>прогнозов</b> по выборкам при одном <tex>x</tex>, а не дисперсия ответа <tex>Y</tex> и не шум <tex>\sigma^2</tex>. Пример: при шуме <tex>\sigma^2 = 0.25</tex> прогнозы полинома степени 3 в начале апреля разбросаны с дисперсией около 0.1, а полинома степени 9 у краёв года — с дисперсией в сотни.</p>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 7 · Разложение по четырём выборкам вручную</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модель обучили на четырёх независимых выборках и получили прогнозы в точке <tex>x</tex>: 0.6, 1.0, 1.4, 1.8. Истинное среднее ответа в этой точке <tex>f(x) = 1</tex>, дисперсия шума <tex>\sigma^2 = 0.25</tex>. Считаем, что четыре выборки описывают все возможные с равными вероятностями.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Смещение², разброс и ожидаемую квадратичную ошибку на новом объекте. Проверить ответ прямым расчётом.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сначала средний прогноз <tex>\bar h(x)</tex>, затем три слагаемых формулы 11. Для проверки: ошибка модели относительно истины, усреднённая по выборкам, плюс шум.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 11</a> · bias² + variance + шум</div>
+        <texd>\E(Y - \hat h)^2 = \bigl(f - \bar h\bigr)^2 + \E\bigl(\hat h - \bar h\bigr)^2 + \sigma^2</texd>
+        <div class="fr-w">где <tex>\hat h</tex> — прогнозы 0.6, 1.0, 1.4, 1.8 с вероятностью ¼; <tex>f = 1</tex> — истина; <tex>\sigma^2 = 0.25</tex> — шум; <tex>\bar h</tex> — средний прогноз.</div></div>
+      <texd>\bar h = \frac{0.6 + 1.0 + 1.4 + 1.8}{4} = \frac{4.8}{4} = 1.2 \qquad \operatorname{bias}^2 = (1 - 1.2)^2 = 0.04</texd>
+      <texd>\Var\hat h = \frac{(-0.6)^2 + (-0.2)^2 + 0.2^2 + 0.6^2}{4} = \frac{0.36 + 0.04 + 0.04 + 0.36}{4} = 0.2</texd>
+      <texd>\E(Y - \hat h)^2 = 0.04 + 0.2 + 0.25 = 0.49</texd>
+      <texd>\text{проверка: } \frac{(0.6 - 1)^2 + 0^2 + 0.4^2 + 0.8^2}{4} + 0.25 = \frac{0.16 + 0 + 0.16 + 0.64}{4} + 0.25 = 0.24 + 0.25 = 0.49</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Ожидаемая ошибка <b>0.49</b>: шум 0.25, разброс 0.2, смещение² всего 0.04. Эта модель проигрывает в основном из-за разброса — она переобучается. Слабое место видно сразу: стоит снизить разброс вдвое ценой роста смещения² до 0.1 — и ошибка упадёт до <tex>0.1 + 0.1 + 0.25 = 0.45</tex>. На этом обмене построена регуляризация.</div></div>
+  </div>
+
+  <p>Самый простой способ обменять смещение на разброс — <b>сжатие</b> (shrinkage): умножить оценку на число <tex>\alpha \lt 1</tex>, притянуть её к нулю. Оценка становится смещённой, зато меньше скачет. В <a href="block0_04_lln_clt.html#s9">0.4, секция 9</a> так улучшали оценку дисперсии; здесь — прогноз среднего. L2-регуляризация делает то же с весами модели.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 12 · сжатие выборочного среднего</div>
+    <texd>\hat y = \alpha\bar y:\quad \operatorname{bias}^2 = (1 - \alpha)^2\mu^2,\quad \Var = \alpha^2\frac{\sigma^2}{n} \qquad \alpha^* = \frac{\mu^2}{\mu^2 + \sigma^2/n}</texd>
+    <div class="where">где <tex>\bar y</tex> — выборочное среднее <tex>n</tex> наблюдений, <tex>\mu</tex> — истинное среднее, <tex>\sigma^2</tex> — дисперсия одного наблюдения, <tex>\alpha</tex> — сила сжатия от 0 (прогноз всегда 0) до 1 (без сжатия); <tex>\alpha^*</tex> — лучшее <tex>\alpha</tex>: при нём сумма смещения² и разброса минимальна. Его находят, приравняв к нулю производную по <tex>\alpha</tex> суммы <tex>(1 - \alpha)^2\mu^2 + \alpha^2\sigma^2/n</tex>. Пример: <tex>\mu = 2</tex>, <tex>\sigma^2/n = 1</tex> — <tex>\alpha^* = 4/5 = 0.8</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 8 · Выгодно ли занизить прогноз</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Прирост выручки нового магазина прогнозируют средним по <tex>n = 4</tex> похожим магазинам. Истинный средний прирост <tex>\mu = 2</tex> млн, разброс между магазинами <tex>\sigma^2 = 4</tex> (стандартное отклонение 2 млн). Сравниваем прогноз <tex>\bar y</tex> и сжатый прогноз <tex>0.8\bar y</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Смещение², разброс и их сумму для <tex>\alpha = 1</tex>, <tex>\alpha = 0.8</tex> и <tex>\alpha = 0.5</tex>. Какое <tex>\alpha</tex> лучшее?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Дисперсия среднего четырёх наблюдений <tex>\sigma^2/n = 4/4 = 1</tex>. Подставляем в формулу 12 три значения <tex>\alpha</tex> и формулу для <tex>\alpha^*</tex>. Шум нового наблюдения одинаков для всех вариантов, его не считаем.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 12</a> · сжатие среднего</div>
+        <texd>\operatorname{bias}^2 + \Var = (1 - \alpha)^2\mu^2 + \alpha^2\frac{\sigma^2}{n}</texd>
+        <div class="fr-w">где <tex>\mu = 2</tex> — истинное среднее, <tex>\mu^2 = 4</tex>; <tex>\sigma^2/n = 4/4 = 1</tex> — дисперсия выборочного среднего; <tex>\alpha</tex> — 1, 0.8, 0.5.</div></div>
+      <texd>\alpha = 1:\ 0^2\cdot4 + 1^2\cdot1 = 1 \qquad \alpha = 0.8:\ 0.2^2\cdot4 + 0.8^2\cdot1 = 0.16 + 0.64 = 0.80</texd>
+      <texd>\alpha = 0.5:\ 0.5^2\cdot4 + 0.5^2\cdot1 = 1 + 0.25 = 1.25 \qquad \alpha^* = \frac{4}{4 + 1} = 0.8</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Сжатие до 80% снижает ошибку с <b>1</b> до <b>0.80</b>, и это лучшее <tex>\alpha</tex>. Сжатие до 50% уже вредно (1.25): смещение перевешивает. Подвох в том, что <tex>\alpha^*</tex> зависит от неизвестного <tex>\mu</tex>. Поэтому силу сжатия и регуляризации не вычисляют по формуле, а подбирают на отложенных данных — об этом секции 8 и 9. Чем меньше данных (<tex>\sigma^2/n</tex> больше), тем сильнее выгодно сжимать.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Обмен смещения на разброс при сжатии</div>
+    <div class="chsub">Задача 8: μ = 2, σ²/n = 1. Смещение² растёт при уменьшении α, разброс падает. Сумма минимальна при α = 0.8 и равна 0.8 — на 20% меньше, чем у несмещённого среднего (α = 1).</div>
+    <canvas id="c_shrink"></canvas>
+  </div>
+
+  <p class="next">Разложение для одной точки и для мысленного эксперимента ясно. Посчитаем его по-настоящему: возьмём 200 выборок для наших полиномов и увидим, как смещение и разброс меняются со степенью.</p>
+</section>
+
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Разложение на полиномах: считаем по 200 выборкам</h2></div>
+  <p class="slead">Повторим эксперимент секции 1 двести раз: новые 10 недель, новые модели. Средняя по году ошибка раскладывается на смещение², разброс и шум, и видно, как со степенью полинома одно убывает, а другое растёт. Разброс к тому же сильно зависит от числа точек.</p>
+
+  <p>Формула 11 — для одной точки. Модель же применяют ко всему году, поэтому разложение усредняют по <tex>x</tex>. Получается ожидаемый риск <b>процедуры обучения</b> — «полином степени <tex>d</tex> по 10 неделям» — в среднем по всем выборкам, которые могли нам достаться. В модельном примере истина известна, и каждое слагаемое можно посчитать: генерируем много выборок, по каждой обучаем модель и смотрим на прогнозы в 2001 точке года.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 13 · разложение, усреднённое по объектам</div>
+    <texd>\E R(\hat h) = \E_X\bigl(f(X) - \bar h(X)\bigr)^2 + \E_X\Var\hat h(X) + \sigma^2</texd>
+    <div class="where">где <tex>R(\hat h)</tex> — истинный риск модели, обученной на случайной выборке, <tex>\E</tex> слева — среднее по выборкам; <tex>\E_X</tex> — среднее по будущим объектам <tex>X</tex> (здесь — по всем моментам года); <tex>f</tex> — истинная зависимость, <tex>\bar h</tex> — средний по выборкам прогноз, <tex>\Var\hat h(X)</tex> — разброс прогнозов в точке, <tex>\sigma^2</tex> — шум. Три слагаемых — средние смещение², разброс и шум. Пример: полином степени 3 на 10 неделях — <tex>0.005 + 0.105 + 0.25 = 0.360</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · bias² + variance + шум по 200 выборкам</div>
+    <div class="tstep"><b>Шаг 1. Эксперимент.</b> 200 раз берём 10 недель в тех же точках <tex>x = 0.05, 0.15, \dots, 0.95</tex>, ответы — <tex>\sin 2\pi x</tex> плюс новый шум со стандартным отклонением 0.5. По каждой выборке подбираем полиномы степеней 1, 3 и 9. Для каждой степени получаем 200 кривых.</div>
+    <div class="tstep"><b>Шаг 2. Средняя кривая и смещение².</b> В каждой из 2001 точки года усредняем 200 прогнозов — это <tex>\bar h(x)</tex>. Среднее по году от <tex>(f - \bar h)^2</tex> — смещение² (bias²).<div class="calc">степень 1: <span class="hl">0.198</span>   степень 3: <span class="hl">0.005</span>   степень 9: <span class="hl">0.046</span></div></div>
+    <div class="tstep"><b>Шаг 3. Разброс.</b> В каждой точке — дисперсия 200 прогнозов вокруг <tex>\bar h(x)</tex>, затем среднее по году (variance).<div class="calc">степень 1: <span class="hl">0.054</span>   степень 3: <span class="hl">0.105</span>   степень 9: <span class="bad">36.46</span></div></div>
+    <div class="tstep"><b>Шаг 4. Сумма с шумом 0.25</b> по формуле 13.<div class="calc">степень 1: 0.198 + 0.054 + 0.25 = <span class="res">0.501</span>
+степень 3: 0.005 + 0.105 + 0.25 = <span class="res">0.360</span>
+степень 9: 0.046 + 36.46 + 0.25 = <span class="bad">36.76</span></div>Проверка: средний по 200 выборкам истинный риск, посчитанный напрямую, даёт те же числа — разложение точное.</div>
+    <div class="tstep"><b>Шаг 5. Что видно.</b> Прямая проигрывает смещением: волну она не изображает при любой выборке. Степень 9 почти не смещена, но кривые разных выборок у краёв года расходятся на десятки тысяч. Смещение² степени 9 на 200 выборках — 0.046, а не ноль, потому что среднее 200 сильно разбросанных кривых само шумит. На 20 000 выборках оно 0.000, разброс — 40.8. <span class="res">Лучший компромисс — степень 3.</span></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">20 прямых по 20 выборкам: большое смещение, малый разброс</div>
+    <div class="chsub">Тонкие линии — прямые, подобранные по 20 разным десяткам недель. Они похожи друг на друга (разброс мал), но все далеки от волны (пунктир): весной прямые занижают, осенью завышают. Это смещение.</div>
+    <canvas id="c_fan1"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">20 полиномов степени 9 по тем же выборкам: малое смещение, огромный разброс</div>
+    <div class="chsub">Те же 20 выборок. Каждая кривая петляет по-своему, а у краёв года они расходятся далеко за пределы графика. Средняя по 20 кривым (жёлтая) ближе к волне, чем любая отдельная, но и она ещё петляет: при таком разбросе 20 выборок мало. По 20 000 выборкам средняя ложится на волну — смещения почти нет, вся ошибка в разбросе.</div>
+    <canvas id="c_fan9"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Смещение², разброс и ожидаемый риск в зависимости от степени</div>
+    <div class="chsub">20 000 выборок по 10 недель, логарифмическая шкала. Смещение² падает ступеньками: степени 1→3 и 3→5 ловят новые изгибы волны, а с пятой оно меньше 0.0001 и уходит под шкалу. Разброс растёт со степенью — сначала медленно, после 6 стремительно. Сумма с шумом 0.25 минимальна при степени 3 (0.360).</div>
+    <canvas id="c_bv"></canvas>
+  </div>
+
+  <p>Почему разброс так растёт? У линейной по весам модели есть простая оценка: в точках обучающей выборки дисперсия прогноза в среднем равна <tex>\sigma^2p/n</tex>. Каждый из <tex>p</tex> параметров оценивается по <tex>n</tex> точкам с шумом <tex>\sigma^2</tex>. Вдали от обучающих точек, особенно за их пределами, разброс полинома высокой степени гораздо больше: у краёв года (от 0 до 0.05 и от 0.95 до 1) кривая степени 9 ничем не закреплена.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 14 · разброс прогноза линейной модели в точках выборки</div>
+    <texd>\frac1n\sum_{i=1}^n \Var\hat h(x_i) = \frac{\sigma^2p}{n}</texd>
+    <div class="where">где <tex>x_i</tex> — точки обучающей выборки, <tex>\hat h(x_i)</tex> — прогноз модели в них, <tex>\Var</tex> — разброс по выборкам, <tex>\sigma^2</tex> — дисперсия шума, <tex>p</tex> — число параметров, <tex>n</tex> — число точек. Модель линейна по весам и обучена МНК. Пример: степень 3 на 10 точках — <tex>0.25\cdot4/10 = 0.1</tex> (на всём году — 0.105); степень 9 на 50 точках — <tex>0.25\cdot10/50 = 0.05</tex> (на всём году — 0.052). При <tex>n = 10</tex> у степени 9 в точках выборки 0.25, а на всём году 40.8: разброс сосредоточен между точками и у краёв.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 9 · Сколько данных нужно, чтобы сложная модель обогнала простую</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Те же сезонные данные, но наблюдений <tex>n</tex> штук, равномерно по году; шум <tex>\sigma^2 = 0.25</tex>. Смещение² лучшего полинома степени 3 — 0.0044, степени 5 — 0.00002. Разброс оцениваем по формуле 14.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">При каком числе наблюдений полином степени 5 станет точнее полинома степени 3?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Шум одинаков у обеих моделей, сравниваем смещение² + разброс. У степени 5 меньше смещения, но больше параметров: <tex>p = 6</tex> против 4. С ростом <tex>n</tex> разброс падает, и выигрыш в смещении начинает перевешивать.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s7">Формула 13 и формула 14</a> · смещение² + разброс</div>
+        <texd>\operatorname{bias}^2 + \frac{\sigma^2p}{n}</texd>
+        <div class="fr-w">где <tex>\operatorname{bias}^2</tex> — 0.0044 у степени 3 и 0.00002 у степени 5; <tex>\sigma^2 = 0.25</tex>; <tex>p</tex> — 4 и 6 параметров; <tex>n</tex> — число наблюдений.</div></div>
+      <texd>0.00002 + \frac{0.25\cdot6}{n} \lt 0.0044 + \frac{0.25\cdot4}{n} \iff \frac{1.5 - 1}{n} \lt 0.0044 - 0.00002 = 0.00438</texd>
+      <texd>n \gt \frac{0.5}{0.00438} = 114.2</texd>
+      <p style="margin:6px 0 0">Проверка симуляцией (6000 выборок): при <tex>n = 100</tex> смещение² + разброс 0.0144 у степени 3 и 0.0151 у степени 5, при <tex>n = 130</tex> — 0.0121 и 0.0117.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Степень 5 выигрывает примерно с <b>115 наблюдений</b>. Правильная сложность модели — не свойство задачи, а свойство задачи <b>и объёма данных</b>. На 10 неделях лучшая степень 3, на 200 неделях — уже 5, на миллионе объектов выгодны модели, которые на тысяче безнадёжно переобучились бы. Поэтому сложность подбирают на отложенных данных при том объёме, который есть.</div></div>
+  </div>
+
+  <div class="play">
+    <h4>Песочница: степень полинома, объём выборки и разложение ошибки</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">Истинная сезонность <tex>\sin 2\pi x</tex>, шум со стандартным отклонением 0.5, <tex>n</tex> точек равномерно по году. Страница генерирует 100 выборок, по каждой подбирает полином степени <tex>d</tex> и считает смещение², разброс и ожидаемый риск по формуле 13. Смещение² по 100 выборкам немного завышено: в него попадает сотая доля разброса.</p>
+    <div class="prow"><label>Степень полинома d</label><input type="range" id="pd" min="0" max="9" step="1" value="3"><output id="pd_o"></output></div>
+    <div class="prow"><label>Точек в выборке n</label><input type="range" id="pn" min="10" max="100" step="5" value="10"><output id="pn_o"></output></div>
+    <div class="prow"><label>Набор случайных выборок</label><input type="range" id="ps" min="1" max="20" step="1" value="1"><output id="ps_o"></output></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+  <p class="tcap">Что попробовать. (1) При <tex>n = 10</tex> пройдите степени от 0 до 9: смещение² падает, разброс растёт, риск минимален при <tex>d = 3</tex>. (2) Поставьте <tex>d = 9</tex> и увеличивайте <tex>n</tex>: при 10 точках разброс в десятки, при 50 — около 0.05, и степень 9 становится разумной. (3) При <tex>d = 1</tex> никакое <tex>n</tex> не опустит риск ниже 0.44: это смещение. (4) Сравните ошибку на обучении с формулой <tex>\sigma^2(1 - p/n)</tex> из секции 4: при <tex>d \ge 5</tex>, где смещения почти нет, они близки (расхождение — шум 100 выборок).</p>
+
+  <p class="next">Разложение объясняет, почему нужен компромисс. Но в жизни истина неизвестна, и посчитать bias² и variance нельзя. Остаётся измерять ошибку на данных, которые модель не видела. Как устроить это честно?</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Train, validation, test: зачем три части</h2></div>
+  <p class="slead">На обучающей части подбирают веса, на валидационной выбирают модель и гиперпараметры, на тестовой один раз измеряют итог. Две части мало: если выбирать лучшую из многих моделей по одной и той же отложенной выборке, её оценка завышается — выбор подстраивается под шум этой выборки.</p>
+
+  <p>Из секции 3: эмпирический риск честен, только если модель не видела этих объектов. Значит, часть данных надо отложить. Но модель подбирают не только по весам. Выбирают степень полинома, силу регуляризации, признаки, порог классификации, момент остановки обучения — и всё это по ошибке на отложенной части. Каждый такой выбор — тоже подгонка, только на уровень выше. Если сравнили 100 вариантов и взяли лучший по отложенной выборке, то ошибка лучшего на ней — уже не честная оценка, а минимум из 100 шумных чисел.</p>
+
+  <table class="ct">
+    <tr><th>Часть</th><th>Что по ней делают</th><th>Сколько раз смотрят</th></tr>
+    <tr><td>Обучающая (train)</td><td>подбирают веса модели</td><td>сколько угодно</td></tr>
+    <tr><td>Валидационная (validation)</td><td>выбирают модель, гиперпараметры, признаки, порог, раннюю остановку</td><td>много раз — оценка на ней становится оптимистичной</td></tr>
+    <tr><td>Тестовая (test)</td><td>один раз измеряют качество выбранной модели</td><td>один раз, в конце</td></tr>
+  </table>
+
+  <div class="fbox">
+    <div class="flabel">Формула 15 · шум оценки точности и завышение лучшей из M</div>
+    <texd>\operatorname{SE} = \sqrt{\frac{\text{acc}(1 - \text{acc})}{m}} \qquad \E\max_{j \le M}\widehat{\text{acc}}_j \approx \text{acc} + c_M\cdot\operatorname{SE}</texd>
+    <div class="where">где <tex>\text{acc}</tex> — истинная точность (accuracy) модели, <tex>m</tex> — число объектов в проверочной выборке, <tex>\operatorname{SE}</tex> — стандартная ошибка оценки точности (доля успехов, <a href="block0_04_lln_clt.html#s5">0.4, секция 5</a>); <tex>\widehat{\text{acc}}_j</tex> — измеренная точность <tex>j</tex>-й из <tex>M</tex> настроек одинакового истинного качества, <tex>\E\max</tex> — среднее по повторам эксперимента от наибольшей из них, <tex>c_M</tex> — среднее максимума <tex>M</tex> стандартных нормальных величин: <tex>c_2 = 0.56</tex>, <tex>c_5 = 1.16</tex>, <tex>c_{10} = 1.54</tex>, <tex>c_{20} = 1.87</tex>, <tex>c_{100} = 2.51</tex>, <tex>c_{1000} = 3.24</tex>. Пример: <tex>\text{acc} = 0.8</tex>, <tex>m = 500</tex> — <tex>\operatorname{SE} = 0.018</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · почему тестовая выборка «портится» при многократном просмотре</div>
+    <div class="tstep"><b>Шаг 1. Условие.</b> Команда перебирает <tex>M = 100</tex> настроек модели (число настроек). У всех одинаковая истинная точность <tex>\text{acc} = 0.80</tex> — ни одна не лучше. Каждую проверяют на одной и той же отложенной выборке из <tex>m = 500</tex> объектов.</div>
+    <div class="tstep"><b>Шаг 2. Шум одной оценки</b> (стандартная ошибка точности): <tex>\operatorname{SE} = \sqrt{0.8\cdot0.2/500} = \sqrt{0.00032} = 0.0179</tex>. Измеренные точности разбросаны вокруг 0.80 примерно на ±0.018.</div>
+    <div class="tstep"><b>Шаг 3. Лучшая из 100.</b> Максимум из 100 таких чисел в среднем выше среднего на <tex>c_{100} = 2.51</tex> стандартной ошибки: <tex>0.80 + 2.51\cdot0.0179 = 0.80 + 0.045 = 0.845</tex>. Симуляция (100 000 повторов): 0.844.</div>
+    <div class="tstep"><b>Шаг 4. Отчёт и реальность.</b> Команда сообщает «точность 84.5%». На новой выборке выбранная настройка покажет 80% ± 1.8% — как и все остальные. Завышение 4.5 процентных пункта создано только отбором, хотя каждую модель проверяли честно.</div>
+    <div class="tstep"><b>Шаг 5. Вывод.</b> Выборка, по которой выбирали, перестаёт быть тестовой: оценка на ней — <span class="res">оптимистичная</span>. Нужна ещё одна, нетронутая часть, на которую смотрят один раз. Это та же проблема множественных проверок, что в A/B-тестах (<a href="block0_06_hypothesis_testing.html#s10">0.6, секция 10</a>).</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Чем больше настроек сравнили, тем сильнее завышена лучшая</div>
+    <div class="chsub">Истинная точность всех настроек 0.80, проверка на 500 объектах. Средняя измеренная точность лучшей настройки растёт с числом сравнённых M по формуле 15: 0.81 при двух, 0.83 при десяти, 0.845 при ста, 0.858 при тысяче. Ни одна настройка при этом не лучше другой.</div>
+    <canvas id="c_maxk"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 10 · На сколько завышена точность после перебора</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Перебрали <tex>M = 20</tex> вариантов признаков. Их истинная точность примерно одинакова, около 0.85. Каждый проверили на одной валидационной выборке из <tex>m = 1000</tex> объектов, лучший показал 0.871.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Какую точность лучшего варианта мы бы увидели в среднем, даже если все варианты равноценны? Можно ли сообщить 0.871 как итоговое качество?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Считаем стандартную ошибку точности на 1000 объектах и ожидаемое завышение максимума из 20 по формуле 15.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 15</a> · завышение лучшей из M</div>
+        <texd>\operatorname{SE} = \sqrt{\frac{\text{acc}(1 - \text{acc})}{m}} \qquad \E\max \approx \text{acc} + c_M\cdot\operatorname{SE}</texd>
+        <div class="fr-w">где <tex>\text{acc} = 0.85</tex> — истинная точность, <tex>m = 1000</tex> — объектов в валидации, <tex>M = 20</tex> вариантов, <tex>c_{20} = 1.87</tex>.</div></div>
+      <texd>\operatorname{SE} = \sqrt{\frac{0.85\cdot0.15}{1000}} = \sqrt{0.0001275} = 0.0113 \qquad \E\max \approx 0.85 + 1.87\cdot0.0113 = 0.85 + 0.021 = 0.871</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Точность <b>0.871</b> — ровно то, что дал бы перебор 20 <b>одинаковых</b> вариантов. Значит, по этим данным нельзя утверждать даже, что лучший вариант лучше остальных, а сообщать 0.871 как качество — нельзя точно. Честная цифра — точность выбранного варианта на отдельном тесте. Если её нет, надо хотя бы помнить о завышении на 2 стандартные ошибки.</div></div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 11 · Каким должен быть тест</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модель классификации с точностью около 0.8. Бизнесу нужно знать её точность с погрешностью не больше ±1 процентного пункта, то есть интервал «оценка ± 2 SE» шириной в одну сторону 0.01.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сколько объектов <tex>m</tex> нужно в тестовой выборке?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Нужно <tex>2\operatorname{SE} \le 0.01</tex>, то есть <tex>\operatorname{SE} \le 0.005</tex>. Из формулы 15 выражаем <tex>m</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 15</a> · стандартная ошибка точности</div>
+        <texd>\operatorname{SE} = \sqrt{\frac{\text{acc}(1 - \text{acc})}{m}} \;\Rightarrow\; m = \frac{\text{acc}(1 - \text{acc})}{\operatorname{SE}^2}</texd>
+        <div class="fr-w">где <tex>\text{acc} = 0.8</tex> — точность, <tex>\operatorname{SE} = 0.005</tex> — допустимая стандартная ошибка, <tex>m</tex> — размер теста.</div></div>
+      <texd>m = \frac{0.8\cdot0.2}{0.005^2} = \frac{0.16}{0.000025} = 6400</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Нужно около <b>6400</b> объектов. Тест из 500 объектов даёт погрешность ±3.6 пункта (<tex>2\cdot0.0179</tex>), и две модели, отличающиеся на 2 пункта, на нём не различить. Размер теста определяется нужной точностью оценки, а не долей «20% от данных». При миллионе объектов 20% — избыточно, при тысяче — всё равно мало.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · валидация и тест</div>
+    <p><b>Валидационная выборка</b> участвует в выборе: по ней сравнивают варианты, и её оценка после выбора оптимистична. <b>Тестовая</b> в выборе не участвует и нужна для одного итогового измерения. Если по тесту выбирали хоть что-то — порог, признак, «лучший из трёх запусков», — он стал валидацией. Пример: 3 модели проверили на тесте и взяли лучшую — её оценка завышена в среднем на <tex>c_3 = 0.85</tex> стандартной ошибки. Ещё одна путаница: в русской речи «валидацией» называют и проверку вообще, и кросс-валидацию; и «тест» в A/B-тесте — это эксперимент, а не выборка.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>train_test_split(X, y, test_size=0.25)</code> из sklearn по умолчанию перемешивает строки и округляет размер теста вверх: из 10 строк в тест уйдут 3, в обучение 7. <code>random_state</code> фиксирует перемешивание, иначе при каждом запуске разбиение и оценка другие. У <code>GridSearchCV</code> атрибут <code>best_score_</code> — средняя оценка кросс-валидации <b>лучшей</b> из перебранных настроек: это валидационная оценка после отбора, и она оптимистична ровно по механизму трассировки. Итоговое качество измеряют отдельно, на отложенном тесте.</p>
+
+  <p>Обычная схема: данные делят на обучение, валидацию и тест (часто 60/20/20 или по времени). Выбирают модель по валидации, затем переобучают её на обучении вместе с валидацией и один раз измеряют на тесте. После этого тест «израсходован»: если по его результату что-то поменяли, нужен новый тест или честная оговорка.</p>
+
+  <p class="next">У трёх частей есть цена: при тысяче объектов валидация из 200 даёт шумную оценку, а данные на обучение потеряны. Кросс-валидация использует каждый объект и для обучения, и для проверки.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Кросс-валидация как идея</h2></div>
+  <p class="slead">Данные делят на k частей и k раз обучают модель на всех частях, кроме одной, а проверяют на оставшейся. Каждый объект один раз побывает в проверке. Среднее k ошибок — оценка риска с меньшим разбросом, чем у одного разбиения.</p>
+
+  <p>При одном разбиении «80% обучение, 20% проверка» оценка зависит от того, какие объекты случайно попали в проверку, а 20% данных не участвуют в обучении. Кросс-валидация (cross-validation, CV) делает разбиение много раз так, чтобы каждый объект проверялся ровно один раз. Данные делят на <tex>k</tex> частей — фолдов (обычно 5 или 10). Для каждого фолда модель обучают на остальных <tex>k - 1</tex> и считают ошибку на нём.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 16 · оценка k-фолдовой кросс-валидации</div>
+    <texd>\text{CV}_k = \frac1k\sum_{j=1}^k \hat R_{(j)}\bigl(\hat h_{-j}\bigr)</texd>
+    <div class="where">где <tex>k</tex> — число фолдов, <tex>j</tex> — номер фолда, <tex>\hat h_{-j}</tex> — модель, обученная на всех данных, кроме фолда <tex>j</tex>; <tex>\hat R_{(j)}</tex> — её средняя потеря на объектах фолда <tex>j</tex>, которых она не видела. <tex>\text{CV}_k</tex> оценивает риск модели, обученной на доле <tex>(k-1)/k</tex> данных, — чуть пессимистично для модели на всех данных. При <tex>k = n</tex> (каждый фолд — один объект) — leave-one-out, LOO. Пример: пять ошибок фолдов 2.5625, 5.5625, 5.5625, 2.5625, 16 дают <tex>\text{CV}_5 = 6.45</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · 5-фолдовая кросс-валидация вручную</div>
+    <div class="tstep"><b>Шаг 1. Данные и модель.</b> 10 значений ответа: <tex>y = 3, 5, 4, 8, 6, 2, 7, 5, 9, 1</tex>. Модель — константа: прогноз — среднее ответа на обучающей части. Фолды по порядку: (3, 5), (4, 8), (6, 2), (7, 5), (9, 1). Потеря — квадратичная.</div>
+    <div class="tstep"><b>Шаг 2. Обучаем без фолда, проверяем на нём.</b> Сумма всех ответов 50; среднее обучения = (50 − сумма фолда)/8.<div class="calc">фолд 1 (3, 5): среднее (50 − 8)/8 = 5.25; ошибка ((3 − 5.25)² + (5 − 5.25)²)/2 = (5.0625 + 0.0625)/2 = <span class="hl">2.5625</span>
+фолд 2 (4, 8): среднее (50 − 12)/8 = 4.75; ошибка (0.5625 + 10.5625)/2 = <span class="hl">5.5625</span>
+фолд 3 (6, 2): среднее (50 − 8)/8 = 5.25;  ошибка (0.5625 + 10.5625)/2 = <span class="hl">5.5625</span>
+фолд 4 (7, 5): среднее (50 − 12)/8 = 4.75; ошибка (5.0625 + 0.0625)/2 = <span class="hl">2.5625</span>
+фолд 5 (9, 1): среднее (50 − 10)/8 = 5;    ошибка (16 + 16)/2 = <span class="bad">16</span></div></div>
+    <div class="tstep"><b>Шаг 3. Усредняем</b> по формуле 16: <tex>\text{CV}_5 = \frac{2.5625 + 5.5625 + 5.5625 + 2.5625 + 16}{5} = \frac{32.25}{5} = 6.45</tex>.</div>
+    <div class="tstep"><b>Шаг 4. Сравниваем с ошибкой на обучении.</b> Среднее всех 10 значений 5, средний квадрат отклонения от него — <tex>\frac{4 + 0 + 1 + 9 + 1 + 9 + 4 + 0 + 16 + 16}{10} = 6</tex>. Кросс-валидация даёт <span class="res">6.45 &gt; 6</span>: на невиденных объектах константа ошибается сильнее. Даже у модели с одним параметром ошибка на обучении оптимистична.</div>
+    <div class="tstep"><b>Шаг 5. Разброс фолдов.</b> Ошибки фолдов от 2.56 до 16: один «неудобный» фолд (9 и 1) в 2.5 раза хуже среднего. Оценка по одному разбиению могла оказаться и 2.56, и 16. Усреднение по фолдам гасит этот разброс.</div>
+  </div>
+
+  <p>Для модели-среднего есть точная формула LOO: прогноз без объекта <tex>i</tex> равен среднему остальных, и его ошибка на объекте <tex>i</tex> ровно в <tex>n/(n-1)</tex> раз больше отклонения <tex>y_i - \bar y</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 17 · leave-one-out для модели-среднего</div>
+    <texd>y_i - \bar y_{-i} = \frac{n}{n-1}\bigl(y_i - \bar y\bigr) \qquad \text{LOO} = \Bigl(\frac{n}{n-1}\Bigr)^2\cdot\frac1n\sum_i\bigl(y_i - \bar y\bigr)^2</texd>
+    <div class="where">где <tex>y_i</tex> — ответ объекта <tex>i</tex>, <tex>\bar y</tex> — среднее всех <tex>n</tex> ответов, <tex>\bar y_{-i}</tex> — среднее без объекта <tex>i</tex>; LOO — средняя квадратичная ошибка при исключении по одному. Справа — ошибка на обучении, умноженная на поправку <tex>(n/(n-1))^2</tex>. Пример трассировки: <tex>n = 10</tex>, ошибка на обучении 6 — <tex>\text{LOO} = 1.2346\cdot6 = 7.407</tex>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Одно разбиение против 5-фолдовой кросс-валидации</div>
+    <div class="chsub">3000 выборок по 40 точек сезонности, полином степени 3. Голубое — оценка по одному случайному разбиению 30/10, фуксия — 5-фолдовая CV на тех же данных. Средние почти равны (0.299 и 0.296 при истинном риске около 0.284), но разброс одного разбиения вдвое больше: стандартное отклонение 0.144 против 0.076.</div>
+    <canvas id="c_cv"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 12 · Различимы ли две модели по кросс-валидации</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">5-фолдовая кросс-валидация модели оттока дала AUC по фолдам 0.81, 0.78, 0.84, 0.80, 0.77. Новая версия на тех же фолдах в среднем на 0.005 выше.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Среднее, стандартное отклонение по фолдам и примерную стандартную ошибку среднего. Можно ли считать новую версию лучше?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Оценки фолдов — пять чисел; их среднее — оценка CV, разброс — её неуверенность. Стандартная ошибка среднего по <tex>k</tex> фолдам — <tex>s/\sqrt k</tex>. Это заниженная оценка: обучающие части фолдов пересекаются, и фолды не независимы.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 16</a> и <a href="#s3">формула 5</a> · среднее фолдов и его стандартная ошибка</div>
+        <texd>\text{CV}_k = \frac1k\sum_j \text{AUC}_j \qquad \operatorname{SE} \approx \frac{s}{\sqrt k}</texd>
+        <div class="fr-w">где <tex>\text{AUC}_j</tex> — качество на фолде <tex>j</tex>: 0.81, 0.78, 0.84, 0.80, 0.77; <tex>k = 5</tex>; <tex>s</tex> — их стандартное отклонение (делим на <tex>k - 1</tex>).</div></div>
+      <texd>\text{CV}_5 = \frac{0.81 + 0.78 + 0.84 + 0.80 + 0.77}{5} = \frac{4.00}{5} = 0.800</texd>
+      <texd>s = \sqrt{\frac{0.01^2 + 0.02^2 + 0.04^2 + 0^2 + 0.03^2}{4}} = \sqrt{\frac{0.0030}{4}} = 0.0274 \qquad \operatorname{SE} \approx \frac{0.0274}{\sqrt5} = 0.012</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">CV = <b>0.800</b>, разброс фолдов 0.027, стандартная ошибка не меньше 0.012. Разница 0.005 — меньше половины стандартной ошибки: по этой кросс-валидации версии <b>не различить</b>. Надёжнее сравнивать модели на одних и тех же фолдах попарно (разница по каждому фолду) и повторять CV с разными разбиениями. Сообщать стоит среднее вместе с разбросом, а не одно число.</div></div>
+  </div>
+
+  <p>Как делить на фолды, определяется тем, как модель будет применяться. Объекты в проверке должны относиться к обучению так же, как будущие объекты — к данным, на которых учили. Для классификации с редким классом фолды делают <b>стратифицированными</b> — с той же долей классов в каждом. Если у одного клиента много строк, все его строки должны попасть в один фолд — <b>групповое</b> разбиение (<a href="block1_15_validation_schemes.html#s3">1.15, секция 3</a>). Для прогноза будущего обучаются на прошлом и проверяют на более позднем периоде — <b>временное</b> разбиение (<a href="block1_15_validation_schemes.html#s4">1.15, секция 4</a>). Если по CV ещё и подбирают гиперпараметры, итоговую оценку даёт <b>вложенная</b> кросс-валидация: внутренний цикл выбирает, внешний оценивает (<a href="block1_15_validation_schemes.html#s9">1.15, секция 9</a>).</p>
+
+  <p><b>В коде.</b> <code>KFold(n_splits=5)</code> в sklearn по умолчанию <b>не перемешивает</b> строки: первый фолд — первые 20% строк по порядку, второй — следующие. Если данные отсортированы (по дате, по классу, по сумме), фолды получаются непохожими. <code>cross_val_score(model, X, y, cv=5)</code> для классификатора сам берёт <code>StratifiedKFold</code> (без перемешивания), для регрессии — обычный <code>KFold</code>. Оценка по умолчанию — метод <code>model.score</code>: доля верных ответов для классификатора и <tex>R^2</tex> (доля объяснённой дисперсии) для регрессии; у модели-константы <tex>R^2</tex> на фолде обычно отрицателен. Ошибки sklearn возвращает со знаком минус: <code>scoring='neg_mean_squared_error'</code> даёт −6.45 для трассировки выше, потому что все оценки устроены по правилу «больше — лучше». <code>DummyRegressor()</code> — та самая модель-среднее, удобный нижний ориентир.</p>
+
+  <p class="next">Кросс-валидация даёт одно число для одной модели. Чтобы понять, в какую сторону модель менять, нужны зависимости: как ошибка меняется со сложностью модели и с объёмом данных.</p>
+</section>
+
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Кривые сложности и кривые обучения</h2></div>
+  <p class="slead">Кривая сложности — ошибка в зависимости от гиперпараметра при фиксированных данных: по ней выбирают сложность. Кривая обучения — ошибка в зависимости от объёма данных при фиксированной модели: по ней решают, поможет ли собрать больше данных.</p>
+
+  <p><b>Кривая сложности</b> (validation curve) у нас уже была — для полиномов (секция 4). Ошибка на обучении падает с ростом сложности, ошибка на валидации образует букву U: слева недообучение, справа переобучение, на дне — лучшая сложность. Сложность не обязательно растёт вместе с гиперпараметром. У метода ближайших соседей (kNN) прогноз — среднее ответов <tex>k</tex> ближайших объектов обучения, и чем больше <tex>k</tex>, тем модель <b>проще</b>: при <tex>k = 1</tex> она запоминает выборку, а при <tex>k = n</tex> выдаёт одно общее среднее.</p>
+
+  <div class="chb">
+    <div class="cht">Кривая сложности kNN: число соседей k</div>
+    <div class="chsub">50 точек сезонности, средние по 300 выборкам. При k = 1 ошибка на обучении 0 (каждая точка — сама себе ближайший сосед), а истинный риск 0.507 — около 2σ² = 0.5. Лучше всего k = 7 (0.305). При k = 50 модель — общая константа (0.766). Сложность падает слева направо.</div>
+    <canvas id="c_knn"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · k соседей и k фолдов</div>
+    <p>В kNN <tex>k</tex> — <b>число соседей</b>, гиперпараметр модели: от него зависит её сложность. В кросс-валидации <tex>k</tex> — <b>число фолдов</b>, параметр процедуры оценки: от него зависит, на какой доле данных обучаются модели при проверке, а не сама модель. Пример: «5-фолдовая CV для 7NN» — модель с 7 соседями, оценённая на пяти разбиениях. А <tex>M</tex> в секции 8 — число сравниваемых настроек.</p>
+  </div>
+
+  <p><b>Кривая обучения</b> (learning curve) отвечает на другой вопрос: что будет, если данных станет больше. Модель фиксирована, по горизонтали — размер обучающей выборки, по вертикали — ошибка на обучении и на новых данных. С ростом <tex>n</tex> ошибка на обучении растёт (запомнить больше точек труднее), ошибка на новых данных падает (параметры оцениваются точнее), и обе стремятся к одному пределу — шуму плюс смещению² модели. Для линейной регрессии с правильной формой зависимости есть точные формулы.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 18 · кривая обучения линейной регрессии</div>
+    <texd>\E\hat R_{\text{train}} = \sigma^2\Bigl(1 - \frac pn\Bigr) \qquad \E R(\hat h) = \sigma^2\Bigl(1 + \frac{p}{n - p - 1}\Bigr)</texd>
+    <div class="where">где <tex>\hat R_{\text{train}}</tex> — ошибка на обучении, <tex>R(\hat h)</tex> — истинный риск на новых объектах с новыми признаками; <tex>\E</tex> — среднее по выборкам; <tex>\sigma^2</tex> — дисперсия шума, <tex>p</tex> — число признаков (весов), <tex>n</tex> — объектов, <tex>n \gt p + 1</tex>. Условия: зависимость линейна, признаки — независимые нормальные величины. Обе кривые сходятся к <tex>\sigma^2</tex>; разрыв между ними при больших <tex>n</tex> примерно <tex>2\sigma^2p/n</tex>. Пример: <tex>p = 20</tex>, <tex>n = 200</tex>, <tex>\sigma^2 = 1</tex> — <tex>0.9</tex> и <tex>1.112</tex>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Кривая обучения линейной регрессии с 20 признаками</div>
+    <div class="chsub">Формула 18 при σ² = 1 (симуляция 3000 выборок совпадает с точностью до 0.005 при n ≥ 50). При n близком к числу признаков ошибка на новых данных взрывается: при n = 30 она 3.2. Дальше разрыв сужается, обе кривые идут к шуму 1.</div>
+    <canvas id="c_lc"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 13 · Стоит ли вчетверо увеличивать выборку</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Линейная модель с <tex>p = 20</tex> признаками обучена на <tex>n = 50</tex> объектах, дисперсия шума <tex>\sigma^2 = 1</tex>, форма зависимости верна. Сбор ещё 150 объектов стоит месяц работы.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Ожидаемую ошибку на обучении и на новых данных при <tex>n = 50</tex> и <tex>n = 200</tex>. Насколько уменьшится ошибка на новых данных?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Модель без смещения — подходит формула 18. Сравниваем обе кривые в двух точках.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s10">Формула 18</a> · кривая обучения</div>
+        <texd>\E\hat R_{\text{train}} = \sigma^2\Bigl(1 - \frac pn\Bigr) \qquad \E R = \sigma^2\Bigl(1 + \frac{p}{n - p - 1}\Bigr)</texd>
+        <div class="fr-w">где <tex>\sigma^2 = 1</tex> — шум, <tex>p = 20</tex> — признаков, <tex>n</tex> — 50 и 200 объектов.</div></div>
+      <texd>n = 50:\ 1 - \frac{20}{50} = 0.6 \qquad 1 + \frac{20}{50 - 20 - 1} = 1 + \frac{20}{29} = 1.690</texd>
+      <texd>n = 200:\ 1 - \frac{20}{200} = 0.9 \qquad 1 + \frac{20}{179} = 1.112 \qquad \frac{1.690 - 1.112}{1.690} = 0.34</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">При 50 объектах ошибка на новых данных <b>1.690</b> — на 69% выше шума, а разрыв с обучением 1.09. При 200 — <b>1.112</b>, на треть меньше. Модель сейчас страдает от разброса, и данные — правильное лекарство. Если бы обе кривые уже сошлись (ошибки на обучении и на новых данных почти равны), новые данные ничего бы не дали.</div></div>
+  </div>
+
+  <p>Классическая U-кривая описывает обычный режим. У очень больших моделей, например нейросетей с миллионами весов, ошибка на новых данных иногда снова падает после точки, где модель начинает запоминать выборку. Это явление называют двойным спуском. Разложение bias–variance при этом остаётся верным, меняется лишь то, как разброс зависит от размера модели и способа обучения. Для моделей этого блока U-кривая — рабочий ориентир.</p>
+
+  <p class="next">Кривые дают картину, а из картины нужно действие: поменять модель, добавить признаки или собрать данные. Сведём признаки в правила диагностики.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Недообучение против переобучения: диагностика</h2></div>
+  <p class="slead">Две цифры — ошибка на обучении и на валидации — и ориентир, ниже которого не опуститься, почти всегда говорят, чего не хватает модели. Большой разрыв — разброс, лечится данными и упрощением. Обе ошибки высоки и близки — смещение, лечится сложностью и признаками.</p>
+
+  <p>Для диагностики нужен ориентир. Ошибка 0.44 — это много или мало? Сравнивают с тремя вещами: с простейшей моделью (константа, <code>DummyRegressor</code>), с уровнем шума, если его можно оценить (повторные замеры, разметка двумя людьми), и с лучшим известным результатом на похожей задаче. Без ориентира нельзя отличить «модель смещена» от «в данных больше нечего брать».</p>
+
+  <table class="ct">
+    <tr><th>Признаки</th><th>Диагноз</th><th>Что помогает</th><th>Что не поможет</th></tr>
+    <tr><td>Ошибка на обучении высокая, на валидации близкая к ней; кривые обучения быстро сошлись и стоят</td><td>недообучение, большое смещение</td><td>более сложная модель, новые признаки, слабее регуляризация, дольше обучение</td><td>больше данных</td></tr>
+    <tr><td>Ошибка на обучении низкая, на валидации намного выше; разрыв сокращается с ростом данных</td><td>переобучение, большой разброс</td><td>больше данных, сильнее регуляризация, проще модель, меньше признаков, бэггинг, ранняя остановка</td><td>более сложная модель</td></tr>
+    <tr><td>Обе ошибки близки к уровню шума</td><td>модель у предела</td><td>только новые признаки, объясняющие шум</td><td>любая настройка модели</td></tr>
+    <tr><td>Валидация заметно лучше обучения или «слишком хороша»</td><td>ошибка в схеме проверки</td><td>искать утечку, проверить разбиение (секция 12)</td><td>радоваться</td></tr>
+  </table>
+
+  <div class="chb">
+    <div class="cht">Как выглядят две болезни на кривых обучения</div>
+    <div class="chsub">Сезонные данные, n точек равномерно по году, средние по 400 выборкам. Прямая (тёплые цвета): кривые быстро сходятся и стоят на 0.45 — далеко от шума 0.25, данные не помогают. Полином степени 9 (холодные): при 15 точках обучение 0.08, новые данные 0.74; с ростом n разрыв закрывается, к 200 точкам 0.24 и 0.26.</div>
+    <canvas id="c_diag"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 14 · Две модели, два диагноза</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Две команды моделируют сезонность. Шум известен из повторных замеров: <tex>\sigma^2 = 0.25</tex>. Модель А — прямая на 100 неделях: ошибка на обучении 0.444, на валидации 0.451. Модель Б — полином степени 9 на 15 неделях: на обучении 0.083, на валидации 0.740.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Разрыв обобщения и «запас» до шума у каждой модели. Что мешает каждой и что делать?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Разрыв (формула 7) показывает разброс. Насколько ошибка на обучении выше шума — грубая оценка смещения (формула 6 даёт предел <tex>R^* = \sigma^2</tex>).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 7</a> и <a href="#s3">формула 6</a> · разрыв и предел шума</div>
+        <texd>\text{gap} = R_{\text{val}} - \hat R_{\text{train}} \qquad \text{запас} = \hat R_{\text{train}} - \sigma^2</texd>
+        <div class="fr-w">где <tex>R_{\text{val}}</tex> — ошибка на валидации (оценка истинного риска), <tex>\hat R_{\text{train}}</tex> — на обучении; <tex>\sigma^2 = 0.25</tex> — шум. А: 0.444 и 0.451; Б: 0.083 и 0.740.</div></div>
+      <texd>\text{А: gap} = 0.451 - 0.444 = 0.007 \qquad \text{запас} = 0.444 - 0.25 = 0.194</texd>
+      <texd>\text{Б: gap} = 0.740 - 0.083 = 0.657 \qquad \text{запас} = 0.083 - 0.25 = -0.167</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Модель А <b>недообучена</b>: разрыва почти нет, а ошибка на 0.19 выше шума — это смещение. Данные не помогут (при 200 неделях 0.449), нужна модель сложнее, например кубическая. Модель Б <b>переобучена</b>: ошибка на обучении даже ниже шума — модель выучила шум. Лечится данными (на 50 неделях валидация 0.301) или более простой моделью. Ошибка на обучении ниже уровня шума — всегда признак переобучения.</div></div>
+  </div>
+
+  <p>Порядок работы на практике. Сначала простая модель и ориентир, затем кривая сложности по главному гиперпараметру. Если лучшее значение всё ещё недообучено — новые признаки и более гибкий класс моделей. Если переобучено — регуляризация и данные, а кривая обучения покажет, окупится ли сбор. И отдельно: если результат подозрительно хорош, сначала искать ошибку в постановке проверки.</p>
+
+  <p class="next">Всё сказанное про риск предполагает, что проверка устроена так же, как применение. Когда это нарушено, оценка измеряет не ту задачу — это утечка.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Утечка как нарушение постановки</h2></div>
+  <p class="slead">Истинный риск определён для объектов и признаков, какими они будут в момент применения модели. Утечка — когда при обучении или проверке модели доступна информация, которой в момент применения не будет. Оценка становится оценкой другой, более лёгкой задачи и может быть сколь угодно хорошей.</p>
+
+  <p>Формула 3 говорит: риск — средняя потеря на объектах из того распределения, где модель будет работать, с теми признаками, которые там будут известны. Отложенная выборка честна, если она воспроизводит именно это: модель не видела этих объектов и пользуется только тем, что было бы известно в момент прогноза. Утечка (leakage) нарушает одно из условий. Проверка проходит блестяще, а в работе модель резко хуже.</p>
+
+  <table class="ct">
+    <tr><th>Вид утечки</th><th>Пример</th><th>Что нарушено</th></tr>
+    <tr><td>Признак из будущего</td><td>в модели оттока признак «число обращений в поддержку за месяц после даты прогноза»</td><td>в момент прогноза признака ещё нет</td></tr>
+    <tr><td>Признак — следствие ответа</td><td>«причина закрытия договора» для прогноза закрытия</td><td>признак существует только когда ответ уже известен</td></tr>
+    <tr><td>Предобработка на всех данных</td><td>отбор признаков, нормировка, заполнение пропусков, target encoding до разбиения</td><td>проверочные объекты повлияли на модель</td></tr>
+    <tr><td>Одни и те же сущности в обучении и проверке</td><td>строки одного клиента или дубликаты по обе стороны</td><td>проверка на «почти виденных» объектах</td></tr>
+    <tr><td>Случайное разбиение во времени</td><td>прогноз спроса, где в обучении есть дни после проверочных</td><td>модель знает будущее</td></tr>
+    <tr><td>Многократный просмотр теста</td><td>выбор настроек по тесту (секция 8)</td><td>тест участвовал в выборе</td></tr>
+  </table>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · отбор признаков до кросс-валидации на чистом шуме</div>
+    <div class="tstep"><b>Шаг 1. Данные без сигнала.</b> 50 объектов, 25 класса 0 и 25 класса 1, и <tex>p = 5000</tex> признаков — чистый шум, никак не связанный с классом. Честная точность любой модели — 0.5 (угадывание).</div>
+    <div class="tstep"><b>Шаг 2. Ошибочный порядок.</b> По всем 50 объектам отбираем 20 признаков, сильнее всех связанных с классом (тест различия средних), затем 5-фолдовая кросс-валидация логистической регрессии на этих 20 признаках. Среди 5000 шумовых признаков случайно найдутся такие, что на этих 50 объектах хорошо разделяют классы, — в том числе на объектах будущих проверочных фолдов.</div>
+    <div class="tstep"><b>Шаг 3. Результат ошибочного порядка.</b> Точность кросс-валидации <span class="bad">1.00</span> на одном наборе данных и 0.96 в среднем по 30 наборам. Модель «идеальна» на данных без единой закономерности.</div>
+    <div class="tstep"><b>Шаг 4. Правильный порядок.</b> Отбор признаков — часть обучения, поэтому он делается внутри каждого фолда, только по обучающей части. Точность кросс-валидации <span class="res">0.52</span> на том же наборе и 0.53 в среднем — честные 50% плюс шум оценки.</div>
+    <div class="tstep"><b>Шаг 5. Вывод.</b> Утечка не в модели и не в данных, а в процедуре: проверочные объекты участвовали в одном из шагов обучения. Правило: <b>всё, что подбирается по данным</b> (отбор, нормировка, заполнение пропусков, кодирование категорий, балансировка классов), должно обучаться только на обучающей части каждого разбиения.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Чем больше шумовых признаков, тем «лучше» утечка</div>
+    <div class="chsub">50 объектов, классы случайны, отбор 20 признаков, среднее по 30 наборам. Отбор до кросс-валидации: точность растёт с числом признаков-кандидатов — от 0.52 при 20 до 0.96 при 5000. Отбор внутри фолдов: около 0.5 при любом числе. Чем больше кандидатов, тем больше случайных «удачных» признаков находит отбор по всем данным.</div>
+    <canvas id="c_leak"></canvas>
+  </div>
+
+  <p><b>В коде.</b> В sklearn защита от такой утечки — <code>Pipeline</code>: шаги предобработки и модель объединяют в один объект, например <code>make_pipeline(SelectKBest(f_classif, k=20), LogisticRegression())</code>, и передают его целиком в <code>cross_val_score</code> или <code>GridSearchCV</code>. Тогда на каждом фолде отбор признаков, нормировка и модель обучаются только на обучающей части. Если же сначала вызвать <code>SelectKBest(...).fit_transform(X, y)</code> на всех данных, а потом кросс-валидацию на результате, получится трассировка выше: на шуме — точность 1.0 против 0.52 у пайплайна.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 15 · Сколько добавляют дубликаты в тесте</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">В выгрузке заявок много повторных отправок одной и той же заявки. После случайного разбиения 30% объектов теста имеют точную копию в обучении. Модель — бустинг с глубокими деревьями, на виденных объектах она почти всегда угадывает (точность 1.0). Истинная точность на новых заявках 0.75.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Какую точность покажет тест? Насколько она завышена?</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Тест — смесь двух групп. Его точность — среднее точностей групп с весами-долями, как среднее по формуле полной вероятности: эмпирический риск (формула 4) на смеси.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 4</a> · средняя потеря на смешанном тесте</div>
+        <texd>\widehat{\text{acc}} = q\cdot\text{acc}_{\text{дубли}} + (1 - q)\cdot\text{acc}_{\text{новые}}</texd>
+        <div class="fr-w">где <tex>q = 0.3</tex> — доля дубликатов в тесте, <tex>\text{acc}_{\text{дубли}} = 1.0</tex> — точность на копиях обучающих объектов, <tex>\text{acc}_{\text{новые}} = 0.75</tex> — на новых.</div></div>
+      <texd>\widehat{\text{acc}} = 0.3\cdot1.0 + 0.7\cdot0.75 = 0.3 + 0.525 = 0.825 \qquad 0.825 - 0.75 = 0.075</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Тест покажет <b>0.825</b> — на 7.5 пункта выше реальной точности. Хуже того, завышение тем больше, чем сильнее модель запоминает: при сравнении моделей выиграет самая переобученная. Лечение — удалить дубликаты до разбиения или делить по группам (все копии одной заявки — в одну часть).</div></div>
+  </div>
+
+  <p>Главный вопрос против утечки задают про каждый признак и каждый шаг: <b>будет ли это известно в момент прогноза и получено тем же способом?</b> Практические приёмы: сначала разбить данные, потом всё остальное; делить по группам и по времени, если так устроено применение; насторожиться, если качество неправдоподобно высокое или один признак объясняет почти всё; проверить, не стала ли модель хуже на последних по времени данных. Подробно о видах утечек — тема 1.9.</p>
+
+  <p class="next">Инструменты темы собраны. Посмотрим, где они работают в ML, и соберём типичные ошибки.</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в ML и 15 подводных камней</h2></div>
+  <p class="slead">Постановка из этой темы — общий каркас любого проекта: выбрать потерю, класс моделей и схему проверки, которая повторяет применение. Всё остальное в курсе — способы управлять смещением и разбросом.</p>
+
+  <table class="ct">
+    <tr><th>Метод или приём</th><th>Что из темы</th><th>Тема</th></tr>
+    <tr><td>Регуляризация L1/L2, ранняя остановка</td><td>увеличивает смещение, снижает разброс; силу подбирают на валидации</td><td>0.15, 0.16</td></tr>
+    <tr><td>Решающие деревья</td><td>глубина — ёмкость; без ограничения запоминают выборку</td><td>0.19</td></tr>
+    <tr><td>Бэггинг, случайный лес</td><td>усреднение моделей снижает разброс, смещение почти не меняет</td><td>0.20</td></tr>
+    <tr><td>Градиентный бустинг</td><td>каждое дерево снижает смещение; число деревьев и шаг — по валидации</td><td>0.21, 0.22</td></tr>
+    <tr><td>kNN</td><td>число соседей — обратная мера сложности</td><td>блок 2</td></tr>
+    <tr><td>Подбор гиперпараметров</td><td>отбор по шумной оценке — завышение; вложенная CV, отдельный тест</td><td>1.15</td></tr>
+    <tr><td>Схемы валидации</td><td>проверка должна повторять применение: группы, время, стратификация</td><td>1.15</td></tr>
+    <tr><td>Утечки</td><td>признаки и шаги, недоступные при применении</td><td>1.9</td></tr>
+    <tr><td>Нейросети</td><td>огромная ёмкость, регуляризация, ранняя остановка, данные</td><td>блок 8</td></tr>
+  </table>
+
+  <p>Практический вывод. Перед обучением ответьте на три вопроса: какая потеря отражает цену ошибки, на каких объектах и с какими признаками модель будет работать, и как проверка это воспроизводит. После обучения — ещё на два: какова ошибка на обучении и на валидации (диагноз по секции 11) и сколько раз смотрели на тест.</p>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Оценка на обучающей выборке</b><span>Ошибка на обучении занижена всегда, а у гибких моделей — до нуля (секция 4). Дерево без ограничения глубины даёт <tex>R^2 = 1</tex> на обучении даже на шуме. Качество модели — только на данных, которых она не видела.</span></div></div>
+
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Многократный просмотр теста</b><span>Выбрали лучшую из 100 настроек по тесту — оценка завышена на 2.5 стандартные ошибки (секция 8), хотя каждая проверка честная. Тест смотрят один раз; выбор — по валидации или CV.</span></div></div>
+
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Bias–variance только для квадратичной потери</b><span>Сумма «смещение² + разброс + шум» точна для MSE. Для доли ошибок разброс может и помогать, и вредить, и простого сложения нет. Идея обмена смещения на разброс остаётся, формула — нет.</span></div></div>
+
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>«Больше данных лечит всё»</b><span>Данные снижают разброс, но не смещение (секция 5): прямая на 200 неделях ошибается так же, как на 100 (задача 14). Если кривые обучения сошлись — нужны модель или признаки, а не данные.</span></div></div>
+
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Число параметров = сложность</b><span>Регуляризованная модель с миллионом весов может быть проще полинома степени 9, а у kNN параметров нет вовсе. Сложность — способность подогнать данные, её регулируют гиперпараметры, а меряют по кривым.</span></div></div>
+
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Ошибка ниже шума считается успехом</b><span>Если ошибка на обучении ниже уровня шума <tex>\sigma^2</tex> (дисперсия случайной части ответа), модель выучила шум (задача 14). Это сигнал переобучения, а не достижение.</span></div></div>
+
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Предобработка до разбиения</b><span>Отбор признаков, нормировка, заполнение пропусков, target encoding, балансировка на всех данных — утечка (секция 12). На шуме отбор до CV даёт точность 0.96 вместо 0.5. Всё, что подбирается по данным, — внутри <code>Pipeline</code>.</span></div></div>
+
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Случайное разбиение для задачи во времени</b><span>Перемешанные фолды пускают будущее в обучение, и модель спроса «знает» завтрашний день. Для прогнозов — обучение на прошлом, проверка на более позднем периоде.</span></div></div>
+
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Одна сущность по обе стороны разбиения</b><span>Строки одного клиента, дубли заявок, кадры одного видео в обучении и проверке завышают качество (задача 15: 0.825 против 0.75). Делить по группам.</span></div></div>
+
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Сравнение моделей по одному разбиению</b><span>Оценка по одной отложенной части шумит вдвое сильнее 5-фолдовой CV (секция 9). Разница 0.005 при разбросе фолдов 0.027 — не разница. Сравнивать на одних фолдах, попарно, с повторами.</span></div></div>
+
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>KFold без перемешивания на упорядоченных данных</b><span><code>KFold(n_splits=5)</code> берёт строки подряд. Если таблица отсортирована по дате или классу, фолды непохожи друг на друга, и оценка искажена. Перемешать (<code>shuffle=True</code>) или выбрать схему осознанно.</span></div></div>
+
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>best_score_ как итоговое качество</b><span>У <code>GridSearchCV</code> это CV-оценка лучшей из перебранных настроек — оптимистичная после отбора. Итог — на отложенном тесте или вложенной CV.</span></div></div>
+
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Размер теста «20% от данных»</b><span>Точность оценки зависит от числа объектов в тесте, а не от доли. Для погрешности ±1 пункт при точности 0.8 нужно около 6400 объектов (задача 11); 500 дают ±3.6 пункта.</span></div></div>
+
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Ошибку фолдов считают независимой</b><span>Стандартная ошибка CV по формуле <tex>s/\sqrt k</tex> (разброс фолдов, делённый на корень из их числа) занижена: обучающие части фолдов пересекаются. Это нижняя граница неуверенности, а не точное значение.</span></div></div>
+
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Тест не похож на применение</b><span>Риск определён для распределения данных, на которых модель будет работать. Если в работе другие клиенты, другой сезон или изменился процесс сбора, никакая CV на старых данных этого не покажет. Нужен тест из того, на чём модель будет работать, и мониторинг после запуска.</span></div></div>
+
+  <p class="next">Дальше — все формулы темы на одном экране и пять задач, которые спрашивают на собеседованиях.</p>
+</section>
+
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Сначала все формулы темы на одном экране. Затем пять задач с собеседований аналитиков и ML-инженеров. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Модель и потеря</b><br><tex>\hat y = h(x;\ \mathbf{w}),\quad L(y,\ \hat y) \ge 0</tex><div class="cs-w"><tex>\mathbf{w}</tex> — веса модели, <tex>L</tex> — штраф за прогноз <tex>\hat y</tex> при факте <tex>y</tex></div></td><td>постановка любой задачи с учителем</td></tr>
+    <tr><td><a href="#s2">2</a></td><td><b>Основные потери</b><br><tex>(y - \hat y)^2,\ |y - \hat y|,\ -y\ln\hat p - (1-y)\ln(1-\hat p),\ \mathbb{1}[y \ne \hat y]</tex><div class="cs-w">квадратичная, абсолютная, log-loss (<tex>\hat p</tex> — вероятность класса 1), 0–1</div></td><td>выбор цены ошибки</td></tr>
+    <tr><td><a href="#s3">3</a></td><td><b>Истинный риск</b><br><tex>R(h) = \E_{(X,Y)\sim\mathcal{D}}L\bigl(Y,\ h(X)\bigr)</tex><div class="cs-w"><tex>\mathcal{D}</tex> — распределение будущих объектов; число, его не знаем</div></td><td>что на самом деле минимизируем</td></tr>
+    <tr><td><a href="#s3">4</a></td><td><b>Эмпирический риск и его минимизация</b><br><tex>\hat R_n(h) = \frac1n\sum_i L\bigl(y_i,\ h(x_i)\bigr),\quad \hat h = \arg\min_{h\in\mathcal{H}}\hat R_n(h)</tex><div class="cs-w"><tex>\mathcal{H}</tex> — класс моделей, <tex>\hat h</tex> — обученная модель</div></td><td>как устроено обучение</td></tr>
+    <tr><td><a href="#s3">5</a></td><td><b>Точность эмпирического риска</b><br><tex>\E\hat R_n(h) = R(h),\quad \operatorname{SE} = s_L/\sqrt n</tex><div class="cs-w">только для модели, не видевшей этих объектов; <tex>s_L</tex> — разброс потерь</div></td><td>насколько верить оценке на отложенных данных</td></tr>
+    <tr><td><a href="#s3">6</a></td><td><b>Лучшая возможная модель и шум</b><br><tex>h^*(x) = \E[Y \mid X = x],\quad R^* = \sigma^2</tex><div class="cs-w">для квадратичной потери; <tex>\sigma^2</tex> — дисперсия шума при данных признаках</div></td><td>предел, ниже которого не опуститься</td></tr>
+    <tr><td><a href="#s4">7</a></td><td><b>Разрыв обобщения</b><br><tex>\text{gap} = R(\hat h) - \hat R_{\text{train}}(\hat h)</tex><div class="cs-w">разница ошибки на новых данных и на обучении</div></td><td>диагностика переобучения</td></tr>
+    <tr><td><a href="#s4">8</a></td><td><b>Оптимизм ошибки на обучении</b><br><tex>\E\hat R_{\text{train}} = \sigma^2(1 - p/n),\quad \E\hat R_{\text{new}} = \sigma^2(1 + p/n)</tex><div class="cs-w">линейная модель без смещения, <tex>p</tex> — параметров, <tex>n</tex> — объектов; новые ответы в тех же <tex>x</tex></div></td><td>насколько обманывает обучение</td></tr>
+    <tr><td><a href="#s5">9</a></td><td><b>Ёмкость: сколько точек запомнит класс</b><br><tex>\text{полином степени } d:\ d + 1;\quad \text{дерево глубины } d:\ 2^d</tex><div class="cs-w">столько объектов класс подгонит при любых ответах</div></td><td>может ли модель выучить шум</td></tr>
+    <tr><td><a href="#s5">10</a></td><td><b>Аппроксимация и оценивание</b><br><tex>R(\hat h) - R^* = \bigl(R(h_{\mathcal H}) - R^*\bigr) + \bigl(R(\hat h) - R(h_{\mathcal H})\bigr)</tex><div class="cs-w"><tex>h_{\mathcal H}</tex> — лучшая модель класса; первое падает с ёмкостью, второе — с ростом <tex>n</tex></div></td><td>чего не хватает: класса или данных</td></tr>
+    <tr><td><a href="#s6">11</a></td><td><b>Разложение bias–variance в точке</b><br><tex>\E\bigl(Y - \hat h(x)\bigr)^2 = \bigl(f(x) - \bar h(x)\bigr)^2 + \Var\hat h(x) + \sigma^2</tex><div class="cs-w"><tex>\bar h</tex> — средний по выборкам прогноз; только квадратичная потеря</div></td><td>почему компромисс сложности</td></tr>
+    <tr><td><a href="#s6">12</a></td><td><b>Сжатие среднего</b><br><tex>\operatorname{bias}^2 + \Var = (1-\alpha)^2\mu^2 + \alpha^2\sigma^2/n,\quad \alpha^* = \frac{\mu^2}{\mu^2 + \sigma^2/n}</tex><div class="cs-w"><tex>\alpha</tex> — множитель сжатия, <tex>\mu</tex> — истинное среднее</div></td><td>смысл регуляризации</td></tr>
+    <tr><td><a href="#s7">13</a></td><td><b>Разложение, усреднённое по объектам</b><br><tex>\E R(\hat h) = \E_X\operatorname{bias}^2(X) + \E_X\Var\hat h(X) + \sigma^2</tex><div class="cs-w"><tex>\E_X</tex> — среднее по будущим объектам</div></td><td>ожидаемый риск процедуры обучения</td></tr>
+    <tr><td><a href="#s7">14</a></td><td><b>Разброс линейной модели в точках выборки</b><br><tex>\frac1n\sum_i\Var\hat h(x_i) = \sigma^2p/n</tex><div class="cs-w">вдали от точек выборки разброс больше</div></td><td>сколько данных на параметр</td></tr>
+    <tr><td><a href="#s8">15</a></td><td><b>Шум оценки точности и завышение лучшей из M</b><br><tex>\operatorname{SE} = \sqrt{\text{acc}(1-\text{acc})/m},\quad \E\max \approx \text{acc} + c_M\operatorname{SE}</tex><div class="cs-w"><tex>m</tex> — размер проверки, <tex>M</tex> — число сравнений; <tex>c_{10} = 1.54</tex>, <tex>c_{100} = 2.51</tex></div></td><td>размер теста, цена перебора</td></tr>
+    <tr><td><a href="#s9">16</a></td><td><b>k-фолдовая кросс-валидация</b><br><tex>\text{CV}_k = \frac1k\sum_j\hat R_{(j)}\bigl(\hat h_{-j}\bigr)</tex><div class="cs-w"><tex>\hat h_{-j}</tex> — модель без фолда <tex>j</tex>, <tex>\hat R_{(j)}</tex> — её ошибка на нём</div></td><td>оценка риска на малых данных</td></tr>
+    <tr><td><a href="#s9">17</a></td><td><b>Leave-one-out для среднего</b><br><tex>\text{LOO} = \Bigl(\frac{n}{n-1}\Bigr)^2\frac1n\sum_i(y_i - \bar y)^2</tex><div class="cs-w"><tex>\bar y</tex> — среднее всех ответов</div></td><td>проверка расчёта CV, оптимизм обучения</td></tr>
+    <tr><td><a href="#s10">18</a></td><td><b>Кривая обучения линейной регрессии</b><br><tex>\E\hat R_{\text{train}} = \sigma^2(1 - p/n),\quad \E R = \sigma^2\Bigl(1 + \frac{p}{n - p - 1}\Bigr)</tex><div class="cs-w">нормальные признаки, верная форма зависимости; обе кривые идут к <tex>\sigma^2</tex></div></td><td>окупится ли сбор данных</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте: у каждой формулы там есть смысл и численный пример.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Выведите разложение bias–variance</div>
+    <div class="task-q">Ответ <tex>Y = f(x) + \varepsilon</tex>, шум <tex>\varepsilon</tex> со средним 0 и дисперсией <tex>\sigma^2</tex> не зависит от обучающей выборки. Модель <tex>\hat h</tex> обучена на случайной выборке. Выведите, что ожидаемая квадратичная ошибка в точке <tex>x</tex> равна смещению² плюс разброс плюс шум. Где в выводе используется независимость?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p>Обозначим <tex>\bar h = \E\hat h(x)</tex> — средний прогноз по выборкам. Разобьём ошибку: <tex>Y - \hat h = \varepsilon + (f - \bar h) + (\bar h - \hat h)</tex>. Квадрат даёт три квадрата и три удвоенных произведения. Средние квадратов: <tex>\E\varepsilon^2 = \sigma^2</tex>, <tex>(f - \bar h)^2</tex> — число, <tex>\E(\bar h - \hat h)^2 = \Var\hat h</tex>.</p>
+      <texd>\E\bigl[2\varepsilon(f - \bar h)\bigr] = 2(f - \bar h)\E\varepsilon = 0 \qquad \E\bigl[2\varepsilon(\bar h - \hat h)\bigr] = 2\,\E\varepsilon\cdot\E(\bar h - \hat h) = 0 \qquad \E\bigl[2(f - \bar h)(\bar h - \hat h)\bigr] = 0</texd>
+      <p>Независимость нужна во втором произведении: среднее произведения шума нового объекта и отклонения модели распадается на произведение средних только потому, что новый шум не связан с выборкой. Третье произведение исчезает, потому что <tex>\E(\bar h - \hat h) = 0</tex>. Итог: <tex>\E(Y - \hat h)^2 = (f - \bar h)^2 + \Var\hat h + \sigma^2</tex>. Если бы проверочный объект был в обучающей выборке, шум и модель были бы связаны — отсюда оптимизм ошибки на обучении.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · 99% на обучении, 70% на тесте</div>
+    <div class="task-q">Градиентный бустинг для классификации заявок: точность на обучении 0.99, на тесте 0.70, доля большего класса 0.6. Что происходит и какие три шага вы сделаете первыми?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p>Разрыв 0.29 — модель сильно переобучена: она запомнила обучающую выборку. При этом 0.70 выше простейшего ориентира 0.6 (всегда большой класс), так что сигнал есть. Шаги: (1) проверить схему — нет ли разницы распределений обучения и теста, дублей, групп по обе стороны, это частая причина «переобучения»; (2) построить кривую сложности по главным гиперпараметрам — глубина деревьев, число деревьев с ранней остановкой, минимум объектов в листе — на кросс-валидации; (3) построить кривую обучения: если разрыв сокращается с ростом данных, данные окупятся. Чего не делать: добавлять сложность и выбирать настройки по тому же тесту — он уже использован для диагноза, для итоговой оценки нужна новая отложенная часть или честная оговорка.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Подобрать гиперпараметры и честно оценить модель</div>
+    <div class="task-q">Есть 2000 размеченных объектов. Нужно выбрать силу регуляризации из 30 значений и сообщить заказчику ожидаемое качество. Опишите схему. Почему нельзя сообщить лучшую оценку кросс-валидации?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p>Лучшая из 30 оценок CV — максимум 30 шумных чисел, она завышена (при одинаковых настройках — примерно на <tex>c_{30} \approx 2</tex> стандартные ошибки). Два честных варианта. (а) Отложить тест, например 400 объектов, не глядя на него; на 1600 сделать 5-фолдовую CV по 30 значениям, выбрать лучшее, переобучить на всех 1600 и один раз измерить на тесте. (б) Вложенная кросс-валидация: внешние 5 фолдов дают оценку, внутри каждого внешнего обучающего куска своя CV выбирает силу регуляризации. Внешнее среднее оценивает всю процедуру «подбор + обучение». Финальную модель затем подбирают обычной CV на всех 2000. Вариант (б) использует данные полнее, (а) проще объяснить. Деление — по группам или по времени, если так устроено применение.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 4 · Leave-one-out для модели-среднего</div>
+    <div class="task-q">Модель прогнозирует среднее обучающих ответов. Докажите, что ошибка leave-one-out на объекте <tex>i</tex> равна <tex>\frac{n}{n-1}(y_i - \bar y)</tex>, где <tex>\bar y</tex> — среднее всех <tex>n</tex> ответов. Сравните LOO и ошибку на обучении для <tex>y = 3, 5, 4, 8, 6, 2, 7, 5, 9, 1</tex>.</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <texd>\bar y_{-i} = \frac{n\bar y - y_i}{n - 1} \qquad y_i - \bar y_{-i} = \frac{(n - 1)y_i - n\bar y + y_i}{n - 1} = \frac{n(y_i - \bar y)}{n - 1}</texd>
+      <p>Каждая ошибка LOO больше остатка на обучении в <tex>n/(n-1)</tex> раз, средний квадрат — в <tex>(n/(n-1))^2</tex>. Для данных: <tex>\bar y = 5</tex>, ошибка на обучении <tex>60/10 = 6</tex>, LOO <tex>= (10/9)^2\cdot6 = 1.2346\cdot6 = 7.407</tex>. Прямая проверка для первого объекта: среднее остальных <tex>(50 - 3)/9 = 5.222</tex>, ошибка <tex>3 - 5.222 = -2.222 = \frac{10}{9}\cdot(-2)</tex>. Вывод: даже у модели с одним параметром ошибка на обучении оптимистична, и поправка тем больше, чем меньше <tex>n</tex>.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 5 · Ближайший сосед: ноль на обучении, 2σ² на новых</div>
+    <div class="task-q">Регрессия методом одного ближайшего соседа (1NN), ответ <tex>Y = f(x) + \varepsilon</tex> с шумом дисперсии <tex>\sigma^2</tex>, данных очень много и они плотно покрывают область. Чему равна ошибка на обучении и примерно чему — средний квадрат ошибки на новых объектах? Сравните с лучшей возможной моделью.</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p>На обучении ближайший сосед объекта — он сам, ошибка 0. Для нового объекта <tex>x</tex> прогноз — ответ соседа <tex>x'</tex>: <tex>f(x') + \varepsilon'</tex>. При плотных данных <tex>f(x') \approx f(x)</tex>, и ошибка <tex>Y - \hat y \approx \varepsilon - \varepsilon'</tex> — разность двух независимых шумов.</p>
+      <texd>\E(\varepsilon - \varepsilon')^2 = \Var\varepsilon + \Var\varepsilon' = \sigma^2 + \sigma^2 = 2\sigma^2</texd>
+      <p>Риск 1NN вдвое выше лучшего возможного <tex>R^* = \sigma^2</tex>: модель переносит в прогноз весь шум соседа. В симуляции на 50 точках сезонности (<tex>\sigma^2 = 0.25</tex>) риск 1NN 0.507 против предела 0.25. Усреднение по <tex>k</tex> соседям делит разброс шума соседей на <tex>k</tex> ценой небольшого смещения — отсюда минимум кривой сложности при <tex>k = 7</tex>.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Что такое функция потерь?</summary><div class="qa-a">Штраф за прогноз на одном объекте: насколько плох прогноз <tex>\hat y</tex>, если на самом деле <tex>y</tex>. Её выбирают под цену ошибки в задаче, и она задаёт, какую модель считать лучшей.</div></details>
+
+  <details class="qa"><summary>2. Чем функция потерь отличается от метрики качества?</summary><div class="qa-a">Потерю минимизирует обучение, поэтому она должна быть удобной для оптимизации, например log-loss. Метрикой качество измеряют и сообщают — например, долю верных ответов. Они могут не совпадать.</div></details>
+
+  <details class="qa"><summary>3. Что такое истинный риск модели?</summary><div class="qa-a">Средняя потеря модели на всех будущих объектах из того распределения, где она будет работать. Это то, что на самом деле хотят минимизировать, но посчитать его нельзя: распределение неизвестно.</div></details>
+
+  <details class="qa"><summary>4. Что такое эмпирический риск?</summary><div class="qa-a">Средняя потеря модели на объектах выборки. Это оценка истинного риска: для модели, не видевшей этих объектов, несмещённая, с разбросом порядка разброса потерь, делённого на корень из числа объектов.</div></details>
+
+  <details class="qa"><summary>5. Что такое минимизация эмпирического риска?</summary><div class="qa-a">Принцип обучения: из заданного класса моделей выбрать ту, у которой средняя потеря на обучающей выборке наименьшая. Так устроены линейная и логистическая регрессия, бустинг и обучение нейросетей.</div></details>
+
+  <details class="qa"><summary>6. Почему ошибка на обучении занижает ошибку на новых данных?</summary><div class="qa-a">Модель подбирали так, чтобы она хорошо описала именно эти объекты вместе с их случайным шумом. На новых объектах шум другой, и подстройка под старый не работает. У линейной модели занижение в среднем <tex>2\sigma^2p/n</tex>.</div></details>
+
+  <details class="qa"><summary>7. Какой прогноз лучший возможный для квадратичной потери?</summary><div class="qa-a">Условное среднее ответа при данных признаках, <tex>\E[Y \mid X = x]</tex>. Его риск равен средней дисперсии ответа при фиксированных признаках — шуму, который признаки не объясняют.</div></details>
+
+  <details class="qa"><summary>8. Может ли модель на новых данных ошибаться меньше уровня шума?</summary><div class="qa-a">Нет: шум — часть ответа, которую признаки не объясняют, и его не предскажет никакая модель на этих признаках. Снизить предел можно только новыми признаками, объясняющими часть шума.</div></details>
+
+  <details class="qa"><summary>9. Что такое разрыв обобщения?</summary><div class="qa-a">Разница между ошибкой модели на новых данных и на обучающей выборке. Большой разрыв означает, что модель подстроилась под особенности выборки, которые на новые данные не переносятся.</div></details>
+
+  <details class="qa"><summary>10. Что такое переобучение?</summary><div class="qa-a">Модель хорошо описывает обучающую выборку, но заметно хуже новые данные, и более простая модель на новых данных была бы лучше. Обычно это следствие большой ёмкости при малом числе объектов.</div></details>
+
+  <details class="qa"><summary>11. Что такое недообучение?</summary><div class="qa-a">Модель слишком проста для закономерности и ошибается много и на обучении, и на новых данных, причём ошибки близки. Помогают более гибкая модель и новые признаки, а не новые данные.</div></details>
+
+  <details class="qa"><summary>12. Что такое ёмкость класса моделей?</summary><div class="qa-a">Насколько разнообразные зависимости класс способен описать. Удобная проверка — может ли класс подогнать произвольные ответы, даже шум. Её регулируют степенью, глубиной, силой регуляризации, числом соседей.</div></details>
+
+  <details class="qa"><summary>13. Почему нулевая ошибка на обучении ничего не говорит о качестве?</summary><div class="qa-a">Модели большой ёмкости — глубокое дерево, полином высокой степени, один ближайший сосед — получают ноль на обучении при любых ответах, даже случайных. Качество видно только на невиденных данных.</div></details>
+
+  <details class="qa"><summary>14. Из каких частей складывается ожидаемая квадратичная ошибка модели?</summary><div class="qa-a">Из квадрата смещения, разброса и шума. Смещение — систематическое отклонение среднего прогноза от истины, разброс — колебания прогноза между выборками, шум — непредсказуемая часть ответа.</div></details>
+
+  <details class="qa"><summary>15. Что такое смещение (bias) модели?</summary><div class="qa-a">Отклонение среднего прогноза по всем возможным обучающим выборкам от истинного среднего ответа. Это ошибка самого класса моделей: при той же модели её не убирают никакие данные.</div></details>
+
+  <details class="qa"><summary>16. Что такое разброс (variance) модели?</summary><div class="qa-a">Дисперсия прогноза в точке по разным обучающим выборкам: насколько модель меняется, если данные заменить на другие из того же источника. Растёт с ёмкостью модели и падает с ростом выборки.</div></details>
+
+  <details class="qa"><summary>17. В чём состоит компромисс смещения и разброса?</summary><div class="qa-a">Усложнение модели обычно снижает смещение и увеличивает разброс, упрощение — наоборот. Ошибка на новых данных минимальна при промежуточной сложности, и это место зависит от объёма данных.</div></details>
+
+  <details class="qa"><summary>18. Как регуляризация влияет на смещение и разброс?</summary><div class="qa-a">Она притягивает веса к нулю: смещение растёт, разброс падает. Пока падение разброса больше роста смещения², ошибка на новых данных уменьшается. Силу регуляризации подбирают на отложенных данных.</div></details>
+
+  <details class="qa"><summary>19. Работает ли разложение bias–variance для доли ошибок?</summary><div class="qa-a">Точное разложение «смещение² + разброс + шум» верно только для квадратичной потери. Для 0–1 потери простого сложения нет: разброс может как вредить, так и помогать. Идея компромисса остаётся.</div></details>
+
+  <details class="qa"><summary>20. Зачем нужна тестовая выборка, если есть валидационная?</summary><div class="qa-a">По валидационной выбирают модель и гиперпараметры, и её оценка после выбора завышена. Тест в выборе не участвует, и одно измерение на нём даёт честную оценку итоговой модели.</div></details>
+
+  <details class="qa"><summary>21. Почему качество лучшей из многих моделей на одной выборке завышено?</summary><div class="qa-a">Каждая оценка содержит случайную ошибку, а лучшая — та, которой больше всех повезло. Максимум многих шумных чисел выше их среднего, даже если все модели одинаковы. Чем больше сравнений, тем сильнее завышение.</div></details>
+
+  <details class="qa"><summary>22. Что такое k-фолдовая кросс-валидация?</summary><div class="qa-a">Данные делят на <tex>k</tex> частей, <tex>k</tex> раз обучают модель на всех частях, кроме одной, и проверяют на оставшейся. Среднее ошибок — оценка риска; каждый объект ровно один раз побывал в проверке.</div></details>
+
+  <details class="qa"><summary>23. Что именно оценивает кросс-валидация?</summary><div class="qa-a">Ошибку процедуры обучения на доле <tex>(k-1)/k</tex> данных, а не одной конкретной модели. Поэтому оценка чуть пессимистична для модели на всех данных, а её неуверенность больше, чем следует из разброса фолдов.</div></details>
+
+  <details class="qa"><summary>24. Почему отбор признаков нужно делать внутри кросс-валидации?</summary><div class="qa-a">Иначе проверочные объекты участвуют в обучении: признаки выбраны в том числе по ним. Среди тысяч шумовых признаков найдутся случайно удачные, и на данных без сигнала CV покажет почти идеальную точность.</div></details>
+
+  <details class="qa"><summary>25. Что такое вложенная кросс-валидация?</summary><div class="qa-a">Две кросс-валидации одна в другой: внутренняя подбирает гиперпараметры на обучающей части, внешняя оценивает всю процедуру «подбор + обучение» на невиденных фолдах. Так получают честную оценку после перебора.</div></details>
+
+  <details class="qa"><summary>26. Что показывает кривая обучения?</summary><div class="qa-a">Как ошибки на обучении и на проверке меняются с ростом объёма данных при фиксированной модели. Если разрыв ещё большой и сокращается, данные помогут; если кривые сошлись высоко, нужна модель сложнее.</div></details>
+
+  <details class="qa"><summary>27. Что показывает кривая сложности?</summary><div class="qa-a">Как ошибки на обучении и на валидации меняются с гиперпараметром сложности при фиксированных данных. Ошибка на валидации обычно имеет форму буквы U, и её дно — выбранная сложность.</div></details>
+
+  <details class="qa"><summary>28. Как отличить недообучение от переобучения?</summary><div class="qa-a">Сравнить ошибки на обучении и валидации с ориентиром. Обе высокие и близкие — недообучение. Обучение низкое, валидация намного выше — переобучение. Ошибка на обучении ниже уровня шума — точно переобучение.</div></details>
+
+  <details class="qa"><summary>29. Поможет ли больше данных недообученной модели?</summary><div class="qa-a">Почти нет. Данные снижают разброс, а недообученной модели мешает смещение: класс не способен описать закономерность. Её ошибка с ростом выборки быстро выходит на плато выше уровня шума.</div></details>
+
+  <details class="qa"><summary>30. Что такое утечка данных?</summary><div class="qa-a">Ситуация, когда при обучении или проверке модели доступна информация, которой не будет в момент применения: признак из будущего, предобработка на всех данных, одни и те же объекты по обе стороны разбиения.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — матожидание и условное среднее из 0.1, стандартная ошибка и смещение оценки из 0.4, правдоподобие и AIC из 0.5, множественные проверки из 0.6. Дальше: линейная регрессия — 0.12, логистическая — 0.13, регуляризация как управление смещением и разбросом — 0.15, деревья, лес и бустинг — 0.19–0.22, утечки — <a href="block1_09_leakage.html">1.9</a>, схемы валидации — <a href="block1_15_validation_schemes.html">1.15</a>. Полный план блока — <a href="block0_plan.html">здесь</a>.
+</div>
+
+<div class="pnav">
+  <a href="block0_10_convexity.html">← 0.10 · Выпуклость</a>
+  <a class="next" href="block0_plan.html">План блока 0 →</a>
+</div>
+
+</div>
+
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#e879f9', AC2='#34d399', YL='#facc15', RD='#f87171', SK='#38bdf8', GY='#64748b', VI='#a78bfa', OR='#fb923c';
+function grid(a,b,k){ var r=[]; for(var i=0;i<=k;i++) r.push(a+(b-a)*i/k); return r; }
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||6}; }
+function fn(f,a,b,k,label,color,w,dash){ return seg(grid(a,b,k||200).map(function(x){ return [x,f(x)]; }),label,color,w,dash); }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:LEG}; }
+var SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+function pow10(v){ var l=Math.log10(v); if(Math.abs(l-Math.round(l))>1e-9) return ''; var n=Math.round(l); if(n===0) return '1'; return '10'+String(n).split('').map(function(c){ return SUP[c]; }).join(''); }
+function logAxis(min,max,title){ return Object.assign({type:'logarithmic',min:min,max:max,title:{display:true,text:title},ticks:{callback:function(v){ return pow10(v); }}},GRID); }
+
+/* истинная сезонность и МНК-полином в базисе Лежандра на [0, 1] (как в расчётах темы) */
+function F(x){ return Math.sin(2*Math.PI*x); }
+function legv(x,d){ var t=2*x-1, P=[1]; if(d>=1) P.push(t); for(var k=1;k<d;k++) P.push(((2*k+1)*t*P[k]-k*P[k-1])/(k+1)); return P; }
+function polyfit(xs,ys,d){
+  var m=d+1, A=[], b=[], i, j, k;
+  for(i=0;i<m;i++){ A.push(new Array(m).fill(0)); b.push(0); }
+  for(k=0;k<xs.length;k++){ var v=legv(xs[k],d); for(i=0;i<m;i++){ b[i]+=v[i]*ys[k]; for(j=0;j<m;j++) A[i][j]+=v[i]*v[j]; } }
+  for(i=0;i<m;i++){ var p=i; for(j=i+1;j<m;j++) if(Math.abs(A[j][i])>Math.abs(A[p][i])) p=j;
+    var tA=A[i]; A[i]=A[p]; A[p]=tA; var tb=b[i]; b[i]=b[p]; b[p]=tb;
+    for(j=i+1;j<m;j++){ var c=A[j][i]/A[i][i]; for(k=i;k<m;k++) A[j][k]-=c*A[i][k]; b[j]-=c*b[i]; } }
+  var w=new Array(m).fill(0); for(i=m-1;i>=0;i--){ var s=b[i]; for(j=i+1;j<m;j++) s-=A[i][j]*w[j]; w[i]=s/A[i][i]; }
+  return function(x){ var v=legv(x,d), s=0; for(var q=0;q<m;q++) s+=v[q]*w[q]; return s; };
+}
+var XS=[0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95];
+var Y1=[0.48,1.22,1.17,0.16,0.76,-0.09,-1.08,-0.71,-0.63,-0.16];
+var DEG=[0,1,2,3,4,5,6,7,8,9];
+
+/* 1 — три модели на 10 неделях */
+(function(){ var ds=[fn(F,0,1,200,'истина sin 2πx',GY,2,[6,4]), dots(XS.map(function(x,i){ return [x,Y1[i]]; }),'10 недель прошлого года',YL,5)];
+  [[1,SK,'степень 1'],[3,AC2,'степень 3'],[9,RD,'степень 9']].forEach(function(o){ var h=polyfit(XS,Y1,o[0]); ds.push(fn(h,0,1,400,o[2],o[1],2.6)); });
+  mk('c_story',{type:'scatter',data:{datasets:ds},options:lin('момент года x','отклонение продаж, тыс.',[0,1],[-2.5,3])});
+})();
+
+/* 2 — потери регрессии */
+(function(){
+  mk('c_loss',{type:'scatter',data:{datasets:[
+    fn(function(r){ return r*r; },-3,3,200,'квадратичная r²',AC,2.6),
+    fn(function(r){ return Math.abs(r); },-3,3,200,'абсолютная |r|',SK,2.6),
+    dots([[3,9],[3,3]],'ошибка 3: штраф 9 и 3',YL,6)
+  ]},options:lin('ошибка r = y − ŷ','потеря',[-3,3],[0,9.5])});
+})();
+
+/* 3 — честная и нечестная оценка риска */
+(function(){ var lab=[], i; for(i=0;i<20;i++) lab.push((0.05*i).toFixed(2)+'–'+(0.05*(i+1)).toFixed(2));
+  var emp=[0.0028,0.0361,0.1084,0.158,0.177,0.1594,0.123,0.0891,0.0586,0.038,0.0226,0.012,0.0068,0.0038,0.0019,0.0011,0.001,0.0002,0.0001,0];
+  var trn=[0.0776,0.2306,0.2544,0.1863,0.1165,0.0693,0.0344,0.0159,0.0096,0.0028,0.0012,0.0007,0.0003,0.0001,0.0001,0,0,0,0,0];
+  mk('c_emp',{type:'bar',data:{labels:lab,datasets:[
+    {label:'готовая модель, новые недели: 0.273',data:emp,backgroundColor:'rgba(56,189,248,.65)'},
+    {label:'обучение после подгонки: 0.153',data:trn,backgroundColor:'rgba(232,121,249,.65)'}
+  ]},options:{responsive:true,scales:{x:Object.assign({title:{display:true,text:'средний квадрат ошибки на 10 неделях'}},GRID),y:Object.assign({title:{display:true,text:'доля повторов'}},GRID)},plugins:LEG}});
+})();
+
+/* 4 — обучение против новых данных по степеням */
+(function(){ var tr=[0.5667,0.243,0.2374,0.0874,0.0862,0.086,0.0648,0.0636,0.0061,0], R=[0.7625,0.459,0.4651,0.2735,0.2738,0.2769,0.356,0.386,4.7919,12.7838];
+  var a=dots(DEG.map(function(d){ return [d,tr[d]]; }),'ошибка на обучении',SK,5); a.showLine=true; a.borderWidth=2.6;
+  var b=dots(DEG.map(function(d){ return [d,R[d]]; }),'ошибка на новых данных (истинный риск)',AC,5); b.showLine=true; b.borderWidth=2.6;
+  var o=lin('степень полинома d','средний квадрат ошибки',[0,9],[0,1]); o.scales.x.ticks={stepSize:1};
+  mk('c_optim',{type:'scatter',data:{datasets:[a,b,seg([[0,0.25],[9,0.25]],'шум σ² = 0.25',GY,1.6,[6,4]),dots([[3,0.2735]],'минимум: степень 3',YL,7)]},options:o});
+})();
+
+/* 5 — подгонка под чистый шум */
+(function(){ var mc=[0.2294,0.2028,0.1775,0.1519,0.126,0.0992,0.0738,0.048,0.0236,0];
+  var o=lin('степень полинома d','ошибка на обучении',[0,9],[0,0.26]); o.scales.x.ticks={stepSize:1};
+  mk('c_cap',{type:'scatter',data:{datasets:[
+    seg(DEG.map(function(d){ return [d,0.25*(1-(d+1)/10)]; }),'формула σ²(1 − p/n)',AC,2.4),
+    dots(DEG.map(function(d){ return [d,mc[d]]; }),'симуляция, 2000 выборок шума',YL,6),
+    seg([[0,0.25],[9,0.25]],'дисперсия шума 0.25',GY,1.6,[6,4])
+  ]},options:o});
+})();
+
+/* 6 — сжатие среднего */
+(function(){
+  mk('c_shrink',{type:'scatter',data:{datasets:[
+    fn(function(a){ return (1-a)*(1-a)*4; },0,1,200,'смещение² (1 − α)²·4',OR,2.4),
+    fn(function(a){ return a*a; },0,1,200,'разброс α²·1',SK,2.4),
+    fn(function(a){ return (1-a)*(1-a)*4+a*a; },0,1,200,'сумма',AC,3),
+    dots([[0.8,0.8]],'минимум α = 0.8: 0.80',YL,7), dots([[1,1]],'без сжатия: 1.00',GY,6)
+  ]},options:lin('сила сжатия α','ошибка без шума',[0,1],[0,4.2])});
+})();
+
+/* 7 — веера моделей по 20 выборкам */
+var FAN=[[0.52,0.52,2.33,0,0.64,-0.38,-0.99,-0.47,-1.72,-0.8],[0.25,1.68,1.04,1.26,-0.62,-0.93,-0.32,-1.31,-0.84,0.06],[-0.79,0.21,0.95,0.04,-0.05,-0.33,-1.14,-1.13,-0.79,0.36],[1.1,0.61,0.59,1.25,0.56,-0.18,-1.26,-0.68,-0.37,-1.2],[0.82,0.77,0.63,0.02,0.14,-0.34,-1,-1.6,-1.41,0.04],[0.33,0.95,1.31,1.17,1.18,-0.34,-0.94,-1.48,-0.68,-0.18],[-0.07,0.79,0.99,2.64,0.05,0.31,-0.61,-1.05,-0.6,-0.13],[0.29,0.68,0.81,0.62,0.45,-0.37,-0.33,-0.31,-0.84,-0.46],[0.97,0.77,1.11,0.62,0.38,0.34,-0.36,-1.55,-1.23,-0.51],[0.16,1.16,-0.06,1.45,-0.27,0.21,-1.44,-1.1,-0.38,-0.29],[0.89,2.06,0.74,0.32,-0.28,-1.06,-0.95,-1.8,-2.13,-0.63],[1.11,0.94,0.35,0.37,0.71,-0.21,-1.02,-0.44,-0.66,-0.51],[0.3,0.96,1.64,0.27,0.24,-0.46,-1.81,-1.34,-1.61,-0.26],[0.21,0.95,1.12,0,0.3,-0.09,-0.35,-1,-1.12,-0.2],[0.97,0.92,0.15,1.05,0.32,-0.31,-1.02,-0.99,-0.77,-1.03],[0.7,0.66,0.93,0.61,1.01,0.2,-0.08,-1.16,-1.5,-0.46],[0.86,1.43,0.56,1.43,-0.41,-0.37,-0.76,-0.27,-1.76,-1.06],[-0.85,0.29,-0.03,0.98,-0.3,-0.68,0.2,-0.79,-1.11,-0.07],[0.6,1.38,0.61,0.92,0.28,-0.38,-1.05,-0.61,-0.46,-1.12],[-0.07,0.74,1.38,0.91,0.73,-0.42,-1.09,-0.92,-0.15,-0.65]];
+function fan(id,d,color,lab){ var ds=[], G=grid(0,1,300), mean=G.map(function(){ return 0; });
+  FAN.forEach(function(y,k){ var h=polyfit(XS,y,d); var v=G.map(function(x){ return h(x); }); v.forEach(function(z,i){ mean[i]+=z/FAN.length; });
+    ds.push(seg(G.map(function(x,i){ return [x,v[i]]; }),k===0?lab:'',color,1.1)); });
+  ds.push(seg(G.map(function(x,i){ return [x,mean[i]]; }),'среднее 20 моделей',YL,3));
+  ds.push(fn(F,0,1,200,'истина sin 2πx',GY,2.4,[6,4]));
+  mk(id,{type:'scatter',data:{datasets:ds},options:lin('момент года x','прогноз',[0,1],[-2.5,2.5])});
+}
+fan('c_fan1',1,'rgba(56,189,248,.55)','20 прямых');
+fan('c_fan9',9,'rgba(232,121,249,.55)','20 полиномов степени 9');
+
+/* 7 — смещение², разброс, риск по степеням (20 000 выборок) */
+(function(){ var b2=[0.4998,0.1967,0.1967,0.0049,0.0049,null,null,null,null,null];
+  var v=[0.0247,0.0497,0.0762,0.1055,0.1412,0.1933,0.3005,0.6691,3.0724,40.7581];
+  var t=[0.7744,0.4964,0.5228,0.3604,0.3961,0.4433,0.5506,0.9192,3.3225,41.0082];
+  function line(arr,label,color,w){ var d=dots(DEG.filter(function(i){ return arr[i]!==null; }).map(function(i){ return [i,arr[i]]; }),label,color,4); d.showLine=true; d.borderWidth=w||2.4; return d; }
+  mk('c_bv',{type:'scatter',data:{datasets:[line(b2,'смещение²',OR),line(v,'разброс',SK),line(t,'сумма с шумом — ожидаемый риск',AC,3),seg([[0,0.25],[9,0.25]],'шум 0.25',GY,1.6,[6,4])]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:0,max:9,ticks:{stepSize:1},title:{display:true,text:'степень полинома d'}},GRID),y:logAxis(0.001,100,'')},plugins:LEG}});
+})();
+
+/* 8 — завышение лучшей из M */
+function erf(x){ var s=x<0?-1:1; x=Math.abs(x); var t=1/(1+0.3275911*x); var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return s*y; }
+function emax(M){ var s=0, h=0.01, z; for(z=-8;z<=8;z+=h){ var Phi=0.5*(1+erf(z/Math.SQRT2)), phi=Math.exp(-z*z/2)/Math.sqrt(2*Math.PI); s+=z*M*Math.pow(Phi,M-1)*phi*h; } return s; }
+(function(){ var se=Math.sqrt(0.8*0.2/500), pts=[], M;
+  for(var i=0;i<=60;i++){ M=Math.round(Math.pow(10,3*i/60)); pts.push([M,0.8+se*emax(M)]); }
+  mk('c_maxk',{type:'scatter',data:{datasets:[
+    seg(pts,'средняя измеренная точность лучшей',AC,2.8),
+    seg([[1,0.8],[1000,0.8]],'истинная точность каждой 0.80',GY,1.6,[6,4]),
+    dots([[100,0.8+se*emax(100)]],'M = 100: 0.845',YL,7)
+  ]},options:{responsive:true,scales:{x:Object.assign({type:'logarithmic',min:1,max:1000,title:{display:true,text:'число сравнённых настроек M'},ticks:{callback:function(v){ return pow10(v); }}},GRID),y:Object.assign({min:0.79,max:0.87,title:{display:true,text:'точность'}},GRID)},plugins:LEG}});
+})();
+
+/* 9 — одно разбиение против 5-фолдовой CV */
+(function(){ var lab=[], i; for(i=0;i<16;i++) lab.push((0.05*i).toFixed(2)+'–'+(0.05*(i+1)).toFixed(2));
+  var ho=[0.0017,0.0273,0.0867,0.1443,0.1653,0.1517,0.1307,0.0893,0.0713,0.045,0.031,0.0187,0.017,0.0053,0.0053,0.0023];
+  var cv=[0,0,0.0097,0.0727,0.2107,0.269,0.2137,0.1347,0.053,0.02,0.0133,0.0017,0.0013,0.0003,0,0];
+  mk('c_cv',{type:'bar',data:{labels:lab,datasets:[
+    {label:'одно разбиение 30/10 (ст. откл. 0.144)',data:ho,backgroundColor:'rgba(56,189,248,.65)'},
+    {label:'5-фолдовая CV (ст. откл. 0.076)',data:cv,backgroundColor:'rgba(232,121,249,.65)'}
+  ]},options:{responsive:true,scales:{x:Object.assign({title:{display:true,text:'оценка риска (истинный около 0.28)'}},GRID),y:Object.assign({title:{display:true,text:'доля повторов'}},GRID)},plugins:LEG}});
+})();
+
+/* 10 — кривая сложности kNN */
+(function(){ var K=[[1,0,0.5065],[2,0.1262,0.3812],[3,0.1689,0.3396],[5,0.2056,0.311],[7,0.2249,0.3045],[10,0.2465,0.3084],[15,0.2761,0.3231],[20,0.2998,0.3386],[30,0.3775,0.4141],[40,0.5771,0.6187],[50,0.7298,0.7657]];
+  var a=dots(K.map(function(r){ return [r[0],r[1]]; }),'ошибка на обучении',SK,4); a.showLine=true; a.borderWidth=2.6;
+  var b=dots(K.map(function(r){ return [r[0],r[2]]; }),'ошибка на новых данных',AC,4); b.showLine=true; b.borderWidth=2.6;
+  mk('c_knn',{type:'scatter',data:{datasets:[a,b,seg([[0,0.25],[50,0.25]],'шум 0.25',GY,1.6,[6,4]),dots([[7,0.3045]],'лучшее k = 7',YL,7)]},options:lin('число соседей k (сложность падает →)','средний квадрат ошибки',[0,50],[0,0.8])});
+})();
+
+/* 10 — кривая обучения линейной регрессии */
+(function(){ var N=grid(22,300,278);
+  mk('c_lc',{type:'scatter',data:{datasets:[
+    seg(N.filter(function(n){ return n>=23; }).map(function(n){ return [n,1+20/(n-21)]; }),'ошибка на новых данных 1 + p/(n − p − 1)',AC,2.8),
+    seg(N.map(function(n){ return [n,1-20/n]; }),'ошибка на обучении 1 − p/n',SK,2.8),
+    seg([[20,1],[300,1]],'шум σ² = 1',GY,1.6,[6,4]),
+    dots([[50,1+20/29],[200,1+20/179]],'n = 50: 1.690; n = 200: 1.112',YL,6)
+  ]},options:lin('объектов в обучении n','средний квадрат ошибки',[20,300],[0,4])});
+})();
+
+/* 11 — кривые обучения двух моделей */
+(function(){ var D=[[10,0.3819,0.5009,0,36.06],[12,0.3845,0.4898,0.0417,2.5794],[15,0.4006,0.48,0.0827,0.7395],[20,0.4177,0.47,0.1228,0.4414],[30,0.4393,0.4632,0.1662,0.3454],[50,0.4368,0.4565,0.2014,0.3008],[75,0.4442,0.4525,0.2142,0.2831],[100,0.4436,0.4509,0.2211,0.276],[150,0.4426,0.4499,0.2323,0.267],[200,0.4441,0.4489,0.2369,0.2619]];
+  function ln(col,label,color,dash){ var d=dots(D.map(function(r){ return [r[0],r[col]]; }),label,color,3); d.showLine=true; d.borderWidth=2.6; d.borderDash=dash||[]; return d; }
+  mk('c_diag',{type:'scatter',data:{datasets:[ln(1,'прямая: обучение',OR,[6,4]),ln(2,'прямая: новые данные',OR),ln(3,'степень 9: обучение',SK,[6,4]),ln(4,'степень 9: новые данные',SK),seg([[10,0.25],[200,0.25]],'шум 0.25',GY,1.6,[2,3])]},
+    options:lin('объектов в обучении n','средний квадрат ошибки',[10,200],[0,1])});
+})();
+
+/* 12 — утечка через отбор признаков */
+(function(){ var L=[[20,0.516,0.516],[100,0.738,0.491],[500,0.892,0.483],[1000,0.908,0.507],[2000,0.933,0.507],[5000,0.957,0.527]];
+  var a=dots(L.map(function(r){ return [r[0],r[1]]; }),'отбор до кросс-валидации (утечка)',RD,5); a.showLine=true; a.borderWidth=2.6;
+  var b=dots(L.map(function(r){ return [r[0],r[2]]; }),'отбор внутри фолдов (Pipeline)',AC2,5); b.showLine=true; b.borderWidth=2.6;
+  mk('c_leak',{type:'scatter',data:{datasets:[a,b,seg([[10,0.5],[10000,0.5]],'честный уровень 0.5',GY,1.6,[6,4])]},
+    options:{responsive:true,scales:{x:Object.assign({type:'logarithmic',min:10,max:10000,title:{display:true,text:'число шумовых признаков-кандидатов'},ticks:{callback:function(v){ return pow10(v); }}},GRID),y:Object.assign({min:0.4,max:1,title:{display:true,text:'точность кросс-валидации'}},GRID)},plugins:LEG}});
+})();
+
+/* песочница: степень и объём выборки, разложение вживую */
+(function(){
+  var id=document.getElementById('pd'), inn=document.getElementById('pn'), is=document.getElementById('ps'); if(!id) return;
+  var NT=15, dsP=[seg([],'средняя модель по 100 выборкам',YL,3),seg([],'истина sin 2πx',GY,2.4,[6,4]),dots([],'одна выборка',AC,4)];
+  for(var t0=0;t0<NT;t0++) dsP.push(seg([],t0===0?'15 отдельных моделей':'','rgba(56,189,248,.45)',1.1));
+  var ch=mk('c_play',{type:'scatter',data:{datasets:dsP},options:lin('момент года x','прогноз',[0,1],[-2.5,2.5])});
+  function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+  function gauss(r){ var u=r()||1e-12, v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  function draw(){
+    var d=+id.value, n=+inn.value, seed=+is.value, B=100, G=grid(0,1,200), i, b, k;
+    document.getElementById('pd_o').textContent=d; document.getElementById('pn_o').textContent=n; document.getElementById('ps_o').textContent=seed;
+    var xs=[]; for(i=0;i<n;i++) xs.push((i+0.5)/n);
+    var r=rng(1000+seed), P=[], tr=0, first=null;
+    for(b=0;b<B;b++){ var ys=xs.map(function(x){ return F(x)+0.5*gauss(r); }); if(b===0) first=ys;
+      var h=polyfit(xs,ys,d); P.push(G.map(function(x){ return h(x); }));
+      var e=0; for(k=0;k<n;k++){ var q=h(xs[k])-ys[k]; e+=q*q; } tr+=e/n/B; }
+    var mean=G.map(function(_,j){ var s=0; for(b=0;b<B;b++) s+=P[b][j]; return s/B; });
+    var bias2=0, vr=0; for(var j=0;j<G.length;j++){ var dd=mean[j]-F(G[j]); bias2+=dd*dd/G.length; var s2=0; for(b=0;b<B;b++){ var z=P[b][j]-mean[j]; s2+=z*z; } vr+=s2/B/G.length; }
+    if(ch){
+      ch.data.datasets[0].data=G.map(function(x,j){ return {x:x,y:mean[j]}; });
+      ch.data.datasets[1].data=G.map(function(x){ return {x:x,y:F(x)}; });
+      ch.data.datasets[2].data=xs.map(function(x,k){ return {x:x,y:first[k]}; });
+      for(b=0;b<NT;b++) ch.data.datasets[3+b].data=G.map(function(x,j){ return {x:x,y:P[b][j]}; });
+      ch.update();
+    }
+    var p=d+1, tot=bias2+vr+0.25;
+    document.getElementById('out_play').textContent=
+      'степень '+d+' · p = '+p+' · n = '+n+' · 100 выборок\n'+
+      'обучение: '+tr.toFixed(3)+(p<=n?' (σ²(1 − p/n) = '+(0.25*(1-p/n)).toFixed(3)+')':'')+'\n'+
+      'смещение²: '+bias2.toFixed(4)+'\n'+
+      'разброс: '+vr.toFixed(4)+' (σ²p/n = '+(0.25*p/n).toFixed(4)+')\n'+
+      'шум σ²: 0.25\n'+
+      'риск на новых данных: '+tot.toFixed(3)+'\n'+
+      'разрыв с обучением: '+(tot-tr).toFixed(3);
+  }
+  [id,inn,is].forEach(function(el){ el.addEventListener('input',draw); });
+  draw();
+})();
+
+/* SCROLL SPY */
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.snav a'));
+  var secs  = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 150, idx = 0;
+    for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].offsetTop <= y) idx = i; }
+    links.forEach(function(a,i){ a.classList.toggle('act', i===idx); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+
+</body>
+</html>
