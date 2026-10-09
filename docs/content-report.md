@@ -2,7 +2,7 @@
 
 Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-09. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 84 страниц, без проблем — 84, с проблемами — 0.
+**Итого:** 85 страниц, без проблем — 85, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -20,6 +20,7 @@
 | block0_10_convexity.html | 1845 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_11_learning_setup.html | 1610 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_12_linear_regression.html | 1880 | 15 | 30 | 14 / 14 |  | 0 |  |
+| block0_13_logistic_regression.html | 1928 | 15 | 30 | 14 / 14 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
