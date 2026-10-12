@@ -31,8 +31,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{html,js,css,json,svg,png,woff,woff2}'],
-        // data/questions.json ~5 МБ — больше лимита workbox по умолчанию (2 МБ)
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // data/questions.json — 8.5 МБ на 2026-10-12 (было ~5) — больше лимита workbox по умолчанию (2 МБ); 16 МиБ — решение владельца, ADR 010
+        maximumFileSizeToCacheInBytes: 16 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
         // /__/ — служебные адреса Firebase Hosting (auth), content/ — страницы тем в iframe (свои файлы из precache)

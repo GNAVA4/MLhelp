@@ -9,6 +9,7 @@
 // Флаг --if-missing: ничего не делать, если data/manifest.json уже есть (для predev).
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), { spawnSync } = require('child_process');
 const { JSDOM } = require('jsdom');
+const idlUtils = require('jsdom/lib/jsdom/living/generated/utils');
 const { extractConsts } = require('./lib-extract.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -117,7 +118,7 @@ function buildPage(f) {
 // ---------- разбор страницы: секции, время чтения ----------
 const clean = (s) => s.replace(/\s+/g, ' ').trim();
 function parsePage(file) {
-  const doc = new JSDOM(fs.readFileSync(file, 'utf8')).window.document;
+  const dom = new JSDOM(fs.readFileSync(file, 'utf8')), doc = dom.window.document;
   const sections = [...doc.querySelectorAll('[id]')].filter(el => /^s\d+$/.test(el.id)).map(el => {
     const a = doc.querySelector('a[href="#' + el.id + '"]');
     let t = a ? clean(a.textContent) : '';
@@ -138,6 +139,10 @@ function parsePage(file) {
     .replace(/\$[^$]{1,150}?\$|\\\(.{1,150}?\\\)/g, () => { formulas.inline++; return ' '; });
   const words = clean(text).split(' ').length;
   const title = clean((doc.querySelector('h1') || doc.querySelector('title') || { textContent: '' }).textContent);
+  // Утечка: после querySelector документ удерживается через свой экземпляр nwsapi (jsdom 26 + nwsapi 2.2.28),
+  // каждая тема блока 0 оставляла ~230 МБ, на 15-й сборка упёрлась в кучу 4 ГБ. Обнуляем ссылку и закрываем окно.
+  const impl = idlUtils.implForWrapper(doc); impl._nwsapi = null; impl._nwsapiDontThrow = null;
+  dom.window.close();
   return { sections, words, formulas, title };
 }
 
