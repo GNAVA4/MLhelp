@@ -1,8 +1,8 @@
 # Отчёт о состоянии контента
 
-Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-13. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
+Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-14. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 91 страниц, без проблем — 91, с проблемами — 0.
+**Итого:** 92 страниц, без проблем — 92, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -27,6 +27,7 @@
 | block0_17_metrics_basics.html | 1725 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_18_data_preparation.html | 1489 | 15 | 30 | 12 / 12 |  | 0 |  |
 | block0_19_decision_trees.html | 1824 | 15 | 30 | 15 / 15 |  | 0 |  |
+| block0_20_bagging_random_forest.html | 1703 | 15 | 30 | 15 / 15 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
