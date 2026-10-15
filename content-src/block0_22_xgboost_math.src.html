@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.22 · Бустинг второго порядка: математика XGBoost</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#d946ef; --ac-d:#f0abfc; --ac-l:rgba(217,70,239,.08); --ac-b:rgba(217,70,239,.35); --ac-m:#c026d3; --ac-s:#4a044e;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#d946ef; --okl:rgba(217,70,239,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(217,70,239,.24),transparent 60%),linear-gradient(135deg,#020617,#36033a 55%,#4a044e);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(217,70,239,.14);border:1px solid rgba(240,171,252,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#fae8ff;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#d946ef;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#d946ef;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(217,70,239,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(217,70,239,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(217,70,239,.07),rgba(232,121,249,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 0 · тема 22 · с нуля</div>
+    <h1>Бустинг второго порядка: математика XGBoost</h1>
+    <p>Антифрод-команда учит модель вероятности мошенничества на 20 000 платежах, мошеннических среди них 2.2%. Аналитик написал бустинг по рецепту 0.21: дерево учится на псевдоостатках <tex>y - p</tex>, лист ставит их среднее. За 100 деревьев log-loss почти не сдвинулся от константы. Коллега взял XGBoost с параметрами по умолчанию — и получил модель лишь чуть лучше константы, хотя на обучении она почти идеальна. Третий поставил в XGBoost глубину 3 и шаг 0.1 — и обошёл всех. В теме выведем, что именно делает XGBoost: разложим потерю по Тейлору до второго порядка, получим вес листа <tex>-G/(H + \lambda)</tex> и формулу выигрыша разбиения, разберём <tex>\gamma</tex>, <tex>\lambda</tex>, <tex>\alpha</tex> и min_child_weight, связь с методом Ньютона, гистограммы порогов и пропуски. Каждое утверждение о библиотеке проверено запуском XGBoost 3.4.</p>
+    <div class="meta">
+      <span>15 секций</span><span>18 формул с задачами</span><span>13 графиков</span><span>песочница «одно разбиение XGBoost»</span><span>15 подводных камней</span><span>5 задач у доски</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Тейлор</a>
+    <a href="#s3">3 · G и H</a>
+    <a href="#s4">4 · Вес листа</a>
+    <a href="#s5">5 · Оценка дерева</a>
+    <a href="#s6">6 · Gain</a>
+    <a href="#s7">7 · γ</a>
+    <a href="#s8">8 · λ и α</a>
+    <a href="#s9">9 · min_child_weight</a>
+    <a href="#s10">10 · Ньютон</a>
+    <a href="#s11">11 · Гистограммы</a>
+    <a href="#s12">12 · Пропуски</a>
+    <a href="#s13">13 · В ML и ошибки</a>
+    <a href="#s14">14 · Задачи у доски</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем второй порядок</h2></div>
+  <p class="slead">Градиентный бустинг из 0.21 смотрит на потерю только через градиент: куда двигать прогноз. Но градиент не говорит, насколько далеко идти. Для квадрата ошибки это не важно: кривизна потери везде одна. Для log-loss при редком классе кривизна в десятки раз меньше, и шаг «по градиенту» оказывается в десятки раз короче нужного. XGBoost берёт вторую производную — кривизну — и использует её всюду: в значении листа, в выборе разбиения, в ограничениях на листья.</p>
+
+  <div class="story">
+    <p>20 000 платежей за месяц, шесть признаков: сумма (тыс. ₽), час, новый ли получатель, за границу ли платёж, сколько платежей у клиента за сутки, возраст аккаунта в днях. Мошеннических — 438, то есть 2.2%. Данные смоделированы, поэтому известна настоящая вероятность мошенничества каждого платежа и потолок качества: log-loss 0.0850 на 100 000 новых платежах. Константа — доля мошенничества 2.2% для всех — даёт 0.1023 (log-loss, 0.14, секция 7: средний минус логарифм вероятности настоящего ответа; меньше — лучше).</p>
+    <p>Аналитик собрал бустинг по рецепту 0.21: начальный логит — лог-шансы 2.2%, каждое дерево глубины 3 учится на псевдоостатках <tex>y - p</tex>, лист ставит их среднее, шаг 0.1. После 100 деревьев — <b>0.0955</b>, почти константа. После 1000 — 0.0881. Коллега заменил среднее в листе шагом Ньютона, как в <code>GradientBoostingClassifier</code>: те же 100 деревьев дали <b>0.0879</b>, а лучшее, 0.0871, — уже на 50.</p>
+    <p style="margin:0">Другой коллега взял XGBoost с параметрами по умолчанию: 100 деревьев глубины 6, шаг 0.3. На обучении log-loss 0.038 — вдвое лучше потолка, на новых платежах <b>0.1006</b> — чуть лучше константы. Третий поставил в XGBoost глубину 3 и шаг 0.1 и получил <b>0.0869</b> — лучше всех.</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>Модель (100 деревьев, если не указано)</th><th>log-loss на новых</th></tr>
+    <tr><td>константа: доля мошенничества 2.2%</td><td class="r">0.1023</td></tr>
+    <tr class="worst"><td>XGBoost по умолчанию: глубина 6, шаг 0.3</td><td class="r">0.1006</td></tr>
+    <tr><td>свой бустинг: лист — среднее <tex>y - p</tex></td><td class="r">0.0955</td></tr>
+    <tr><td>то же, 1000 деревьев</td><td class="k">0.0881</td></tr>
+    <tr><td>sklearn GradientBoostingClassifier: лист — шаг Ньютона</td><td class="k">0.0880</td></tr>
+    <tr class="best"><td>XGBoost: глубина 3, шаг 0.1</td><td class="g">0.0869</td></tr>
+    <tr><td>потолок: известна настоящая вероятность</td><td class="k">0.0850</td></tr>
+  </table>
+  <p class="tcap">100 000 новых платежей из того же распределения, мошеннических 2.1%. Расчёт на Python: sklearn 1.9, XGBoost 3.4.1.</p>
+
+  <p class="lead">Три разные беды в одной таблице. Шаг первого порядка в 47 раз короче нужного. XGBoost по умолчанию переобучается: глубокие деревья строят листья из горстки платежей. А правильно настроенный XGBoost обгоняет классический бустинг. Объяснение всех трёх — в одной формуле целевой функции.</p>
+
+  <p><b>XGBoost</b> (eXtreme Gradient Boosting, Чен и Гестрин, 2016) — тот же бустинг деревьев, что в 0.21: модель — сумма деревьев, каждое следующее исправляет ошибки суммы предыдущих. Отличие в том, как он выбирает дерево. Он не обучает дерево на псевдоостатках, а прямо минимизирует целевую функцию — потерю на обучении плюс штраф за сложность нового дерева.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · регуляризованная целевая функция дерева номер t</div>
+    <texd>\text{Obj}^{(t)} = \sum_{i=1}^{n} L\big(y_i,\ \hat y_i^{(t-1)} + f_t(x_i)\big) + \Omega(f_t) \qquad \Omega(f) = \gamma T + \frac12\lambda\sum_{j=1}^{T} w_j^2</texd>
+    <div class="where">где <tex>t</tex> — номер строящегося дерева, <tex>n</tex> — число обучающих объектов, <tex>i</tex> — номер объекта, <tex>x_i</tex> — его признаки, <tex>y_i</tex> — ответ (здесь 1 — мошенничество, 0 — нет), <tex>\hat y_i^{(t-1)}</tex> — прогноз суммы первых <tex>t - 1</tex> деревьев (для log-loss — логит, «сырой» прогноз до сигмоиды), <tex>f_t</tex> — новое дерево, <tex>f_t(x_i)</tex> — его поправка для объекта <tex>i</tex>, <tex>L</tex> — потеря объекта, <tex>\text{Obj}^{(t)}</tex> — целевая функция (objective), которую дерево должно сделать как можно меньше. <tex>\Omega(f)</tex> — штраф за сложность дерева: <tex>T</tex> — число его листьев, <tex>w_j</tex> — значение (вес) листа <tex>j</tex>, <tex>\gamma \ge 0</tex> — штраф за каждый лист, <tex>\lambda \ge 0</tex> — L2-штраф на веса листьев (в 0.15, секция 12, — тот же штраф). Пример: дерево из двух листьев с весами 0.4 и −0.6 при <tex>\gamma = 0</tex>, <tex>\lambda = 1</tex> — <tex>\Omega = \frac12(0.16 + 0.36) = 0.26</tex>.</div>
+  </div>
+
+  <p>Почему бустинг первого порядка так медленно учится на редком классе? В листе он ставит среднее псевдоостатков — число в единицах вероятности, а прибавляет его к логиту. Около вероятности 0.022 логит меняется в <tex>1/(0.022\cdot0.978) = 46.5</tex> раз быстрее вероятности, и шаг выходит в 46.5 раза короче, чем нужно.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Лист из 200 платежей: шаг первого порядка и шаг Ньютона</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Первое дерево бустинга, начальная вероятность у всех платежей <tex>p_0 = 0.022</tex> (логит <tex>\ln\frac{0.022}{0.978} = -3.794</tex>). В один лист попали 200 платежей, мошеннических из них 10, то есть 5%. Шаг <tex>\eta = 0.1</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сдвиг логита листа и новую вероятность при листе «среднее псевдоостатков» и при листе «шаг Ньютона»; сколько примерно таких деревьев нужно каждому способу, чтобы вероятность в листе дошла до 5%.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Псевдоостаток объекта — <tex>y - p</tex> (<a href="block0_21_gradient_boosting.html#s5">0.21, секция 5</a>). Шаг Ньютона делит сумму градиентов на сумму кривизн <tex>p(1 - p)</tex> — это вес листа без штрафа, который выведем в секции 4. Нужный сдвиг логита — от логита 2.2% до логита 5%.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 6</a> · вес листа (здесь <tex>\lambda = 0</tex>)</div>
+        <texd>w = -\frac{G}{H} = -\frac{\sum_i (p_i - y_i)}{\sum_i p_i(1 - p_i)}</texd>
+        <div class="fr-w">где <tex>p_i = 0.022</tex> у всех 200 объектов, <tex>y_i</tex> — 10 единиц и 190 нулей, <tex>G</tex> — сумма градиентов, <tex>H</tex> — сумма кривизн.</div></div>
+      <p>Первый порядок — среднее псевдоостатков:</p>
+      <texd>\bar r = \frac{10}{200} - 0.022 = 0.05 - 0.022 = 0.028 \qquad \eta\bar r = 0.1\cdot0.028 = 0.0028</texd>
+      <p>Шаг Ньютона:</p>
+      <texd>G = 200\cdot0.022 - 10 = 4.4 - 10 = -5.6 \qquad H = 200\cdot0.022\cdot0.978 = 4.303</texd>
+      <texd>w = \frac{5.6}{4.303} = 1.301 \qquad \eta w = 0.1\cdot1.301 = 0.130</texd>
+      <p>Новые вероятности: <tex>\sigma(-3.794 + 0.0028) = 0.0221</tex> и <tex>\sigma(-3.794 + 0.130) = 0.0250</tex>, где <tex>\sigma</tex> — сигмоида. Нужный сдвиг логита — <tex>\ln\frac{0.05}{0.95} - (-3.794) = -2.944 + 3.794 = 0.850</tex>:</p>
+      <texd>\frac{0.850}{0.0028} \approx 304 \text{ дерева} \qquad \frac{0.850}{0.130} \approx 7 \text{ деревьев}</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Среднее псевдоостатков сдвигает логит на <b>0.0028</b> (вероятность 0.0220 → 0.0221), шаг Ньютона — на <b>0.130</b> (→ 0.0250): в <tex>1/(p(1 - p)) = 46.5</tex> раза больше. Первому способу нужно около <b>300</b> деревьев, второму — около <b>7</b>. Ровно это видно в таблице: бустинг первого порядка за 1000 деревьев (0.0881) дошёл до уровня, который шаг Ньютона дал за 20 (0.0883). Кривизна — правильный масштаб шага.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Log-loss на новых платежах от числа деревьев</div>
+    <div class="chsub">Ось x — число деревьев (логарифмическая шкала), ось y — log-loss на 100 000 новых платежах. Серая — свой бустинг первого порядка: к 100 деревьям почти не сдвинулся с константы 0.1023. Бирюзовая — то же с шагом Ньютона в листе: минимум 0.0871 на 50 деревьях. Фиолетовая — XGBoost: глубина 3, шаг 0.1, минимум 0.0865 на 50. Жёлтая — XGBoost по умолчанию: лучший результат, 0.0893, уже на 5 деревьях, к 100 — 0.1006, к 1000 — 0.162, хуже константы. Серый пунктир — потолок 0.0850.</div>
+    <canvas id="c_story"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · вес листа w и число в листе модели</div>
+    <p>В формулах темы <tex>w_j</tex> — оптимальная поправка листа. В модель XGBoost записывает её уже умноженной на шаг <tex>\eta</tex> (learning_rate): <tex>\hat y^{(t)} = \hat y^{(t-1)} + \eta f_t(x)</tex>, где <tex>\hat y</tex> — сырой прогноз модели (логит), <tex>f_t(x)</tex> — поправка дерева номер <tex>t</tex>. Поэтому в выгрузке дерева (<code>trees_to_dataframe</code>, колонка Gain у листьев) — не <tex>w_j</tex>, а <tex>\eta w_j</tex>.</p>
+    <p>Пример (проверено запуском): лист с <tex>w = 0.5</tex> при <tex>\eta = 1</tex> записан как 0.5, при <tex>\eta = 0.3</tex> — как 0.15.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>xgboost.XGBClassifier()</code> в версии 3.4 по умолчанию: 100 деревьев, <code>learning_rate=0.3</code> (<tex>\eta</tex>), <code>max_depth=6</code>, <code>reg_lambda=1</code> (<tex>\lambda</tex>), <code>gamma=0</code> (<tex>\gamma</tex>), <code>reg_alpha=0</code>, <code>min_child_weight=1</code>, <code>tree_method='hist'</code> с <code>max_bin=256</code>. При этом <code>get_params()</code> у нового классификатора показывает для них <code>None</code>: значения по умолчанию подставляет сама библиотека при обучении, а увидеть их можно в <code>get_booster().save_config()</code>. Начальный прогноз <code>base_score</code> библиотека считает сама: для классификатора — долю единиц (на данных с 20% единиц в конфигурации записано 0.2), для регрессии с квадратом ошибки — среднее ответов.</p>
+
+  <table class="ct">
+    <tr><th>Вопрос из работы</th><th>Инструмент темы</th></tr>
+    <tr><td>Что минимизирует каждое новое дерево</td><td>целевая функция со штрафом, разложение Тейлора</td></tr>
+    <tr><td>Какое число ставить в лист</td><td>вес листа <tex>-G/(H + \lambda)</tex></td></tr>
+    <tr><td>Как выбирать разбиение</td><td>оценка структуры и Gain</td></tr>
+    <tr><td>Почему дерево не дробится до одного объекта</td><td><tex>\gamma</tex>, <tex>\lambda</tex>, <tex>\alpha</tex>, min_child_weight, max_delta_step</td></tr>
+    <tr><td>Чем XGBoost отличается от sklearn-бустинга</td><td>метод Ньютона в листьях и в разбиениях</td></tr>
+    <tr><td>Почему он быстрый и что делает с NaN</td><td>гистограммы порогов, направление по умолчанию</td></tr>
+  </table>
+
+  <div class="intuition"><b>План темы.</b> Сначала заменим потерю параболой — разложением Тейлора до второго порядка (секция 2) — и соберём градиенты и кривизны объектов в суммы по листьям <tex>G</tex> и <tex>H</tex> (3). Из этого получатся оптимальный вес листа (4), значение целевой функции при нём — оценка структуры дерева (5) — и выигрыш разбиения Gain (6). Затем — регуляризация: штраф за лист <tex>\gamma</tex> (7), штрафы на веса <tex>\lambda</tex> и <tex>\alpha</tex> (8), min_child_weight и max_delta_step (9), с песочницей. Секция 10 связывает всё с методом Ньютона и показывает, чем XGBoost отличается от классического бустинга. В конце — как XGBoost перебирает пороги гистограммами (11) и что делает с пропусками (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>\hat y_i^{(t-1)}</tex>, <tex>f_t(x)</tex>, <tex>\eta</tex></td><td>Прогноз первых <tex>t - 1</tex> деревьев для объекта <tex>i</tex> (для log-loss — логит); новое дерево; шаг learning_rate (<a href="#s1">секция 1</a>)<br><span class="gl-ex">Пример: логит −3.794 — вероятность 0.022</span></td></tr>
+      <tr><td><tex>\text{Obj}</tex>, <tex>\Omega(f)</tex></td><td>Целевая функция: потеря плюс штраф за сложность дерева (<a href="#s1">секция 1</a>)<br><span class="gl-ex">Пример: <tex>\Omega = \gamma T + \frac12\lambda\sum w_j^2 = 0.26</tex></span></td></tr>
+      <tr><td><tex>g_i</tex>, <tex>h_i</tex></td><td>Градиент и кривизна (гессиан) потери объекта по его прогнозу (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: log-loss, <tex>y = 1</tex>, <tex>p = 0.2</tex> — <tex>g = -0.8</tex>, <tex>h = 0.16</tex></span></td></tr>
+      <tr><td><tex>q(x)</tex>, <tex>T</tex>, <tex>I_j</tex></td><td>Номер листа, куда дерево отправляет объект; число листьев; объекты листа <tex>j</tex> (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>I_2 = \{4, 5, 6\}</tex></span></td></tr>
+      <tr><td><tex>G_j</tex>, <tex>H_j</tex></td><td>Суммы градиентов и кривизн по объектам листа <tex>j</tex>; <tex>H</tex> — «вес» листа, Cover (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>G = 0.3</tex>, <tex>H = 0.91</tex></span></td></tr>
+      <tr><td><tex>w_j</tex>, <tex>w_j^*</tex></td><td>Вес (значение) листа — поправка логита; оптимальный вес (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>w^* = -0.3/1.91 = -0.157</tex></span></td></tr>
+      <tr><td><tex>\lambda</tex>, <tex>\alpha</tex></td><td>L2- и L1-штрафы на веса листьев, reg_lambda и reg_alpha (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>\lambda = 1</tex> по умолчанию</span></td></tr>
+      <tr><td><tex>\gamma</tex>, <tex>\text{Gain}</tex>, <tex>\Delta</tex></td><td>Штраф за лист (gamma); выигрыш разбиения; разность оценок без множителя ½, которую печатает XGBoost (<a href="#s6">секции 6</a>, <a href="#s7">7</a>)<br><span class="gl-ex">Пример: <tex>\Delta = 2\,\text{Gain}</tex> при <tex>\gamma = 0</tex></span></td></tr>
+      <tr><td><tex>m</tex>, <tex>\delta</tex></td><td>min_child_weight — наименьшая сумма кривизн в листе; max_delta_step — предел веса листа (<a href="#s9">секция 9</a>)<br><span class="gl-ex">Пример: <tex>m = 1</tex> по умолчанию</span></td></tr>
+      <tr><td><tex>G_b</tex>, <tex>H_b</tex>, <tex>G_M</tex>, <tex>H_M</tex></td><td>Суммы по бину гистограммы; суммы по объектам с пропуском (<a href="#s11">секции 11</a>, <a href="#s12">12</a>)<br><span class="gl-ex">Пример: 256 бинов на признак</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Потеря <tex>L</tex> внутри формулы 1 может быть любой — log-loss, квадрат, Пуассон. Чтобы одна процедура построения дерева работала для всех, XGBoost заменяет её параболой.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Разложение потери по Тейлору до второго порядка</h2></div>
+  <p class="slead">Минимизировать формулу 1 напрямую трудно: внутри сумма log-loss от сумм деревьев, и для каждой потери пришлось бы писать свою процедуру. XGBoost поступает как метод Ньютона: около текущего прогноза заменяет потерю каждого объекта параболой — значение, наклон и кривизна. С параболами всё считается в явном виде, а от конкретной потери остаются только два числа на объект: <tex>g_i</tex> и <tex>h_i</tex>.</p>
+
+  <p>Разложение Тейлора — приближение функции около точки многочленом по её производным (<a href="block0_09_gradients.html#s10">0.9, секция 10</a>). Нам нужен второй порядок: значение плюс наклон на сдвиг плюс половина кривизны на квадрат сдвига. Точка — текущий прогноз объекта <tex>\hat y_i^{(t-1)}</tex>, сдвиг — поправка нового дерева <tex>f_t(x_i)</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · потеря объекта около текущего прогноза</div>
+    <texd>L\big(y_i,\ \hat y_i + f\big) \approx L(y_i, \hat y_i) + g_i f + \frac12 h_i f^2 \qquad g_i = \frac{\partial L}{\partial \hat y}\Big|_{\hat y_i} \qquad h_i = \frac{\partial^2 L}{\partial \hat y^2}\Big|_{\hat y_i}</texd>
+    <div class="where">где <tex>L</tex> — потеря объекта, <tex>y_i</tex> — его ответ, <tex>\hat y_i</tex> — текущий прогноз объекта <tex>i</tex> (здесь <tex>\hat y_i^{(t-1)}</tex>, индекс <tex>(t - 1)</tex> опущен), <tex>f</tex> — поправка к нему, <tex>g_i</tex> — первая производная потери по прогнозу в этой точке (градиент), <tex>h_i</tex> — вторая производная (кривизна, в XGBoost — hessian), <tex>\big|_{\hat y_i}</tex> — «значение производной в точке <tex>\hat y_i</tex>». Для log-loss по логиту <tex>g_i = p_i - y_i</tex>, <tex>h_i = p_i(1 - p_i)</tex>, где <tex>p_i = \sigma(\hat y_i)</tex> — вероятность (<a href="block0_21_gradient_boosting.html#s5">0.21, секция 5</a>); для квадрата <tex>\frac12(y - \hat y)^2</tex> — <tex>g_i = \hat y_i - y_i</tex>, <tex>h_i = 1</tex>, и знак <tex>\approx</tex> становится точным равенством (таблица всех потерь — 0.14, секция 12). Пример: <tex>y = 1</tex>, <tex>\hat y = 0</tex> — <tex>g = -0.5</tex>, <tex>h = 0.25</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · насколько парабола похожа на log-loss</div>
+    <div class="tstep"><b>Шаг 1. Объект.</b> Мошеннический платёж (<tex>y = 1</tex>), текущий логит <tex>\hat y = 0</tex>, вероятность 0.5. Потеря <tex>L = \ln(1 + e^{-\hat y})</tex> при <tex>y = 1</tex>; сейчас <tex>\ln 2 = 0.693</tex>. Производные: <tex>g = 0.5 - 1 = -0.5</tex>, <tex>h = 0.5\cdot0.5 = 0.25</tex>. Парабола: <tex>0.693 - 0.5f + 0.125f^2</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Маленькие сдвиги.</b> <tex>f = 0.5</tex>: точно <tex>\ln(1 + e^{-0.5}) = 0.4741</tex>, парабола <tex>0.693 - 0.25 + 0.031 = 0.4744</tex>. <tex>f = 1</tex>: 0.3133 и 0.3181. Различие в третьем знаке.</div>
+    <div class="tstep"><b>Шаг 3. Минимум параболы.</b> Производная параболы <tex>-0.5 + 0.25f = 0</tex> при <tex>f = -g/h = 2</tex>. Там парабола 0.1931, а настоящая потеря 0.1269: парабола ещё похожа, но уже заметно выше.</div>
+    <div class="tstep"><b>Шаг 4. Большой сдвиг.</b> <tex>f = 4</tex>: настоящая потеря 0.0181, парабола вернулась к 0.693. Log-loss убывает всё медленнее, а парабола обязана снова расти. Чем дальше от текущей точки, тем хуже приближение.</div>
+    <div class="tstep"><b>Итог.</b> Парабола хороша там, где поправки небольшие. Поэтому каждое дерево добавляется с маленьким шагом <tex>\eta</tex>, и следующее дерево строит новую параболу из новой точки. Хуже всего — уверенные ошибки: у <tex>y = 1</tex> при логите −3 (вероятность 0.047) <tex>g = -0.953</tex>, <tex>h = 0.045</tex>, и минимум параболы — при <tex>f = 21</tex>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Log-loss объекта и её парабола</div>
+    <div class="chsub">Ось x — поправка <tex>f</tex> к логиту, ось y — потеря мошеннического платежа (<tex>y = 1</tex>). Фиолетовая — настоящая log-loss при старте с логита 0, бирюзовая — её парабола из формулы 2: совпадают около нуля, минимум параболы при <tex>f = 2</tex>, дальше она уходит вверх. Жёлтая — настоящая потеря при старте с логита −3 (уверенная ошибка), серая пунктирная — её парабола: кривизна всего 0.045, минимум далеко за правым краем графика, при <tex>f = 21</tex>.</div>
+    <canvas id="c_taylor"></canvas>
+  </div>
+
+  <p>Подставим формулу 2 в формулу 1 для всех объектов. Слагаемое <tex>L(y_i, \hat y_i)</tex> от нового дерева не зависит — это потеря, которая уже есть; для выбора дерева его можно отбросить.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · приближённая целевая функция нового дерева</div>
+    <texd>\text{Obj}^{(t)} \approx \sum_{i=1}^{n}\Big(g_i f_t(x_i) + \frac12 h_i f_t(x_i)^2\Big) + \Omega(f_t) + \text{const}</texd>
+    <div class="where">где сумма — по всем <tex>n</tex> обучающим объектам, <tex>g_i</tex>, <tex>h_i</tex> — градиент и кривизна потери объекта <tex>i</tex> в текущем прогнозе (формула 2), <tex>f_t(x_i)</tex> — поправка нового дерева номер <tex>t</tex> для объекта, <tex>\Omega(f_t)</tex> — штраф за сложность дерева (формула 1), <tex>\text{const}</tex> — сумма текущих потерь <tex>\sum_i L(y_i, \hat y_i^{(t-1)})</tex>, она одинакова для всех деревьев. Дальше вся работа XGBoost — только с числами <tex>g_i</tex> и <tex>h_i</tex>: потеря задаётся двумя функциями, которые их считают. Пример: три объекта с <tex>g</tex> = −0.8, 0.2, 0.9 и <tex>h</tex> = 0.16, 0.16, 0.09, все получают <tex>f = 0.5</tex> — сумма в скобках <tex>0.5\cdot0.3 + \frac12\cdot0.25\cdot0.41 = 0.201</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Три платежа: приближённое и настоящее изменение потери</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Три платежа и текущие вероятности мошенничества: A — мошеннический (<tex>y = 1</tex>), <tex>p = 0.2</tex>; B — честный (<tex>y = 0</tex>), <tex>p = 0.2</tex>; C — честный, но модель в нём уверенно ошибается, <tex>p = 0.9</tex>. Новое дерево добавляет всем трём одну поправку логита <tex>f = 0.5</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c"><tex>g</tex> и <tex>h</tex> каждого платежа; изменение потери каждого по параболе и точно; суммарное изменение.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">По формуле 2 изменение потери — <tex>g f + \frac12 h f^2</tex>. Точное изменение — разность log-loss при логите <tex>\hat y + 0.5</tex> и <tex>\hat y</tex>, где <tex>\hat y = \ln\frac{p}{1 - p}</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s2">Формула 2</a> · потеря около текущего прогноза</div>
+        <texd>L(y, \hat y + f) - L(y, \hat y) \approx g f + \frac12 h f^2 \qquad g = p - y \qquad h = p(1 - p)</texd>
+        <div class="fr-w">где <tex>p</tex> — 0.2, 0.2, 0.9; <tex>y</tex> — 1, 0, 0; <tex>f = 0.5</tex>, <tex>f^2 = 0.25</tex>.</div></div>
+      <texd>\text{A: } g = 0.2 - 1 = -0.8,\ h = 0.16 \qquad \text{B: } g = 0.2,\ h = 0.16 \qquad \text{C: } g = 0.9,\ h = 0.09</texd>
+      <texd>\text{A: } -0.8\cdot0.5 + \frac12\cdot0.16\cdot0.25 = -0.4 + 0.02 = -0.380</texd>
+      <texd>\text{B: } 0.1 + 0.02 = 0.120 \qquad \text{C: } 0.45 + \frac12\cdot0.09\cdot0.25 = 0.45 + 0.011 = 0.461</texd>
+      <p>Точные изменения: A −0.378, B 0.122, C 0.460. Сумма по параболе <tex>-0.380 + 0.120 + 0.461 = 0.201</tex>, точная — 0.204.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">По параболе: <b>−0.380, 0.120, 0.461</b>, в сумме <b>+0.201</b>; точно — −0.378, 0.122, 0.460, в сумме 0.204. Для поправки 0.5 парабола почти точна. Поправка вверх для всех трёх плоха: помогает только A, а уверенную ошибку C она усугубляет сильнее всех — у неё наибольший <tex>g</tex>. Дерево должно развести эти платежи по разным листьям: об этом секции 3–6.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · производная по логиту и по вероятности</div>
+    <p><tex>g_i</tex> и <tex>h_i</tex> в XGBoost — производные по <b>сырому прогнозу</b> <tex>\hat y</tex>, к которому прибавляются деревья: для log-loss это логит. Производная по вероятности <tex>p</tex> другая: <tex>\frac{\partial L}{\partial p} = \frac{p - y}{p(1 - p)}</tex>. Если в своей целевой функции продифференцировать по <tex>p</tex>, деревья получат градиенты в другом масштабе, и веса листьев будут неверными.</p>
+    <p>Пример: <tex>y = 1</tex>, <tex>p = 0.2</tex> — по логиту <tex>g = -0.8</tex>, по вероятности <tex>-0.8/0.16 = -5</tex>.</p>
+  </div>
+
+  <p><b>В коде.</b> Своя потеря в XGBoost задаётся функцией, которая получает текущие прогнозы и ответы и возвращает два массива: <code>grad</code> (<tex>g_i</tex>) и <code>hess</code> (<tex>h_i</tex>). В sklearn-интерфейсе — <code>XGBRegressor(objective=f)</code>, где <code>f(y_true, y_pred)</code> возвращает <code>grad, hess</code>; <code>y_pred</code> — сырой прогноз до сигмоиды. Вторая производная обязательна: без неё нет ни весов листьев, ни выбора разбиений (секции 4–6).</p>
+
+  <p class="next">Приближённая целевая функция — сумма по объектам. Но дерево даёт одну поправку всем объектам листа. Перегруппируем сумму по листьям.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Суммы градиентов и гессианов в листе: G и H</h2></div>
+  <p class="slead">Дерево не умеет давать каждому объекту свою поправку: все объекты листа получают одно число — вес листа. Поэтому в формуле 3 объекты одного листа можно сложить. От всего набора данных останутся две суммы на лист — <tex>G_j</tex> и <tex>H_j</tex>, — и задача выбора весов распадается на <tex>T</tex> независимых одномерных задач.</p>
+
+  <p>Чтобы записать это аккуратно, нужно обозначение для «в какой лист попал объект». Дерево с <tex>T</tex> листьями — это правило, которое по признакам выдаёт номер листа, и таблица весов листьев.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · дерево как номер листа и вес листа</div>
+    <texd>f_t(x) = w_{q(x)} \qquad q(x) \in \{1, \dots, T\} \qquad I_j = \{\, i : q(x_i) = j \,\}</texd>
+    <div class="where">где <tex>f_t</tex> — дерево номер <tex>t</tex>, <tex>q(x)</tex> — номер листа, в который дерево отправляет объект с признаками <tex>x</tex> (структура дерева: вопросы и пороги), <tex>T</tex> — число листьев, <tex>w_j</tex> — вес листа <tex>j</tex>, <tex>w_{q(x)}</tex> — вес того листа, куда попал <tex>x</tex>, <tex>I_j</tex> — множество номеров обучающих объектов, попавших в лист <tex>j</tex>; запись <tex>\{\, i : \dots \}</tex> читается «все <tex>i</tex>, для которых …». Пример: пень «сумма &lt; 10 тыс.» на шести платежах — <tex>I_1 = \{1, 2, 3\}</tex>, <tex>I_2 = \{4, 5, 6\}</tex>, <tex>f(x_5) = w_2</tex>.</div>
+  </div>
+
+  <p>Вывод по шагам. <b>Шаг 1.</b> В формуле 3 заменим <tex>f_t(x_i)</tex> на <tex>w_{q(x_i)}</tex>. <b>Шаг 2.</b> Сумму по всем объектам разобьём на суммы по листьям: каждый объект ровно в одном листе, <tex>\sum_{i=1}^{n} = \sum_{j=1}^{T}\sum_{i \in I_j}</tex>. <b>Шаг 3.</b> Внутри листа <tex>j</tex> у всех объектов <tex>w_{q(x_i)} = w_j</tex> — вынесем его за сумму: <tex>\sum_{i \in I_j}(g_i w_j + \frac12 h_i w_j^2) = w_j\sum_{i \in I_j} g_i + \frac12 w_j^2\sum_{i \in I_j} h_i</tex>. <b>Шаг 4.</b> Штраф <tex>\Omega</tex> тоже раскладывается по листьям: <tex>\gamma</tex> и <tex>\frac12\lambda w_j^2</tex> на каждый лист.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · целевая функция, собранная по листьям</div>
+    <texd>\text{Obj}^{(t)} \approx \sum_{j=1}^{T}\Big(G_j w_j + \frac12(H_j + \lambda)\,w_j^2\Big) + \gamma T \qquad G_j = \sum_{i \in I_j} g_i \qquad H_j = \sum_{i \in I_j} h_i</texd>
+    <div class="where">где <tex>\text{Obj}^{(t)}</tex> — целевая функция дерева номер <tex>t</tex>, <tex>j</tex> — номер листа, <tex>T</tex> — число листьев, <tex>w_j</tex> — вес листа, <tex>i</tex> — номер объекта, <tex>g_i</tex>, <tex>h_i</tex> — его градиент и кривизна, <tex>G_j</tex> — сумма градиентов объектов листа, <tex>H_j</tex> — сумма их кривизн (гессианов), <tex>\lambda</tex> — L2-штраф на веса, <tex>\gamma</tex> — штраф за лист; константа из формулы 3 опущена. Каждое слагаемое зависит только от своего <tex>w_j</tex> — веса листьев выбираются независимо. В XGBoost <tex>H_j</tex> называют Cover — «покрытие» листа; это его колонка в <code>trees_to_dataframe</code>. Пример: лист с <tex>G = 0.3</tex>, <tex>H = 0.91</tex>, <tex>\lambda = 1</tex>, вес <tex>w = -0.1</tex> — вклад <tex>-0.03 + \frac12\cdot1.91\cdot0.01 = -0.020</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · лист из четырёх платежей: g, h, G, H и вес при λ = 1</div>
+    <div class="tstep"><b>Шаг 1. Лист.</b> Четыре платежа с текущими вероятностями 0.5, 0.5, 0.5, 0.8 и ответами 0, 1, 1, 0: последний — честный платёж, который модель считает мошенническим.</div>
+    <div class="tstep"><b>Шаг 2. Градиенты</b> <tex>g = p - y</tex>: <tex>0.5 - 0 = 0.5</tex>, <tex>0.5 - 1 = -0.5</tex>, <tex>-0.5</tex>, <tex>0.8 - 0 = 0.8</tex>. <tex>G = 0.5 - 0.5 - 0.5 + 0.8 = 0.3</tex>.</div>
+    <div class="tstep"><b>Шаг 3. Кривизны</b> <tex>h = p(1 - p)</tex>: 0.25, 0.25, 0.25 и <tex>0.8\cdot0.2 = 0.16</tex>. <tex>H = 0.75 + 0.16 = 0.91</tex> — меньше единицы при четырёх объектах: уверенный прогноз 0.8 «весит» меньше неуверенного 0.5.</div>
+    <div class="tstep"><b>Шаг 4. Вес листа</b> (формула 6 из секции 4): <tex>w = -\frac{G}{H + \lambda} = -\frac{0.3}{0.91 + 1} = -0.157</tex>. Без штрафа было бы <tex>-0.3/0.91 = -0.330</tex>.</div>
+    <div class="tstep"><b>Итог.</b> Лист опускает логит на 0.157: вероятности 0.5 → 0.461, 0.8 → 0.774. Сумма градиентов положительна — в листе вероятности в среднем завышены, и вес отрицательный. Чтобы считать вес, отдельные <tex>g_i</tex> и <tex>h_i</tex> больше не нужны — только две суммы.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Кто «весит» больше: 500 уверенных или 20 сомнительных</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">После нескольких десятков деревьев модель уверена в обычных платежах постоянных клиентов: в листе A 500 честных платежей, у каждого вероятность мошенничества 0.005. В листе B 20 платежей новым получателям за границу, у всех вероятность 0.5.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сумму кривизн <tex>H</tex> каждого листа.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Кривизна log-loss объекта — <tex>p(1 - p)</tex>, сумма по листу — формула 5. Объекты листа одинаковые, поэтому сумма — число объектов на кривизну одного.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 5</a> · сумма кривизн листа</div>
+        <texd>H_j = \sum_{i \in I_j} h_i = \sum_{i \in I_j} p_i(1 - p_i)</texd>
+        <div class="fr-w">где в листе A 500 объектов с <tex>p = 0.005</tex>, в листе B 20 объектов с <tex>p = 0.5</tex>.</div></div>
+      <texd>H_A = 500\cdot0.005\cdot0.995 = 2.49 \qquad H_B = 20\cdot0.5\cdot0.5 = 5.0</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><tex>H_A</tex> = <b>2.49</b>, <tex>H_B</tex> = <b>5.0</b>: 20 сомнительных платежей «весят» вдвое больше 500 уверенных. <tex>H</tex> измеряет не число объектов, а сколько в листе неуверенности, на которой ещё можно учиться. Это объясняет, почему min_child_weight (секция 9) в классификации ведёт себя не как минимальное число объектов.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Кривизна h платежей после 100 деревьев</div>
+    <div class="chsub">20 000 обучающих платежей, XGBoost глубины 3 с шагом 0.1. Ось x — интервал кривизны <tex>h = p(1 - p)</tex>, ось y — число платежей в нём. У половины платежей <tex>h \lt 0.01</tex>: модель в них уверена (вероятность мошенничества ниже 1%). Наибольшая возможная кривизна 0.25 — у вероятности 0.5. Сумма кривизн всех 20 000 платежей — 394: в формулах XGBoost весь набор «весит» как 394 объекта.</div>
+    <canvas id="c_hdist"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · сумма гессианов листа и матрица Гессе</div>
+    <p>В 0.9 (секция 9) <tex>H</tex> — гессиан: матрица вторых производных функции многих переменных. Здесь <tex>H_j</tex> — число: сумма вторых производных потерь объектов листа по их собственным прогнозам. Потеря объекта зависит только от его прогноза, поэтому матрица Гессе по вектору прогнозов диагональная, и <tex>H_j</tex> — сумма её диагональных элементов по объектам листа.</p>
+    <p>Пример: четыре объекта трассировки дают диагональ 0.25, 0.25, 0.25, 0.16 и <tex>H_j = 0.91</tex>.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>booster.trees_to_dataframe()</code> возвращает по строке на узел: <code>Split</code> — порог, <code>Gain</code> — выигрыш разбиения (у листа — вес, уже умноженный на <tex>\eta</tex>), <code>Cover</code> — сумма кривизн <tex>H</tex> объектов узла. Для регрессии с квадратом ошибки <tex>h_i = 1</tex>, и Cover — просто число объектов; для классификации — нет: на шести платежах из секции 6 Cover корня — 1.41.</p>
+
+  <p class="next">Теперь целевая функция листа — парабола от одного числа <tex>w_j</tex>. Её минимум — оптимальный вес листа.</p>
+</section>
+
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Оптимальный вес листа −G/(H + λ): вывод</h2></div>
+  <p class="slead">В формуле 5 каждый лист даёт своё слагаемое — параболу от одного числа <tex>w_j</tex>. Минимум параболы находится в явном виде: приравниваем производную к нулю. Получается главная формула XGBoost — вес листа. Её спрашивают на собеседованиях почти дословно: «выведите оптимальный вес листа».</p>
+
+  <p>Вывод по шагам. <b>Шаг 1.</b> Слагаемое листа <tex>j</tex>: <tex>\Phi_j(w) = G_j w + \frac12(H_j + \lambda)\,w^2</tex>; <tex>\gamma T</tex> от веса не зависит. <b>Шаг 2.</b> Производная: <tex>\Phi_j'(w) = G_j + (H_j + \lambda)\,w</tex>. <b>Шаг 3.</b> Приравниваем к нулю и выражаем <tex>w</tex>. <b>Шаг 4.</b> Вторая производная <tex>\Phi_j'' = H_j + \lambda</tex>. У выпуклых потерь <tex>h_i \ge 0</tex>, поэтому при <tex>H_j + \lambda \gt 0</tex> парабола смотрит вверх и найденная точка — минимум. Если <tex>H_j + \lambda = 0</tex> (модуль ошибки без штрафа, 0.14, секция 12), минимума у параболы нет, и формула не работает.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · оптимальный вес листа</div>
+    <texd>w_j^* = -\frac{G_j}{H_j + \lambda} = -\frac{\sum_{i \in I_j} g_i}{\sum_{i \in I_j} h_i + \lambda}</texd>
+    <div class="where">где <tex>w_j^*</tex> — вес листа <tex>j</tex>, при котором приближённая целевая функция наименьшая, <tex>G_j</tex> — сумма градиентов объектов листа, <tex>H_j</tex> — сумма их кривизн, <tex>I_j</tex> — объекты листа, <tex>g_i</tex>, <tex>h_i</tex> — градиент и кривизна объекта <tex>i</tex>, <tex>\lambda</tex> — L2-штраф на веса листьев. Знак: сумма градиентов положительна — прогнозы листа в среднем завышены, вес отрицательный. Это шаг Ньютона для всех объектов листа сразу (секция 10); в 0.14 (секция 12) и 0.16 (секция 10) та же формула получена для одного листа, здесь — для всего дерева сразу. Пример: <tex>G = 0.3</tex>, <tex>H = 0.91</tex>, <tex>\lambda = 1</tex> — <tex>w^* = -0.157</tex>.</div>
+  </div>
+
+  <p>Проверим формулу на знакомом случае — квадрате ошибки из 0.21. Там дерево учили на остатках, а лист ставил их среднее. Если XGBoost правильно обобщает бустинг, при <tex>\lambda = 0</tex> он должен дать то же самое.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · квадрат ошибки и λ = 0: вес листа — средний остаток, как в 0.21</div>
+    <div class="tstep"><b>Шаг 1. Производные.</b> Потеря <tex>\frac12(y - \hat y)^2</tex>: <tex>g_i = \hat y_i - y_i = -r_i</tex>, где <tex>r_i = y_i - \hat y_i</tex> — остаток, <tex>h_i = 1</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Суммы.</b> <tex>G_j = -\sum_{i \in I_j} r_i</tex>, <tex>H_j = n_j</tex> — число объектов листа.</div>
+    <div class="tstep"><b>Шаг 3. Вес.</b> <tex>w_j^* = \frac{\sum r_i}{n_j + \lambda}</tex>; при <tex>\lambda = 0</tex> — среднее остатков, ровно лист регрессионного дерева.</div>
+    <div class="tstep"><b>Шаг 4. Числа 0.21.</b> Лист «возраст ≤ 6» шести машин из 0.21 (секция 2), остатки 0.6, 0.5, 0.1, 0: <tex>G = -1.2</tex>, <tex>H = 4</tex>. При <tex>\lambda = 0</tex> — <tex>1.2/4 = 0.3</tex>, как в 0.21. При <tex>\lambda = 1</tex> — <tex>1.2/5 = 0.24</tex>: лист сохраняет долю <tex>4/5</tex>.</div>
+    <div class="tstep"><b>Итог.</b> Бустинг из 0.21 — частный случай: квадрат ошибки, <tex>\lambda = 0</tex>. XGBoost с параметрами по умолчанию (<tex>\lambda = 1</tex>) даже для регрессии слегка сжимает листья, особенно маленькие.</div>
+  </div>
+
+  <p>Дальше в теме — шесть платежей, на которых все формулы можно проверить руками. Модель уже немного обучена: у пяти платежей вероятность мошенничества 0.5, у шестого, крупного, — 0.8, хотя он честный.</p>
+
+  <table class="ct">
+    <tr><th>№</th><th>Сумма</th><th>Ответ y</th><th>Вероятность p</th></tr>
+    <tr><td>1</td><td class="r">2</td><td class="r">0</td><td class="r">0.5</td></tr>
+    <tr><td>2</td><td class="r">5</td><td class="r">0</td><td class="r">0.5</td></tr>
+    <tr><td>3</td><td class="r">8</td><td class="r">0</td><td class="r">0.5</td></tr>
+    <tr><td>4</td><td class="r">12</td><td class="r">1</td><td class="r">0.5</td></tr>
+    <tr><td>5</td><td class="r">20</td><td class="r">1</td><td class="r">0.5</td></tr>
+    <tr><td>6</td><td class="r">45</td><td class="r">0</td><td class="r">0.8</td></tr>
+  </table>
+  <p class="tcap">Сумма — тыс. ₽; ответ 1 — мошенничество, 0 — нет; <tex>p</tex> — текущая вероятность мошенничества. Градиенты <tex>g = p - y</tex>: 0.5, 0.5, 0.5, −0.5, −0.5, 0.8; кривизны <tex>h = p(1 - p)</tex>: 0.25 пять раз и 0.16. Сумма потерь — 5.075. Числа секций 4–9 проверены запуском XGBoost 3.4.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Веса двух листьев при λ = 1 и λ = 0</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей из таблицы. Пень «сумма &lt; 10 тыс. ₽» отправляет налево платежи 1–3, направо 4–6.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Веса обоих листьев при <tex>\lambda = 1</tex> (по умолчанию в XGBoost) и при <tex>\lambda = 0</tex>; новые вероятности при <tex>\lambda = 1</tex> и шаге <tex>\eta = 1</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Складываем <tex>g</tex> и <tex>h</tex> по листу, подставляем в формулу 6. Новый логит — старый плюс вес листа; вероятность — сигмоида.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 6</a> · оптимальный вес листа</div>
+        <texd>w_j^* = -\frac{G_j}{H_j + \lambda}</texd>
+        <div class="fr-w">где слева <tex>g</tex> = 0.5, 0.5, 0.5 и <tex>h</tex> = 0.25 трижды; справа <tex>g</tex> = −0.5, −0.5, 0.8 и <tex>h</tex> = 0.25, 0.25, 0.16; <tex>\lambda</tex> — 1 или 0.</div></div>
+      <texd>G_L = 1.5,\ H_L = 0.75 \qquad G_R = -0.5 - 0.5 + 0.8 = -0.2,\ H_R = 0.25 + 0.25 + 0.16 = 0.66</texd>
+      <texd>\lambda = 1:\ \ w_L = -\frac{1.5}{1.75} = -0.857 \qquad w_R = \frac{0.2}{1.66} = 0.120</texd>
+      <texd>\lambda = 0:\ \ w_L = -\frac{1.5}{0.75} = -2.0 \qquad w_R = \frac{0.2}{0.66} = 0.303</texd>
+      <p>При <tex>\lambda = 1</tex> логиты: слева <tex>0 - 0.857</tex>, вероятность <tex>\sigma(-0.857) = 0.298</tex>; справа <tex>0 + 0.120</tex> — 0.530 и у шестого <tex>\ln 4 + 0.120 = 1.386 + 0.120 = 1.506</tex> — 0.818.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">При <tex>\lambda = 1</tex>: <b>−0.857</b> и <b>0.120</b>, при <tex>\lambda = 0</tex>: −2.0 и 0.303. XGBoost с этими параметрами печатает листья −0.857 и 0.120. Левый лист из трёх честных платежей тянет вероятность к нулю, но штраф останавливает его на 0.298 — без штрафа было бы <tex>\sigma(-2) = 0.119</tex>. Правый лист почти не сдвинулся: два мошеннических и одна уверенная ошибка тянут в разные стороны.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Целевая функция левого листа: настоящая и парабола</div>
+    <div class="chsub">Лист из платежей 1–3 (все честные, <tex>p = 0.5</tex>). Ось x — вес листа <tex>w</tex>, ось y — сумма log-loss трёх платежей плюс штраф <tex>\frac12\lambda w^2</tex>. Без штрафа (фиолетовая) настоящая функция убывает бесконечно — у чистого листа нет конечного оптимума, а парабола (серый пунктир) ставит минимум в −2. Со штрафом <tex>\lambda = 1</tex> (бирюзовая) у функции появляется минимум около −0.88, и парабола (жёлтая) почти точно попадает в него: −0.857.</div>
+    <canvas id="c_leafobj"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · вес листа и «вес» объекта</div>
+    <p><b>Вес листа</b> <tex>w_j</tex> — число, которое лист прибавляет к логиту. <b>«Вес» объекта</b> в документации XGBoost — его кривизна <tex>h_i</tex>: в формуле 6 объекты входят в знаменатель с весами <tex>h_i</tex>, сумма по листу — Cover. Отсюда имя min_child_weight: это минимальная сумма <tex>h_i</tex>, а не минимальный вес листа (секция 9). Третье значение — <code>sample_weight</code>, вес, который задаёт пользователь: он умножает и <tex>g_i</tex>, и <tex>h_i</tex>.</p>
+    <p>Пример: у платежа 6 <tex>h = 0.16</tex> — он «весит» 0.16 в знаменателе, а вес листа, где он один, — <tex>-0.8/(0.16 + 1) = -0.690</tex>.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>xgb.train({'objective': 'reg:squarederror', 'eta': 1, 'lambda': 0, 'max_depth': 1}, ...)</code> на шести машинах из 0.21 даст листья — средние остатки: начальный прогноз <code>base_score</code> XGBoost сам ставит равным средней цене; с <code>lambda=1</code> листья сожмутся. Для log-loss при <tex>\lambda = 0</tex> лист из <tex>n</tex> объектов одного класса на старте из вероятности 0.5 получает вес <tex>\mp\frac{0.5n}{0.25n} = \mp2</tex> — конечный, хотя настоящий оптимум бесконечен: парабола останавливает Ньютона.</p>
+
+  <p class="next">Вес листа найден. Если подставить его обратно в целевую функцию, получится число, которое показывает, насколько хороша сама структура дерева — какие вопросы задают узлы.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Значение целевой функции в оптимуме</h2></div>
+  <p class="slead">Веса листьев определяются структурой дерева: какие объекты в каком листе. Значит, для любой структуры можно сразу посчитать лучшее достижимое значение целевой функции — не обучая веса перебором. Это число и есть критерий качества структуры, аналог неоднородности Джини или MSE в обычном дереве (<a href="block0_19_decision_trees.html#s4">0.19, секция 4</a>), но для любой потери и со штрафами.</p>
+
+  <p>Вывод по шагам. <b>Шаг 1.</b> Подставим <tex>w_j^* = -G_j/(H_j + \lambda)</tex> в слагаемое листа: <tex>G_j w_j^* = -\frac{G_j^2}{H_j + \lambda}</tex>. <b>Шаг 2.</b> <tex>\frac12(H_j + \lambda)(w_j^*)^2 = \frac12(H_j + \lambda)\frac{G_j^2}{(H_j + \lambda)^2} = \frac12\frac{G_j^2}{H_j + \lambda}</tex>. <b>Шаг 3.</b> Сумма: <tex>-\frac{G_j^2}{H_j + \lambda} + \frac12\frac{G_j^2}{H_j + \lambda} = -\frac12\frac{G_j^2}{H_j + \lambda}</tex>. <b>Шаг 4.</b> Складываем по листьям и добавляем <tex>\gamma T</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · оценка структуры дерева</div>
+    <texd>\text{Obj}^* = -\frac12\sum_{j=1}^{T}\frac{G_j^2}{H_j + \lambda} + \gamma T</texd>
+    <div class="where">где <tex>\text{Obj}^*</tex> — значение приближённой целевой функции (формула 5) при оптимальных весах всех листьев, <tex>T</tex> — число листьев, <tex>G_j</tex>, <tex>H_j</tex> — суммы градиентов и кривизн по объектам листа <tex>j</tex>, <tex>\lambda</tex> — L2-штраф на веса, <tex>\gamma</tex> — штраф за лист. Это изменение (приближённое) суммы потерь со штрафом по сравнению с текущим: отрицательное — дерево улучшает модель. Чем меньше <tex>\text{Obj}^*</tex>, тем лучше структура. Величину <tex>\frac{G^2}{H + \lambda}</tex> дальше называем <b>оценкой листа</b> <tex>S</tex>. Пример: один лист на всех шести платежах — <tex>G = 1.3</tex>, <tex>H = 1.41</tex>, <tex>\lambda = 1</tex>: <tex>\text{Obj}^* = -\frac12\cdot\frac{1.69}{2.41} = -0.351</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Какую структуру выбрать</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей, <tex>\lambda = 1</tex>, <tex>\gamma = 0</tex>. Три кандидата: (а) один лист для всех; (б) пень «сумма &lt; 10» — платежи 1–3 | 4–6; (в) пень «сумма &lt; 32.5» — платежи 1–5 | 6.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c"><tex>\text{Obj}^*</tex> каждой структуры и лучшую из них.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">По каждому листу считаем <tex>G</tex> и <tex>H</tex>, оценку <tex>G^2/(H + \lambda)</tex>, складываем и умножаем на <tex>-\frac12</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 7</a> · оценка структуры</div>
+        <texd>\text{Obj}^* = -\frac12\sum_{j}\frac{G_j^2}{H_j + \lambda} + \gamma T</texd>
+        <div class="fr-w">где для (а) <tex>G = 1.3</tex>, <tex>H = 1.41</tex>; для (б) — <tex>1.5, 0.75</tex> и <tex>-0.2, 0.66</tex> (задача 4); для (в) — <tex>0.5, 1.25</tex> и <tex>0.8, 0.16</tex>; <tex>\lambda = 1</tex>, <tex>\gamma = 0</tex>.</div></div>
+      <texd>\text{(а) } -\frac12\cdot\frac{1.69}{2.41} = -\frac12\cdot0.701 = -0.351</texd>
+      <texd>\text{(б) } -\frac12\Big(\frac{2.25}{1.75} + \frac{0.04}{1.66}\Big) = -\frac12(1.286 + 0.024) = -0.655</texd>
+      <texd>\text{(в) } -\frac12\Big(\frac{0.25}{2.25} + \frac{0.64}{1.16}\Big) = -\frac12(0.111 + 0.552) = -0.331</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">(а) <b>−0.351</b>, (б) <b>−0.655</b>, (в) <b>−0.331</b>. Лучшая — (б): она уменьшает целевую функцию на <tex>0.655 - 0.351 = 0.304</tex> больше, чем один лист. Структура (в) хуже даже одного листа — отделить единственный платёж не выгодно, потому что <tex>\lambda = 1</tex> сильно сжимает лист с <tex>H = 0.16</tex> (секция 8).</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Оценка структуры против настоящего уменьшения потери</div>
+    <div class="chsub">Шесть платежей, пять возможных порогов по сумме, <tex>\lambda = 1</tex>. Ось x — порог (после какого платежа режем), ось y — насколько разбиение лучше одного листа. Фиолетовые столбики — по формуле 7 (парабола), бирюзовые точки — настоящее уменьшение суммы log-loss со штрафом, если веса листьев найти точно. Различие не больше 0.009: при умеренных весах парабола выбирает структуру почти так же, как настоящая потеря. Лучший порог — после платежа 3 (0.304 и 0.313).</div>
+    <canvas id="c_score"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · оценка структуры и log-loss</div>
+    <p><tex>\text{Obj}^*</tex> — не значение log-loss, а приближённое <b>изменение</b> суммы потерь (со штрафом) от добавления дерева. Отрицательное число — улучшение; на шести платежах сумма потерь 5.075, и структура (б) опускает её примерно до <tex>5.075 - 0.655 = 4.42</tex>. Сравнивать <tex>\text{Obj}^*</tex> можно только у деревьев, построенных в одной точке — с одними и теми же <tex>g_i</tex> и <tex>h_i</tex>.</p>
+    <p>Пример: после первого дерева градиенты другие, и оценка того же пня (б) для второго дерева будет другой.</p>
+  </div>
+
+  <p class="next">Перебрать все структуры дерева невозможно — их астрономически много. Как и обычное дерево, XGBoost растит структуру жадно: делит лист на два, если это уменьшает формулу 7.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Gain разбиения: формула</h2></div>
+  <p class="slead">Разбиение листа на два меняет в формуле 7 только одно слагаемое: было <tex>-\frac12 S_{L+R}</tex>, стало <tex>-\frac12(S_L + S_R)</tex>, и листьев стало на один больше. Разность — выигрыш разбиения, Gain. Для каждого признака и порога XGBoost считает Gain по двум суммам слева и справа и берёт лучший. Никакого дерева на псевдоостатках, как в 0.21, — сама целевая функция решает, где резать.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · выигрыш разбиения</div>
+    <texd>\text{Gain} = \frac12\big(S_L + S_R - S_{L+R}\big) - \gamma \qquad S_L = \frac{G_L^2}{H_L + \lambda} \qquad S_R = \frac{G_R^2}{H_R + \lambda} \qquad S_{L+R} = \frac{(G_L + G_R)^2}{H_L + H_R + \lambda}</texd>
+    <div class="where">где <tex>G_L</tex>, <tex>H_L</tex> — суммы градиентов и кривизн объектов, ушедших налево, <tex>G_R</tex>, <tex>H_R</tex> — направо, <tex>G_L + G_R</tex>, <tex>H_L + H_R</tex> — суммы родительского листа, <tex>\lambda</tex> — L2-штраф на веса, <tex>\gamma</tex> — штраф за лишний лист. <tex>S_L</tex>, <tex>S_R</tex>, <tex>S_{L+R}</tex> — оценки левого, правого и родительского листа (формула 7). Разбиение уменьшает целевую функцию, если <tex>\text{Gain} \gt 0</tex>. Это та же формула, что в 0.15 (секция 12), — здесь она выведена из оценки структуры. Пример: пень «сумма &lt; 10» на шести платежах, <tex>\lambda = 1</tex>, <tex>\gamma = 0</tex> — <tex>\frac12(1.286 + 0.024 - 0.701) = 0.304</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · Gain по всем порогам на шести платежах, λ = 1</div>
+    <div class="tstep"><b>Шаг 1. Родитель.</b> <tex>G = 1.3</tex>, <tex>H = 1.41</tex>, <tex>S_{L+R} = 1.69/2.41 = 0.701</tex>. Суммы слева накапливаются по порядку сумм платежа; справа — родитель минус левая часть.</div>
+    <div class="tstep"><b>Шаг 2. Порог 3.5</b> (слева платёж 1): <tex>G_L = 0.5</tex>, <tex>H_L = 0.25</tex>; <tex>G_R = 0.8</tex>, <tex>H_R = 1.16</tex>. <tex>S_L = 0.25/1.25 = 0.200</tex>, <tex>S_R = 0.64/2.16 = 0.296</tex>. Gain <tex>= \frac12(0.200 + 0.296 - 0.701) = -0.102</tex>.</div>
+    <div class="tstep"><b>Шаг 3. Порог 6.5</b> (платежи 1–2): <tex>G_L = 1.0</tex>, <tex>H_L = 0.5</tex>: <tex>S_L = 1/1.5 = 0.667</tex>; <tex>G_R = 0.3</tex>, <tex>H_R = 0.91</tex>: <tex>S_R = 0.09/1.91 = 0.047</tex>. Gain <tex>= \frac12(0.714 - 0.701) = 0.006</tex>.</div>
+    <div class="tstep"><b>Шаг 4. Порог 10</b> (платежи 1–3): <tex>S_L = 2.25/1.75 = 1.286</tex>, <tex>S_R = 0.04/1.66 = 0.024</tex>. Gain <tex>= \frac12(1.310 - 0.701) = 0.304</tex>.</div>
+    <div class="tstep"><b>Шаг 5. Пороги 16 и 32.5.</b> 16: <tex>G_L = 1.0</tex>, <tex>H_L = 1.0</tex> — <tex>S_L = 0.5</tex>; <tex>G_R = 0.3</tex>, <tex>H_R = 0.41</tex> — <tex>S_R = 0.064</tex>; Gain −0.069. 32.5: <tex>S_L = 0.25/2.25 = 0.111</tex>, <tex>S_R = 0.64/1.16 = 0.552</tex>; Gain −0.019.</div>
+    <div class="tstep"><b>Итог.</b> Лучший порог — 10 тыс. ₽, Gain 0.304. XGBoost выбирает тот же порог и печатает 0.6086 — удвоенный Gain (секция 7). Три порога из пяти дают отрицательный Gain: при <tex>\lambda \gt 0</tex> разбиение бывает хуже, чем лист целиком.</div>
+  </div>
+
+  <p>Откуда берётся отрицательный Gain? При <tex>\lambda = 0</tex> его не бывает: <tex>\frac{G_L^2}{H_L} + \frac{G_R^2}{H_R} \ge \frac{(G_L + G_R)^2}{H_L + H_R}</tex> — неравенство Коши — Буняковского, поэтому разбиение никогда не ухудшает параболу. Со штрафом каждый новый лист получает свой <tex>\lambda</tex> в знаменателе — два листа штрафуются дважды. Так <tex>\lambda</tex> сам по себе работает как штраф за разбиение маленьких листьев.</p>
+
+  <p>Если потеря — квадрат ошибки и <tex>\lambda = 0</tex>, формула 8 должна совпасть с критерием регрессионного дерева. Проверим. <b>Шаг 1.</b> <tex>g_i = -r_i</tex>, <tex>h_i = 1</tex>, поэтому <tex>H = n</tex> и <tex>\frac{G^2}{H} = \frac{(n\bar r)^2}{n} = n\bar r^2</tex>, где <tex>\bar r</tex> — средний остаток. <b>Шаг 2.</b> Gain <tex>= \frac12(n_L\bar r_L^2 + n_R\bar r_R^2 - n\bar r^2)</tex>. <b>Шаг 3.</b> Подставим <tex>\bar r = (n_L\bar r_L + n_R\bar r_R)/n</tex> и приведём подобные — останется квадрат разности средних.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · Gain для квадрата ошибки без штрафа</div>
+    <texd>\text{Gain} = \frac12\cdot\frac{n_L n_R}{n}\big(\bar r_L - \bar r_R\big)^2</texd>
+    <div class="where">где <tex>n_L</tex>, <tex>n_R</tex> — числа объектов слева и справа, <tex>n = n_L + n_R</tex>, <tex>\bar r_L</tex>, <tex>\bar r_R</tex> — средние остатки в частях. Это половина прироста регрессионного дерева через разность средних (<a href="block0_19_decision_trees.html#s3">0.19, секция 3</a>; <a href="block0_21_gradient_boosting.html#s2">0.21, секция 2</a>): деревья sklearn для регрессии — частный случай XGBoost. Половина — от множителя <tex>\frac12</tex> в квадрате ошибки. Пример: остатки 0.6, 0.5, 0.1, 0 | −0.4, −0.8 — <tex>\frac12\cdot\frac{8}{6}\cdot0.81 = 0.54</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Тот же порог, что в 0.21</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть машин из 0.21 (секция 2), остатки перед первым деревом 0.6, 0.5, 0.1, 0, −0.4, −0.8. Прирост порога «возраст 6 лет» в 0.21 — 1.08. XGBoost с квадратом ошибки, без штрафов: <tex>\lambda = 0</tex> (L2 на веса), <tex>\gamma = 0</tex> (штраф за лист).</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Gain этого порога по формуле 8 и по формуле 9.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Для квадрата ошибки <tex>g = -r</tex>, <tex>h = 1</tex>: слева четыре машины, справа две. Обе формулы должны дать половину прироста из 0.21.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 9</a> · Gain для квадрата ошибки</div>
+        <texd>\text{Gain} = \frac12\cdot\frac{n_L n_R}{n}\big(\bar r_L - \bar r_R\big)^2</texd>
+        <div class="fr-w">где <tex>n_L = 4</tex>, <tex>n_R = 2</tex>, <tex>n = 6</tex>; <tex>\bar r_L = 1.2/4 = 0.3</tex>, <tex>\bar r_R = -1.2/2 = -0.6</tex>.</div></div>
+      <texd>\frac12\cdot\frac{4\cdot2}{6}\cdot(0.3 + 0.6)^2 = \frac12\cdot1.333\cdot0.81 = 0.54</texd>
+      <p>По формуле 8: <tex>G_L = -1.2</tex>, <tex>H_L = 4</tex>, <tex>G_R = 1.2</tex>, <tex>H_R = 2</tex>, родитель <tex>G = 0</tex>:</p>
+      <texd>\frac12\Big(\frac{1.44}{4} + \frac{1.44}{2} - 0\Big) = \frac12(0.36 + 0.72) = 0.54</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Обе формулы дают <b>0.54</b> — ровно половину 1.08 из 0.21. Порядок порогов от этого множителя не меняется, поэтому XGBoost с квадратом ошибки выберет те же разбиения, что дерево на остатках. Различия начинаются, когда кривизны объектов разные.</div></div>
+  </div>
+
+  <p>Для log-loss кривизны разные, и тогда второй порядок может выбрать другое разбиение, чем дерево на псевдоостатках из 0.21. Чтобы это было видно в чистом виде, уберём штраф.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 7 · Второй порядок и псевдоостатки выбирают разное</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей из таблицы секции 4, <tex>\lambda = 0</tex>, <tex>\gamma = 0</tex>. Классический бустинг (sklearn) выбирает порог по приросту дерева на псевдоостатках <tex>r = y - p</tex>: <tex>\frac{n_L n_R}{n}(\bar r_L - \bar r_R)^2</tex>. XGBoost — по формуле 8.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Лучший порог по каждому критерию и вес листа, который выберет XGBoost.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Псевдоостатки: −0.5, −0.5, −0.5, 0.5, 0.5, −0.8. Первый критерий видит у платежа 6 просто остаток −0.8. Второй делит квадрат суммы градиентов на кривизну — у платежа 6 она маленькая, 0.16.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 8</a> · выигрыш разбиения при λ = 0, γ = 0</div>
+        <texd>\text{Gain} = \frac12\Big(\frac{G_L^2}{H_L} + \frac{G_R^2}{H_R} - \frac{(G_L + G_R)^2}{H_L + H_R}\Big)</texd>
+        <div class="fr-w">где родитель <tex>G = 1.3</tex>, <tex>H = 1.41</tex>, <tex>S = 1.69/1.41 = 1.199</tex>; по порогу 10 — <tex>1.5, 0.75</tex> | <tex>-0.2, 0.66</tex>; по порогу 32.5 — <tex>0.5, 1.25</tex> | <tex>0.8, 0.16</tex>.</div></div>
+      <texd>\text{порог 10: } \frac12\Big(\frac{2.25}{0.75} + \frac{0.04}{0.66} - 1.199\Big) = \frac12(3.0 + 0.061 - 1.199) = 0.931</texd>
+      <texd>\text{порог 32.5: } \frac12\Big(\frac{0.25}{1.25} + \frac{0.64}{0.16} - 1.199\Big) = \frac12(0.2 + 4.0 - 1.199) = 1.501</texd>
+      <p>Критерий псевдоостатков. Порог 10: средние −0.5 и <tex>(0.5 + 0.5 - 0.8)/3 = 0.067</tex>, прирост <tex>\frac{9}{6}\cdot0.567^2 = 0.482</tex>. Порог 32.5: средние <tex>(-1.5 + 1.0)/5 = -0.1</tex> и −0.8, прирост <tex>\frac{5}{6}\cdot0.7^2 = 0.408</tex>. Остальные пороги по обоим критериям хуже.</p>
+      <p>Вес листа из одного платежа 6: <tex>-0.8/0.16 = -5</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Псевдоостатки выбирают порог <b>10</b> (0.482 против 0.408), второй порядок — <b>32.5</b> (1.501 против 0.931): отрезать платёж 6 в отдельный лист с весом <b>−5</b>. XGBoost при <tex>\lambda = 0</tex> делает именно это (печатает 3.001 = 2·1.501). Второй порядок видит, что одну уверенную ошибку можно исправить большим сдвигом логита: потеря платежа 6 упадёт с 1.609 до 0.027. Но лист из одного объекта с весом −5 — это подгонка под один платёж. Ровно от этого защищают <tex>\lambda</tex> (с <tex>\lambda = 1</tex> выбран порог 10, задача 5) и min_child_weight (секция 9).</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Выигрыш по порогам суммы на 20 000 платежах</div>
+    <div class="chsub">Корень двадцатого дерева XGBoost (глубина 3, шаг 0.1), признак «сумма». Ось x — порог, тыс. ₽ (логарифмическая шкала), ось y — выигрыш. Фиолетовая — Gain второго порядка (формула 8, <tex>\lambda = 1</tex>): максимум 5.8 при пороге 5.2 тыс.: слева 10 372 платежа с долей мошенничества 1.4%, справа — 3.0%. Бирюзовая — критерий дерева на псевдоостатках, приведённый к той же высоте: его максимум — на последнем пороге, 209 тыс., он отрезает один самый крупный платёж (231 тыс., мошеннический, модель даёт ему 0.18, псевдоостаток 0.82). Gain второго порядка там всего 0.30.</div>
+    <canvas id="c_gain"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · Gain в формуле и Gain в выгрузке модели</div>
+    <p>В статье XGBoost и в формуле 8 Gain — с множителем <tex>\frac12</tex> и за вычетом <tex>\gamma</tex> (штрафа за лист). Библиотека печатает в <code>trees_to_dataframe</code> и <code>get_score(importance_type='gain')</code> другое число: <tex>\Delta = S_L + S_R - S_{L+R}</tex> — разность оценок листов, без <tex>\frac12</tex> и без штрафа за лист. При <tex>\gamma = 0</tex> <tex>\Delta = 2\,\text{Gain}</tex>.</p>
+    <p>Пример: порог 10 на шести платежах при <tex>\lambda = 1</tex> — по формуле 8 Gain 0.304, в выгрузке 0.6086.</p>
+  </div>
+
+  <p><b>В коде.</b> Важность признака <code>importance_type='gain'</code> — средний <tex>\Delta</tex> по всем разбиениям на этом признаке, <code>'total_gain'</code> — сумма, <code>'cover'</code> — средний <tex>H</tex> разбиваемых узлов, <code>'weight'</code> — число разбиений. По умолчанию <code>feature_importances_</code> у <code>XGBClassifier</code> — нормированный <code>'gain'</code>. Средний выигрыш завышает признаки, на которых было одно удачное разбиение, — сравнивайте с <code>'total_gain'</code>.</p>
+
+  <p class="next">Gain выбирает лучшее разбиение, но разбивать можно до бесконечности: на 20 000 платежах почти любое разбиение даёт положительный выигрыш на обучении. Что останавливает рост дерева?</p>
+</section>
+
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>γ: минимальный выигрыш для разбиения</h2></div>
+  <p class="slead">Штраф <tex>\gamma T</tex> из формулы 1 делает каждый лист «платным». Разбиение добавляет лист, поэтому окупается, только если уменьшает потерю больше, чем на <tex>\gamma</tex>. Так обрезка дерева встроена в саму целевую функцию. На платежах это лечит XGBoost по умолчанию: с <tex>\gamma = 5</tex> log-loss на новых данных падает с 0.1006 до 0.0878. Но у библиотеки два отличия от статьи, о которых стоит знать: масштаб <tex>\gamma</tex> и порядок обрезки.</p>
+
+  <p>В формуле 8 разбиение выгодно при <tex>\frac12\Delta - \gamma \gt 0</tex>, где <tex>\Delta = S_L + S_R - S_{L+R}</tex> — разность оценок листов. Реализация XGBoost сравнивает с параметром <code>gamma</code> не половину, а саму <tex>\Delta</tex> — то самое число, которое печатает <code>trees_to_dataframe</code>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 10 · правило γ в статье и в библиотеке</div>
+    <texd>\text{статья: } \frac12\Delta \gt \gamma \qquad \text{XGBoost: } \Delta \ge \gamma_{\text{xgb}} \qquad \Delta = S_L + S_R - S_{L+R}</texd>
+    <div class="where">где <tex>\Delta</tex> — разность оценок листов после и до разбиения, <tex>S = G^2/(H + \lambda)</tex> — оценка листа (формула 7), <tex>\gamma</tex> — штраф за лист в формуле 1, <tex>\gamma_{\text{xgb}}</tex> — параметр <code>gamma</code> (он же <code>min_split_loss</code>). Правила совпадают при <tex>\gamma_{\text{xgb}} = 2\gamma</tex>: параметр библиотеки вдвое больше штрафа из статьи. Обрезка идёт снизу вверх: разбиение убирается, если оба его потомка — листья и <tex>\Delta \lt \gamma_{\text{xgb}}</tex>; слабое разбиение над сильными остаётся. Пример: <tex>\Delta = 2.571</tex>, <code>gamma=1.31</code> — разбиение остаётся, хотя по статье <tex>\frac12\cdot2.571 = 1.286 \lt 1.31</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · γ в статье и в XGBoost: одно разбиение, три значения gamma</div>
+    <div class="tstep"><b>Шаг 1. Данные.</b> Шесть объектов, ответы 1, 1, 1, 0, 0, 0, вероятности 0.5, <tex>\lambda = 1</tex>. Слева три единицы: <tex>G_L = -1.5</tex>, <tex>H_L = 0.75</tex>, <tex>S_L = 2.25/1.75 = 1.286</tex>. Справа — <tex>G_R = 1.5</tex>, <tex>S_R = 1.286</tex>. Родитель: <tex>G = 0</tex>, <tex>S = 0</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Выигрыш.</b> <tex>\Delta = 1.286 + 1.286 - 0 = 2.571</tex>; по статье Gain <tex>= \frac12\cdot2.571 - \gamma = 1.286 - \gamma</tex>. XGBoost печатает 2.571.</div>
+    <div class="tstep"><b>Шаг 3. gamma = 1.31.</b> Статья: <tex>1.286 - 1.31 = -0.024 \lt 0</tex> — разбиение отбросить. XGBoost: <tex>2.571 \ge 1.31</tex> — оставить. Запуск: дерево с двумя листьями.</div>
+    <div class="tstep"><b>Шаг 4. gamma = 2.52 и 2.62.</b> <tex>2.571 \ge 2.52</tex> — два листа; <tex>2.571 \lt 2.62</tex> — один лист. Граница — ровно <tex>\Delta</tex>, а не <tex>\frac12\Delta</tex>.</div>
+    <div class="tstep"><b>Итог.</b> Чтобы получить штраф <tex>\gamma</tex> из статьи, в XGBoost ставят <code>gamma</code> = <tex>2\gamma</tex>. На практике <code>gamma</code> подбирают по валидации, и масштаб не важен; важен он, когда переносят число из формулы или сравнивают с выгрузкой Gain.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 8 · Обрезка снизу вверх</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">24 платежа, два бинарных признака A и B, которые по отдельности почти ничего не говорят, а вместе — всё, как XOR в 0.19 (секция 7): при A = 0, B = 0 — 6 честных; A = 0, B = 1 — 6 мошеннических; A = 1, B = 0 — 7 мошеннических; A = 1, B = 1 — 5 честных. Старт с вероятности 0.5, <tex>\lambda = 0</tex>, глубина 2. Корень делится по A с <tex>\Delta = 0.167</tex>, левый узел по B — 12.0, правый по B — 11.67.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Какие разбиения останутся при <code>gamma</code> = 3, 11.8 и 20.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">XGBoost сначала строит дерево, затем идёт от листьев вверх: узел, оба потомка которого — листья, сворачивается в лист, если его <tex>\Delta \lt</tex> <code>gamma</code>. Свернуть корень можно только после того, как свернулись оба его потомка.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s7">Формула 10</a> · правило γ в XGBoost</div>
+        <texd>\Delta \ge \gamma_{\text{xgb}}</texd>
+        <div class="fr-w">разбиение остаётся, если это выполнено или под ним есть оставшееся разбиение; где <tex>\Delta</tex>: корень 0.167, левый узел 12.0, правый 11.67; <tex>\gamma_{\text{xgb}}</tex> — 3, 11.8, 20.</div></div>
+      <p>Проверка <tex>\Delta</tex> корня: слева 12 платежей, 6 мошеннических — <tex>G_L = 12\cdot0.5 - 6 = 0</tex>, <tex>H_L = 3</tex>; справа 7 из 12 — <tex>G_R = -1</tex>, <tex>H_R = 3</tex>; родитель <tex>G = -1</tex>, <tex>H = 6</tex>: <tex>\Delta = 0 + \frac13 - \frac16 = 0.167</tex>.</p>
+      <p><code>gamma=3</code>: оба нижних узла <tex>\ge 3</tex> — остаются; у корня есть оставшиеся потомки — остаётся, хотя <tex>0.167 \lt 3</tex>. <code>gamma=11.8</code>: правый узел <tex>11.67 \lt 11.8</tex> — свёрнут, левый <tex>12.0 \ge 11.8</tex> — остаётся, корень остаётся. <code>gamma=20</code>: оба нижних свёрнуты, затем корень <tex>0.167 \lt 20</tex> — свёрнут.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">При 3 — всё дерево, <b>4 листа</b>; при 11.8 — <b>3 листа</b> (корень, левый узел и лист справа); при 20 — <b>1 лист</b> с весом 0.167. Все три ответа совпадают с запуском XGBoost. Обрезка снизу вверх смотрит на шаг вперёд: разбиение с почти нулевым выигрышем сохраняется ради сильных разбиений под ним. Если бы <tex>\gamma</tex> проверялась при росте сверху вниз, корень с выигрышем 0.167 не разбился бы вовсе, и закономерность «A и B вместе» была бы потеряна.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">gamma на платежах: качество и размер деревьев</div>
+    <div class="chsub">XGBoost по умолчанию (100 деревьев глубины 6, шаг 0.3), меняется только <code>gamma</code>. Ось x — gamma, ось y слева — log-loss на 100 000 новых платежах (фиолетовая), справа — среднее число листьев в дереве (бирюзовая). При gamma = 0 — 29 листьев и 0.1006; при 1 — 5.5 листа и 0.0896; лучшее — 0.0878 при gamma = 5 (1.9 листа в среднем: большинство деревьев — пни или одиночные листья). Дальше штраф отрезает и полезные разбиения.</div>
+    <canvas id="c_gamma"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · γ в статье и gamma в XGBoost</div>
+    <p>В статье и в формуле 8 <tex>\gamma</tex> вычитается из выигрыша с множителем <tex>\frac12</tex>. Параметр <code>gamma</code> библиотеки сравнивается с <tex>\Delta</tex> (разностью оценок листов) без <tex>\frac12</tex>, то есть равен <tex>2\gamma</tex>. Кроме того, в 0.15 (секция 12) <tex>\gamma</tex> вычиталась из выигрыша при росте; в XGBoost — при обрезке снизу вверх.</p>
+    <p>Пример: <tex>\Delta = 2.571</tex>. <code>gamma=1.31</code> разбиение оставляет, а «<tex>\gamma = 1.31</tex> по статье» отбросил бы.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>gamma</code> и <code>min_split_loss</code> — одно и то же. Подбирать его удобнее по сетке 0, 0.1, 0.3, 1, 3, 10: масштаб <tex>\Delta</tex> растёт с числом объектов (оценка листа — квадрат суммы градиентов), поэтому хорошее значение на 20 000 объектах будет слишком слабым на 2 миллионах. В LightGBM похожий параметр — <code>min_gain_to_split</code> (по умолчанию 0).</p>
+
+  <p class="next"><tex>\gamma</tex> решает, делить ли лист. <tex>\lambda</tex> и <tex>\alpha</tex> решают, насколько смел вес листа, и через формулу 7 тоже влияют на выбор разбиений.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>λ и α: регуляризация весов листьев</h2></div>
+  <p class="slead">L2-штраф <tex>\lambda</tex> прибавляется к знаменателю веса и сжимает листья тем сильнее, чем меньше в них «веса» <tex>H</tex>. L1-штраф <tex>\alpha</tex> вычитается из числителя и зануляет листья с маленькой суммой градиентов. Оба штрафа входят и в оценку листа, поэтому меняют не только веса, но и выбор разбиений: на шести платежах <tex>\lambda = 1</tex> переводит выбор с «отрезать один платёж» на «разделить пополам».</p>
+
+  <p>Как L1 появляется в формуле. В <tex>\Omega</tex> добавляется <tex>\alpha\sum_j|w_j|</tex>, и слагаемое листа становится <tex>G w + \frac12(H + \lambda)w^2 + \alpha|w|</tex>. <b>Шаг 1.</b> При <tex>w \gt 0</tex> производная <tex>G + \alpha + (H + \lambda)w</tex>, ноль при <tex>w = -(G + \alpha)/(H + \lambda)</tex> — это положительное число, только если <tex>G \lt -\alpha</tex>. <b>Шаг 2.</b> Симметрично при <tex>w \lt 0</tex>: <tex>w = -(G - \alpha)/(H + \lambda)</tex>, если <tex>G \gt \alpha</tex>. <b>Шаг 3.</b> Если <tex>|G| \le \alpha</tex>, минимум — в нуле (мягкий порог, как у lasso в 0.15, секция 6).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 11 · вес листа и оценка с L1-штрафом</div>
+    <texd>w_j^* = -\frac{T_\alpha(G_j)}{H_j + \lambda} \qquad T_\alpha(G) = \operatorname{sign}(G)\,\max\big(|G| - \alpha,\ 0\big) \qquad S_j = \frac{T_\alpha(G_j)^2}{H_j + \lambda}</texd>
+    <div class="where">где <tex>\alpha \ge 0</tex> — L1-штраф (reg_alpha), <tex>T_\alpha</tex> — мягкий порог: уменьшает модуль суммы градиентов на <tex>\alpha</tex>, а если он меньше <tex>\alpha</tex>, даёт ноль, <tex>\operatorname{sign}(G)</tex> — знак <tex>G</tex>, <tex>G_j</tex>, <tex>H_j</tex> — суммы градиентов и кривизн листа, <tex>\lambda</tex> — L2-штраф, <tex>S_j</tex> — оценка листа для формул 7 и 8. При <tex>\alpha = 0</tex> — формулы 6 и 7. Пример: <tex>G = 1.5</tex>, <tex>H = 0.75</tex>, <tex>\lambda = 1</tex>, <tex>\alpha = 0.5</tex> — <tex>w = -1.0/1.75 = -0.571</tex>; <tex>G = -0.2</tex> — <tex>w = 0</tex>.</div>
+  </div>
+
+  <p>Без L1 действие <tex>\lambda</tex> на вес видно сразу из формулы 6: вес без штрафа умножается на долю <tex>H/(H + \lambda)</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 12 · какую долю веса сохраняет лист</div>
+    <texd>w_j^*(\lambda) = w_j^*(0)\cdot\frac{H_j}{H_j + \lambda}</texd>
+    <div class="where">где <tex>w_j^*(0) = -G_j/H_j</tex> — вес листа без штрафа (чистый шаг Ньютона), <tex>w_j^*(\lambda)</tex> — со штрафом, <tex>H_j</tex> — сумма кривизн листа, <tex>\lambda</tex> — L2-штраф. Доля близка к 1 у «тяжёлых» листьев и мала у лёгких — у листьев из горстки объектов или из объектов, в которых модель уже уверена. Это ridge с одним признаком-индикатором листа (<a href="block0_15_regularization.html#s12">0.15, секция 12</a>). Пример: лист из платежа 6 — <tex>H = 0.16</tex>, доля <tex>0.16/1.16 = 0.138</tex>, вес <tex>-5 \to -0.690</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 9 · λ = 1 не даёт отрезать один платёж</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей из таблицы секции 4. При <tex>\lambda = 0</tex> XGBoost отрезает платёж 6 (порог 32.5, Gain 1.501, вес −5; задача 7). Ставим <tex>\lambda = 1</tex>, как по умолчанию.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Долю веса, которую сохраняют лист из платежа 6 и лист из платежей 1–3; Gain порога 32.5 при <tex>\lambda = 1</tex> и какой порог будет выбран.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Доля — формула 12: <tex>H</tex> — сумма кривизн листа. Gain — формула 8: <tex>G</tex> — сумма градиентов, <tex>\lambda = 1</tex> в каждом знаменателе, и лёгкий лист потеряет оценку сильнее всех.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 12</a> · доля веса · <a href="#s6">формула 8</a> · выигрыш</div>
+        <texd>\frac{H}{H + \lambda} \qquad \text{Gain} = \frac12\big(S_L + S_R - S_{L+R}\big) \qquad S = \frac{G^2}{H + \lambda}</texd>
+        <div class="fr-w">где платёж 6: <tex>G = 0.8</tex>, <tex>H = 0.16</tex>; платежи 1–3: <tex>H = 0.75</tex>; платежи 1–5: <tex>G = 0.5</tex>, <tex>H = 1.25</tex>; родитель: <tex>G = 1.3</tex>, <tex>H = 1.41</tex>; <tex>\lambda = 1</tex>.</div></div>
+      <texd>\frac{0.16}{1.16} = 0.138 \qquad \frac{0.75}{1.75} = 0.429</texd>
+      <texd>S_L = \frac{0.25}{2.25} = 0.111 \qquad S_R = \frac{0.64}{1.16} = 0.552 \qquad S_{L+R} = \frac{1.69}{2.41} = 0.701</texd>
+      <texd>\text{Gain}_{32.5} = \frac12(0.111 + 0.552 - 0.701) = -0.019</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Лист из платежа 6 сохраняет <b>14%</b> веса (−5 → −0.690), лист из трёх платежей — <b>43%</b> (−2 → −0.857). Gain порога 32.5 становится <b>−0.019</b> — хуже, чем не делить; выбран порог 10 (Gain 0.304, трассировка секции 6). <tex>\lambda</tex> бьёт по оценке лёгких листьев сильнее всего: <tex>S_R</tex> упала с <tex>0.64/0.16 = 4.0</tex> до 0.552.</div></div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 10 · L1 зануляет слабый лист</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей, порог 10 (платежи 1–3 | 4–6), <tex>\lambda = 1</tex>, <tex>\alpha = 0.5</tex>. Суммы: слева <tex>G_L = 1.5</tex>, <tex>H_L = 0.75</tex>; справа <tex>G_R = -0.2</tex>, <tex>H_R = 0.66</tex>; родитель <tex>G = 1.3</tex>, <tex>H = 1.41</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Веса листьев и <tex>\Delta</tex> разбиения, которое напечатает XGBoost.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сначала мягкий порог к каждой сумме градиентов, затем формула 11 для весов и оценок. <tex>\Delta = S_L + S_R - S_{L+R}</tex> — без множителя ½.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 11</a> · вес и оценка с L1</div>
+        <texd>w = -\frac{T_\alpha(G)}{H + \lambda} \qquad S = \frac{T_\alpha(G)^2}{H + \lambda} \qquad T_\alpha(G) = \operatorname{sign}(G)\max(|G| - \alpha, 0)</texd>
+        <div class="fr-w">где <tex>\alpha = 0.5</tex>, <tex>\lambda = 1</tex>; <tex>G</tex> — 1.5, −0.2 и 1.3; <tex>H</tex> — 0.75, 0.66 и 1.41.</div></div>
+      <texd>T(1.5) = 1.0 \qquad T(-0.2) = 0 \qquad T(1.3) = 0.8</texd>
+      <texd>w_L = -\frac{1.0}{1.75} = -0.571 \qquad w_R = 0</texd>
+      <texd>\Delta = \frac{1.0^2}{1.75} + 0 - \frac{0.8^2}{2.41} = 0.571 - 0.266 = 0.306</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Левый лист <b>−0.571</b>, правый — ровно <b>0</b>, <tex>\Delta</tex> = <b>0.306</b>. XGBoost с <code>reg_alpha=0.5</code> печатает те же −0.571, 0 и 0.3059. Правый лист из противоречивых платежей (два мошеннических и одна уверенная ошибка) с суммой градиентов меньше <tex>\alpha</tex> просто ничего не меняет. При <tex>\alpha = 1</tex> разбиение ещё держится (<tex>\Delta = 0.106</tex>), но вес левого листа падает до −0.286.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">λ и α на платежах</div>
+    <div class="chsub">XGBoost по умолчанию (100 деревьев глубины 6, шаг 0.3), меняется один штраф. Ось x — значение штрафа, ось y — log-loss на новых платежах. Фиолетовая — <tex>\lambda</tex>: 0.1075 без штрафа, 0.1006 при 1 (по умолчанию), 0.0869 при 300 — сжатие весов здесь работает почти как уменьшение шага. Бирюзовая — <tex>\alpha</tex>: 0.0873 при 10, и деревья становятся меньше — 6.8 листа против 29, потому что листья с малой суммой градиентов обнуляются, а разбиения на них теряют выигрыш.</div>
+    <canvas id="c_lam"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · λ и α в бустинге</div>
+    <p><tex>\lambda</tex> (reg_lambda, L2) сжимает вес пропорционально: доля <tex>H/(H + \lambda)</tex>, ноль никогда не получается. <tex>\alpha</tex> (reg_alpha, L1) сдвигает сумму градиентов к нулю на фиксированную величину: слабые листья становятся ровно нулём, сильные теряют одинаковую добавку. Оба — штрафы на <b>веса листьев</b>, а не на признаки: отбора признаков, как lasso в линейной модели, <tex>\alpha</tex> не делает.</p>
+    <p>Пример: лист с <tex>G = 1.5</tex>, <tex>H = 0.75</tex>: <tex>\lambda = 1</tex> — вес −0.857; <tex>\alpha = 0.5</tex>, <tex>\lambda = 1</tex> — −0.571; лист с <tex>G = -0.2</tex> при <tex>\alpha = 0.5</tex> — 0.</p>
+  </div>
+
+  <p><b>В коде.</b> В sklearn-интерфейсе <code>reg_lambda</code> и <code>reg_alpha</code>, в нативном — <code>lambda</code> и <code>alpha</code>. В LightGBM — <code>lambda_l2</code> и <code>lambda_l1</code>, по умолчанию оба 0, в отличие от <tex>\lambda = 1</tex> у XGBoost: одинаковые остальные параметры дают разные модели. <code>HistGradientBoostingClassifier</code> из sklearn тоже использует веса <tex>-G/(H + \lambda)</tex>, его <code>l2_regularization</code> — это <tex>\lambda</tex>, по умолчанию 0.</p>
+
+  <p class="next">Штрафы уменьшают веса маленьких листьев, но не запрещают их. Прямой запрет — min_child_weight, и рядом с ним предел веса max_delta_step.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>min_child_weight как ограничение на H</h2></div>
+  <p class="slead">Вес листа <tex>-G/(H + \lambda)</tex> ненадёжен, когда <tex>H</tex> мала: малая кривизна — это либо мало объектов, либо объекты, в которых модель уже уверена. min_child_weight запрещает разбиения, после которых у одного из листьев <tex>H</tex> меньше порога. В регрессии это просто минимальное число объектов в листе. В классификации с редким классом — гораздо больше: при вероятности 0.022 листу нужно 47 платежей, при 0.002 — 501.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 13 · условие min_child_weight</div>
+    <texd>H_L \ge m \qquad H_R \ge m \qquad H \approx n\,p(1 - p) \qquad n \ge \frac{m}{p(1 - p)}</texd>
+    <div class="where">где <tex>m</tex> — min_child_weight (по умолчанию 1), <tex>H_L</tex>, <tex>H_R</tex> — суммы кривизн будущих листьев: разбиение разрешено, только если обе не меньше <tex>m</tex> (равенство допустимо — проверено запуском); <tex>n</tex> — число объектов листа, <tex>p</tex> — их типичная вероятность, <tex>p(1 - p)</tex> — кривизна log-loss одного объекта. Для квадрата ошибки <tex>h = 1</tex>, и условие — <tex>n \ge m</tex>. Пример: <tex>p = 0.022</tex>, <tex>m = 1</tex> — <tex>n \ge 1/(0.022\cdot0.978) = 46.5</tex>, то есть 47 объектов.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · min_child_weight: лист с H = 0.3 запрещён</div>
+    <div class="tstep"><b>Шаг 1. Лист из 30 честных платежей</b>, модель даёт им вероятность 0.01: <tex>H = 30\cdot0.01\cdot0.99 = 0.297</tex>. При <tex>m = 1</tex> разбиение, после которого такой лист выделился бы, запрещено, хотя объектов 30.</div>
+    <div class="tstep"><b>Шаг 2. Шесть платежей, <tex>\lambda = 0</tex>, <tex>m = 0.16</tex>.</b> Платёж 6 один: <tex>H_R = 0.16 \ge 0.16</tex> — разрешено. XGBoost отрезает его: порог 32.5, вес −5 (задача 7).</div>
+    <div class="tstep"><b>Шаг 3. <tex>m = 0.17</tex>.</b> <tex>0.16 \lt 0.17</tex> — порог 32.5 запрещён. Из оставшихся лучший — 10 (<tex>H_L = 0.75</tex>, <tex>H_R = 0.66</tex>), <tex>\Delta = 1.862</tex>, веса −2.0 и 0.303. Запуск XGBoost: то же.</div>
+    <div class="tstep"><b>Шаг 4. <tex>m = 1</tex> (по умолчанию).</b> Сумма кривизн всех шести — 1.41. Разделить её на две части, каждая не меньше 1, нельзя: никакое разбиение не разрешено, дерево — один лист с весом <tex>-1.3/1.41 = -0.922</tex>.</div>
+    <div class="tstep"><b>Итог.</b> min_child_weight в классификации считает не объекты, а неуверенность. При редком классе значение по умолчанию 1 запрещает мелкие листья там, где модель уже уверена, и это обычно полезно; но на маленьких выборках оно может не дать дереву разделиться вовсе.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 11 · Сколько платежей нужно листу</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">XGBoost с <code>min_child_weight=1</code>. Три области данных, где модель даёт вероятности мошенничества 0.5, 0.022 (средняя доля в данных) и 0.002 (постоянные клиенты, обычные суммы).</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Наименьшее число объектов в листе в каждой области.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сумма кривизн листа из <tex>n</tex> одинаковых объектов — <tex>n\,p(1 - p)</tex>; она должна быть не меньше 1.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 13</a> · условие min_child_weight</div>
+        <texd>n \ge \frac{m}{p(1 - p)}</texd>
+        <div class="fr-w">где <tex>m = 1</tex>; <tex>p</tex> — 0.5, 0.022, 0.002.</div></div>
+      <texd>\frac{1}{0.25} = 4 \qquad \frac{1}{0.022\cdot0.978} = 46.5 \qquad \frac{1}{0.002\cdot0.998} = 501.0</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><b>4</b>, <b>47</b> и <b>501</b> объект. Чем увереннее модель, тем крупнее должен быть лист. На платежах (график ниже) это помогает: с <code>min_child_weight=30</code> log-loss XGBoost по умолчанию падает с 0.1006 до 0.0890. Но при доле положительного класса 0.1% (<tex>p(1 - p) \approx 0.001</tex>) даже <tex>m = 1</tex> — это 1000 объектов в листе; если положительных всего несколько сотен, модели может быть нечему учиться.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">min_child_weight на платежах</div>
+    <div class="chsub">XGBoost по умолчанию (100 деревьев глубины 6, шаг 0.3), меняется только min_child_weight. Ось x — его значение, ось y слева — log-loss на новых платежах (фиолетовая), справа — среднее число листьев (бирюзовая). При 0 — 41 лист и 0.1022, при 1 — 29 и 0.1006, при 30 — 9.4 листа и 0.0890, при 100 — 3.1 листа и 0.0900: запрет начинает отрезать и полезные листья.</div>
+    <canvas id="c_mcw"></canvas>
+  </div>
+
+  <p>Вторая защита от огромных весов — прямой предел. Вес листа с крошечной <tex>H</tex> и большим <tex>G</tex> может быть десятками (в песочнице ниже — −10), а <tex>\lambda</tex> не всегда хочется ставить большим. Параметр max_delta_step обрезает вес.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 14 · предел веса листа max_delta_step</div>
+    <texd>w_j = \operatorname{clip}\Big(-\frac{G_j}{H_j + \lambda},\ -\delta,\ \delta\Big) \qquad S_j = -\big(2G_j w_j + (H_j + \lambda)\,w_j^2\big)</texd>
+    <div class="where">где <tex>w_j</tex> — вес листа после обрезки, <tex>\delta \gt 0</tex> — max_delta_step (0 — без предела, по умолчанию), <tex>\operatorname{clip}(v, -\delta, \delta)</tex> — <tex>v</tex>, обрезанное до отрезка <tex>[-\delta, \delta]</tex>, <tex>G_j</tex>, <tex>H_j</tex> — суммы градиентов и кривизн, <tex>\lambda</tex> — L2-штраф, <tex>S_j</tex> — оценка листа при этом весе (удвоенное уменьшение параболы формулы 5); без обрезки она равна <tex>G_j^2/(H_j + \lambda)</tex>. Выигрыш разбиения считается по обрезанным весам. Пример: <tex>G = 0.8</tex>, <tex>H = 0.16</tex>, <tex>\lambda = 0</tex>, <tex>\delta = 1</tex> — вес −1 вместо −5, оценка <tex>-(2\cdot0.8\cdot(-1) + 0.16) = 1.44</tex> вместо 4.0.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 12 · max_delta_step меняет выбор разбиения</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей, <tex>\lambda = 0</tex>, <code>max_delta_step=1</code>. Без предела XGBoost отрезает платёж 6 (<tex>\Delta = 3.001</tex>). Родитель: <tex>G = 1.3</tex>, <tex>H = 1.41</tex>, вес −0.922 — в пределах.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c"><tex>\Delta</tex> порогов 32.5 и 10 с обрезкой и какой выберет XGBoost.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Вес каждого листа обрезаем до <tex>[-1, 1]</tex>, оценку считаем по формуле 14. Оценка родителя без обрезки: <tex>1.69/1.41 = 1.199</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 14</a> · оценка листа с обрезанным весом</div>
+        <texd>S = -\big(2Gw + (H + \lambda)w^2\big) \qquad w = \operatorname{clip}(-G/H,\ -1,\ 1)</texd>
+        <div class="fr-w">где порог 32.5: <tex>(0.5, 1.25)</tex> и <tex>(0.8, 0.16)</tex>; порог 10: <tex>(1.5, 0.75)</tex> и <tex>(-0.2, 0.66)</tex>; <tex>\lambda = 0</tex>.</div></div>
+      <p>Порог 32.5: слева <tex>w = -0.4</tex>, <tex>S = 0.25/1.25 = 0.2</tex>; справа <tex>w = -5 \to -1</tex>, <tex>S = -(2\cdot0.8\cdot(-1) + 0.16) = 1.44</tex>.</p>
+      <texd>\Delta_{32.5} = 0.2 + 1.44 - 1.199 = 0.441</texd>
+      <p>Порог 10: слева <tex>w = -2 \to -1</tex>, <tex>S = -(2\cdot1.5\cdot(-1) + 0.75) = 2.25</tex>; справа <tex>w = 0.303</tex>, <tex>S = 0.04/0.66 = 0.061</tex>.</p>
+      <texd>\Delta_{10} = 2.25 + 0.061 - 1.199 = 1.112</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Порог 32.5 — <b>0.441</b>, порог 10 — <b>1.112</b>; XGBoost выбирает 10 и печатает 1.112, листья −1 и 0.303. Предел веса не только обрезает число в листе — он лишает смысла разбиения, вся ценность которых была в огромном весе для пары объектов. Документация XGBoost советует max_delta_step от 1 до 10 для логистической регрессии при сильном дисбалансе классов.</div></div>
+  </div>
+
+  <p>Теперь все рычаги одного разбиения можно потрогать руками.</p>
+
+  <div class="play">
+    <h4>Песочница: одно разбиение XGBoost</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">Восемь платежей по возрастанию суммы (1, 3, 6, 10, 15, 25, 40, 70 тыс. ₽). Нажатие на платёж меняет его ответ: 1 — мошенничество, 0 — нет. «Старт» — у всех вероятность 0.5, «модель уже учила» — вероятности 0.10, 0.20, 0.10, 0.50, 0.20, 0.80, 0.50, 0.90. График — <tex>\Delta</tex> каждого порога, как его печатает XGBoost (без ½): фиолетовый — выбранный, бирюзовые — разрешённые, серые — запрещённые min_child_weight; жёлтая линия — gamma. Движок на JavaScript совпал с XGBoost 3.4 в 150 случайных настройках из 150.</p>
+    <div class="prow" id="py_row"></div>
+    <div class="prow"><button type="button" id="pz_0" class="pbtn">старт: все 0.5</button><button type="button" id="pz_1" class="pbtn">модель уже учила</button></div>
+    <div class="prow"><button type="button" id="pl_0" class="pbtn">λ = 0</button><button type="button" id="pl_1" class="pbtn">λ = 1</button><button type="button" id="pl_10" class="pbtn">λ = 10</button></div>
+    <div class="prow"><button type="button" id="pg_0" class="pbtn">gamma 0</button><button type="button" id="pg_05" class="pbtn">gamma 0.5</button><button type="button" id="pg_2" class="pbtn">gamma 2</button></div>
+    <div class="prow"><button type="button" id="pa_0" class="pbtn">α = 0</button><button type="button" id="pa_05" class="pbtn">α = 0.5</button><button type="button" id="pm_0" class="pbtn">min_child_weight 0</button><button type="button" id="pm_05" class="pbtn">0.5</button><button type="button" id="pm_1" class="pbtn">1</button></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+  <p class="tcap" id="play_hint">Что попробовать. Ответы по умолчанию — 0, 0, 0, 1, 0, 1, 1, 0. (1) Старт, параметры XGBoost по умолчанию (<tex>\lambda = 1</tex>, min_child_weight 1): у каждого платежа <tex>h = 0.25</tex>, листу нужно 4 платежа — разрешён один порог, 12.5, <tex>\Delta = 0.167</tex>. min_child_weight 0 открывает лучший порог 8 (<tex>\Delta = 1.063</tex>, листья −0.857 и 0.222). (2) Там же <tex>\lambda = 0</tex> и min_child_weight 0: <tex>\Delta</tex> порога 8 — 2.700, листья −2.0 и 0.4. Gamma 2 при параметрах по умолчанию отбрасывает разбиение (0.167 &lt; 2). (3) «Модель уже учила», параметры по умолчанию: сумма кривизн всех восьми — 1.245, и ни один порог не разрешён. min_child_weight 0: выбран порог 55 — он отрезает платёж 70 тыс., честный, с вероятностью 0.9: <tex>\Delta = 0.873</tex>, вес −0.826. Теперь <tex>\lambda = 0</tex>: <tex>\Delta = 9.27</tex> и вес −10.0 — лист из одного объекта переворачивает его логит. min_child_weight 0.5 при <tex>\lambda = 1</tex> запрещает этот лист (его <tex>H = 0.09</tex>) и выбирает 12.5.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · min_child_weight и минимальное число объектов</div>
+    <p>min_child_weight XGBoost — минимальная <b>сумма кривизн</b> <tex>H</tex> в листе. <code>min_samples_leaf</code> в sklearn и <code>min_child_samples</code> в LightGBM (по умолчанию 20) — минимальное <b>число объектов</b>. В LightGBM есть и аналог min_child_weight — <code>min_sum_hessian_in_leaf</code>, но по умолчанию он 0.001, а не 1. Для регрессии с квадратом ошибки min_child_weight и число объектов совпадают, для классификации — нет.</p>
+    <p>Пример: 30 честных платежей с вероятностью 0.01 — 30 объектов, но <tex>H = 0.297</tex>: LightGBM по умолчанию такой лист разрешит, XGBoost — нет.</p>
+  </div>
+
+  <p class="next">Все формулы секций 4–9 выросли из параболы — второго порядка разложения. Тот же приём лежит в основе метода Ньютона из 0.16. Посмотрим на XGBoost как на метод Ньютона и сравним с классическим бустингом.</p>
+</section>
+
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Связь с методом Ньютона</h2></div>
+  <p class="slead">Вес листа <tex>-G/(H + \lambda)</tex> — это один шаг метода Ньютона (<a href="block0_16_optimization.html#s10">0.16, секция 10</a>) для потери объектов листа как функции одной поправки. Поэтому бустинг с весами по формуле 6 называют ньютоновским бустингом, а бустинг из 0.21 с деревьями на псевдоостатках — градиентным. XGBoost делает по Ньютону и выбор разбиений, и веса; один шаг на дерево, а следующее дерево — следующий шаг из новой точки.</p>
+
+  <p>Запишем точную целевую функцию листа — без параболы. Её первая производная по <tex>w</tex> в нуле — сумма градиентов, вторая — сумма кривизн плюс штраф. Шаг Ньютона из нуля даёт ровно формулу 6.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 15 · вес листа как шаг Ньютона и обновление модели</div>
+    <texd>\Phi_j(w) = \sum_{i \in I_j} L(y_i,\ \hat y_i + w) + \frac12\lambda w^2 \qquad w_{k+1} = w_k - \frac{\Phi_j'(w_k)}{\Phi_j''(w_k)} \qquad \hat y_i^{(t)} = \hat y_i^{(t-1)} + \eta\, w_{q(x_i)}</texd>
+    <div class="where">где <tex>L</tex> — потеря объекта, <tex>\Phi_j(w)</tex> — настоящая (не приближённая) сумма потерь объектов листа <tex>j</tex> при поправке <tex>w</tex> плюс штраф, <tex>\hat y_i</tex> — текущие прогнозы объектов, <tex>w_k</tex> — поправка после <tex>k</tex> шагов Ньютона, <tex>\Phi_j'</tex>, <tex>\Phi_j''</tex> — первая и вторая производные по <tex>w</tex>. В нуле <tex>\Phi_j'(0) = G_j</tex>, <tex>\Phi_j''(0) = H_j + \lambda</tex>, поэтому <tex>w_1 = -G_j/(H_j + \lambda)</tex> — формула 6. XGBoost делает только этот первый шаг, умножает его на <tex>\eta</tex> и строит следующее дерево; <tex>q(x_i)</tex> — лист объекта, <tex>\hat y_i^{(t)}</tex> — прогноз после дерева <tex>t</tex>. Пример: лист из платежей 4–6, <tex>\lambda = 1</tex> — первый шаг 0.1205, точный минимум 0.1209.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Алгоритм</th><th>Как строит дерево и что ставит в лист</th></tr>
+    <tr><td>бустинг первого порядка</td><td>дерево на псевдоостатках <tex>-g_i</tex>, лист — их среднее</td></tr>
+    <tr><td>GBM Фридмана: sklearn <code>GradientBoostingClassifier</code></td><td>дерево на псевдоостатках, лист — шаг Ньютона <tex>-G/H</tex> (<a href="block0_21_gradient_boosting.html#s5">0.21, секция 5</a>)</td></tr>
+    <tr><td>XGBoost, LightGBM, CatBoost, sklearn <code>HistGradientBoosting</code></td><td>разбиения по Gain второго порядка, лист <tex>-G/(H + \lambda)</tex>, штрафы <tex>\gamma</tex>, <tex>\alpha</tex>, min_child_weight</td></tr>
+  </table>
+  <p class="tcap">Для квадрата ошибки при <tex>\lambda = 0</tex> все три строки дают одни и те же деревья: <tex>h_i = 1</tex> (формула 9).</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 13 · Один шаг Ньютона против точного оптимума листа</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей. Лист A — платежи 4–6 (ответы 1, 1, 0, вероятности 0.5, 0.5, 0.8), <tex>\lambda = 1</tex>. Лист B — один платёж 6 (честный, вероятность 0.8, логит <tex>\ln 4 = 1.386</tex>), сначала при <tex>\lambda = 0</tex>, затем при <tex>\lambda = 1</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Первый шаг Ньютона и точный минимум <tex>\Phi(w)</tex> для каждого листа.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Первый шаг — формула 6. Для листа A второй шаг считаем из новой точки: пересчитываем вероятности, <tex>G</tex> с добавкой <tex>\lambda w</tex> и <tex>H + \lambda</tex>. Для листа B при <tex>\lambda = 0</tex> потеря одного честного платежа <tex>\ln(1 + e^{1.386 + w})</tex> убывает при <tex>w \to -\infty</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s10">Формула 15</a> · шаг Ньютона в листе</div>
+        <texd>w_1 = -\frac{\Phi'(0)}{\Phi''(0)} = -\frac{G}{H + \lambda} \qquad w_2 = w_1 - \frac{\Phi'(w_1)}{\Phi''(w_1)}</texd>
+        <div class="fr-w">где лист A: <tex>G = -0.2</tex>, <tex>H = 0.66</tex>, <tex>\lambda = 1</tex>; лист B: <tex>G = 0.8</tex>, <tex>H = 0.16</tex>, <tex>\lambda</tex> — 0 или 1.</div></div>
+      <texd>\text{A: } w_1 = \frac{0.2}{1.66} = 0.1205 \qquad w_2 = 0.1209 \qquad \text{точный минимум } 0.1209</texd>
+      <texd>\text{B},\ \lambda = 0:\ \ w_1 = -\frac{0.8}{0.16} = -5 \qquad \text{точного минимума нет}</texd>
+      <texd>\text{B},\ \lambda = 1:\ \ w_1 = -\frac{0.8}{1.16} = -0.690 \qquad \text{точный минимум } -0.671</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Лист A: первый шаг <b>0.1205</b>, точный оптимум 0.1209 — Ньютон почти точен с первого шага. Лист B без штрафа: шаг <b>−5</b>, а настоящий оптимум уходит в минус бесконечность — парабола остановила шаг на конечном числе. Со штрафом: <b>−0.690</b> против −0.671 — снова близко. Там, где листья содержат объекты обоих классов, один шаг Ньютона хорош; где лист «чистый» — опасен, и его держат штрафы.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Один шаг Ньютона и точный оптимум листа</div>
+    <div class="chsub">Лист из 50 платежей на старте, вероятность у всех 0.022. Ось x — сколько из 50 мошеннических, ось y — сдвиг логита листа. Бирюзовая — точный оптимум: логит доли <tex>k/50</tex> минус логит 0.022 (при 0 мошеннических — минус бесконечность). Фиолетовая — один шаг Ньютона при <tex>\lambda = 0</tex>. При 1 мошенническом почти совпадают (−0.093 и −0.097). При 5 — 3.6 против 1.6, при 10 — 8.3 против 2.4: log-loss изгибается слабее параболы, и Ньютон перелетает. Поэтому шаг умножают на <tex>\eta \lt 1</tex>, а вес листа держат <tex>\lambda</tex> и max_delta_step.</div>
+    <canvas id="c_newton"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · метод Ньютона по весам и шаг Ньютона в листе</div>
+    <p>В 0.16 метод Ньютона повторяет шаги по весам одной модели, пока не сойдётся, и каждый шаг пересчитывает весь гессиан. В бустинге на каждое дерево — <b>один</b> шаг Ньютона в каждом листе, по одной поправке, и гессиан — просто число <tex>H_j + \lambda</tex> (сумма кривизн листа <tex>H</tex> плюс штраф). Второго шага внутри дерева нет: его делает следующее дерево, уже с другой структурой. Плюс шаг умножается на <tex>\eta</tex>, которого у чистого Ньютона нет.</p>
+    <p>Пример: лист A задачи 13 сошёлся бы к 0.1209 за два шага; XGBoost с <tex>\eta = 0.3</tex> прибавит <tex>0.3\cdot0.1205 = 0.036</tex> и пойдёт строить следующее дерево.</p>
+  </div>
+
+  <p><b>В коде.</b> Ньютоновский бустинг в sklearn — <code>HistGradientBoostingClassifier</code>: разбиения по <tex>G</tex> и <tex>H</tex>, лист <tex>-G/(H + \lambda)</tex> с <code>l2_regularization</code> в роли <tex>\lambda</tex>. <code>GradientBoostingClassifier</code> — классический GBM Фридмана: дерево на псевдоостатках, шаг Ньютона только в листьях. На платежах разница малая (0.0880 у sklearn GBM против 0.0875 у XGBoost без штрафов, 100 деревьев глубины 3), основной выигрыш XGBoost дают штрафы (0.0869).</p>
+
+  <p class="next">Формулы готовы, но на миллионах объектов перебор всех порогов по всем признакам в каждом узле — дорого. Здесь XGBoost экономит, не трогая математику.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Гистограммный поиск порогов</h2></div>
+  <p class="slead">Чтобы найти лучший порог по признаку, нужно отсортировать объекты узла и пройти по ним, накапливая <tex>G_L</tex> и <tex>H_L</tex>. На 20 000 платежах у признака «сумма» 645 разных порогов. Гистограммный метод заранее делит каждый признак на бины (по умолчанию до 256) и в узле складывает <tex>g_i</tex> и <tex>h_i</tex> по бинам: дальше считать нужно только по 256 числам, а не по всем объектам. Качество почти не страдает: на платежах 16 бинов дают log-loss 0.0871, а точный перебор — 0.0869.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 16 · гистограмма узла и вычитание гистограмм</div>
+    <texd>G_b = \sum_{i:\ x_i \in b} g_i \qquad H_b = \sum_{i:\ x_i \in b} h_i \qquad G_L(k) = \sum_{b \le k} G_b \qquad \text{гист}_{\text{правый}} = \text{гист}_{\text{родитель}} - \text{гист}_{\text{левый}}</texd>
+    <div class="where">где <tex>x_i</tex> — значение признака у объекта <tex>i</tex>, <tex>g_i</tex>, <tex>h_i</tex> — его градиент и кривизна, <tex>b</tex> — номер бина признака (отрезка между соседними границами), <tex>G_b</tex>, <tex>H_b</tex> — суммы градиентов и кривизн объектов узла, чьё значение признака попало в бин <tex>b</tex>, <tex>G_L(k)</tex> — сумма по первым <tex>k</tex> бинам: левая часть при пороге на правой границе бина <tex>k</tex> (так же <tex>H_L(k)</tex>; правая часть — родитель минус левая). Кандидаты в пороги — только границы бинов. Гистограмма одного потомка получается вычитанием: родитель минус другой потомок, по каждому бину отдельно, поэтому объекты проходят только для меньшего из двух потомков. Пример: 8 платежей в 4 бинах по 2 — у порога 3 кандидата вместо 7.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 14 · Четыре бина теряют лучший порог</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Восемь платежей с суммами 1, 2, …, 8 тыс. ₽, ответы 0, 0, 0, 1, 0, 1, 1, 1, вероятность у всех 0.5, <tex>\lambda = 1</tex> (L2-штраф на веса). Гистограмма: 4 бина по 2 платежа — (1, 2), (3, 4), (5, 6), (7, 8).</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Лучший порог и Gain при точном переборе и по гистограмме.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c"><tex>g = 0.5 - y</tex>: 0.5, 0.5, 0.5, −0.5, 0.5, −0.5, −0.5, −0.5; <tex>h = 0.25</tex>. Родитель: <tex>G = 0</tex>, <tex>S = 0</tex>. Точный перебор — 7 порогов; гистограмма — суммы по бинам и 3 порога на их границах.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 16</a> · гистограмма · <a href="#s6">формула 8</a> · Gain</div>
+        <texd>G_L(k) = \sum_{b \le k} G_b \qquad \text{Gain} = \frac12\Big(\frac{G_L^2}{H_L + 1} + \frac{G_R^2}{H_R + 1}\Big)</texd>
+        <div class="fr-w">где <tex>G_b</tex> по бинам — <tex>0.5 + 0.5 = 1.0</tex>, <tex>0.5 - 0.5 = 0</tex>, 0, <tex>-1.0</tex>; <tex>H_b = 0.5</tex> у всех; родитель <tex>G = 0</tex>.</div></div>
+      <p>Точный перебор, порог после третьего платежа: <tex>G_L = 1.5</tex>, <tex>H_L = 0.75</tex>; <tex>G_R = -1.5</tex>, <tex>H_R = 1.25</tex>.</p>
+      <texd>\frac12\Big(\frac{2.25}{1.75} + \frac{2.25}{2.25}\Big) = \frac12(1.286 + 1.0) = 1.143</texd>
+      <p>Гистограмма, порог после бина 1: <tex>G_L = 1.0</tex>, <tex>H_L = 0.5</tex>; после бина 2: <tex>G_L = 1.0</tex>, <tex>H_L = 1.0</tex>; после бина 3 — симметрично первому.</p>
+      <texd>\frac12\Big(\frac{1}{1.5} + \frac{1}{2.5}\Big) = 0.533 \qquad \frac12\Big(\frac{1}{2} + \frac{1}{2}\Big) = 0.5</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Точный перебор: порог 3.5, Gain <b>1.143</b>. Гистограмма: лучший порог 2.5, Gain <b>0.533</b> — вдвое меньше: лучший порог лежит внутри бина (3, 4), и гистограмма его не видит. На восьми объектах и четырёх бинах это заметно; на тысячах объектов и 256 бинах внутри бина обычно сотни объектов, и потеря выигрыша мала (график ниже).</div></div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 15 · Вычитание гистограмм</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Узел разбит на два. Гистограмма родителя по 4 бинам признака (<tex>G_b</tex>, <tex>H_b</tex>): (−3.2, 4.1), (0.6, 2.0), (−1.0, 3.3), (2.4, 5.0). По объектам левого потомка посчитано: (−1.1, 1.5), (0.9, 0.8), (−0.4, 1.9), (0.7, 1.2).</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Гистограмму правого потомка, не проходя по его объектам, и проверить суммы.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Каждый объект родителя — ровно в одном потомке, поэтому по каждому бину сумма родителя = сумма левого + сумма правого.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 16</a> · вычитание гистограмм</div>
+        <texd>(G_b, H_b)_{\text{правый}} = (G_b, H_b)_{\text{родитель}} - (G_b, H_b)_{\text{левый}}</texd>
+        <div class="fr-w">где родитель и левый потомок — из условия, по 4 бинам.</div></div>
+      <texd>(-3.2 + 1.1,\ 4.1 - 1.5) = (-2.1,\ 2.6) \qquad (0.6 - 0.9,\ 2.0 - 0.8) = (-0.3,\ 1.2)</texd>
+      <texd>(-1.0 + 0.4,\ 3.3 - 1.9) = (-0.6,\ 1.4) \qquad (2.4 - 0.7,\ 5.0 - 1.2) = (1.7,\ 3.8)</texd>
+      <p>Суммы: родитель <tex>G = -1.2</tex>, <tex>H = 14.4</tex>; левый 0.1 и 5.4; правый <tex>-2.1 - 0.3 - 0.6 + 1.7 = -1.3</tex> и <tex>2.6 + 1.2 + 1.4 + 3.8 = 9.0</tex>; <tex>0.1 - 1.3 = -1.2</tex>, <tex>5.4 + 9.0 = 14.4</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Правый потомок: <b>(−2.1, 2.6), (−0.3, 1.2), (−0.6, 1.4), (1.7, 3.8)</b>, суммы сходятся. Библиотека проходит по объектам только меньшего потомка (по <tex>H</tex> левый здесь меньше: 5.4 против 9.0), гистограмму большего получает вычитанием по 256 бинам — почти бесплатно.</div></div>
+  </div>
+
+  <p>Где ставить границы бинов? Равные интервалы плохи: у суммы платежа почти все значения меньше 30 тыс., а хвост тянется до 230. Поэтому границы ставят по квантилям — в каждом бине примерно поровну объектов. В статье XGBoost квантили взвешены кривизнами: бин должен содержать поровну «веса» <tex>h_i</tex>, потому что именно с такими весами объекты входят в формулу 6.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 17 · взвешенные квантили для границ бинов</div>
+    <texd>r_k(z) = \frac{\sum_{i:\ x_{ik} \lt z} h_i}{\sum_{i} h_i} \qquad \big|r_k(s_{k,j+1}) - r_k(s_{k,j})\big| \lt \varepsilon</texd>
+    <div class="where">где <tex>k</tex> — номер признака, <tex>x_{ik}</tex> — значение признака <tex>k</tex> у объекта <tex>i</tex>, <tex>z</tex> — возможная граница, <tex>r_k(z)</tex> — доля суммарной кривизны у объектов левее <tex>z</tex> (взвешенный ранг), <tex>s_{k,j}</tex> — соседние границы бинов, <tex>\varepsilon</tex> — точность: бинов получается около <tex>1/\varepsilon</tex>. Без весов (<tex>h_i = 1</tex>) это обычные квантили. В XGBoost так работает метод <code>approx</code>: границы пересчитываются перед каждым деревом по текущим <tex>h_i</tex>. Метод <code>hist</code> (по умолчанию) строит границы один раз до обучения по данным — это быстрее, а 256 бинов хватает. Пример: <tex>\varepsilon = 1/256</tex> — около 256 бинов, в каждом примерно 0.4% суммарной кривизны.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Gain по порогам: точный перебор и 16 бинов</div>
+    <div class="chsub">Корень двадцатого дерева на платежах, признак «сумма» (ось x — порог, тыс. ₽, логарифмическая шкала), ось y — Gain второго порядка. Фиолетовая — все 645 порогов: лучший 5.2 тыс., Gain 5.80. Бирюзовые точки — 15 границ 16 квантильных бинов: лучшая 4.3 тыс., Gain 5.01. Порог сдвинулся, выигрыш на 14% меньше — но следующие разбиения и деревья это почти компенсируют.</div>
+    <canvas id="c_hist"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Число бинов и качество</div>
+    <div class="chsub">XGBoost, 100 деревьев глубины 3, шаг 0.1. Ось x — max_bin (логарифмическая шкала), ось y — log-loss на новых платежах. 2 бина (признак — да/нет выше медианы) — 0.0905; 8 — 0.0873; от 64 до 1024 — 0.0868–0.0869, как точный перебор (серый пунктир, 0.0869). На 1 млн платежей 50 деревьев глубины 6 в один поток строятся за 10.8 с точным перебором и за 2.0 с гистограммами.</div>
+    <canvas id="c_bins"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · порог в выгрузке при exact и при hist</div>
+    <p>Точный метод (<code>tree_method='exact'</code>) ставит порог посередине между соседними значениями обучающих данных. Гистограммный ставит его на границу бина — часто это само значение из данных. Условие в обоих случаях «<tex>x \lt</tex> порог — налево». Одно и то же разбиение выглядит в выгрузке по-разному.</p>
+    <p>Пример (проверено запуском): значения 1, …, 6, ответы 1, 1, 0, 0, 0, 0 — exact печатает порог 2.5, hist — 3.0; налево в обоих случаях уходят 1 и 2.</p>
+  </div>
+
+  <p><b>В коде.</b> С версии 2.0 <code>tree_method='hist'</code> — по умолчанию, <code>max_bin=256</code>. <code>QuantileDMatrix</code> считает границы бинов сразу при загрузке и не хранит исходные значения — экономит память на больших данных. LightGBM всегда гистограммный (<code>max_bin=255</code>); его гистограммный рост и вычитание гистограмм — тема 0.23. Увеличивать max_bin имеет смысл для признаков, где важны точные значения (например, суммы, кратные 1000), уменьшать — для скорости и как лёгкую регуляризацию.</p>
+
+  <p class="next">Остался последний механизм: что дерево делает с объектом, у которого значения признака нет.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Обработка пропусков: направление по умолчанию</h2></div>
+  <p class="slead">XGBoost не требует заполнять пропуски. Для каждого разбиения он один раз считает Gain, отправив все объекты с пропуском налево, и один раз — направо, и запоминает лучшее направление. Пропуск становится ещё одним значением признака, которое дерево учится использовать. Опасность — в пропусках, которых не было в обучении: их направление выбрано без данных.</p>
+
+  <p>Возьмём платежи и сотрём возраст аккаунта у 10.4% из них — чаще у мошенников: среди платежей без возраста мошеннических 7.8%, среди остальных 1.5%. Так бывает, когда мошенники регистрируются через канал, который не передаёт дату создания аккаунта.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 18 · два варианта выигрыша с пропусками</div>
+    <texd>\text{Gain}_{\leftarrow}\text{: слева } G_L + G_M \text{ и } H_L + H_M \qquad \text{Gain}_{\rightarrow}\text{: справа } G_R + G_M \text{ и } H_R + H_M</texd>
+    <div class="where">где <tex>\text{Gain}_{\leftarrow}</tex> — выигрыш по формуле 8, если пропуски отправить налево: к суммам левой части прибавлены суммы пропусков, правая часть без изменений; <tex>\text{Gain}_{\rightarrow}</tex> — если направо; <tex>G_M</tex>, <tex>H_M</tex> — суммы градиентов и кривизн объектов узла с пропуском в этом признаке, <tex>G_L</tex>, <tex>H_L</tex> и <tex>G_R</tex>, <tex>H_R</tex> — суммы объектов со значением левее и правее порога. Направление по умолчанию — то, где Gain больше; оно хранится в узле. Объекты с пропуском при обучении в перебор порогов не входят — их суммы считают один раз. Пример: на платежах в корне по возрасту аккаунта при пороге 30 дней Gain с пропусками налево — 178.8, направо — 16.7.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 16 · Куда отправить пропуски</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть платежей: возраст аккаунта 1, 2, 3, 4 года и два без возраста; ответы 0, 0, 1, 1, 1, 1 (оба платежа без возраста — мошеннические). Вероятность у всех 0.5, <tex>\lambda = 1</tex>. Кандидат — порог 2.5.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Gain при пропусках налево и направо, направление по умолчанию и веса листьев.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c"><tex>g = 0.5 - y</tex>: у объектов с возрастом 0.5, 0.5, −0.5, −0.5, у пропусков −0.5, −0.5; <tex>h = 0.25</tex>. Родитель: <tex>G = -1</tex>, <tex>H = 1.5</tex>, <tex>S = 1/2.5 = 0.4</tex>. Без пропусков: слева <tex>(1.0, 0.5)</tex>, справа <tex>(-1.0, 0.5)</tex>; пропуски: <tex>G_M = -1.0</tex>, <tex>H_M = 0.5</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s12">Формула 18</a> · два варианта выигрыша</div>
+        <texd>\text{Gain} = \frac12\Big(\frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{G^2}{H + \lambda}\Big)</texd>
+        <div class="fr-w">где налево: <tex>G_L = 1.0 - 1.0 = 0</tex>, <tex>H_L = 1.0</tex>; <tex>G_R = -1.0</tex>, <tex>H_R = 0.5</tex>. Направо: <tex>G_L = 1.0</tex>, <tex>H_L = 0.5</tex>; <tex>G_R = -2.0</tex>, <tex>H_R = 1.0</tex>; <tex>\lambda = 1</tex>.</div></div>
+      <texd>\text{Gain}_{\leftarrow} = \frac12\Big(0 + \frac{1}{1.5} - 0.4\Big) = \frac12(0.667 - 0.4) = 0.133</texd>
+      <texd>\text{Gain}_{\rightarrow} = \frac12\Big(\frac{1}{1.5} + \frac{4}{2} - 0.4\Big) = \frac12(0.667 + 2.0 - 0.4) = 1.133</texd>
+      <texd>w_L = -\frac{1.0}{1.5} = -0.667 \qquad w_R = \frac{2.0}{2.0} = 1.0</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Налево — <b>0.133</b>, направо — <b>1.133</b>: пропуски идут <b>направо</b>, к мошенническим платежам с возрастом 3–4 года, листья −0.667 и 1.0. XGBoost печатает порог 2.5, «Missing» = правый узел, <tex>\Delta = 2.267</tex> и те же веса. Дерево выучило: «нет возраста — веди себя как подозрительный аккаунт».</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Gain по порогам возраста аккаунта: пропуски налево и направо</div>
+    <div class="chsub">Корень первого дерева на платежах с пропусками в возрасте аккаунта (у 2080 из 20 000). Ось x — порог, дней (логарифмическая шкала), ось y — Gain. Фиолетовая — пропуски налево, к новым аккаунтам: максимум 178.8 при пороге 30 дней. Бирюзовая — пропуски направо, к старым: не выше 71. Пропуск ведёт себя как «новый аккаунт»: доля мошенничества среди платежей без возраста 7.8% — выше даже, чем у аккаунтов младше месяца (6.1%), а у аккаунтов старше полугода — 1.1%.</div>
+    <canvas id="c_miss"></canvas>
+  </div>
+
+  <p>Обратный случай опаснее. В обучении пропусков не было, а в работе у 20% новых платежей возраст аккаунта перестал приходить — сломался источник. Направление по умолчанию в каждом узле есть всегда, но выбрано оно без единого объекта. В <code>hist</code> такие пропуски уходят направо (проверено: во всех 176 разбиениях по возрасту), то есть к большим значениям — к старым, «безопасным» аккаунтам. Средняя вероятность мошенничества на этих платежах упала с 0.0217 до 0.0131 при реальной доле 0.0211, log-loss на них вырос с 0.0874 до 0.0957. Модель не упала с ошибкой — она тихо стала пропускать мошенничество. В <code>exact</code> такие пропуски, наоборот, уходят налево.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · NaN и ноль в разреженной матрице</div>
+    <p>XGBoost считает пропуском <code>np.nan</code> в плотном массиве. В разреженной матрице (scipy CSR) пропуск — <b>любой не сохранённый элемент</b>, то есть все нули. Признак «число отмен», где 0 — настоящее значение, в разреженном виде станет пропуском и пойдёт по направлению по умолчанию, а не туда, куда ведёт порог.</p>
+    <p>Пример (проверено запуском): значения 0, 0, 0, 1, 2, 3 и два NaN, ответы 1, 1, 1, 0, 0, 0, 0, 0. В плотном массиве прогноз для 0 — логит 0.857; в разреженном, где нули исчезли, — 0.222.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>xgb.DMatrix(X, missing=np.nan)</code> — значение, которое считать пропуском (по умолчанию NaN); если в данных пропуск закодирован как −999, укажите <code>missing=-999</code>, иначе −999 станет обычным числом. Перед выкладкой модели проверяют, совпадает ли доля пропусков по каждому признаку в работе и в обучении: появление пропусков в признаке, где их не было, — повод для тревоги, а не для молчаливого прогноза. В sklearn <code>HistGradientBoosting</code> устроен так же: если в обучении пропусков не было, при прогнозе они идут к потомку с большим числом объектов.</p>
+
+  <p class="next">Механика XGBoost собрана целиком. Посмотрим, где она встречается в работе, и соберём ошибки, которые из неё следуют.</p>
+</section>
+
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в ML и 15 подводных камней</h2></div>
+  <p class="slead">Формулы этой темы — общее ядро XGBoost, LightGBM, CatBoost и <code>HistGradientBoosting</code>: все они строят деревья по <tex>G</tex> и <tex>H</tex>, ставят в лист <tex>-G/(H + \lambda)</tex> и выбирают разбиения по Gain. Различаются они ростом дерева, категориями и сэмплированием (0.23). Поэтому параметры и ошибки здесь общие для всех четырёх, отличаются названия и значения по умолчанию.</p>
+
+  <table class="ct">
+    <tr><th>Где</th><th>Что берётся из этой темы</th></tr>
+    <tr><td>Табличные задачи: скоринг, антифрод, отток (1.1)</td><td>вес листа, Gain, <tex>\lambda</tex>, <tex>\gamma</tex>, min_child_weight при дисбалансе</td></tr>
+    <tr><td>Своя функция потерь</td><td>функция возвращает <tex>g_i</tex> и <tex>h_i</tex> по сырому прогнозу; <tex>h_i \gt 0</tex></td></tr>
+    <tr><td>LightGBM и CatBoost (0.23)</td><td>те же формулы 6 и 8, гистограммы, другие значения по умолчанию</td></tr>
+    <tr><td>Важность признаков, SHAP (1.4)</td><td>gain и cover из выгрузки, значения листьев</td></tr>
+    <tr><td>Данные с пропусками</td><td>направление по умолчанию, контроль пропусков в работе</td></tr>
+    <tr><td>Большие данные</td><td>гистограммы, max_bin, <code>QuantileDMatrix</code></td></tr>
+  </table>
+
+  <p>Практический порядок для XGBoost. Шаг 0.05–0.1 и ранняя остановка по валидации (<a href="block0_21_gradient_boosting.html#s11">0.21, секция 11</a>) вместо 100 деревьев с шагом 0.3. Глубина 3–6. При редком классе — проверить, сколько объектов нужно листу при min_child_weight: <tex>m/(p(1 - p))</tex>; поднимать его, если листья мелкие, опускать, если деревья не растут. <tex>\lambda</tex> — 1–10, gamma — по сетке, начиная с 0. Перед выкладкой — сравнить доли пропусков в работе и в обучении и проверить, как модель получает данные: плотный массив или разреженная матрица.</p>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Параметры по умолчанию на маленьких данных с редким классом</b><span>Глубина 6 и шаг 0.3 подгоняют листья под горстку платежей: на 20 000 платежах log-loss 0.1006 против 0.1023 у константы, лучшее — на 5-м дереве (секция 1). Шаг 0.1, глубина 3, ранняя остановка.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Свой бустинг с листом-средним для log-loss</b><span>Среднее псевдоостатков в единицах вероятности прибавляется к логиту: при доле 2.2% шаг в 46.5 раза короче нужного, 100 деревьев почти не сдвигают модель (задача 1). Лист — <tex>-G/(H + \lambda)</tex>: сумма градиентов <tex>G</tex> на сумму кривизн <tex>H</tex> плюс штраф <tex>\lambda</tex>.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Градиент своей потери по вероятности, а не по логиту</b><span>XGBoost прибавляет деревья к сырому прогнозу, и <tex>g_i</tex>, <tex>h_i</tex> нужны по нему: у <tex>y = 1</tex>, <tex>p = 0.2</tex> — −0.8 по логиту и −5 по вероятности (секция 2).</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Гессиан ноль или отрицательный в своей потере</b><span>Вес <tex>-G/(H + \lambda)</tex> (<tex>G</tex> — сумма градиентов, <tex>H</tex> — сумма кривизн листа) при <tex>H + \lambda = 0</tex> не определён, при отрицательном <tex>H</tex> парабола смотрит вниз и шаг идёт к максимуму (секция 4). Для модуля и квантилей — встроенные цели библиотеки.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>gamma из статьи без удвоения</b><span>Библиотека сравнивает <code>gamma</code> с <tex>\Delta</tex> (разностью оценок листов) без множителя ½: при <tex>\Delta = 2.571</tex> <code>gamma=1.31</code> разбиение оставляет, а по формуле статьи оно бы ушло (секция 7).</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Ожидать, что gamma срежет каждое слабое разбиение</b><span>Обрезка идёт снизу вверх: корень с <tex>\Delta = 0.167</tex> (разность оценок листов) остаётся при <code>gamma=3</code>, потому что под ним разбиения с 12 и 11.67 (задача 8).</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Gain из выгрузки как Gain из формулы</b><span><code>trees_to_dataframe</code> и важность gain печатают <tex>\Delta = 2\,\text{Gain}</tex> без вычета <tex>\gamma</tex>; листья — уже умноженные на <tex>\eta</tex> (секции 1, 6).</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>min_child_weight как минимальное число объектов</b><span>Это сумма кривизн <tex>H</tex>: при вероятности 0.002 листу с <tex>m = 1</tex> нужно 501 объект, а на шести платежах <tex>m = 1</tex> запрещает любое разбиение (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Перенос параметров между XGBoost и LightGBM как есть</b><span>У XGBoost по умолчанию L2-штраф <tex>\lambda = 1</tex> и min_child_weight 1, у LightGBM <tex>\lambda = 0</tex>, min_sum_hessian_in_leaf 0.001 и минимум 20 объектов в листе (секции 8, 9). Одинаковые числа — разные модели.</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>λ = 0 «чтобы не мешал»</b><span>Без штрафа лист из одного уверенно ошибочного объекта получает вес −5 (шесть платежей) или −10 (песочница), и Gain охотно его выделяет (задача 7). На платежах <tex>\lambda</tex> от 0 до 1 улучшает log-loss с 0.1075 до 0.1006.</span></div></div>
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>Огромные веса листьев при сильном дисбалансе</b><span>Шаг Ньютона перелетает: лист из 50 платежей с 10 мошенническими получает сдвиг 8.3 вместо 2.4 (секция 10). max_delta_step 1–10 или больше <tex>\lambda</tex>.</span></div></div>
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Пропуски, которых не было в обучении</b><span>Направление по умолчанию выбрано без данных: в <code>hist</code> они ушли к старым аккаунтам, и вероятность мошенничества упала с 0.0217 до 0.0131 при реальной 0.0211 (секция 12). Мониторинг доли пропусков.</span></div></div>
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Нули в разреженной матрице</b><span>В CSR не сохранённый элемент — пропуск: настоящий 0 пойдёт по направлению по умолчанию; прогноз для нуля 0.857 в плотном виде и 0.222 в разреженном (секция 12).</span></div></div>
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Пропуск закодирован числом −999</b><span>Без <code>missing=-999</code> это обычное значение: порог «&lt; −998» отделит пропуски, но в соседних с ним интервалах дерево будет вести себя странно, а гистограмма потратит на −999 бин (секции 11, 12).</span></div></div>
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Один max_bin на все признаки «для скорости»</b><span>2 бина — log-loss 0.0905, 16 — 0.0871, 256 — 0.0869 (секция 11): малое число бинов прячет лучшие пороги внутри бина (задача 14). Уменьшают осознанно, проверяя на валидации.</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и проверить себя на задачах с собеседований.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Сначала все формулы темы на одном экране. Затем пять задач с собеседований ML-инженеров: вывод веса листа — один из самых частых вопросов про бустинг. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s1">1</a></td><td><b>Целевая функция дерева</b><br><tex>\text{Obj}^{(t)} = \sum_i L(y_i, \hat y_i + f_t(x_i)) + \gamma T + \frac12\lambda\sum_j w_j^2</tex><div class="cs-w"><tex>T</tex> — листьев, <tex>w_j</tex> — веса листьев</div></td><td>что минимизирует каждое дерево</td></tr>
+    <tr><td><a href="#s2">2</a></td><td><b>Тейлор до второго порядка</b><br><tex>L(y, \hat y + f) \approx L + g f + \frac12 h f^2</tex><div class="cs-w"><tex>g</tex>, <tex>h</tex> — производные по сырому прогнозу</div></td><td>любая потеря → два числа на объект</td></tr>
+    <tr><td><a href="#s2">3</a></td><td><b>Приближённая цель</b><br><tex>\text{Obj} \approx \sum_i(g_i f(x_i) + \frac12 h_i f(x_i)^2) + \Omega</tex><div class="cs-w">текущая потеря отброшена как константа</div></td><td>основа всех формул XGBoost</td></tr>
+    <tr><td><a href="#s3">4</a></td><td><b>Дерево как лист и вес</b><br><tex>f(x) = w_{q(x)},\ I_j = \{i : q(x_i) = j\}</tex><div class="cs-w"><tex>q(x)</tex> — номер листа объекта</div></td><td>запись дерева</td></tr>
+    <tr><td><a href="#s3">5</a></td><td><b>Цель по листьям</b><br><tex>\sum_j(G_j w_j + \frac12(H_j + \lambda)w_j^2) + \gamma T</tex><div class="cs-w"><tex>G_j</tex>, <tex>H_j</tex> — суммы <tex>g</tex>, <tex>h</tex> в листе</div></td><td>веса листьев независимы</td></tr>
+    <tr><td><a href="#s4">6</a></td><td><b>Оптимальный вес листа</b><br><tex>w_j^* = -\frac{G_j}{H_j + \lambda}</tex><div class="cs-w">квадрат и <tex>\lambda = 0</tex> — средний остаток</div></td><td>что ставить в лист</td></tr>
+    <tr><td><a href="#s5">7</a></td><td><b>Оценка структуры</b><br><tex>\text{Obj}^* = -\frac12\sum_j\frac{G_j^2}{H_j + \lambda} + \gamma T</tex><div class="cs-w"><tex>S = G^2/(H + \lambda)</tex> — оценка листа</div></td><td>сравнить деревья</td></tr>
+    <tr><td><a href="#s6">8</a></td><td><b>Gain разбиения</b><br><tex>\frac12\big(\frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda}\big) - \gamma</tex><div class="cs-w">при <tex>\lambda \gt 0</tex> бывает отрицательным</div></td><td>выбор порога</td></tr>
+    <tr><td><a href="#s6">9</a></td><td><b>Gain для квадрата ошибки</b><br><tex>\frac12\cdot\frac{n_L n_R}{n}(\bar r_L - \bar r_R)^2</tex><div class="cs-w"><tex>\bar r</tex> — средние остатки частей</div></td><td>связь с деревом на остатках</td></tr>
+    <tr><td><a href="#s7">10</a></td><td><b>Правило gamma в XGBoost</b><br><tex>\Delta = S_L + S_R - S_{L+R} \ge \gamma_{\text{xgb}} = 2\gamma</tex><div class="cs-w">обрезка снизу вверх</div></td><td>когда разбиение остаётся</td></tr>
+    <tr><td><a href="#s8">11</a></td><td><b>L1 в листе — мягкий порог</b><br><tex>w^* = -\frac{T_\alpha(G)}{H + \lambda},\ T_\alpha(G) = \operatorname{sign}G\max(|G| - \alpha, 0)</tex><div class="cs-w"><tex>\alpha</tex> — reg_alpha</div></td><td>обнуление слабых листьев</td></tr>
+    <tr><td><a href="#s8">12</a></td><td><b>Доля веса при L2</b><br><tex>w^*(\lambda) = w^*(0)\frac{H}{H + \lambda}</tex><div class="cs-w">лёгкие листья сжимаются сильнее</div></td><td>действие reg_lambda</td></tr>
+    <tr><td><a href="#s9">13</a></td><td><b>min_child_weight</b><br><tex>H_L \ge m,\ H_R \ge m;\ n \ge \frac{m}{p(1 - p)}</tex><div class="cs-w"><tex>m</tex> — сумма кривизн, не число объектов</div></td><td>запрет лёгких листьев</td></tr>
+    <tr><td><a href="#s9">14</a></td><td><b>max_delta_step</b><br><tex>w = \operatorname{clip}(-G/(H + \lambda), -\delta, \delta),\ S = -(2Gw + (H + \lambda)w^2)</tex><div class="cs-w"><tex>\delta</tex> — предел веса</div></td><td>сильный дисбаланс</td></tr>
+    <tr><td><a href="#s10">15</a></td><td><b>Вес листа — шаг Ньютона</b><br><tex>w_1 = -\Phi'(0)/\Phi''(0) = -G/(H + \lambda),\ \hat y^{(t)} = \hat y^{(t-1)} + \eta w</tex><div class="cs-w"><tex>\Phi</tex> — точная потеря листа со штрафом</div></td><td>чем XGBoost отличается от GBM</td></tr>
+    <tr><td><a href="#s11">16</a></td><td><b>Гистограмма узла</b><br><tex>G_b = \sum_{x_i \in b} g_i,\ G_L(k) = \sum_{b \le k} G_b</tex><div class="cs-w">правый потомок = родитель − левый</div></td><td>быстрый поиск порогов</td></tr>
+    <tr><td><a href="#s11">17</a></td><td><b>Взвешенные квантили</b><br><tex>r_k(z) = \sum_{x_{ik} \lt z} h_i \big/ \sum_i h_i</tex><div class="cs-w">границы бинов через равные доли <tex>H</tex></div></td><td>где ставить границы бинов</td></tr>
+    <tr><td><a href="#s12">18</a></td><td><b>Пропуски</b><br><tex>\max\big(\text{Gain}(G_L + G_M \,|\, G_R),\ \text{Gain}(G_L \,|\, G_R + G_M)\big)</tex><div class="cs-w"><tex>G_M</tex>, <tex>H_M</tex> — суммы по объектам с пропуском</div></td><td>направление по умолчанию</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте: у каждой формулы там есть смысл и численный пример.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Выведите вес листа и Gain</div>
+    <div class="task-q">Целевая функция дерева номер <tex>t</tex> — сумма потерь плюс <tex>\gamma T + \frac12\lambda\sum_j w_j^2</tex>. Выведите оптимальный вес листа и формулу выигрыша разбиения. Где в выводе используется приближение и что требуется от потери?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Шаг 1. Тейлор.</b> <tex>L(y_i, \hat y_i + f) \approx L(y_i, \hat y_i) + g_i f + \frac12 h_i f^2</tex>, <tex>g_i</tex>, <tex>h_i</tex> — первая и вторая производные по прогнозу в точке <tex>\hat y_i</tex>. Это единственное приближение в выводе; для квадрата ошибки оно точное.</p>
+      <p><b>Шаг 2. Группировка.</b> Дерево — <tex>f(x) = w_{q(x)}</tex>; объекты листа получают один вес, поэтому <tex>\text{Obj} \approx \sum_j\big(G_j w_j + \frac12(H_j + \lambda)w_j^2\big) + \gamma T</tex>, <tex>G_j = \sum_{i \in I_j} g_i</tex>, <tex>H_j = \sum_{i \in I_j} h_i</tex>.</p>
+      <p><b>Шаг 3. Вес.</b> Производная по <tex>w_j</tex>: <tex>G_j + (H_j + \lambda)w_j = 0</tex>, <tex>w_j^* = -G_j/(H_j + \lambda)</tex>. Это минимум, если <tex>H_j + \lambda \gt 0</tex>: нужна выпуклая потеря (<tex>h_i \ge 0</tex>) или <tex>\lambda \gt 0</tex>.</p>
+      <p><b>Шаг 4. Оценка и Gain.</b> Подстановка: <tex>\text{Obj}^* = -\frac12\sum_j G_j^2/(H_j + \lambda) + \gamma T</tex>. Разбиение заменяет слагаемое родителя двумя и добавляет лист: <tex>\text{Gain} = \frac12\big(S_L + S_R - S_{L+R}\big) - \gamma</tex>, <tex>S = G^2/(H + \lambda)</tex>. Проверка: квадрат ошибки, <tex>\lambda = 0</tex> — вес равен среднему остатку, Gain — половине прироста регрессионного дерева.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Откуда в XGBoost гессиан и когда он мешает</div>
+    <div class="task-q">Зачем XGBoost нужна вторая производная потери? Что происходит с потерями, у которых она равна нулю (модуль ошибки, квантильная), и с потерей, у которой она отрицательна? Как это учесть, если пишете свою целевую функцию?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Зачем.</b> Кривизна задаёт длину шага: вес листа <tex>-G/(H + \lambda)</tex> — шаг Ньютона. Она же входит в оценку листа <tex>G^2/(H + \lambda)</tex> — выбор разбиений и в min_child_weight. Без неё масштаб шага задавался бы только learning_rate, и для log-loss при редком классе шаг был бы в <tex>1/(p(1 - p))</tex> раз короче нужного (задача 1 темы).</p>
+      <p><b>Ноль.</b> У модуля и квантильной потери <tex>h = 0</tex> почти везде: вес <tex>-G/\lambda</tex> зависит от гиперпараметра, а не от данных (<a href="block0_14_loss_functions.html#s12">0.14, секция 12</a>). Встроенные цели <code>reg:absoluteerror</code> и <code>reg:quantileerror</code> строят дерево с подменённой кривизной, а значения листьев пересчитывают точно — медианой или квантилем остатков.</p>
+      <p><b>Отрицательная.</b> Парабола смотрит вниз, формула 6 даёт шаг к максимуму, а Gain теряет смысл. Для своей невыпуклой потери кривизну обрезают снизу (например, <tex>\max(h_i, 10^{-6})</tex>) или заменяют положительной оценкой — так делают для ранжирующих потерь.</p>
+      <p><b>Своя цель.</b> Возвращать <code>grad</code> и <code>hess</code> по сырому прогнозу, следить, чтобы <code>hess</code> был положительным, проверить градиент конечной разностью (<a href="block0_09_gradients.html#s12">0.9, секция 12</a>).</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · γ, λ, α, min_child_weight: на что действует каждый</div>
+    <div class="task-q">Интервьюер: «Назовите четыре регуляризатора XGBoost на уровне одного дерева. На что действует каждый — на структуру или на веса? Какой из них ведёт себя по-разному в регрессии и классификации?»</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b><tex>\gamma</tex> (gamma)</b> — на структуру: разбиение остаётся, только если <tex>\Delta \ge</tex> gamma; обрезка снизу вверх (секция 7).</p>
+      <p><b><tex>\lambda</tex> (reg_lambda)</b> — на веса: доля <tex>H/(H + \lambda)</tex>; и на структуру через оценки листов: лёгкие листья теряют оценку, Gain может стать отрицательным (задача 9 темы).</p>
+      <p><b><tex>\alpha</tex> (reg_alpha)</b> — на веса: мягкий порог, листья с <tex>|G| \le \alpha</tex> равны нулю; через оценку — тоже на структуру.</p>
+      <p><b>min_child_weight</b> — на структуру: запрещает листья с <tex>H \lt m</tex>. В регрессии с квадратом ошибки <tex>h = 1</tex> — это минимальное число объектов; в классификации — минимальная неуверенность: при <tex>p = 0.002</tex> <tex>m = 1</tex> требует 501 объект. Именно он ведёт себя по-разному.</p>
+      <p>Плюс max_delta_step — предел веса, и глубина/learning_rate на уровне ансамбля.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 4 · Чем XGBoost отличается от классического градиентного бустинга</div>
+    <div class="task-q">Сравните XGBoost с <code>GradientBoostingClassifier</code> из sklearn: что одинаково, что различается в построении дерева, в регуляризации и в инженерной части?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Одинаково:</b> модель — сумма деревьев, шаг learning_rate, начальное приближение — лог-шансы, значение листа для log-loss — шаг Ньютона (без штрафа совпадает с <tex>-G/H</tex>).</p>
+      <p><b>Построение дерева.</b> sklearn строит дерево на псевдоостатках с квадратичным критерием — первый порядок, кривизны не видит. XGBoost выбирает разбиения по Gain второго порядка: на платежах в корне 20-го дерева sklearn-критерий отрезал бы один платёж на 231 тыс., XGBoost делит по 5.2 тыс. (секция 6).</p>
+      <p><b>Регуляризация в целевой функции:</b> <tex>\lambda</tex>, <tex>\alpha</tex>, <tex>\gamma</tex>, min_child_weight, max_delta_step; у sklearn — только ограничения размера дерева.</p>
+      <p><b>Инженерия:</b> гистограммы и вычитание гистограмм, параллельный поиск порогов, пропуски с направлением по умолчанию, разреженные данные, своя цель через <code>grad</code>/<code>hess</code>, GPU. Ближайший аналог в sklearn — <code>HistGradientBoostingClassifier</code>.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 5 · Антифрод с долей мошенничества 0.3%</div>
+    <div class="task-q">Платёжный сервис: 5 млн платежей за полгода, мошеннических 0.3%, 60 признаков, часть приходит с пропусками. Нужна вероятность мошенничества для порога блокировки. Как настроить и проверить XGBoost с учётом механики листьев?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Разбиение и остановка.</b> По времени: обучение, валидация для ранней остановки по log-loss, тест — последние недели. Шаг 0.05–0.1, глубина 4–8.</p>
+      <p><b>Листья при дисбалансе.</b> При <tex>p \approx 0.003</tex> у <tex>p(1 - p) \approx 0.003</tex>, и min_child_weight 1 требует около 330 платежей в листе — на 5 млн это разумно; подбирать его по сетке 1–100. max_delta_step 1–5 против огромных весов листьев с горсткой мошеннических платежей; <tex>\lambda</tex> 1–10. <code>scale_pos_weight</code> умножает градиенты и кривизны положительных — вероятности перестают быть калиброванными; если нужны вероятности, лучше без него или с перекалибровкой.</p>
+      <p><b>Пропуски.</b> Оставить NaN — дерево выучит направления. Но проверить: нет ли признаков, где пропусков в обучении не было (направление выбрано без данных), и как данные подаются в работе — разреженная матрица превращает нули в пропуски.</p>
+      <p><b>Проверка.</b> Калибровка по группам вероятности, PR-кривая и стоимость ошибок для выбора порога (0.17), мониторинг долей пропусков и сдвига признаков.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Что минимизирует каждое новое дерево XGBoost?</summary><div class="qa-a">Сумму потерь на обучении после добавления дерева плюс штраф за его сложность: <tex>\gamma</tex> за каждый лист и <tex>\frac12\lambda w^2</tex> за каждый вес листа.</div></details>
+
+  <details class="qa"><summary>2. Где в выводе формул XGBoost единственное приближение?</summary><div class="qa-a">В разложении потери каждого объекта по Тейлору до второго порядка. Дальше вес листа и выигрыш разбиения выводятся точно, а для квадрата ошибки и само разложение — точное равенство.</div></details>
+
+  <details class="qa"><summary>3. Что такое <tex>g_i</tex> и <tex>h_i</tex> в XGBoost?</summary><div class="qa-a">Первая и вторая производные потери объекта по его текущему сырому прогнозу, к которому прибавляются деревья. Для log-loss по логиту — <tex>p - y</tex> и <tex>p(1 - p)</tex>, где <tex>p</tex> — вероятность, <tex>y</tex> — метка.</div></details>
+
+  <details class="qa"><summary>4. Почему парабола плохо описывает log-loss уверенной ошибки?</summary><div class="qa-a">У неё градиент близок к 1, а кривизна <tex>p(1 - p)</tex> почти ноль, где <tex>p</tex> — вероятность. Минимум параболы <tex>-g/h</tex> уходит далеко, туда, где log-loss на параболу уже не похожа.</div></details>
+
+  <details class="qa"><summary>5. Что такое <tex>G_j</tex> и <tex>H_j</tex>?</summary><div class="qa-a">Суммы градиентов и кривизн по объектам листа <tex>j</tex>. Все объекты листа получают один вес, поэтому от данных листа для выбора веса нужны только эти две суммы.</div></details>
+
+  <details class="qa"><summary>6. Чему равен оптимальный вес листа XGBoost?</summary><div class="qa-a"><tex>-G/(H + \lambda)</tex>: сумма градиентов листа со знаком минус, делённая на сумму кривизн плюс L2-штраф. Это минимум параболы, в которую превращается целевая функция листа.</div></details>
+
+  <details class="qa"><summary>7. Во что превращается вес листа для квадрата ошибки без штрафа?</summary><div class="qa-a">В средний остаток объектов листа: градиент — минус остаток, кривизна каждого объекта — 1. Это лист обычного регрессионного дерева на остатках.</div></details>
+
+  <details class="qa"><summary>8. Чем действие <tex>\lambda</tex> на веса листьев отличается от learning_rate?</summary><div class="qa-a">Learning_rate умножает все веса на одно число. <tex>\lambda</tex> оставляет листу долю <tex>H/(H + \lambda)</tex>, где <tex>H</tex> — сумма кривизн: тяжёлые листья почти не трогает, лёгкие сжимает сильно.</div></details>
+
+  <details class="qa"><summary>9. Почему min_child_weight в классификации не равен минимальному числу объектов?</summary><div class="qa-a">Он ограничивает сумму кривизн листа, а кривизна объекта <tex>p(1 - p)</tex> мала там, где модель уверена. При <tex>p = 0.01</tex> листу с порогом 1 нужно около 100 объектов.</div></details>
+
+  <details class="qa"><summary>10. Что такое Cover в выгрузке дерева XGBoost?</summary><div class="qa-a">Сумма кривизн <tex>H</tex> объектов, попавших в узел. Для регрессии с квадратом ошибки — число объектов, для классификации — «неуверенность» узла.</div></details>
+
+  <details class="qa"><summary>11. Что показывает значение целевой функции при оптимальных весах?</summary><div class="qa-a">Насколько хороша структура дерева: <tex>-\frac12\sum G^2/(H + \lambda) + \gamma T</tex>. Чем оно меньше, тем сильнее дерево уменьшает приближённую потерю — это аналог неоднородности обычного дерева.</div></details>
+
+  <details class="qa"><summary>12. Как XGBoost выбирает разбиение?</summary><div class="qa-a">По выигрышу Gain: насколько оценка двух новых листьев больше оценки родителя, минус штраф <tex>\gamma</tex>. Перебирает признаки и пороги, накапливая суммы градиентов и кривизн слева.</div></details>
+
+  <details class="qa"><summary>13. Может ли выигрыш разбиения в XGBoost быть отрицательным?</summary><div class="qa-a">Да, при <tex>\lambda \gt 0</tex>: каждый новый лист получает свой штраф в знаменателе. Без штрафа сумма оценок двух листьев не меньше оценки родителя.</div></details>
+
+  <details class="qa"><summary>14. Совпадает ли XGBoost с квадратом ошибки с деревом на остатках?</summary><div class="qa-a">При <tex>\lambda = 0</tex> да: выигрыш равен половине прироста регрессионного дерева через разность средних остатков, а вес листа — среднему остатку. Порядок разбиений тот же.</div></details>
+
+  <details class="qa"><summary>15. Чем выбор разбиений XGBoost отличается от sklearn GradientBoosting?</summary><div class="qa-a">sklearn строит дерево на псевдоостатках квадратичным критерием и не видит кривизн. XGBoost делит квадрат суммы градиентов на сумму кривизн, поэтому объекты с уверенными прогнозами весят меньше.</div></details>
+
+  <details class="qa"><summary>16. Почему разбиение с выигрышем меньше gamma может остаться в дереве XGBoost?</summary><div class="qa-a">Обрезка идёт снизу вверх: узел сворачивается в лист, только если оба его потомка уже листья. Если под слабым разбиением есть сильное, оно сохраняет и слабое.</div></details>
+
+  <details class="qa"><summary>17. Как gamma в XGBoost связан с <tex>\gamma</tex> из статьи?</summary><div class="qa-a">Библиотека сравнивает gamma с разностью оценок без множителя ½, поэтому её gamma равен удвоенному штрафу <tex>\gamma</tex> из формулы выигрыша в статье.</div></details>
+
+  <details class="qa"><summary>18. Что печатает XGBoost в колонке Gain для узла разбиения?</summary><div class="qa-a">Разность оценок листов <tex>S_L + S_R - S_{L+R}</tex>, где <tex>S = G^2/(H + \lambda)</tex>, — без множителя ½ и без вычета gamma. При нулевом gamma это удвоенный Gain из формулы.</div></details>
+
+  <details class="qa"><summary>19. Что делает reg_alpha с листьями?</summary><div class="qa-a">Мягкий порог: модуль суммы градиентов листа уменьшается на <tex>\alpha</tex>, и если он был не больше <tex>\alpha</tex>, вес листа становится ровно нулём. Слабые листья перестают что-либо менять.</div></details>
+
+  <details class="qa"><summary>20. Зачем max_delta_step?</summary><div class="qa-a">Он ограничивает модуль веса листа. При сильном дисбалансе лист с малой суммой кривизн получает огромный вес; предел не даёт одному дереву перевернуть прогноз, и выигрыш таких разбиений падает.</div></details>
+
+  <details class="qa"><summary>21. Почему вес листа XGBoost — шаг Ньютона?</summary><div class="qa-a">Потеря листа как функция одной поправки имеет в нуле производную <tex>G</tex> и кривизну <tex>H + \lambda</tex>. Шаг Ньютона из нуля — <tex>-G/(H + \lambda)</tex>, ровно формула веса.</div></details>
+
+  <details class="qa"><summary>22. Чем шаг Ньютона в листе отличается от метода Ньютона для весов модели?</summary><div class="qa-a">В листе делается один шаг по одному числу, умноженный на learning_rate, и сразу строится следующее дерево. Метод Ньютона для весов повторяет шаги одной модели до сходимости.</div></details>
+
+  <details class="qa"><summary>23. Когда один шаг Ньютона в листе сильно ошибается?</summary><div class="qa-a">Когда лист почти «чистый» — объекты одного класса. Log-loss изгибается слабее параболы, и шаг перелетает: у чистого листа без штрафа точного оптимума нет вовсе.</div></details>
+
+  <details class="qa"><summary>24. Почему XGBoost по умолчанию переобучается на маленьких данных с редким классом?</summary><div class="qa-a">Глубина 6 и шаг 0.3 дают листья из горстки объектов с большими весами. Помогают меньший шаг с ранней остановкой, меньшая глубина, gamma, <tex>\lambda</tex> и min_child_weight.</div></details>
+
+  <details class="qa"><summary>25. Что такое гистограммный поиск порогов?</summary><div class="qa-a">Значения признака заранее делят на бины, в узле суммируют градиенты и кривизны по бинам, а пороги проверяют только на границах бинов. Перебор идёт по сотням чисел, а не по всем объектам.</div></details>
+
+  <details class="qa"><summary>26. Что такое вычитание гистограмм?</summary><div class="qa-a">Гистограмма одного потомка — гистограмма родителя минус гистограмма другого. Поэтому проходят по объектам только меньшего потомка, а второго получают почти бесплатно.</div></details>
+
+  <details class="qa"><summary>27. Сколько бинов по умолчанию и много ли теряется на гистограммах?</summary><div class="qa-a">В XGBoost max_bin 256. Лучший порог может оказаться внутри бина, но при сотнях бинов потеря мала: обычно качество как у точного перебора, а обучение в несколько раз быстрее.</div></details>
+
+  <details class="qa"><summary>28. Как XGBoost обрабатывает пропуски при обучении?</summary><div class="qa-a">Для каждого разбиения считает выигрыш, отправив все пропуски налево, и выигрыш, отправив их направо, и запоминает лучшее направление. Пропуск становится значением, которое дерево использует.</div></details>
+
+  <details class="qa"><summary>29. Что будет с пропуском, которого не было в обучении?</summary><div class="qa-a">Он пойдёт по направлению по умолчанию, выбранному без единого объекта, — фактически случайно. Модель не упадёт, но может тихо ошибаться, поэтому доли пропусков в работе отслеживают.</div></details>
+
+  <details class="qa"><summary>30. Почему нули в разреженной матрице опасны для XGBoost?</summary><div class="qa-a">Не сохранённые элементы разреженной матрицы XGBoost считает пропусками. Настоящий ноль пойдёт по направлению по умолчанию, а не по порогу, и прогноз изменится.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — разложение Тейлора из <a href="block0_09_gradients.html#s10">0.9</a>, градиенты и гессианы потерь из <a href="block0_14_loss_functions.html#s12">0.14</a>, штрафы λ и γ из <a href="block0_15_regularization.html#s12">0.15</a>, метод Ньютона из <a href="block0_16_optimization.html#s10">0.16</a>, решающее дерево из 0.19 и градиентный бустинг из <a href="block0_21_gradient_boosting.html">0.21</a>. Дальше: LightGBM и CatBoost изнутри — рост по листу, GOSS, категории (0.23), практика бустинга (0.24) и прикладная тема <a href="block1_01_gradient_boosting.html">1.1</a>, SHAP — <a href="block1_04_shap.html">1.4</a>. Полный план блока — <a href="block0_plan.html">здесь</a>.
+</div>
+
+<div class="pnav">
+  <a href="block0_21_gradient_boosting.html">← 0.21 · Градиентный бустинг с нуля</a>
+  <a class="next" href="block0_plan.html">План блока 0 →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#e879f9', TL='#2dd4bf', PU='#a78bfa', YL='#facc15', RD='#f87171', GY='#94a3b8', BL='#60a5fa', SL='#475569';
+function grid(a,b,k){ var r=[]; for(var i=0;i<=k;i++) r.push(a+(b-a)*i/k); return r; }
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function path(pts,label,color,r){ var d=seg(pts,label,color,1.8); d.pointRadius=r||2.6; return d; }
+function dots(pts,label,color,r,style){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||6,pointStyle:style||'circle',clip:false}; }
+function fn(f,a,b,k,label,color,w,dash){ return seg(grid(a,b,k||200).map(function(x){ return [x,f(x)]; }),label,color,w,dash); }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function logx(o,ticks){ o.scales.x.type='logarithmic'; o.scales.x.afterBuildTicks=function(ax){ ax.ticks=ticks.map(function(v){ return {value:v}; }); }; o.scales.x.ticks={callback:function(v){ return String(v); }}; return o; }
+/* категориальная ось x и одна или две оси y */
+function cat(labels,xl,yl,yr,y1l,y1r){ var o={responsive:true,scales:{x:Object.assign({type:'category',labels:labels,title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)};
+  if(y1l) o.scales.y1={position:'right',min:y1r[0],max:y1r[1],title:{display:true,text:y1l},grid:{drawOnChartArea:false}}; return o; }
+function cline(vals,label,color,axis,dash){ return {type:'line',label:label,data:vals,borderColor:color,backgroundColor:color,borderWidth:2.4,pointRadius:3.5,borderDash:dash||[],yAxisID:axis||'y',spanGaps:false}; }
+function sig(z){ return 1/(1+Math.exp(-z)); }
+function lg(p){ return Math.log(p/(1-p)); }
+var T3=[1,3,10,30,100,300,1000];
+
+var CH={"first":[[1,0.10225],[2,0.10215],[3,0.10206],[5,0.10188],[7,0.10169],[10,0.10142],[15,0.10098],[20,0.10053],[30,0.09966],[50,0.09812],[70,0.09684],[100,0.09547],[150,0.09382],[200,0.09268],[300,0.09114],[500,0.08961],[700,0.0887],[1000,0.08809]],"newton":[[1,0.09826],[2,0.09644],[3,0.09516],[5,0.09348],[7,0.09207],[10,0.09064],[15,0.08926],[20,0.08829],[30,0.08736],[50,0.08705],[70,0.08749],[100,0.08793],[150,0.08915],[200,0.09034],[300,0.09221],[500,0.09544],[700,0.09885],[1000,0.10328]],"x3":[[1,0.09861],[2,0.0967],[3,0.09528],[5,0.09337],[7,0.09183],[10,0.09029],[15,0.0886],[20,0.08759],[30,0.08674],[50,0.08645],[70,0.08658],[100,0.08691],[150,0.0875],[200,0.08816],[300,0.08918],[500,0.09121],[700,0.093],[1000,0.09583]],"x6":[[1,0.09244],[2,0.09064],[3,0.08973],[5,0.08932],[7,0.08942],[10,0.08994],[15,0.09068],[20,0.0912],[30,0.09246],[50,0.09493],[70,0.09686],[100,0.10061],[150,0.106],[200,0.11023],[300,0.12083],[500,0.1382],[700,0.14993],[1000,0.16186]],"hdist":{"edges":[0,0.005,0.01,0.02,0.05,0.1,0.25],"cnt":[4428,5672,4828,3305,1245,522]},"gain":{"sec":[[0.1,0.0004],[0.2,0.0295],[0.3,0.2493],[0.4,0.0014],[0.5,0.225],[0.6,0.1595],[0.7,0.0451],[0.8,0.1435],[0.9,0.1175],[1.0,0.3502],[1.1,0.5945],[1.2,0.7364],[1.3,0.8174],[1.4,0.7061],[1.5,0.736],[1.6,1.5428],[1.7,1.0627],[1.8,1.5102],[1.9,1.759],[2.0,2.5412],[2.1,3.5675],[2.2,3.9252],[2.3,2.8256],[2.4,3.9522],[2.5,4.2068],[2.6,4.5487],[2.7,4.501],[2.8,3.5063],[2.9,2.9125],[3.0,2.2686],[3.1,2.0012],[3.2,1.9044],[3.3,2.4367],[3.4,2.4037],[3.5,2.1421],[3.6,2.3538],[3.8,2.4578],[3.9,2.9293],[4.0,3.4805],[4.2,5.0099],[4.3,4.993],[4.5,4.3308],[4.7,5.7092],[4.8,5.5105],[5.0,5.3017],[5.2,5.8048],[5.3,5.2923],[5.5,3.8959],[5.7,4.1351],[5.9,3.488],[6.1,2.8604],[6.4,2.6917],[6.6,3.6062],[6.8,3.6025],[7.1,4.7633],[7.3,4.9392],[7.6,5.3335],[7.9,4.7857],[8.1,5.5119],[8.4,5.0947],[8.7,4.3395],[9.0,3.4969],[9.3,3.4952],[9.7,3.6935],[10.0,3.9821],[10.4,4.8156],[10.7,5.0184],[11.1,4.3109],[11.5,4.7916],[11.9,3.6796],[12.4,3.6148],[12.8,4.4987],[13.3,2.4016],[13.7,3.0161],[14.2,3.4629],[14.7,3.3942],[15.2,4.0275],[15.8,4.1472],[16.3,3.5785],[16.9,2.7019],[17.5,2.8541],[18.1,4.1636],[18.8,3.1398],[19.5,3.814],[20.1,3.9867],[20.9,2.6375],[21.6,2.2787],[22.4,3.0966],[23.2,3.0755],[24.0,3.5736],[24.8,3.5732],[25.7,3.6373],[26.6,4.3243],[27.6,3.4844],[28.6,4.2605],[29.6,3.4518],[30.6,4.4719],[31.7,5.0605],[32.8,4.8817],[34.0,4.313],[35.2,4.049],[36.5,4.9319],[37.8,5.4751],[39.1,4.4713],[40.5,3.7624],[41.9,2.8608],[43.4,3.0203],[44.9,2.6121],[46.6,2.7802],[48.2,2.8614],[49.9,2.2005],[51.8,1.6842],[53.6,0.5666],[55.4,0.4245],[57.4,0.0265],[59.5,0.1294],[61.6,0.2147],[63.8,0.3156],[66.0,0.4055],[68.4,0.0146],[70.7,0.0741],[73.3,0.1783],[76.0,0.0343],[78.8,0.1061],[81.3,0.0061],[84.1,0.0247],[87.4,0.0585],[90.0,0.1879],[93.3,0.0799],[98.1,0.1017],[100.1,0.119],[104.6,0.0006],[108.7,0.004],[109.9,0.005],[114.8,0.0139],[120.7,0.0159],[124.1,0.033],[129.1,0.11],[132.3,0.1853],[146.3,0.2078],[149.6,0.2178],[159.6,0.2394],[167.5,0.266],[208.9,0.2956]],"fir":[[0.1,0.0025],[0.2,0.0293],[0.3,0.1138],[0.4,0.0005],[0.5,0.0757],[0.6,0.0497],[0.7,0.0143],[0.8,0.0428],[0.9,0.0342],[1.0,0.1014],[1.1,0.1693],[1.2,0.2085],[1.3,0.2292],[1.4,0.1974],[1.5,0.2081],[1.6,0.437],[1.7,0.3016],[1.8,0.4329],[1.9,0.507],[2.0,0.7351],[2.1,1.0379],[2.2,1.146],[2.3,0.8271],[2.4,1.1608],[2.5,1.2439],[2.6,1.3562],[2.7,1.3529],[2.8,1.0637],[2.9,0.8901],[3.0,0.6952],[3.1,0.6156],[3.2,0.5904],[3.3,0.7601],[3.4,0.7546],[3.5,0.6761],[3.6,0.7491],[3.8,0.7895],[3.9,0.9488],[4.0,1.1346],[4.2,1.6591],[4.3,1.6614],[4.5,1.4541],[4.7,1.9435],[4.8,1.8839],[5.0,1.8311],[5.2,2.0321],[5.3,1.8637],[5.5,1.3855],[5.7,1.4879],[5.9,1.267],[6.1,1.0492],[6.4,1.0021],[6.6,1.3593],[6.8,1.371],[7.1,1.8443],[7.3,1.9316],[7.6,2.1196],[7.9,1.9273],[8.1,2.2426],[8.4,2.0986],[8.7,1.8065],[9.0,1.4727],[9.3,1.4913],[9.7,1.6016],[10.0,1.7464],[10.4,2.1489],[10.7,2.2674],[11.1,1.9745],[11.5,2.2275],[11.9,1.7277],[12.4,1.7267],[12.8,2.1782],[13.3,1.1719],[13.7,1.4861],[14.2,1.7312],[14.7,1.7162],[15.2,2.0562],[15.8,2.1333],[16.3,1.8559],[16.9,1.3983],[17.5,1.4747],[18.1,2.1813],[18.8,1.6532],[19.5,2.0287],[20.1,2.1445],[20.9,1.4229],[21.6,1.2379],[22.4,1.706],[23.2,1.7283],[24.0,2.0333],[24.8,2.0693],[25.7,2.1323],[26.6,2.581],[27.6,2.0969],[28.6,2.6114],[29.6,2.1253],[30.6,2.7992],[31.7,3.178],[32.8,3.1259],[34.0,2.7978],[35.2,2.6655],[36.5,3.3491],[37.8,3.726],[39.1,3.0082],[40.5,2.5635],[41.9,1.9672],[43.4,2.1165],[44.9,1.8915],[46.6,2.0065],[48.2,2.0609],[49.9,1.6265],[51.8,1.2422],[53.6,0.4226],[55.4,0.3198],[57.4,0.0188],[59.5,0.0994],[61.6,0.1706],[63.8,0.2628],[66.0,0.3476],[68.4,0.0122],[70.7,0.0665],[73.3,0.1687],[76.0,0.0309],[78.8,0.1006],[81.3,0.0057],[84.1,0.0265],[87.4,0.0689],[90.0,0.2308],[93.3,0.0993],[98.1,0.1363],[100.1,0.1624],[104.6,0.0012],[108.7,0.0056],[109.9,0.0073],[114.8,0.0257],[120.7,0.0313],[124.1,0.0735],[129.1,0.2902],[132.3,0.5778],[146.3,0.7386],[149.6,0.9193],[159.6,1.648],[167.5,2.6803],[208.9,5.8048]],"b2":[5.2,5.805],"b1":[208.9,5.805]},"hist16":[[1.1,0.3502],[1.6,0.736],[2.1,2.5412],[2.6,4.2068],[3.1,2.2686],[3.6,2.1421],[4.3,5.0099],[5.0,4.554],[5.9,4.0863],[6.9,3.6025],[8.1,4.912],[9.7,4.0774],[12.0,3.6796],[15.8,4.5914],[23.1,3.5639]],"gamma":[[0,0.10061,29.17],[0.3,0.09202,10.18],[1,0.08964,5.51],[2,0.08863,3.52],[3,0.08816,2.42],[5,0.08778,1.86],[10,0.08802,1.43],[20,0.08887,1.23]],"lambda":[[0,0.10748,28.61],[0.3,0.1051,28.82],[1,0.10061,29.17],[3,0.09613,30.12],[10,0.09249,31.23],[30,0.09076,36.6],[100,0.08801,36.42],[300,0.08689,33.43]],"alpha":[[0,0.10061,29.17],[0.3,0.09991,30.87],[1,0.09887,35.47],[3,0.09298,30.87],[10,0.08732,6.78],[30,0.08759,3.13]],"mcw":[[0,0.10219,40.81],[0.3,0.10168,35.08],[1,0.10061,29.17],[3,0.09794,22.27],[10,0.09303,14.61],[30,0.08904,9.38],[100,0.08998,3.07]],"bins":[[2,0.09045],[4,0.08796],[8,0.08727],[16,0.08714],[32,0.08705],[64,0.08683],[128,0.08686],[256,0.08691],[1024,0.08688]],"bins_exact":0.08693,"miss":[["��� ���������",0.08691],["NaN ��� ����",0.08421],["�������",0.0844],["������� + ���������",0.0843]],"missgain":[[5,165.454,1.12],[10,166.613,3.802],[15,166.03,5.588],[20,172.312,10.0],[25,170.813,11.461],[29,178.535,16.235],[30,178.826,16.736],[40,167.428,14.488],[60,140.526,8.729],[90,134.378,10.267],[120,127.344,9.911],[180,124.199,10.404],[250,79.335,0.823],[365,45.951,2.289],[500,28.976,11.995],[750,15.138,38.19],[1000,8.379,70.952]],"unseen":[0.08691,0.08858],"score":[[1,-0.1025,-0.1024],[2,0.0063,0.0086],[3,0.3043,0.3131],[4,-0.0687,-0.0672],[5,-0.0192,-0.0238]]};
+
+/* одно разбиение XGBoost (log-loss) на одном признаке: g, h, выигрыши по порогам, веса листьев */
+var XSPLIT=(function(){
+  function sg(z){ return 1/(1+Math.exp(-z)); }
+  function thr(G,a){ return G>a? G-a : (G<-a? G+a : 0); }
+  function score(G,H,P){ var t=thr(G,P.alpha); return t*t/(H+P.lambda); }
+  function weight(G,H,P){ return -thr(G,P.alpha)/(H+P.lambda); }
+  /* x — значения признака по возрастанию, y — метки 0/1, z — текущие логиты; P = {lambda, alpha, gamma, mcw} */
+  function run(x,y,z,P){
+    var n=x.length, g=[], h=[], G=0, H=0, i;
+    for(i=0;i<n;i++){ var p=sg(z[i]); g.push(p-y[i]); h.push(p*(1-p)); G+=g[i]; H+=h[i]; }
+    var sp=score(G,H,P), cand=[], gl=0, hl=0, best=null;
+    for(i=0;i<n-1;i++){
+      gl+=g[i]; hl+=h[i];
+      if(x[i+1]===x[i]) continue;
+      var gr=G-gl, hr=H-hl, ok=hl>=P.mcw && hr>=P.mcw;
+      var d=score(gl,hl,P)+score(gr,hr,P)-sp;
+      var c={t:(x[i]+x[i+1])/2, k:i+1, GL:gl, HL:hl, GR:gr, HR:hr, delta:d, ok:ok};
+      cand.push(c); if(ok && d>1e-6 && (!best || d>=best.delta-1e-9)) best=c;
+    }
+    var res={g:g, h:h, G:G, H:H, cand:cand, best:best, split:false, w0:weight(G,H,P)};
+    if(best && best.delta>=P.gamma-1e-9){ res.split=true; res.wl=weight(best.GL,best.HL,P); res.wr=weight(best.GR,best.HR,P); }
+    return res;
+  }
+  return {run:run, sg:sg};
+})();
+
+/* 1 — log-loss от числа деревьев */
+(function(){
+  var o=logx(lin('число деревьев','log-loss на новых платежах',[1,1000],[0.08,0.18]),T3);
+  mk('c_story',{type:'scatter',data:{datasets:[
+    path(CH.first,'первый порядок: лист — среднее y − p',GY,2.2),
+    path(CH.newton,'лист — шаг Ньютона',TL,2.2),
+    path(CH.x3,'XGBoost: глубина 3, шаг 0.1',PU,2.6),
+    path(CH.x6,'XGBoost по умолчанию',YL,2.2),
+    seg([[1,0.1023],[1000,0.1023]],'константа 0.1023',RD,1.2,[6,4]),
+    seg([[1,0.085],[1000,0.085]],'потолок 0.0850',GY,1.2,[3,4])
+  ]},options:o});
+})();
+
+/* 2 — log-loss объекта и парабола */
+(function(){
+  mk('c_taylor',{type:'scatter',data:{datasets:[
+    fn(function(f){ return Math.log(1+Math.exp(-f)); },-1,6,200,'log-loss, старт с логита 0',PU,2.8),
+    fn(function(f){ return 0.6931-0.5*f+0.125*f*f; },-1,6,200,'парабола из логита 0',TL,2.2),
+    fn(function(f){ return Math.log(1+Math.exp(3-f)); },-1,6,200,'log-loss, старт с логита −3',YL,2.4),
+    fn(function(f){ return 3.0486-0.9526*f+0.5*0.04518*f*f; },-1,6,200,'парабола из логита −3',GY,1.8,[6,4]),
+    dots([[2,0.1931]],'',TL,6,'rectRot')
+  ]},options:lin('поправка f к логиту','потеря объекта с y = 1',[-1,6],[0,4])});
+})();
+
+/* 3 — распределение кривизн */
+(function(){
+  var e=CH.hdist.edges, lb=[];
+  for(var i=0;i<e.length-1;i++) lb.push(String(e[i]).replace('.',',')+'–'+String(e[i+1]).replace('.',','));
+  mk('c_hdist',{type:'bar',data:{labels:lb,datasets:[{label:'платежей',data:CH.hdist.cnt,backgroundColor:AC+'99',borderColor:AC,borderWidth:1.5}]},
+    options:{responsive:true,scales:{x:Object.assign({title:{display:true,text:'кривизна h = p(1 − p)'}},GRID),y:Object.assign({min:0,max:6000,title:{display:true,text:'число платежей'}},GRID)},plugins:{legend:{display:false}}}});
+})();
+
+/* 4 — целевая функция чистого листа */
+(function(){
+  function ex(l){ return function(w){ return 3*Math.log(1+Math.exp(w))+0.5*l*w*w; }; }
+  function pa(l){ return function(w){ return 2.0794+1.5*w+0.5*(0.75+l)*w*w; }; }
+  mk('c_leafobj',{type:'scatter',data:{datasets:[
+    fn(ex(0),-3,1,200,'точно, λ = 0',PU,2.8),
+    fn(pa(0),-3,1,200,'парабола, λ = 0',GY,1.8,[6,4]),
+    fn(ex(1),-3,1,200,'точно, λ = 1',TL,2.8),
+    fn(pa(1),-3,1,200,'парабола, λ = 1',YL,2),
+    dots([[-2,0.5794]],'',GY,6,'rectRot'), dots([[-0.857,1.4365]],'',YL,6,'rectRot')
+  ]},options:lin('вес листа w','потеря листа + ½λw²',[-3,1],[0,3])});
+})();
+
+/* 5 — оценка структуры против точного уменьшения */
+(function(){
+  var lb=['3.5','6.5','10','16','32.5'];
+  mk('c_score',{type:'bar',data:{labels:lb,datasets:[
+    {type:'bar',label:'по формуле 7 (парабола)',data:CH.score.map(function(r){ return r[1]; }),backgroundColor:AC+'99',borderColor:AC,borderWidth:1.5},
+    {type:'line',label:'точно',data:CH.score.map(function(r){ return r[2]; }),borderColor:TL,backgroundColor:TL,showLine:false,pointRadius:6,pointStyle:'rectRot'}
+  ]},options:cat(lb,'порог по сумме, тыс. ₽','выигрыш против одного листа',[-0.15,0.35])});
+})();
+
+/* 6 — выигрыш по порогам: второй порядок и псевдоостатки */
+(function(){
+  var o=logx(lin('порог по сумме, тыс. ₽','выигрыш',[0.1,250],[0,7]),[0.1,0.3,1,3,10,30,100,250]);
+  mk('c_gain',{type:'scatter',data:{datasets:[
+    seg(CH.gain.sec,'Gain второго порядка',AC,2.4),
+    seg(CH.gain.fir,'критерий на псевдоостатках (масштаб)',TL,1.8),
+    dots([CH.gain.b2],'',AC,7,'rectRot'), dots([CH.gain.b1],'',TL,7,'rectRot')
+  ]},options:o});
+})();
+
+/* 7 — gamma */
+(function(){
+  var lb=CH.gamma.map(function(r){ return String(r[0]); });
+  mk('c_gamma',{type:'line',data:{labels:lb,datasets:[
+    cline(CH.gamma.map(function(r){ return r[1]; }),'log-loss на новых',AC,'y'),
+    cline(CH.gamma.map(function(r){ return r[2]; }),'листьев в дереве',TL,'y1',[6,4])
+  ]},options:cat(lb,'gamma','log-loss',[0.085,0.105],'листьев',[0,30])});
+})();
+
+/* 8 — lambda и alpha */
+(function(){
+  var lb=CH.lambda.map(function(r){ return String(r[0]); });
+  var a=lb.map(function(v){ var f=null; CH.alpha.forEach(function(r){ if(String(r[0])===v) f=r[1]; }); return f; });
+  mk('c_lam',{type:'line',data:{labels:lb,datasets:[
+    cline(CH.lambda.map(function(r){ return r[1]; }),'λ (reg_lambda)',AC,'y'),
+    cline(a,'α (reg_alpha)',TL,'y'),
+    cline(lb.map(function(){ return 0.1023; }),'константа',RD,'y',[6,4])
+  ]},options:cat(lb,'значение штрафа','log-loss на новых',[0.085,0.11])});
+})();
+
+/* 9 — min_child_weight */
+(function(){
+  var lb=CH.mcw.map(function(r){ return String(r[0]); });
+  mk('c_mcw',{type:'line',data:{labels:lb,datasets:[
+    cline(CH.mcw.map(function(r){ return r[1]; }),'log-loss на новых',AC,'y'),
+    cline(CH.mcw.map(function(r){ return r[2]; }),'листьев в дереве',TL,'y1',[6,4])
+  ]},options:cat(lb,'min_child_weight','log-loss',[0.085,0.105],'листьев',[0,45])});
+})();
+
+/* 10 — шаг Ньютона и точный оптимум листа */
+(function(){
+  var p0=0.022, n=50, nw=[], ex=[];
+  for(var k=0;k<=20;k++){ nw.push([k,(k-n*p0)/(n*p0*(1-p0))]); if(k>0) ex.push([k,lg(k/n)-lg(p0)]); }
+  mk('c_newton',{type:'scatter',data:{datasets:[
+    path(nw,'один шаг Ньютона',AC,3), path(ex,'точный оптимум',TL,3),
+    seg([[0,0],[20,0]],'',GY,1,[3,4])
+  ]},options:lin('мошеннических из 50','сдвиг логита листа',[0,20],[-5,20])});
+})();
+
+/* 11 — точный перебор и 16 бинов */
+(function(){
+  var o=logx(lin('порог по сумме, тыс. ₽','Gain',[0.1,250],[0,7]),[0.1,0.3,1,3,10,30,100,250]);
+  mk('c_hist',{type:'scatter',data:{datasets:[
+    seg(CH.gain.sec,'все пороги',AC,2.2),
+    dots(CH.hist16,'границы 16 бинов',TL,5),
+    dots([CH.gain.b2],'',AC,7,'rectRot')
+  ]},options:o});
+})();
+
+/* 12 — max_bin */
+(function(){
+  var o=logx(lin('max_bin','log-loss на новых',[2,1024],[0.086,0.092]),[2,4,8,16,32,64,128,256,1024]);
+  mk('c_bins',{type:'scatter',data:{datasets:[
+    path(CH.bins,'гистограммы',AC,3),
+    seg([[2,CH.bins_exact],[1024,CH.bins_exact]],'точный перебор',GY,1.4,[6,4])
+  ]},options:o});
+})();
+
+/* 13 — пропуски налево и направо */
+(function(){
+  var o=logx(lin('порог по возрасту аккаунта, дней','Gain',[5,1000],[0,200]),[5,10,30,100,300,1000]);
+  mk('c_miss',{type:'scatter',data:{datasets:[
+    path(CH.missgain.map(function(r){ return [r[0],r[1]]; }),'пропуски налево (к новым)',AC,3),
+    path(CH.missgain.map(function(r){ return [r[0],r[2]]; }),'пропуски направо (к старым)',TL,3)
+  ]},options:o});
+})();
+
+/* песочница: одно разбиение XGBoost */
+(function(){
+  var cv=document.getElementById('c_play'); if(!cv) return;
+  function el(id){ return document.getElementById(id); }
+  var X=[1,3,6,10,15,25,40,70], Z=[[0,0,0,0,0,0,0,0],[-2.2,-1.4,-2.2,0,-1.4,1.4,0,2.2]];
+  var st={y:[0,0,0,1,0,1,1,0], z:0, lambda:1, gamma:0, alpha:0, mcw:1};
+  var lbl=[]; for(var i=0;i<X.length-1;i++) lbl.push(String((X[i]+X[i+1])/2).replace('.',','));
+  var ch=mk('c_play',{type:'bar',data:{labels:lbl,datasets:[]},options:cat(lbl,'порог по сумме, тыс. ₽','Δ (как печатает XGBoost)',[-0.5,1])});
+  if(!ch) return;
+  var row=el('py_row'), bt=[];
+  X.forEach(function(x,i){ var b=document.createElement('button'); b.type='button'; b.className='pbtn';
+    b.addEventListener('click',function(){ st.y[i]=1-st.y[i]; draw(); }); row.appendChild(b); bt.push(b); });
+  function f3(v){ return (Math.abs(v)<5e-4? 0 : v).toFixed(3); }
+  function draw(){
+    var z=Z[st.z], r=XSPLIT.run(X,st.y,z,{lambda:st.lambda,gamma:st.gamma,alpha:st.alpha,mcw:st.mcw});
+    bt.forEach(function(b,i){ b.textContent=X[i]+' тыс.: '+st.y[i]; b.classList.toggle('on',st.y[i]===1); });
+    var d=r.cand.map(function(c){ return c.delta; }), mx=1, mn=0;
+    d.forEach(function(v){ mx=Math.max(mx,v); mn=Math.min(mn,v); }); mx=Math.max(mx,st.gamma);
+    mx=mx<=2? Math.ceil(mx*2)/2 : Math.ceil(mx/2)*2; mn=mn<-0.02? -Math.ceil(-mn*2)/2 : 0; if(mx>2 && mn<0) mn=-Math.ceil(-mn);
+    ch.options.scales.y.min=mn; ch.options.scales.y.max=mx;
+    ch.data.datasets=[{type:'bar',label:'Δ порога',data:d,backgroundColor:r.cand.map(function(c){ return !c.ok? SL : (r.best && c.t===r.best.t? AC : TL+'aa'); })},
+      {type:'line',label:'gamma',data:lbl.map(function(){ return st.gamma; }),borderColor:YL,borderDash:[6,4],borderWidth:2,pointRadius:0}];
+    ch.update();
+    var s='G = '+f3(r.G)+', H = '+f3(r.H)+' (сумма кривизн всех восьми)\n';
+    if(!r.best) s+='ни один порог не разрешён или не даёт выигрыша\nодин лист: вес '+f3(r.w0);
+    else {
+      s+='лучший порог '+String(r.best.t).replace('.',',')+': слева G = '+f3(r.best.GL)+', H = '+f3(r.best.HL)+'; справа G = '+f3(r.best.GR)+', H = '+f3(r.best.HR)+'\n';
+      s+='Δ = '+f3(r.best.delta)+(r.split? ' ≥ gamma '+st.gamma+' — разбиение остаётся' : ' < gamma '+st.gamma+' — разбиение отброшено')+'\n';
+      if(r.split){ var pl=[], pr=[];
+        X.forEach(function(x,i){ var w=i<r.best.k? r.wl : r.wr; (i<r.best.k? pl : pr).push(sig(z[i]+w).toFixed(2)); });
+        s+='веса листьев: слева '+f3(r.wl)+', справа '+f3(r.wr)+'\nновые вероятности (шаг 1): '+pl.join(' ')+' | '+pr.join(' '); }
+      else s+='один лист: вес '+f3(r.w0);
+    }
+    el('out_play').textContent=s;
+    el('pz_0').classList.toggle('on',st.z===0); el('pz_1').classList.toggle('on',st.z===1);
+    [[0,'0'],[1,'1'],[10,'10']].forEach(function(p){ el('pl_'+p[1]).classList.toggle('on',st.lambda===p[0]); });
+    [[0,'0'],[0.5,'05'],[2,'2']].forEach(function(p){ el('pg_'+p[1]).classList.toggle('on',st.gamma===p[0]); });
+    [[0,'0'],[0.5,'05']].forEach(function(p){ el('pa_'+p[1]).classList.toggle('on',st.alpha===p[0]); });
+    [[0,'0'],[0.5,'05'],[1,'1']].forEach(function(p){ el('pm_'+p[1]).classList.toggle('on',st.mcw===p[0]); });
+  }
+  el('pz_0').addEventListener('click',function(){ st.z=0; draw(); });
+  el('pz_1').addEventListener('click',function(){ st.z=1; draw(); });
+  [[0,'0'],[1,'1'],[10,'10']].forEach(function(p){ el('pl_'+p[1]).addEventListener('click',function(){ st.lambda=p[0]; draw(); }); });
+  [[0,'0'],[0.5,'05'],[2,'2']].forEach(function(p){ el('pg_'+p[1]).addEventListener('click',function(){ st.gamma=p[0]; draw(); }); });
+  [[0,'0'],[0.5,'05']].forEach(function(p){ el('pa_'+p[1]).addEventListener('click',function(){ st.alpha=p[0]; draw(); }); });
+  [[0,'0'],[0.5,'05'],[1,'1']].forEach(function(p){ el('pm_'+p[1]).addEventListener('click',function(){ st.mcw=p[0]; draw(); }); });
+  draw();
+})();
+</script>
+
+</body>
+</html>
