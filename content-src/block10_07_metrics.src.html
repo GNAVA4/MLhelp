@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10.7 · Метрики и выбор порога</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#e11d48; --ac-d:#fecdd3; --ac-l:rgba(225,29,72,.08); --ac-b:rgba(225,29,72,.35); --ac-m:#be123c; --ac-s:#4c0519;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#e11d48; --okl:rgba(225,29,72,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(225,29,72,.24),transparent 60%),linear-gradient(135deg,#020617,#2a0510 55%,#4c0519);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(225,29,72,.14);border:1px solid rgba(254,205,211,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ffe4e6;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#e11d48;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#e11d48;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(225,29,72,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(225,29,72,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(225,29,72,.07),rgba(251,113,133,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Экспресс · тема 7 · база ML</div>
+    <h1>Метрики и выбор порога</h1>
+    <p>Модель оттока показывает accuracy 93%. Константа «никто не уйдёт» даёт 95% — и не находит ни одного уходящего клиента. Метрика решает, какую модель вы выберете и как настроите, поэтому её выбирают раньше модели. В теме — матрица ошибок, precision и recall, порог по деньгам, ROC-AUC и PR-AUC, метрики вероятностей и регрессии с их ловушками.</p>
+    <div class="meta">
+      <span>10 секций</span><span>5 формул</span><span>3 задачи</span><span>2 графика</span><span>5 подводных камней</span><span>10 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Матрица ошибок</a>
+    <a href="#s3">3 · Precision и recall</a>
+    <a href="#s4">4 · Порог</a>
+    <a href="#s5">5 · ROC и PR</a>
+    <a href="#s6">6 · Вероятности</a>
+    <a href="#s7">7 · Регрессия</a>
+    <a href="#s8">8 · Ошибки</a>
+    <a href="#s9">9 · Шпаргалка</a>
+    <a href="#s10">10 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: accuracy 95% и ни одного найденного клиента</h2></div>
+  <p class="slead">Метрика — формализация вопроса «хорошая ли модель для этой задачи». Неверная метрика делает бесполезную модель «лучшей», а полезную — «плохой». Набор метрик невелик, но у каждой своя ловушка.</p>
+
+  <div class="story">
+    <p>10 000 клиентов, уходят 500 (5%). Модель помечает 800, из них 300 действительно уходят. Accuracy модели — 93%, константы «все остаются» — 95%.</p>
+    <p style="margin:0">По accuracy модель хуже константы. Но константа не находит никого, а модель находит 60% уходящих, и каждый третий из помеченных действительно собирался уйти. Accuracy при редком классе меряет в основном умение угадывать большинство.</p>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Матрица ошибок (секция 2), precision, recall и F1 (3), выбор порога по деньгам (4), ROC-AUC и PR-AUC (5), метрики вероятностей и калибровка (6), метрики регрессии (7).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td>TP, FP, FN, TN</td><td>Верно найденные, ложные тревоги, пропуски, верно отклонённые (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: TP = 300, FP = 500</span></td></tr>
+      <tr><td>precision, recall</td><td>Доля верных среди помеченных; доля найденных среди всех положительных (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: 0.375 и 0.6</span></td></tr>
+      <tr><td>TPR, FPR, AUC</td><td>Доля найденных положительных, доля помеченных отрицательных, площадь под ROC-кривой (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: AUC = 0.91</span></td></tr>
+      <tr><td>MAE, RMSE, MAPE, WAPE</td><td>Метрики регрессии (<a href="#s7">секция 7</a>)<br><span class="gl-ex">Пример: WAPE 8.6%</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Всё начинается с таблицы четырёх исходов.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Матрица ошибок</h2></div>
+  <p class="slead">После выбора порога каждый объект попадает в одну из четырёх клеток: модель сказала «да» или «нет», и это было правдой или нет. Все метрики классификации — отношения этих четырёх чисел.</p>
+
+  <table class="ct">
+    <tr><th></th><th>Факт: 1</th><th>Факт: 0</th></tr>
+    <tr><td>Прогноз: 1</td><td>TP — верно найден (300)</td><td>FP — ложная тревога (500)</td></tr>
+    <tr><td>Прогноз: 0</td><td>FN — пропуск (200)</td><td>TN — верно отклонён (9000)</td></tr>
+  </table>
+  <p class="tcap">Числа — модель оттока из секции 1.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · accuracy</div>
+    <texd>\text{accuracy} = \frac{TP + TN}{TP + FP + FN + TN}</texd>
+    <div class="where">где TP — верно найденные положительные, TN — верно отклонённые отрицательные, FP — ложные тревоги, FN — пропуски. Accuracy одинаково считает все ошибки и при дисбалансе определяется большинством класса. Пример: <tex>(300 + 9000)/10\,000 = 0.93</tex>.</div>
+  </div>
+
+  <p class="next">Нужны метрики, которые смотрят на положительный класс отдельно.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Precision, recall и F1</h2></div>
+  <p class="slead">Precision отвечает «насколько можно верить флагу модели», recall — «какую долю нужных объектов мы нашли». Повышая одну, обычно теряют другую, и правильный баланс задаёт бизнес.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · precision, recall, F1</div>
+    <texd>\text{precision} = \frac{TP}{TP + FP} \qquad \text{recall} = \frac{TP}{TP + FN} \qquad F_1 = \frac{2\cdot\text{precision}\cdot\text{recall}}{\text{precision} + \text{recall}}</texd>
+    <div class="where">где TP — верно найденные, FP — ложные тревоги, FN — пропуски, <tex>F_1</tex> — гармоническое среднее precision и recall: близко к меньшей из двух, поэтому его не «вытянуть» одной метрикой. Precision зависит от доли положительного класса (тема 3), recall — нет. Пример: precision 0.375, recall 0.6 — F1 0.46.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Модель оттока против константы</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">10 000 клиентов, 500 уходят. Модель: TP = 300, FP = 500, FN = 200, TN = 9000. Константа «никто не уходит» помечает ноль клиентов.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Accuracy, precision, recall и F1 модели; accuracy и recall константы.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Подставляем клетки матрицы в формулы 1 и 2.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 2</a> · precision и recall</div>
+        <texd>\text{precision} = \frac{300}{800} \qquad \text{recall} = \frac{300}{500}</texd>
+        <div class="fr-w">где 800 — все помеченные, 500 — все уходящие.</div></div>
+      <p>Precision 0.375, recall 0.6, <tex>F_1 = 2\cdot0.375\cdot0.6/0.975 = 0.46</tex>, accuracy 0.93. Константа: accuracy <tex>9500/10\,000 = 0.95</tex>, recall 0.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Модель: accuracy <b>0.93</b>, precision <b>0.375</b>, recall <b>0.6</b>, F1 <b>0.46</b>; константа: accuracy 0.95 при нулевом recall. При дисбалансе accuracy не годится; смотрят precision и recall или деньги.</div></div>
+  </div>
+
+  <p class="next">Precision и recall зависят от порога. Как его выбрать?</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Порог: деньги вместо F1</h2></div>
+  <p class="slead">Модель выдаёт оценку, а матрица ошибок появляется только после порога. Снижая порог, находим больше положительных (recall растёт), но и ложных тревог больше (precision падает). Лучший порог — тот, где максимальна прибыль, а не F1.</p>
+
+  <p>Если известны выгода от верно найденного объекта и стоимость действия, прибыль при каждом пороге считается по матрице ошибок: <tex>TP\cdot B - (TP + FP)\cdot C</tex>, где <tex>B</tex> — выгода от верно найденного, <tex>C</tex> — стоимость действия на каждого помеченного. Если вероятности откалиброваны, порог даже не нужно перебирать — он равен <tex>C/B</tex> (тема 6).</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Какой порог выбрать для удержания</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Звонок удержания стоит 300 рублей, удержанный уходящий клиент даёт 1500. Всего уходят 500. На валидации: порог 0.2 — помечено 2000, из них уходящих 420; порог 0.3 — 1200 и 360; порог 0.5 — 500 и 250.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прибыль, precision и recall при каждом пороге; лучший порог.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Прибыль — выгода на верно найденных минус стоимость звонков всем помеченным; precision и recall — формула 2.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 2</a> · precision и recall при каждом пороге</div>
+        <texd>\text{прибыль} = 1500\,TP - 300\,(TP + FP)</texd>
+        <div class="fr-w">где <tex>TP + FP</tex> — все помеченные, TP — уходящие среди них.</div></div>
+      <p>0.2: <tex>630\,000 - 600\,000 = 30\,000</tex>, precision 0.21, recall 0.84. 0.3: <tex>540\,000 - 360\,000 = 180\,000</tex>, 0.30 и 0.72. 0.5: <tex>375\,000 - 150\,000 = 225\,000</tex>, 0.50 и 0.50.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Лучший — <b>0.5</b> (225 тысяч), хотя он находит только половину уходящих. Порог 0.2 с recall 84% почти ничего не зарабатывает: звонков слишком много. Порог выбирают на валидации по деньгам и проверяют на тесте.</div></div>
+  </div>
+
+  <p class="next">Чтобы сравнивать модели без выбора порога, есть метрики по всем порогам сразу.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>ROC-AUC и PR-AUC</h2></div>
+  <p class="slead">ROC-кривая — доля найденных положительных (TPR, это recall) против доли помеченных отрицательных (FPR) при всех порогах. Площадь под ней, AUC, имеет простой смысл: вероятность, что случайный положительный объект получит оценку выше случайного отрицательного.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · AUC как вероятность правильного порядка</div>
+    <texd>\text{AUC} = P(s_+ \gt s_-) = \frac{\#\{(i, j): s_i \gt s_j\} + \frac12\#\{s_i = s_j\}}{n_+\,n_-}</texd>
+    <div class="where">где <tex>P</tex> — вероятность, <tex>s_+</tex>, <tex>s_-</tex> — оценки модели случайного положительного и отрицательного объекта, <tex>(i, j)</tex> — пары «положительный <tex>i</tex>, отрицательный <tex>j</tex>», <tex>\#</tex> — число таких пар, <tex>n_+</tex>, <tex>n_-</tex> — число положительных и отрицательных объектов. AUC 0.5 — случайный порядок, 1 — идеальный. AUC не зависит от порога и от калибровки, только от порядка. Пример: положительные 0.9, 0.7, 0.4, отрицательные 0.8, 0.3, 0.2, 0.1 — 10 правильных пар из 12, AUC 0.83.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">ROC-кривая при 2% положительных</div>
+    <div class="chsub">Ось x — FPR (доля отрицательных, помеченных моделью), ось y — TPR (доля найденных положительных). 20 000 объектов, положительных 1.9%. Кривая высоко над диагональю (серая — случайная модель): ROC-AUC 0.91. Ошибиться на 10% отрицательных кажется мало, но это 1960 ложных тревог против 380 положительных.</div>
+    <canvas id="c_roc"></canvas>
+  </div>
+
+  <div class="chb">
+    <div class="cht">PR-кривая той же модели</div>
+    <div class="chsub">Ось x — recall, ось y — precision. Та же модель: чтобы найти половину положительных, приходится мириться с precision 26%. Площадь под кривой (PR-AUC, average precision) — 0.32 при базовом уровне 0.019 (доля положительных). При сильном дисбалансе PR-кривая честнее показывает, сколько мусора придётся разбирать.</div>
+    <canvas id="c_pr"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · FPR и доля ложных среди помеченных</div>
+    <p>FPR — доля ложных тревог среди всех отрицательных объектов, её знаменатель огромен при дисбалансе. Доля ложных среди помеченных — это <tex>1 - \text{precision}</tex>, она и определяет, сколько работы впустую у тех, кто разбирает флаги.</p>
+    <p>Пример: FPR 10% при 19 600 отрицательных — 1960 ложных тревог; если найдено 300 положительных, ложных среди помеченных 87%.</p>
+  </div>
+
+  <p class="next">AUC оценивает порядок. Если важны сами вероятности, нужны другие метрики.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Метрики вероятностей и калибровка</h2></div>
+  <p class="slead">Когда решение принимают по значению вероятности — порог по деньгам, ожидаемая выручка, ставка, — модель должна быть не только хорошо упорядочена, но и честна в числах. Это проверяют log-loss, Brier score и диаграмма надёжности.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · Brier score</div>
+    <texd>\text{Brier} = \frac1n\sum_{i=1}^{n}(p_i - y_i)^2</texd>
+    <div class="where">где <tex>p_i</tex> — предсказанная вероятность класса 1, <tex>y_i</tex> — фактический класс (0 или 1), <tex>n</tex> — число объектов. Это MSE для вероятностей: 0 — идеально, 0.25 — константа 0.5 при сбалансированных классах. В отличие от log-loss, не взрывается на уверенных ошибках. Пример: прогнозы 0.9, 0.2, 0.6, 0.1 при классах 1, 0, 0, 0 — Brier 0.105.</div>
+  </div>
+
+  <p>Диаграмма надёжности: объекты делят на бины по прогнозу (0–0.1, 0.1–0.2, …) и в каждом сравнивают средний прогноз с фактической долей класса 1. Калиброванная модель лежит на диагонали. Бустинг с перевзвешиванием классов обычно завышает вероятности; лечение — калибровка на отложенных данных (Platt, изотоническая регрессия). Подробнее о связи с порогом — тема 6.</p>
+
+  <p class="next">Последняя группа — метрики регрессии.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Метрики регрессии</h2></div>
+  <p class="slead">Для числового ответа метрики различаются тем, как они взвешивают ошибки: все одинаково, большие сильнее или в процентах. Выбор зависит от того, что дорого бизнесу.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · MAE, RMSE, MAPE, WAPE</div>
+    <texd>\text{MAE} = \frac1n\sum|e_i| \qquad \text{RMSE} = \sqrt{\frac1n\sum e_i^2} \qquad \text{MAPE} = \frac1n\sum\frac{|e_i|}{|y_i|} \qquad \text{WAPE} = \frac{\sum|e_i|}{\sum|y_i|}</texd>
+    <div class="where">где <tex>e_i = y_i - \hat y_i</tex> — ошибка на объекте <tex>i</tex>, <tex>y_i</tex> — факт, <tex>\hat y_i</tex> — прогноз, <tex>n</tex> — число объектов. MAE — средняя ошибка в единицах ответа; RMSE сильнее штрафует большие ошибки (всегда <tex>\ge</tex> MAE); MAPE — средняя доля, взрывается на малых фактах; WAPE — доля суммарной ошибки от суммарного факта, устойчива к малым значениям. Пример: ошибка 4 штуки при факте 2 — 200% в MAPE.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Почему MAPE 46% у хорошего прогноза</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Продажи пяти товаров: 100, 80, 120, 2, 150; прогноз: 90, 85, 110, 6, 140.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">MAE, RMSE, MAPE и WAPE; что исказило MAPE.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Ошибки 10, −5, 10, −4, 10; подставляем в формулу 5.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s7">Формула 5</a> · метрики регрессии</div>
+        <texd>\text{MAE} = \frac{39}{5} \qquad \text{WAPE} = \frac{39}{452}</texd>
+        <div class="fr-w">где 39 — сумма модулей ошибок, 452 — сумма фактов.</div></div>
+      <p>MAE 7.8; RMSE <tex>\sqrt{341/5} = 8.26</tex>; доли ошибок 0.10, 0.06, 0.08, 2.00, 0.07 — MAPE 46.3%; WAPE 8.6%. Без товара с продажами 2 MAPE — 7.8%.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">MAE <b>7.8</b>, RMSE <b>8.26</b>, MAPE <b>46%</b>, WAPE <b>8.6%</b>. Один товар с фактом 2 делает MAPE в шесть раз хуже: ошибка в 4 штуки там — 200%. Для спроса с малыми значениями — WAPE или MAE. Подробнее: ROC и AUC — <a href="block0_17_metrics_basics.html#s8">0.17, секция 8</a>, PR-кривая — <a href="block0_17_metrics_basics.html#s9">0.17, секция 9</a>, регрессия — <a href="block0_17_metrics_basics.html#s11">0.17, секция 11</a>.</div></div>
+  </div>
+
+  <p class="next">Соберём типичные ошибки.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Где это в работе и 5 подводных камней</h2></div>
+  <p class="slead">Метрику выбирают до модели: от неё зависят потеря, порог, валидация и решение о запуске. Офлайн-метрика должна быть связана с деньгами — иначе модель «улучшается» без пользы.</p>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Accuracy при дисбалансе</b><span>Константа даёт 95% и не находит никого (задача 1). При редком классе — precision, recall, PR-AUC или деньги.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Порог по F1 или 0.5</b><span>Самый «полный» порог 0.2 зарабатывает 30 тысяч, порог 0.5 — 225 тысяч (задача 2). Порог — по деньгам.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Только ROC-AUC при сильном дисбалансе</b><span>ROC-AUC 0.91 при precision 26% на половине recall (секция 5). Смотрят и PR-кривую.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Решения по некалиброванным вероятностям</b><span>AUC не видит калибровку: вероятности могут быть завышены вдвое при отличном порядке (секция 6).</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>MAPE при малых фактах</b><span>Один товар с продажами 2 поднимает MAPE с 7.8% до 46% (задача 3). Для спроса — WAPE.</span></div></div>
+
+  <p class="next">Формулы темы — на одном экране.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Шпаргалка</h2></div>
+  <p class="slead">Все формулы темы на одном экране.</p>
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Accuracy</b><br><tex>(TP + TN)/N</tex><div class="cs-w">врёт при дисбалансе</div></td><td>сбалансированные классы</td></tr>
+    <tr><td><a href="#s3">2</a></td><td><b>Precision, recall, F1</b><br><tex>\frac{TP}{TP + FP};\ \frac{TP}{TP + FN};\ \frac{2PR}{P + R}</tex><div class="cs-w">P — precision, R — recall</div></td><td>редкий класс</td></tr>
+    <tr><td><a href="#s5">3</a></td><td><b>AUC</b><br><tex>P(s_+ \gt s_-)</tex><div class="cs-w">не зависит от порога и калибровки</div></td><td>качество порядка</td></tr>
+    <tr><td><a href="#s6">4</a></td><td><b>Brier</b><br><tex>\frac1n\sum(p - y)^2</tex><div class="cs-w">MSE для вероятностей</div></td><td>качество вероятностей</td></tr>
+    <tr><td><a href="#s7">5</a></td><td><b>Регрессия</b><br><tex>\text{MAE},\ \text{RMSE},\ \text{WAPE} = \sum|e|/\sum|y|</tex><div class="cs-w">MAPE взрывается на малых</div></td><td>числовой ответ</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>10 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa" data-sec="s2"><summary>1. Почему accuracy плоха при дисбалансе?</summary><div class="qa-a">Она определяется большинством: при 5% положительных константа «все отрицательные» даёт 95%, не находя никого.</div></details>
+  <details class="qa" data-sec="s3"><summary>2. Чем precision отличается от recall?</summary><div class="qa-a">Precision — доля верных среди помеченных моделью, recall — доля найденных среди всех положительных.</div></details>
+  <details class="qa" data-sec="s3"><summary>3. Почему F1 — гармоническое, а не обычное среднее?</summary><div class="qa-a">Гармоническое среднее близко к меньшему из чисел: высокий recall не компенсирует нулевой precision.</div></details>
+  <details class="qa" data-sec="s3"><summary>4. Какая из метрик, precision или recall, зависит от доли положительного класса?</summary><div class="qa-a">Precision: при той же модели и меньшей доле положительных ложных тревог становится относительно больше. Recall от доли не зависит.</div></details>
+  <details class="qa" data-sec="s4"><summary>5. Как выбрать порог классификации?</summary><div class="qa-a">По деньгам на валидации: прибыль <tex>TP\cdot B - (TP + FP)\cdot C</tex> при каждом пороге, где <tex>B</tex> — выгода, <tex>C</tex> — стоимость действия; при калиброванных вероятностях — <tex>C/B</tex>.</div></details>
+  <details class="qa" data-sec="s5"><summary>6. Что означает ROC-AUC 0.8?</summary><div class="qa-a">Случайный положительный объект получает оценку выше случайного отрицательного с вероятностью 0.8.</div></details>
+  <details class="qa" data-sec="s5"><summary>7. Когда PR-кривая информативнее ROC?</summary><div class="qa-a">При сильном дисбалансе: малая доля ложных тревог на огромном числе отрицательных даёт много мусора, и это видно в precision, а не в FPR.</div></details>
+  <details class="qa" data-sec="s6"><summary>8. Что такое калиброванная модель?</summary><div class="qa-a">Среди объектов с прогнозом <tex>p</tex> событие случается примерно в доле <tex>p</tex>. Проверяют диаграммой надёжности, log-loss и Brier.</div></details>
+  <details class="qa" data-sec="s7"><summary>9. Чем RMSE отличается от MAE?</summary><div class="qa-a">RMSE возводит ошибки в квадрат и сильнее штрафует большие; MAE считает все ошибки одинаково. RMSE всегда не меньше MAE.</div></details>
+  <details class="qa" data-sec="s7"><summary>10. Почему для прогноза спроса берут WAPE, а не MAPE?</summary><div class="qa-a">MAPE усредняет доли и взрывается на малых фактах; WAPE делит суммарную ошибку на суммарный факт и устойчива к ним.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Полная тема — <a href="block0_17_metrics_basics.html">0.17 «Метрики качества: база»</a>; выбор метрики под задачу — <a href="block1_12_metrics_framing.html">1.12</a>. Дальше в экспресс-блоке: данные и признаки (10.8), дисбаланс (10.12).
+</div>
+
+<div class="pnav">
+  <a href="block10_06_logistic_regression.html">← 10.6 · Логистическая регрессия</a>
+  <a class="next" href="block10_08_data_features.html">10.8 · Данные и признаки →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#fb7185', TL='#2dd4bf', OR='#fb923c', YL='#facc15', BL='#60a5fa', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function fn(f,a,b,n){ var p=[],i; for(i=0;i<=n;i++){ var x=a+(b-a)*i/n; p.push([x,f(x)]); } return p; }
+function barc(id,labels,sets,yl,yr){ return mk(id,{type:'bar',data:{labels:labels,datasets:sets.map(function(s){ return {label:s[0],data:s[1],backgroundColor:s[2],borderWidth:0}; })},options:{responsive:true,scales:{x:Object.assign({},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}}); }
+
+(function(){
+  var C={"roc": [[0.0, 0.0], [0.0002, 0.0499], [0.0007, 0.0787], [0.001, 0.1076], [0.0018, 0.1365], [0.0023, 0.1575], [0.003, 0.1706], [0.0039, 0.1916], [0.0047, 0.2283], [0.0053, 0.2467], [0.0062, 0.2756], [0.0069, 0.2913], [0.0078, 0.3176], [0.0086, 0.3333], [0.0099, 0.3465], [0.0104, 0.3622], [0.0133, 0.3806], [0.0155, 0.3937], [0.0167, 0.4094], [0.0178, 0.4226], [0.0207, 0.4383], [0.0224, 0.4514], [0.0233, 0.4646], [0.0249, 0.4829], [0.0269, 0.4961], [0.0295, 0.5092], [0.0337, 0.5223], [0.0376, 0.5381], [0.0406, 0.5564], [0.0471, 0.5722], [0.0517, 0.5879], [0.0551, 0.6037], [0.0594, 0.6168], [0.0619, 0.6325], [0.0657, 0.6457], [0.0699, 0.6667], [0.0798, 0.6798], [0.0869, 0.6929], [0.0903, 0.706], [0.1023, 0.7218], [0.1101, 0.7349], [0.1175, 0.748], [0.1272, 0.7664], [0.1356, 0.7795], [0.1511, 0.7927], [0.1591, 0.8058], [0.1661, 0.8215], [0.1903, 0.8346], [0.218, 0.8478], [0.2274, 0.8609], [0.2365, 0.8766], [0.2538, 0.8898], [0.2813, 0.9029], [0.3087, 0.916], [0.3394, 0.9318], [0.3604, 0.9449], [0.396, 0.958], [0.4585, 0.9711], [0.5721, 0.9869], [1.0, 1.0]], "pr": [[1.0, 0.019], [1.0, 0.0194], [1.0, 0.0197], [1.0, 0.0201], [1.0, 0.0204], [1.0, 0.0208], [1.0, 0.0212], [1.0, 0.0216], [1.0, 0.022], [1.0, 0.0225], [1.0, 0.0229], [1.0, 0.0234], [1.0, 0.0239], [0.9974, 0.0244], [0.9974, 0.0249], [0.9974, 0.0255], [0.9974, 0.0261], [0.9974, 0.0267], [0.9974, 0.0273], [0.9948, 0.0279], [0.9948, 0.0287], [0.9948, 0.0294], [0.9895, 0.0301], [0.9895, 0.0309], [0.9895, 0.0318], [0.9843, 0.0325], [0.9843, 0.0335], [0.9816, 0.0345], [0.9816, 0.0356], [0.979, 0.0367], [0.979, 0.0379], [0.9764, 0.0392], [0.9685, 0.0403], [0.9685, 0.0419], [0.9633, 0.0433], [0.9606, 0.045], [0.9528, 0.0466], [0.9449, 0.0483], [0.9344, 0.05], [0.9213, 0.0518], [0.9186, 0.0543], [0.9134, 0.057], [0.8976, 0.0593], [0.8924, 0.0627], [0.8819, 0.0661], [0.8583, 0.0689], [0.8399, 0.0726], [0.8346, 0.0782], [0.8241, 0.0842], [0.8031, 0.0903], [0.7822, 0.0977], [0.7638, 0.1073], [0.7297, 0.1172], [0.706, 0.1323], [0.6719, 0.151], [0.6142, 0.1726], [0.5591, 0.2094], [0.4829, 0.2714], [0.3622, 0.4071], [0.0, 1.0]]};
+  mk('c_roc',{type:'scatter',data:{datasets:[seg(C.roc,'ROC-кривая, AUC 0.91',AC,2.6),seg([[0,0],[1,1]],'случайная модель',GY,1.2,[5,4])]},options:lin('FPR','TPR',[0,1],[0,1])});
+  mk('c_pr',{type:'scatter',data:{datasets:[seg(C.pr,'PR-кривая, площадь 0.32',AC,2.6),seg([[0,0.019],[1,0.019]],'доля положительных 0.019',GY,1.2,[5,4])]},options:lin('recall','precision',[0,1],[0,1])});
+})();
+
+</script>
+
+</body>
+</html>

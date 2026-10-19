@@ -2,7 +2,7 @@
 
 Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-19. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 98 страниц, без проблем — 98, с проблемами — 0.
+**Итого:** 114 страниц, без проблем — 114, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -32,6 +32,22 @@
 | block0_22_xgboost_math.html | 2114 | 15 | 30 | 14 / 14 |  | 0 |  |
 | block0_23_lightgbm_catboost.html | 1722 | 15 | 30 | 13 / 13 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
+| block10_01_ml_setup.html | 697 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_02_statistics.html | 764 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_03_losses.html | 713 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_04_gradients.html | 729 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_05_linear_regression.html | 725 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_06_logistic_regression.html | 728 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_07_metrics.html | 687 | 10 | 0 | 2 / 2 |  | 0 |  |
+| block10_08_data_features.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_09_validation.html | 648 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_10_trees_forest.html | 682 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_11_boosting.html | 690 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_12_imbalance_shap.html | 679 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_13_ab_tests.html | 701 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_14_time_series.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_15_recsys.html | 692 | 10 | 0 | 1 / 1 |  | 0 |  |
+| block10_16_neural_llm.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
 | block1_01_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_02_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block1_03_uplift.html | 202 | 17 | 32 | 5 / 5 | да | 0 |  |
@@ -105,4 +121,4 @@
 | block9_05_finetuning.html | 255 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block9_06_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 66 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 73 | 0 | 0 | 0 / 0 |  | 0 |  |

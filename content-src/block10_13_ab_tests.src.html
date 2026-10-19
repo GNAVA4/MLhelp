@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10.13 · A/B-тесты</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#e11d48; --ac-d:#fecdd3; --ac-l:rgba(225,29,72,.08); --ac-b:rgba(225,29,72,.35); --ac-m:#be123c; --ac-s:#4c0519;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#e11d48; --okl:rgba(225,29,72,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(225,29,72,.24),transparent 60%),linear-gradient(135deg,#020617,#2a0510 55%,#4c0519);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(225,29,72,.14);border:1px solid rgba(254,205,211,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ffe4e6;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#e11d48;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#e11d48;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(225,29,72,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(225,29,72,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(225,29,72,.07),rgba(251,113,133,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Экспресс · тема 13 · база ML</div>
+    <h1>A/B-тесты</h1>
+    <p>Команда смотрит на результаты теста каждый день и останавливает его, как только p-value опускается ниже 0.05. Кажется, это просто экономия времени. На деле при 20 проверках доля «успешных» тестов среди тех, где эффекта нет, — 25% вместо обещанных 5%. A/B-тест — единственный надёжный способ измерить эффект изменения, в том числе новой модели, но только если его правильно спланировать и прочитать. В теме — дизайн, размер выборки, проверка разницы, CUPED, SRM, подглядывание и другие ловушки.</p>
+    <div class="meta">
+      <span>10 секций</span><span>4 формулы</span><span>3 задачи</span><span>1 график</span><span>5 подводных камней</span><span>10 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Дизайн</a>
+    <a href="#s3">3 · Размер</a>
+    <a href="#s4">4 · Проверка</a>
+    <a href="#s5">5 · CUPED</a>
+    <a href="#s6">6 · Диагностика</a>
+    <a href="#s7">7 · Решение</a>
+    <a href="#s8">8 · Ошибки</a>
+    <a href="#s9">9 · Шпаргалка</a>
+    <a href="#s10">10 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: эксперимент вместо корреляции</h2></div>
+  <p class="slead">Офлайн-метрика модели не равна эффекту на бизнес, а корреляция не равна причинности (тема 2). Случайное разделение пользователей на группы делает их одинаковыми во всём, кроме изменения, — и разница в метрике становится эффектом изменения. Остальное в теме — как не испортить эту простую идею.</p>
+
+  <div class="story">
+    <p>Моделирование: 4000 тестов, в которых эффекта нет совсем. Если смотреть один раз в конце, «значимыми» на уровне 0.05 оказываются 5% тестов — как и положено.</p>
+    <p style="margin:0">Если смотреть 5 раз и останавливаться при первом p-value ниже 0.05 — 14%. Если 20 раз — 25%: каждый четвёртый бесполезный релиз выглядит победой.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Доля ложных побед при подглядывании</div>
+    <div class="chsub">Ось x — сколько раз за тест смотрят на результат (с остановкой при первом p-value ниже 0.05), ось y — доля тестов без эффекта, объявленных значимыми. Розовая — моделирование 4000 тестов: 5% при одном взгляде, 8.9% при двух, 14% при пяти, 19.5% при десяти, 24.8% при двадцати. Серая — обещанные 5%.</div>
+    <canvas id="c_peek"></canvas>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Дизайн эксперимента (секция 2), размер выборки (3), проверка разницы и интервал (4), CUPED — как уменьшить нужную выборку (5), диагностика: SRM и подглядывание (6), как принимать решение (7).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td>MDE, <tex>\delta</tex></td><td>Минимальный эффект, который тест должен находить (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>\delta = 30</tex> рублей среднего чека</span></td></tr>
+      <tr><td><tex>\alpha</tex>, мощность</td><td>Допустимая доля ложных побед; вероятность найти эффект размера MDE (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>\alpha = 0.05</tex>, мощность 80%</span></td></tr>
+      <tr><td><tex>\sigma</tex></td><td>Стандартное отклонение метрики на пользователя (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>\sigma = 1500</tex> рублей</span></td></tr>
+      <tr><td><tex>\theta</tex>, <tex>\rho</tex></td><td>Коэффициент CUPED и корреляция метрики с её значением до теста (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>\rho = 0.7</tex></span></td></tr>
+      <tr><td>SRM</td><td>Несовпадение долей групп с запланированными (<a href="#s6">секция 6</a>)<br><span class="gl-ex">Пример: 50 600 против 49 400</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Хороший тест начинается до запуска.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Дизайн эксперимента</h2></div>
+  <p class="slead">До запуска фиксируют: гипотезу, основную метрику и защитные метрики, единицу рандомизации, минимальный интересный эффект, размер выборки и длительность. Всё, что решено после просмотра данных, превращается в подгонку.</p>
+
+  <table class="ct">
+    <tr><th>Решение</th><th>Как выбирать</th></tr>
+    <tr><td>основная метрика</td><td>одна, чувствительная и связанная с целью (выручка на пользователя, конверсия)</td></tr>
+    <tr><td>защитные метрики (guardrails)</td><td>что не должно ухудшиться: отмены, жалобы, скорость загрузки</td></tr>
+    <tr><td>единица рандомизации</td><td>пользователь, а не сессия или заказ: иначе один человек видит обе версии</td></tr>
+    <tr><td>MDE</td><td>эффект, ради которого стоит внедрять; не «любой»</td></tr>
+    <tr><td>длительность</td><td>целое число недель (недельная сезонность), не меньше расчётной выборки</td></tr>
+  </table>
+
+  <p>Единица анализа должна совпадать с единицей рандомизации. Если рандомизируют пользователей, а метрика — «конверсия заказа», заказы одного пользователя зависимы, и обычная формула стандартной ошибки её занижает (тема 2). Для таких метрик-отношений используют дельта-метод или бутстрэп по пользователям.</p>
+
+  <p class="next">Самое важное число дизайна — размер выборки.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Размер выборки</h2></div>
+  <p class="slead">Размер выборки задают три вещи: какой эффект нужно ловить, насколько шумна метрика и с какой надёжностью. Маленький эффект и шумная метрика требуют огромных выборок — и это нужно узнать до запуска, а не после «незначимого» результата.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · размер группы для сравнения средних</div>
+    <texd>n = \frac{2\,(z_{1-\alpha/2} + z_{1-\beta})^2\,\sigma^2}{\delta^2}</texd>
+    <div class="where">где <tex>n</tex> — пользователей в каждой группе, <tex>\sigma</tex> — стандартное отклонение метрики на пользователя, <tex>\delta</tex> — минимальный интересный эффект (MDE) в единицах метрики, <tex>z_{1-\alpha/2}</tex> — квантиль нормального распределения для уровня значимости (1.96 при <tex>\alpha = 0.05</tex>), <tex>z_{1-\beta}</tex> — для мощности <tex>1 - \beta</tex> (0.84 при 80%). При 5% и 80% множитель <tex>(1.96 + 0.84)^2 = 7.85</tex>. Для доли <tex>\sigma^2 = p(1 - p)</tex>. Эффект вдвое меньше — выборка вчетверо больше. Пример: <tex>\sigma = 1500</tex>, <tex>\delta = 30</tex> — около 39 000 на группу.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Сколько пользователей нужно</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Тест новой модели рекомендаций. Метрика — выручка на пользователя за две недели, стандартное отклонение 1500 рублей. Внедрять имеет смысл при эффекте от 30 рублей (2% от среднего 1500). Уровень значимости <tex>\alpha = 0.05</tex>, мощность 80%. В день приходит 6000 новых пользователей.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Размер группы и сколько дней набирать выборку.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Формула 1 с множителем 7.85; две группы делят поток пользователей.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 1</a> · размер группы</div>
+        <texd>n = \frac{2\cdot7.85\cdot1500^2}{30^2}</texd>
+        <div class="fr-w">где <tex>\sigma = 1500</tex>, <tex>\delta = 30</tex>, 7.85 — множитель для 5% и 80%.</div></div>
+      <p><tex>n = 2\cdot7.85\cdot2\,250\,000/900 = 39\,250</tex> на группу, всего 78 500. По 6000 в день — 13.1 дня.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Около <b>39 000</b> на группу, набор — <b>14 дней</b> (округляем до целых недель), плюс две недели на измерение метрики у последних пришедших. Если такой срок неприемлем — уменьшить шум метрики (CUPED, секция 5), а не надеяться на удачу.</div></div>
+  </div>
+
+  <p class="next">Тест прошёл. Как проверить разницу?</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Проверка разницы и доверительный интервал</h2></div>
+  <p class="slead">Для средних — t-тест (при тысячах пользователей он совпадает с z-тестом), для долей — z-тест долей (тема 2). Отчёт — не только p-value, но и интервал эффекта: он показывает и значимость, и практический масштаб.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · статистика для разницы средних</div>
+    <texd>t = \frac{\bar x_B - \bar x_A}{\sqrt{s_A^2/n_A + s_B^2/n_B}} \qquad \bar x_B - \bar x_A \pm 1.96\sqrt{s_A^2/n_A + s_B^2/n_B}</texd>
+    <div class="where">где <tex>\bar x_A, \bar x_B</tex> — средние метрики в группах, <tex>s_A, s_B</tex> — стандартные отклонения, <tex>n_A, n_B</tex> — размеры групп; знаменатель — стандартная ошибка разницы. <tex>|t| \gt 1.96</tex> — значимо на уровне 0.05; справа — 95%-й интервал эффекта. Пример: разница 25 при стандартной ошибке 10.6 — <tex>t = 2.37</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Выручка выросла на 25 рублей — это эффект?</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">A: 40 000 пользователей, средняя выручка 1520, отклонение 1480. B: 40 000, средняя 1545, отклонение 1510.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Статистику, p-value и 95%-й интервал эффекта.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Стандартная ошибка разницы и <tex>t</tex> — формула 2.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 2</a> · t-статистика</div>
+        <texd>\text{SE} = \sqrt{\frac{1480^2}{40\,000} + \frac{1510^2}{40\,000}}</texd>
+        <div class="fr-w">где SE — стандартная ошибка разницы, <tex>n_A = n_B = 40\,000</tex>.</div></div>
+      <p><tex>\text{SE} = \sqrt{54.76 + 57.00} = 10.57</tex>; <tex>t = 25/10.57 = 2.37</tex>, p-value 0.018. Интервал: <tex>25 \pm 20.7</tex>, от 4.3 до 45.7 рубля.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Эффект значим (<b>p = 0.018</b>), интервал <b>4–46 рублей</b>. Нижняя граница ниже порога внедрения 30: эффект есть, но может оказаться меньше, чем нужно для окупаемости. Решение принимают по интервалу, а не только по p-value.</div></div>
+  </div>
+
+  <p class="next">Интервал широкий из-за шума метрики. Его можно уменьшить, не увеличивая выборку.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>CUPED: меньше шума — меньше выборка</h2></div>
+  <p class="slead">Большая часть разброса выручки — различие пользователей: кто-то тратит много всегда. Если вычесть из метрики её предсказуемую часть по данным до теста, шум падает, а эффект остаётся: группы случайны, и в среднем до теста они одинаковы.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · CUPED</div>
+    <texd>Y' = Y - \theta\,(X - \bar X), \quad \theta = \frac{\operatorname{Cov}(X, Y)}{\operatorname{Var}X} \qquad \operatorname{Var}Y' = (1 - \rho^2)\operatorname{Var}Y</texd>
+    <div class="where">где <tex>Y</tex> — метрика в тесте, <tex>X</tex> — та же метрика пользователя до теста (ковариата, не зависящая от изменения), <tex>\bar X</tex> — её среднее, <tex>\theta</tex> — коэффициент регрессии <tex>Y</tex> на <tex>X</tex>, <tex>\operatorname{Cov}</tex> — ковариация, <tex>\rho</tex> — корреляция <tex>X</tex> и <tex>Y</tex>, <tex>Y'</tex> — скорректированная метрика. Средняя разница групп не меняется, дисперсия падает в <tex>1 - \rho^2</tex> раз, нужная выборка — во столько же. Ковариата должна быть измерена до начала теста. Пример: <tex>\rho = 0.7</tex> — дисперсия ×0.51.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Сколько сэкономит CUPED</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Тест из задачи 1 требует 39 250 пользователей на группу. Корреляция выручки за две недели теста с выручкой за две недели до теста — 0.7.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Размер группы с CUPED.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Дисперсия и выборка уменьшаются в <tex>1 - \rho^2</tex> раз (формула 3).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 3</a> · снижение дисперсии</div>
+        <texd>n' = (1 - \rho^2)\,n = (1 - 0.49)\cdot39\,250</texd>
+        <div class="fr-w">где <tex>\rho = 0.7</tex>, <tex>n = 39\,250</tex>.</div></div>
+      <p><tex>n' = 0.51\cdot39\,250 = 20\,020</tex> на группу.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Около <b>20 000</b> на группу — тест вдвое короче при той же мощности. Это самый дешёвый способ ускорить эксперименты; для новых пользователей без истории ковариату берут из первых минут сессии до показа изменения или используют стратификацию.</div></div>
+  </div>
+
+  <p class="next">Перед чтением результатов тест проверяют на поломки.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Диагностика: SRM и подглядывание</h2></div>
+  <p class="slead">Две самые частые поломки: группы оказались не того размера, что планировали (значит, рандомизация сломана), и результат читали много раз по ходу теста (значит, уровень значимости больше не 5%).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · проверка SRM хи-квадратом</div>
+    <texd>\chi^2 = \sum_{g}\frac{(O_g - E_g)^2}{E_g}</texd>
+    <div class="where">где <tex>g</tex> — группа, <tex>O_g</tex> — фактическое число пользователей в ней, <tex>E_g</tex> — ожидаемое по плану разбиения. При верной рандомизации <tex>\chi^2</tex> распределена как хи-квадрат с числом степеней свободы «групп минус 1». Порог тревоги — p-value ниже 0.001: SRM означает, что пользователи попадали в группы не случайно (ошибка логирования, боты, разное время загрузки), и сравнение недействительно. Пример: 50 600 и 49 400 при плане 50/50 — <tex>\chi^2 = 14.4</tex>, p-value 0.00015.</div>
+  </div>
+
+  <p>Разница в 1.2% между группами выглядит безобидно, но при 100 000 пользователей она невозможна случайно. Причину ищут по срезам (платформа, браузер, день), результаты такого теста не используют.</p>
+
+  <p>Подглядывание (секция 1): каждая проверка — новый шанс случайно перейти порог. Решения: смотреть один раз в конце, заранее заданном размером выборки; либо использовать последовательные методы (альфа-спендинг, mSPRT), которые позволяют смотреть часто, сохраняя уровень ошибок. Похожая ловушка — множественные метрики и срезы: 20 метрик на уровне 0.05 дают в среднем одну ложную «победу»; основная метрика — одна, остальные — с поправкой или как наблюдения.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · SRM и разница в метрике</div>
+    <p>SRM проверяет количество пользователей в группах, а не их поведение. Нормальный тест может не показать эффекта, но размеры групп должны совпадать с планом всегда — это проверка корректности самого эксперимента.</p>
+    <p>Пример: 50 600 против 49 400 — тест сломан, даже если выручка в группах одинакова.</p>
+  </div>
+
+  <p class="next">Тест чистый. Как принять решение?</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Решение по результатам</h2></div>
+  <p class="slead">Итог теста — не «значимо или нет», а интервал эффекта по основной метрике, состояние защитных метрик и понимание, насколько результат переносится на будущее.</p>
+
+  <p>Правила чтения: значимый эффект, интервал выше порога окупаемости и защитные метрики в норме — внедрять; незначимый результат при достаточной мощности — эффект, скорее всего, меньше MDE; незначимый при недостаточной мощности — тест ничего не сказал. Эффект новизны (пользователи кликают на новое просто потому, что оно новое) проверяют динамикой по дням; недельную сезонность — длительностью в целые недели. Средний эффект может скрывать противоположные эффекты в сегментах, но сегменты, выбранные после теста, — источник ложных находок.</p>
+
+  <p>Подробнее: размер выборки по шагам — <a href="block4_01_ab_testing.html#s3">4.1, секция 3</a>, MDE — <a href="block4_01_ab_testing.html#s4">4.1, секция 4</a>, множественные сравнения — <a href="block4_01_ab_testing.html#s7">4.1, секция 7</a>, вывод θ в CUPED — <a href="block4_02_cuped.html#s3">4.2, секция 3</a>, хи-квадрат на SRM — <a href="block4_06_srm_diagnostics.html#s2">4.6, секция 2</a>.</p>
+
+  <p class="next">Соберём типичные ошибки.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Где это в работе и 5 подводных камней</h2></div>
+  <p class="slead">Каждая новая модель в продукте — ранжирование, рекомендации, скоринг, ценообразование — проверяется A/B-тестом. Офлайн-метрика решает, стоит ли тестировать; тест решает, стоит ли внедрять.</p>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Остановка при первом значимом результате</b><span>20 взглядов дают 25% ложных побед вместо 5% (секция 1). Смотрят один раз или используют последовательные методы.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Тест без расчёта размера</b><span>Эффект 30 рублей при <tex>\sigma = 1500</tex> (стандартное отклонение) требует 39 000 на группу (задача 1). Меньше — «незначимо» ни о чём.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Решение только по p-value</b><span>p = 0.018, но интервал 4–46 рублей захватывает значения ниже порога окупаемости (задача 2).</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Чтение теста с SRM</b><span>50 600 против 49 400 — p-value 0.00015, рандомизация сломана (секция 6). Результаты не используют.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Единица анализа не та, что рандомизации</b><span>Рандомизировали пользователей, считают по заказам — SE занижена (секция 2). Дельта-метод или бутстрэп по пользователям.</span></div></div>
+
+  <p class="next">Формулы темы — на одном экране.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Шпаргалка</h2></div>
+  <p class="slead">Все формулы темы на одном экране.</p>
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s3">1</a></td><td><b>Размер группы</b><br><tex>n = 2\cdot7.85\,\sigma^2/\delta^2</tex><div class="cs-w">5% и мощность 80%</div></td><td>до запуска</td></tr>
+    <tr><td><a href="#s4">2</a></td><td><b>t-статистика и интервал</b><br><tex>(\bar x_B - \bar x_A)/\sqrt{s_A^2/n_A + s_B^2/n_B}</tex><div class="cs-w">интервал ±1.96 SE</div></td><td>чтение результата</td></tr>
+    <tr><td><a href="#s5">3</a></td><td><b>CUPED</b><br><tex>Y' = Y - \theta(X - \bar X),\ \operatorname{Var}Y' = (1 - \rho^2)\operatorname{Var}Y</tex><div class="cs-w"><tex>X</tex> — до теста</div></td><td>ускорение теста</td></tr>
+    <tr><td><a href="#s6">4</a></td><td><b>SRM</b><br><tex>\chi^2 = \sum(O - E)^2/E</tex><div class="cs-w">тревога при p-value ниже 0.001</div></td><td>проверка корректности</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>10 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa" data-sec="s1"><summary>1. Почему эффект изменения меряют A/B-тестом, а не сравнением до и после?</summary><div class="qa-a">До и после меняется многое: сезон, маркетинг, состав пользователей. Случайное разделение делает группы одинаковыми во всём, кроме изменения.</div></details>
+  <details class="qa" data-sec="s2"><summary>2. Что фиксируют до запуска теста?</summary><div class="qa-a">Гипотезу, основную и защитные метрики, единицу рандомизации, MDE, размер выборки и длительность.</div></details>
+  <details class="qa" data-sec="s2"><summary>3. Почему единица рандомизации — пользователь, а не сессия?</summary><div class="qa-a">Иначе один пользователь видит обе версии, эффекты смешиваются, а наблюдения внутри пользователя зависимы.</div></details>
+  <details class="qa" data-sec="s3"><summary>4. Как размер выборки зависит от MDE?</summary><div class="qa-a">Обратно пропорционально квадрату: эффект вдвое меньше — выборка вчетверо больше.</div></details>
+  <details class="qa" data-sec="s3"><summary>5. Что такое мощность теста?</summary><div class="qa-a">Вероятность найти эффект размера MDE, если он есть. Обычно планируют 80%.</div></details>
+  <details class="qa" data-sec="s4"><summary>6. Почему кроме p-value нужен доверительный интервал эффекта?</summary><div class="qa-a">Он показывает масштаб эффекта: значимый результат может быть меньше порога окупаемости.</div></details>
+  <details class="qa" data-sec="s5"><summary>7. Как работает CUPED?</summary><div class="qa-a">Из метрики вычитают её предсказуемую по данным до теста часть. Средняя разница групп сохраняется, дисперсия падает в <tex>1 - \rho^2</tex> раз.</div></details>
+  <details class="qa" data-sec="s5"><summary>8. Почему ковариата CUPED должна быть измерена до теста?</summary><div class="qa-a">Если изменение влияет на ковариату, коррекция вычтет часть эффекта и оценка станет смещённой.</div></details>
+  <details class="qa" data-sec="s6"><summary>9. Что такое SRM и что делать при его обнаружении?</summary><div class="qa-a">Несовпадение размеров групп с планом. Это поломка рандомизации или логирования: искать причину, результаты теста не использовать.</div></details>
+  <details class="qa" data-sec="s6"><summary>10. Почему нельзя останавливать тест при первом значимом результате?</summary><div class="qa-a">Каждый просмотр — новый шанс случайно перейти порог: при 20 просмотрах ложных побед около 25% вместо 5%.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Полные темы — <a href="block4_01_ab_testing.html">4.1 «A/B-тестирование»</a>, <a href="block4_02_cuped.html">4.2 «CUPED»</a>, <a href="block4_06_srm_diagnostics.html">4.6 «SRM»</a>; статистика — <a href="block0_06_hypothesis_testing.html">0.6</a>. Дальше в экспресс-блоке: временные ряды (10.14).
+</div>
+
+<div class="pnav">
+  <a href="block10_12_imbalance_shap.html">← 10.12 · Дисбаланс и SHAP</a>
+  <a class="next" href="block10_14_time_series.html">10.14 · Временные ряды →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#fb7185', TL='#2dd4bf', OR='#fb923c', YL='#facc15', BL='#60a5fa', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function fn(f,a,b,n){ var p=[],i; for(i=0;i<=n;i++){ var x=a+(b-a)*i/n; p.push([x,f(x)]); } return p; }
+function barc(id,labels,sets,yl,yr){ return mk(id,{type:'bar',data:{labels:labels,datasets:sets.map(function(s){ return {label:s[0],data:s[1],backgroundColor:s[2],borderWidth:0}; })},options:{responsive:true,scales:{x:Object.assign({},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}}); }
+
+(function(){
+  var r=[[1,0.0505],[2,0.0887],[5,0.14],[10,0.1945],[20,0.2482]];
+  var d=seg(r,'доля ложных побед',AC,2.6); d.pointRadius=4;
+  mk('c_peek',{type:'scatter',data:{datasets:[d,seg([[1,0.05],[20,0.05]],'обещанные 5%',GY,1.2,[5,4])]},options:lin('число просмотров результата','доля ложных побед',[0,20],[0,0.3])});
+})();
+
+</script>
+
+</body>
+</html>

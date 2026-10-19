@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10.5 · Линейная регрессия и регуляризация</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#e11d48; --ac-d:#fecdd3; --ac-l:rgba(225,29,72,.08); --ac-b:rgba(225,29,72,.35); --ac-m:#be123c; --ac-s:#4c0519;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#e11d48; --okl:rgba(225,29,72,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(225,29,72,.24),transparent 60%),linear-gradient(135deg,#020617,#2a0510 55%,#4c0519);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(225,29,72,.14);border:1px solid rgba(254,205,211,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ffe4e6;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#e11d48;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#e11d48;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(225,29,72,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(225,29,72,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(225,29,72,.07),rgba(251,113,133,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Экспресс · тема 5 · база ML</div>
+    <h1>Линейная регрессия и регуляризация</h1>
+    <p>По 200 квартирам аналитик строит регрессию цены на число комнат: каждая комната прибавляет 1.76 млн. Добавляет площадь — и коэффициент комнат становится −0.75: при той же площади лишняя комната значит более мелкие комнаты, и квартира дешевле. Обе цифры верны, просто отвечают на разные вопросы. Линейная регрессия — первая модель в любой задаче с числовым ответом и лучший способ понять данные. В теме — как она обучается, как читать коэффициенты, R², мультиколлинеарность и регуляризация L1 и L2.</p>
+    <div class="meta">
+      <span>10 секций</span><span>5 формул</span><span>3 задачи</span><span>1 график</span><span>5 подводных камней</span><span>10 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Модель</a>
+    <a href="#s3">3 · Решение</a>
+    <a href="#s4">4 · Коэффициенты</a>
+    <a href="#s5">5 · R²</a>
+    <a href="#s6">6 · Регуляризация</a>
+    <a href="#s7">7 · Нелинейность</a>
+    <a href="#s8">8 · Ошибки</a>
+    <a href="#s9">9 · Шпаргалка</a>
+    <a href="#s10">10 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: комната прибавляет или отнимает?</h2></div>
+  <p class="slead">Линейная регрессия предсказывает число как взвешенную сумму признаков. Она быстро обучается, легко объясняется и служит бенчмарком для сложных моделей. Главная трудность — не обучить её, а правильно прочитать веса.</p>
+
+  <div class="story">
+    <p>200 квартир: площадь, число комнат, цена в миллионах. Регрессия цены только на комнаты: <tex>+1.76</tex> млн за комнату. Регрессия на площадь и комнаты: <tex>+0.199</tex> млн за квадратный метр и <tex>-0.75</tex> млн за комнату.</p>
+    <p style="margin:0">Комнаты и площадь связаны (корреляция 0.79). В первой модели «комнаты» означают «большая квартира». Во второй — «больше комнат при той же площади», то есть мельче планировка.</p>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Модель и критерий (секция 2), как находят веса (3), как читать коэффициенты и кодировать категории (4), качество через R² и мультиколлинеарность (5), регуляризация L2 и L1 (6), нелинейные зависимости в линейной модели (7).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>w_0</tex>, <tex>w_j</tex></td><td>Свободный член и вес признака <tex>j</tex> (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>w_{\text{площадь}} = 0.2</tex> млн за м²</span></td></tr>
+      <tr><td><tex>X</tex>, <tex>y</tex></td><td>Матрица признаков и вектор ответов (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>X</tex> — 200 квартир × 2 признака</span></td></tr>
+      <tr><td><tex>R^2</tex></td><td>Доля дисперсии ответа, объяснённая моделью (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>R^2 = 0.99</tex></span></td></tr>
+      <tr><td><tex>\lambda</tex></td><td>Сила регуляризации (<a href="#s6">секция 6</a>)<br><span class="gl-ex">Пример: <tex>\lambda = 1000</tex></span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с самой модели.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Модель и критерий</h2></div>
+  <p class="slead">Прогноз — свободный член плюс сумма признаков с весами. Веса подбирают так, чтобы средний квадрат ошибки (MSE) на обучении был минимальным, — это метод наименьших квадратов. По теме 3 это MLE при нормальном шуме: модель предсказывает условное среднее.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · линейная регрессия и её критерий</div>
+    <texd>\hat y = w_0 + w_1x_1 + \dots + w_dx_d \qquad \text{MSE} = \frac1n\sum_{i=1}^{n}(y_i - \hat y_i)^2</texd>
+    <div class="where">где <tex>\hat y</tex> — прогноз, <tex>x_1, \dots, x_d</tex> — признаки, <tex>d</tex> — их число, <tex>w_0</tex> — свободный член, <tex>w_j</tex> — вес признака <tex>j</tex>, <tex>y_i</tex> — ответ объекта <tex>i</tex>, <tex>n</tex> — число объектов. Модель линейна по весам: признаки можно брать любые — квадраты, логарифмы, произведения (секция 7). Пример: <tex>\hat y = 0.32 + 0.2\cdot60 = 12.3</tex> млн за 60 м².</div>
+  </div>
+
+  <p>Для одного признака решение выписывается руками: наклон — ковариация признака с ответом, делённая на дисперсию признака; свободный член подбирается так, чтобы прямая проходила через точку средних.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · решение для одного признака</div>
+    <texd>w_1 = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sum_i (x_i - \bar x)^2} \qquad w_0 = \bar y - w_1\bar x</texd>
+    <div class="where">где <tex>x_i</tex>, <tex>y_i</tex> — признак и ответ объекта <tex>i</tex>, <tex>\bar x</tex>, <tex>\bar y</tex> — их средние, <tex>w_1</tex> — наклон, <tex>w_0</tex> — свободный член. Наклон равен <tex>r\cdot\sigma_y/\sigma_x</tex>, где <tex>r</tex> — корреляция, <tex>\sigma</tex> — стандартные отклонения. Пример: ковариационная сумма 225.5, сумма квадратов 1130 — наклон 0.1996.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Цена квартиры по площади</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Пять квартир: площадь 30, 45, 50, 60, 75 м², цена 6.5, 9.0, 10.5, 12.0, 15.5 млн. Нужен прогноз цены квартиры 80 м².</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Наклон, свободный член и прогноз для 80 м².</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Средние, затем суммы отклонений (формула 2).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s2">Формула 2</a> · наклон и свободный член</div>
+        <texd>w_1 = \frac{225.5}{1130} = 0.1996 \qquad w_0 = 10.7 - 0.1996\cdot52 = 0.32</texd>
+        <div class="fr-w">где <tex>\bar x = 52</tex>, <tex>\bar y = 10.7</tex>; отклонения площади −22, −7, −2, 8, 23, цены −4.2, −1.7, −0.2, 1.3, 4.8.</div></div>
+      <p>Сумма произведений отклонений: <tex>92.4 + 11.9 + 0.4 + 10.4 + 110.4 = 225.5</tex>; сумма квадратов отклонений площади: <tex>484 + 49 + 4 + 64 + 529 = 1130</tex>. Прогноз: <tex>0.32 + 0.1996\cdot80 = 16.3</tex> млн.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Наклон <b>0.2 млн за м²</b>, свободный член 0.32, прогноз для 80 м² — <b>16.3 млн</b>. 80 м² — за пределами данных (максимум 75): экстраполяция линейной модели правдоподобна чуть-чуть за краем, но не на 200 м².</div></div>
+  </div>
+
+  <p class="next">Для многих признаков то же решение записывается в матричной форме.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Как находят веса</h2></div>
+  <p class="slead">MSE линейной модели — выпуклая парабола по весам с единственным минимумом. Его можно найти формулой (нормальное уравнение) или градиентным спуском (тема 4).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · нормальное уравнение</div>
+    <texd>w = (X^\top X)^{-1}X^\top y</texd>
+    <div class="where">где <tex>X</tex> — матрица <tex>n\times(d + 1)</tex> признаков со столбцом единиц для свободного члена, <tex>y</tex> — вектор ответов, <tex>w</tex> — вектор весов, <tex>X^\top</tex> — транспонированная матрица, <tex>(\cdot)^{-1}</tex> — обратная матрица. Получается приравниванием градиента MSE к нулю. Обращение стоит порядка <tex>d^3</tex> операций: до десятков тысяч признаков это быстро, дальше — градиентный спуск. Если признаки линейно зависимы, <tex>X^\top X</tex> не обращается. Пример: <code>LinearRegression().fit(X, y)</code> в sklearn решает эту задачу.</div>
+  </div>
+
+  <p>Модель линейна, а значит, предполагает: эффект признака одинаков при любых значениях остальных; ошибка в среднем нулевая при любых признаках. Нарушения видны на графике остатков против прогноза: дуга — пропущена нелинейность, воронка — разброс растёт с уровнем (часто лечится логарифмом ответа).</p>
+
+  <p class="next">Веса найдены. Что они означают?</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Как читать коэффициенты и кодировать категории</h2></div>
+  <p class="slead">Вес <tex>w_j</tex> — на сколько изменится прогноз при увеличении признака <tex>j</tex> на единицу при неизменных остальных признаках модели. Ключевые слова — «при неизменных остальных»: вес зависит от того, какие ещё признаки в модели.</p>
+
+  <p>Поэтому у комнат два разных коэффициента (секция 1): без площади комнаты несут информацию о размере квартиры, с площадью — о планировке. Вес не равен причинному эффекту: «добавить комнату» в реальности меняет и другие признаки. Чтобы веса можно было сравнивать по величине, признаки стандартизуют — тогда вес показывает эффект изменения на одно стандартное отклонение.</p>
+
+  <p>Категориальный признак (район, тип дома) кодируют индикаторами: столбец «1, если район Центр». Один уровень выбрасывают — он становится базовым, а веса остальных уровней показывают разницу с ним. Если оставить все уровни вместе со свободным членом, сумма индикаторов даст столбец единиц — признаки линейно зависимы (дамми-ловушка). При логарифме ответа вес читается в процентах: <tex>w = 0.05</tex> — плюс около 5% цены на единицу признака.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · вес признака и его важность</div>
+    <p>Вес зависит от единиц измерения: площадь в м² и в см² даст веса, отличающиеся в 10 000 раз. Важность сравнивают по стандартизованным весам, а лучше — по вкладу в качество на валидации.</p>
+    <p>Пример: вес 0.2 млн за м² при разбросе площади 15 м² — эффект 3 млн на одно стандартное отклонение.</p>
+  </div>
+
+  <p class="next">Как понять, насколько модель хороша в целом?</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>R² и мультиколлинеарность</h2></div>
+  <p class="slead">R² показывает, какую долю разброса ответа объясняет модель по сравнению с константным прогнозом средним. Это удобная, но коварная метрика: она растёт от любого добавленного признака на обучении и ничего не говорит о качестве прогноза в рублях.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · коэффициент детерминации</div>
+    <texd>R^2 = 1 - \frac{\sum_i (y_i - \hat y_i)^2}{\sum_i (y_i - \bar y)^2}</texd>
+    <div class="where">где <tex>y_i</tex> — ответ, <tex>\hat y_i</tex> — прогноз, <tex>\bar y</tex> — среднее ответа; числитель — сумма квадратов остатков модели, знаменатель — то же для константы <tex>\bar y</tex>. <tex>R^2 = 1</tex> — идеально, 0 — не лучше среднего, на валидации может быть и отрицательным. Пример: остатки 0.30 при разбросе 45.3 — <tex>R^2 = 0.993</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Насколько хорошо площадь объясняет цену</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модель из задачи 1 даёт на пяти квартирах сумму квадратов остатков 0.30; сумма квадратов отклонений цены от среднего — 45.3.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c"><tex>R^2</tex> и что из него следует.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Отношение остаточной суммы к полной (формула 4).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 4</a> · R²</div>
+        <texd>R^2 = 1 - \frac{0.30}{45.3}</texd>
+        <div class="fr-w">где 0.30 — остатки модели, 45.3 — остатки константы.</div></div>
+      <p><tex>0.30/45.3 = 0.0066</tex>, <tex>R^2 = 0.993</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><tex>R^2 = </tex> <b>0.993</b> — на обучении почти идеально. Но это пять точек и два параметра: R² на обучении оптимистичен, а о точности в миллионах говорит RMSE на валидации (тема 7).</div></div>
+  </div>
+
+  <p>Мультиколлинеарность — сильная связь признаков между собой. Прогноз от неё не портится, но веса становятся неустойчивыми: небольшое изменение данных перекладывает вес с одного признака на другой, знаки «прыгают». Диагностика — корреляции признаков и VIF; лечение — убрать дубли, объединить признаки или включить регуляризацию.</p>
+
+  <p class="next">Регуляризация — главный инструмент против неустойчивых весов и переобучения.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Регуляризация: L2 и L1</h2></div>
+  <p class="slead">Регуляризация добавляет к MSE штраф за большие веса. Модель вынуждена объяснять данные «экономно»: веса меньше, разброс модели ниже, переобучения меньше. По теме 3 это приор на веса — MAP вместо MLE.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · ridge (L2) и lasso (L1)</div>
+    <texd>\text{ridge: } \text{MSE} + \lambda\sum_{j=1}^{d} w_j^2 \qquad \text{lasso: } \text{MSE} + \lambda\sum_{j=1}^{d} |w_j|</texd>
+    <div class="where">где <tex>w_j</tex> — веса признаков (свободный член не штрафуют), <tex>d</tex> — их число, <tex>\lambda</tex> — сила регуляризации (в sklearn — <code>alpha</code>). Ridge равномерно сжимает все веса к нулю, но не обнуляет; lasso обнуляет часть весов — отбирает признаки. Elastic net — их сумма. Признаки обязательно стандартизуют: иначе штраф зависит от единиц измерения. <tex>\lambda</tex> подбирают кросс-валидацией. Пример: для одного центрированного признака ridge даёт <tex>w = \sum xy/(\sum x^2 + \lambda)</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Как ridge сжимает вес</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Данные задачи 1, признак и ответ центрированы: сумма произведений отклонений 225.5, сумма квадратов отклонений площади 1130. Сравниваются <tex>\lambda = 0</tex>, 1000 и 10 000.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Вес площади при каждом <tex>\lambda</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Для одного признака ridge добавляет <tex>\lambda</tex> к знаменателю формулы 2 (формула 5).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 5</a> · ridge для одного признака</div>
+        <texd>w = \frac{\sum x y}{\sum x^2 + \lambda}</texd>
+        <div class="fr-w">где <tex>\sum xy = 225.5</tex>, <tex>\sum x^2 = 1130</tex> (центрированные данные).</div></div>
+      <p><tex>\lambda = 0</tex>: <tex>225.5/1130 = 0.200</tex>. <tex>\lambda = 1000</tex>: <tex>225.5/2130 = 0.106</tex>. <tex>\lambda = 10\,000</tex>: <tex>225.5/11\,130 = 0.020</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Веса <b>0.200</b>, <b>0.106</b>, <b>0.020</b>: чем больше <tex>\lambda</tex> по сравнению с «информацией» в данных (<tex>\sum x^2</tex>), тем сильнее сжатие. На больших данных та же <tex>\lambda</tex> сжимает слабее — регуляризация важнее всего, когда данных мало.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Путь lasso: веса признаков в зависимости от λ</div>
+    <div class="chsub">Ось x — <tex>\lambda</tex> в логарифмическом масштабе, ось y — вес стандартизованного признака в модели цены (200 квартир). Розовая — площадь, оранжевая — комнаты, бирюзовая — зашумлённая копия площади, серые — два случайных признака. Случайные признаки обнуляются первыми (при <tex>\lambda</tex> около 0.03–0.06), затем комнаты (0.18), копия площади (около 1); площадь держится дольше всех.</div>
+    <canvas id="c_lasso"></canvas>
+  </div>
+
+  <p class="next">Линейная модель кажется ограниченной. На деле она умеет многое — через признаки.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Нелинейность через признаки и когда брать линейную модель</h2></div>
+  <p class="slead">«Линейная» — значит линейная по весам, а не по исходным признакам. Добавив квадрат, логарифм, произведение или бины признака, линейная модель описывает изгибы, насыщение и взаимодействия.</p>
+
+  <p>Примеры: цена растёт медленнее площади — признак <tex>\ln(\text{площадь})</tex>; эффект скидки зависит от сегмента — произведение «скидка × сегмент»; возраст влияет немонотонно — бины возраста индикаторами. Каждый такой признак — гипотеза, которую проверяют на валидации.</p>
+
+  <p>Когда линейная модель — правильный выбор: данных немного; нужна интерпретация и проверка знаков; нужна экстраполяция за пределы обучения (деревья её не умеют, тема 10); нужен быстрый бенчмарк. Когда нет: много сложных взаимодействий в табличных данных — там бустинг почти всегда точнее (тема 11). Подробнее: вывод нормального уравнения — <a href="block0_12_linear_regression.html#s4">0.12, секция 4</a>, интерпретация — <a href="block0_12_linear_regression.html#s7">0.12, секция 7</a>, мультиколлинеарность — <a href="block0_12_linear_regression.html#s9">0.12, секция 9</a>, L1 и нули — <a href="block0_15_regularization.html#s6">0.15, секция 6</a>.</p>
+
+  <p class="next">Соберём типичные ошибки.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Где это в работе и 5 подводных камней</h2></div>
+  <p class="slead">Линейная регрессия — бенчмарк, модель для объяснения факторов, основа эконометрики, MMM и многих продуктовых расчётов. Ошибаются чаще всего в интерпретации.</p>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Вес как причинный эффект</b><span>Комнаты: +1.76 млн в одной модели и −0.75 в другой (секция 1). Вес — связь при прочих признаках модели, не результат вмешательства.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Регуляризация без масштабирования</b><span>Штраф зависит от единиц признака: площадь в м² и см² штрафуется по-разному (секция 6). Сначала стандартизация.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Все уровни категории вместе со свободным членом</b><span>Индикаторы в сумме дают столбец единиц — дамми-ловушка (секция 4). Один уровень — базовый.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>R² на обучении как качество</b><span>0.993 на пяти точках ничего не гарантирует (задача 2). Качество — RMSE или MAE на валидации.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Важность по величине веса</b><span>Вес зависит от единиц измерения (секция 4). Сравнивают стандартизованные веса или вклад в качество.</span></div></div>
+
+  <p class="next">Формулы темы — на одном экране.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Шпаргалка</h2></div>
+  <p class="slead">Все формулы темы на одном экране.</p>
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Линейная регрессия</b><br><tex>\hat y = w_0 + \sum_j w_jx_j</tex>, минимизация MSE<div class="cs-w">линейна по весам</div></td><td>числовой ответ, бенчмарк</td></tr>
+    <tr><td><a href="#s2">2</a></td><td><b>Один признак</b><br><tex>w_1 = \frac{\sum(x - \bar x)(y - \bar y)}{\sum(x - \bar x)^2},\ w_0 = \bar y - w_1\bar x</tex><div class="cs-w">прямая через точку средних</div></td><td>расчёт вручную</td></tr>
+    <tr><td><a href="#s3">3</a></td><td><b>Нормальное уравнение</b><br><tex>w = (X^\top X)^{-1}X^\top y</tex><div class="cs-w">не обращается при зависимых признаках</div></td><td>точное решение</td></tr>
+    <tr><td><a href="#s5">4</a></td><td><b>R²</b><br><tex>1 - \sum(y - \hat y)^2/\sum(y - \bar y)^2</tex><div class="cs-w">0 — как среднее</div></td><td>доля объяснённого</td></tr>
+    <tr><td><a href="#s6">5</a></td><td><b>Ridge и lasso</b><br><tex>\text{MSE} + \lambda\sum w_j^2;\ \text{MSE} + \lambda\sum|w_j|</tex><div class="cs-w">L1 обнуляет веса</div></td><td>переобучение, отбор</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>10 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa" data-sec="s2"><summary>1. Что минимизирует обычная линейная регрессия?</summary><div class="qa-a">Средний квадрат ошибки (MSE) — метод наименьших квадратов. Это MLE при нормальном шуме.</div></details>
+  <details class="qa" data-sec="s3"><summary>2. Когда нормальное уравнение не работает?</summary><div class="qa-a">Когда признаки линейно зависимы (<tex>X^\top X</tex> не обращается) или признаков так много, что обращение слишком дорого; тогда — регуляризация или градиентный спуск.</div></details>
+  <details class="qa" data-sec="s4"><summary>3. Как интерпретировать вес линейной регрессии?</summary><div class="qa-a">Изменение прогноза при росте признака на единицу при неизменных остальных признаках модели. Это связь, а не причинный эффект.</div></details>
+  <details class="qa" data-sec="s4"><summary>4. Что такое дамми-ловушка?</summary><div class="qa-a">Индикаторы всех уровней категории в сумме дают столбец единиц и вместе со свободным членом линейно зависимы. Один уровень выбрасывают как базовый.</div></details>
+  <details class="qa" data-sec="s4"><summary>5. Как читать вес, если ответ — логарифм цены?</summary><div class="qa-a">Как относительное изменение: вес 0.05 — примерно плюс 5% цены на единицу признака.</div></details>
+  <details class="qa" data-sec="s5"><summary>6. Что показывает R² и почему он обманчив?</summary><div class="qa-a">Долю разброса ответа, объяснённую моделью. На обучении растёт от любого признака и не говорит о точности в единицах ответа.</div></details>
+  <details class="qa" data-sec="s5"><summary>7. Чем вредна мультиколлинеарность?</summary><div class="qa-a">Прогноз не страдает, но веса неустойчивы: вес перекладывается между связанными признаками, знаки меняются от выборки к выборке.</div></details>
+  <details class="qa" data-sec="s6"><summary>8. Чем ridge отличается от lasso?</summary><div class="qa-a">Ridge (L2) сжимает все веса, но не обнуляет; lasso (L1) обнуляет часть весов и тем самым отбирает признаки.</div></details>
+  <details class="qa" data-sec="s6"><summary>9. Почему перед регуляризацией признаки стандартизуют?</summary><div class="qa-a">Штраф за вес зависит от единиц признака; без стандартизации признаки в мелких единицах штрафуются сильнее.</div></details>
+  <details class="qa" data-sec="s7"><summary>10. Как линейная модель описывает нелинейную зависимость?</summary><div class="qa-a">Через признаки: квадраты, логарифмы, бины, произведения. Модель остаётся линейной по весам.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Полные темы — <a href="block0_12_linear_regression.html">0.12</a> и <a href="block0_15_regularization.html">0.15</a>. Дальше в экспресс-блоке: логистическая регрессия (10.6), метрики (10.7).
+</div>
+
+<div class="pnav">
+  <a href="block10_04_gradients.html">← 10.4 · Градиент</a>
+  <a class="next" href="block10_06_logistic_regression.html">10.6 · Логистическая регрессия →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#fb7185', TL='#2dd4bf', OR='#fb923c', YL='#facc15', BL='#60a5fa', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function fn(f,a,b,n){ var p=[],i; for(i=0;i<=n;i++){ var x=a+(b-a)*i/n; p.push([x,f(x)]); } return p; }
+function barc(id,labels,sets,yl,yr){ return mk(id,{type:'bar',data:{labels:labels,datasets:sets.map(function(s){ return {label:s[0],data:s[1],backgroundColor:s[2],borderWidth:0}; })},options:{responsive:true,scales:{x:Object.assign({},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}}); }
+
+(function(){
+  var lam=[0.001,0.0018,0.0032,0.0056,0.01,0.0178,0.0316,0.0562,0.1,0.1778,0.3162,0.5623,1,1.7783,3.1623], P=[[2.6822,-0.6909,0.0172,0.1898,0.0717],[2.6763,-0.6866,0.0164,0.1915,0.0705],[2.6661,-0.6791,0.015,0.1945,0.0683],[2.6491,-0.6663,0.0126,0.1992,0.0645],[2.6185,-0.6428,0.0083,0.2071,0.0576],[2.5677,-0.6013,0.0008,0.2179,0.0454],[2.485,-0.5276,0,0.2298,0.0235],[2.3453,-0.4013,0,0.2463,0],[2.1224,-0.19,0,0.2586,0],[1.895,0,0,0.2576,0],[1.8249,0,0,0.1878,0],[1.7002,0,0,0.0636,0],[1.3246,0,0,0,0],[0.5463,0,0,0,0],[0,0,0,0,0]];
+  var N=["площадь","комнаты","случайный 1","копия площади","случайный 2"], C=[AC,OR,GY,TL,GY];
+  var ds=N.map(function(n,j){ var d=seg(lam.map(function(l,i){ return [l,P[i][j]]; }),n,C[j],2.2,j===4?[5,4]:[]); d.pointRadius=2; return d; });
+  var o=lin('λ (логарифмическая шкала)','вес стандартизованного признака',[0.001,3.2],[-1,3]); o.scales.x.type='logarithmic';
+  mk('c_lasso',{type:'scatter',data:{datasets:ds},options:o});
+})();
+
+</script>
+
+</body>
+</html>

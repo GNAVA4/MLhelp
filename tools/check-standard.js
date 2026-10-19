@@ -30,7 +30,11 @@ function check(file) {
   const src = fs.readFileSync(file, 'utf8');
   // компактные темы временных рядов (ADR 019, владелец: ~2 ч чтения): структура та же, объём втрое меньше
   const C = /block5_|block3_02_/.test(path.basename(file));
-  const N = C ? { f: [7, 12], ch: [5, 9], tr: [2, 3], ex: 4, qa: 20, pf: 10, boards: 3 } : { f: [15, 20], ch: [11, 16], tr: [4, 7], ex: 8, qa: 30, pf: 15, boards: 5 };
+  // экспресс-блок 10 «База ML» (ADR 020): ~1 ч на тему, 10 секций, без задач у доски, песочница по желанию
+  const X = /^block10_/.test(path.basename(file));
+  const N = X ? { f: [3, 7], ch: [1, 4], tr: [0, 2], ex: 2, qa: 10, pf: 5, boards: 0, secs: 10 }
+    : C ? { f: [7, 12], ch: [5, 9], tr: [2, 3], ex: 4, qa: 20, pf: 10, boards: 3, secs: 15 } : { f: [15, 20], ch: [11, 16], tr: [4, 7], ex: 8, qa: 30, pf: 15, boards: 5, secs: 15 };
+  const LAST = '#s' + N.secs, CS = '#s' + (N.secs - 1);
   const base = path.basename(file).replace('.src.html', '');
   const out = [];
   const E = (rule, msg) => out.push(['E', rule, msg]);
@@ -61,9 +65,9 @@ function check(file) {
   // §3 Q&A и задачи у доски
   const qa = $$('details.qa');
   if (qa.length !== N.qa) E('§3/§6', `Q&A ${qa.length}, нужно ${N.qa}`);
-  if (qa.some(d => !d.closest('#s15'))) E('§3', 'details.qa вне секции 15 (мост считает их вопросами)');
+  if (qa.some(d => !d.closest(LAST))) E('§3', `details.qa вне секции ${N.secs} (мост считает их вопросами)`);
   if ($$('details.qi').length) E('§3', 'class="qi" в теме нового стандарта');
-  const tasks = $$('#s14 .task');
+  const tasks = $$(CS + ' .task');
   if (tasks.length !== N.boards) E('§6', `задач у доски ${tasks.length}, нужно ${N.boards}`);
   if (tasks.some(t => !t.querySelector('details'))) E('§3', 'решение задачи у доски не в <details>');
 
@@ -76,18 +80,18 @@ function check(file) {
   // §5 и §6: секции, подводки, переходы
   const secs = $$('section[id^="s"]');
   const ids = secs.map(s => s.id).join(',');
-  if (ids !== Array.from({ length: 15 }, (_, i) => 's' + (i + 1)).join(',')) E('§6', `секции ${ids}, нужно s1…s15 по порядку`);
+  if (ids !== Array.from({ length: N.secs }, (_, i) => 's' + (i + 1)).join(',')) E('§6', `секции ${ids}, нужно s1…s${N.secs} по порядку`);
   for (const s of secs) {
     const n = +s.id.slice(1);
     if (!s.querySelector('.sh h2')) E('§5', `${s.id}: нет заголовка .sh h2`);
     if (!s.querySelector('.slead')) E('§5', `${s.id}: нет подводки .slead`);
-    if (n <= 12 && !s.querySelector('p.next')) E('§5', `${s.id}: нет перехода p.next в конце`);
-    if (n === 13 && !s.querySelector('p.next')) W('§5', `${s.id}: нет перехода к шпаргалке (p.next)`);
+    if (n <= N.secs - 3 && !s.querySelector('p.next')) E('§5', `${s.id}: нет перехода p.next в конце`);
+    if (n === N.secs - 2 && !s.querySelector('p.next')) W('§5', `${s.id}: нет перехода к шпаргалке (p.next)`);
   }
   const s1 = doc.getElementById('s1');
   if (s1 && !/План темы/.test(txt(s1))) E('§5', 's1: нет плана темы («План темы»)');
   if ($$('.pf').length !== N.pf) E('§6', `подводных камней ${$$('.pf').length}, нужно ${N.pf}`);
-  if (!$$('.play').length) E('§6', 'нет интерактива (.play)');
+  if (!X && !$$('.play').length) E('§6', 'нет интерактива (.play)');
   const traces = $$('.trace').length;
   if (traces < N.tr[0] || traces > N.tr[1]) W('§6', `трассировок ${traces} (норма ${N.tr[0]}–${N.tr[1]})`);
 
@@ -142,8 +146,8 @@ function check(file) {
   }
 
   // §7.10 шпаргалка
-  const cs = $$('#s14 table').find(t => /Формул/i.test(txt(t.querySelector('tr'))));
-  if (!cs) E('§7.10', 's14: нет шпаргалки формул');
+  const cs = $$(CS + ' table').find(t => /Формул/i.test(txt(t.querySelector('tr'))));
+  if (!cs) E('§7.10', CS.slice(1) + ': нет шпаргалки формул');
   else {
     if (!cs.classList.contains('cs')) E('§7.10', 'шпаргалка не class="ct cs" (на телефоне не станет карточками)');
     const hs = $$('tr:first-child th', cs).map(txt).join(' | ');

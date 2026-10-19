@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10.12 · Дисбаланс классов и SHAP</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#e11d48; --ac-d:#fecdd3; --ac-l:rgba(225,29,72,.08); --ac-b:rgba(225,29,72,.35); --ac-m:#be123c; --ac-s:#4c0519;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#e11d48; --okl:rgba(225,29,72,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(225,29,72,.24),transparent 60%),linear-gradient(135deg,#020617,#2a0510 55%,#4c0519);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(225,29,72,.14);border:1px solid rgba(254,205,211,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ffe4e6;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#e11d48;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#e11d48;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(225,29,72,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(225,29,72,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(225,29,72,.07),rgba(251,113,133,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Экспресс · тема 12 · база ML</div>
+    <h1>Дисбаланс классов и SHAP</h1>
+    <p>Уходит 1.3% клиентов. Аналитик включает «балансировку классов», и AUC остаётся тем же — 0.86, но средняя предсказанная вероятность ухода становится 31% вместо 1.3%, а по порогу 0.5 модель помечает почти 4000 клиентов из 20 000 вместо 32. Дисбаланс — проблема не данных, а метрики и порога. Вторая половина темы — SHAP: как объяснить, почему модель поставила конкретному клиенту 95%, и почему SHAP объясняет модель, а не мир.</p>
+    <div class="meta">
+      <span>10 секций</span><span>3 формулы</span><span>3 задачи</span><span>1 график</span><span>5 подводных камней</span><span>10 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Когда проблема</a>
+    <a href="#s3">3 · Веса и выборки</a>
+    <a href="#s4">4 · Поправка</a>
+    <a href="#s5">5 · Шепли</a>
+    <a href="#s6">6 · SHAP</a>
+    <a href="#s7">7 · Как читать</a>
+    <a href="#s8">8 · Ошибки</a>
+    <a href="#s9">9 · Шпаргалка</a>
+    <a href="#s10">10 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: балансировка, которая ничего не улучшила</h2></div>
+  <p class="slead">Редкий класс — норма для прикладных задач: отток, мошенничество, дефолт, клик. Типичная реакция — «сбалансировать данные». Чаще всего это не улучшает модель, а только портит вероятности. А когда модель работает, её нужно объяснять — и тут главный инструмент SHAP.</p>
+
+  <div class="story">
+    <p>40 000 клиентов, уходят 1.3%. Логистическая регрессия на половине данных, проверка на другой половине (около 250 ушедших). Без весов: AUC 0.860, средняя вероятность 1.3%, порог 0.5 помечает 32 клиента, из них 24 ушли.</p>
+    <p style="margin:0">С <code>class_weight='balanced'</code>: AUC 0.860, средняя вероятность 30.7%, порог 0.5 помечает 3984 клиента, из них 186 ушли. Порядок клиентов почти не изменился — изменилась шкала вероятностей.</p>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Когда дисбаланс действительно проблема (секция 2), веса и пересэмплирование (3), как вернуть правильные вероятности (4), значения Шепли (5), SHAP для моделей (6), как читать SHAP и чего он не показывает (7).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>w</tex></td><td>Во сколько раз положительные объекты весят больше отрицательных при обучении (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>w = 49</tex></span></td></tr>
+      <tr><td><tex>p_w</tex>, <tex>p</tex></td><td>Вероятность модели, обученной с весами; исправленная вероятность (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>p_w = 0.5</tex> — <tex>p = 0.02</tex></span></td></tr>
+      <tr><td><tex>\varphi_j</tex>, <tex>\varphi_0</tex></td><td>Вклад признака <tex>j</tex> в прогноз объекта; базовое значение — средний прогноз (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>\varphi_{\text{дни}} = 6.5</tex> в логитах</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Сначала — когда с дисбалансом вообще нужно что-то делать.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Когда дисбаланс действительно проблема</h2></div>
+  <p class="slead">Сам по себе дисбаланс модели почти не мешает: логистическая регрессия и бустинг с log-loss нормально учатся на 1% положительных, если их абсолютно достаточно. Проблемы возникают в трёх местах — метрика, порог и число положительных объектов.</p>
+
+  <p><b>Метрика.</b> Accuracy при 1% положительных — 99% у константы; смотрят PR-AUC, precision и recall при нужном пороге или деньги (тема 7). <b>Порог.</b> Порог 0.5 при калиброванной модели и редком классе почти никого не помечает — его выбирают по цене ошибок (тема 6). <b>Мало положительных.</b> Если положительных десятки, модели не на чем учиться; помогают более простая модель, сильная регуляризация, сбор данных, а не пересэмплирование.</p>
+
+  <p>Валидация при дисбалансе: стратифицированные фолды (тема 9), достаточно положительных в тесте для устойчивой оценки, PR-AUC вместо ROC-AUC при очень редком классе.</p>
+
+  <p class="next">Если всё же нужно сместить внимание модели к редкому классу, есть два способа.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Веса классов и пересэмплирование</h2></div>
+  <p class="slead">Веса классов умножают потерю на положительных объектах (<code>class_weight</code>, <code>scale_pos_weight</code>). Пересэмплирование меняет состав выборки: андерсэмплинг выбрасывает часть отрицательных, оверсэмплинг и SMOTE дублируют или синтезируют положительные. Оба способа делают одно и то же — меняют доли классов, которые видит модель.</p>
+
+  <table class="ct">
+    <tr><th>Способ</th><th>Когда полезен</th></tr>
+    <tr><td>ничего не делать + порог по деньгам</td><td>по умолчанию; модели с log-loss и калибровкой</td></tr>
+    <tr><td>веса классов</td><td>когда ошибки на редком классе дороже и это нужно в самой потере; маленькие данные</td></tr>
+    <tr><td>андерсэмплинг отрицательных</td><td>огромные данные: ускорение обучения в разы без потери качества</td></tr>
+    <tr><td>SMOTE</td><td>редко: в бустинге обычно не помогает, может портить данные</td></tr>
+  </table>
+
+  <p>Главное последствие всех способов — смещённые вероятности: модель «думает», что положительных много больше, чем на самом деле. AUC от этого почти не меняется, а решения по порогу и любые расчёты ожидаемых денег — ломаются. Пересэмплирование делают только на обучающей части, никогда — на валидации и тесте.</p>
+
+  <p class="next">Если веса уже использованы, вероятности можно исправить формулой.</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Как вернуть правильные вероятности</h2></div>
+  <p class="slead">Вес <tex>w</tex> на положительных объектах эквивалентен тому, что шансы положительного класса в обучении увеличены в <tex>w</tex> раз. Значит, шансы прогноза нужно разделить на <tex>w</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · поправка вероятности после весов классов</div>
+    <texd>p = \frac{p_w}{p_w + (1 - p_w)\,w}</texd>
+    <div class="where">где <tex>p_w</tex> — вероятность модели, обученной с весом <tex>w</tex> на положительных (при андерсэмплинге отрицательных с долей <tex>\beta</tex> — <tex>w = 1/\beta</tex>), <tex>p</tex> — исправленная вероятность для реального соотношения классов. Это деление шансов на <tex>w</tex>. Поправка восстанавливает уровень, но не исправляет все искажения формы — надёжнее калибровка на отложенных данных без весов. Пример: <tex>w = 49</tex>, <tex>p_w = 0.5</tex> — <tex>p = 0.5/(0.5 + 0.5\cdot49) = 0.02</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Что на самом деле значит «0.9»</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модель мошенничества обучена с <code>scale_pos_weight=49</code>. Для двух транзакций она выдала 0.5 и 0.9. Служба безопасности считает, что проверять стоит, если вероятность мошенничества выше 10%.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Исправленные вероятности и какие транзакции проверять.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Делим шансы на вес (формула 1).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 1</a> · поправка</div>
+        <texd>p = \frac{p_w}{p_w + 49(1 - p_w)}</texd>
+        <div class="fr-w">где <tex>p_w</tex> — 0.5 и 0.9, <tex>w = 49</tex>.</div></div>
+      <p><tex>0.5/(0.5 + 24.5) = 0.020</tex>; <tex>0.9/(0.9 + 4.9) = 0.155</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><b>2%</b> и <b>15.5%</b>: проверять только вторую. Без поправки обе выглядели как «скорее мошенничество», и служба утонула бы в проверках, как в секции 1 (3984 флага вместо 32).</div></div>
+  </div>
+
+  <p class="next">Перейдём ко второй теме — объяснению прогнозов.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Значения Шепли: честный дележ прогноза</h2></div>
+  <p class="slead">Вопрос «почему клиенту поставили 95%» — это вопрос, как разделить отклонение прогноза от среднего между признаками. Значения Шепли из теории игр делят его единственным способом, удовлетворяющим разумным требованиям: вклады в сумме дают прогноз, одинаковые признаки получают одинаковое, бесполезный — ноль.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · значение Шепли</div>
+    <texd>\varphi_j = \sum_{S \subseteq N\setminus\{j\}} w_S\,\big(v(S \cup \{j\}) - v(S)\big)</texd>
+    <texd>w_S = \frac{|S|!\,(d - |S| - 1)!}{d!}</texd>
+    <div class="where">где <tex>\varphi_j</tex> — вклад признака <tex>j</tex>, <tex>N</tex> — множество всех <tex>d</tex> признаков, <tex>S</tex> — подмножество остальных признаков (<tex>\subseteq</tex> — «является подмножеством», <tex>N\setminus\{j\}</tex> — все признаки, кроме <tex>j</tex>), <tex>|S|</tex> — его размер, <tex>w_S</tex> — вес подмножества (доля порядков добавления признаков, в которых перед <tex>j</tex> стоят ровно признаки из <tex>S</tex>), <tex>v(S)</tex> — прогноз модели, когда известны только признаки из <tex>S</tex> (остальные усреднены), <tex>!</tex> — факториал. Вклад — средний прирост прогноза от добавления признака по всем порядкам добавления. Пример: для двух признаков — среднее прироста при добавлении первым и вторым.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Шепли для двух признаков</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Модель вероятности ухода. Без признаков (средний прогноз) — 0.1. Если известен только признак A «давно не заходил» — 0.3, только B «помесячный тариф» — 0.2, оба — 0.6.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Вклады A и B по Шепли и проверить, что они дают прогноз.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Два порядка добавления: A потом B и B потом A; вклад — среднее приростов (формула 2).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 2</a> · два признака</div>
+        <texd>\varphi_A = \tfrac12\big[(v(A) - v(\varnothing)) + (v(AB) - v(B))\big]</texd>
+        <div class="fr-w">где <tex>v(\varnothing) = 0.1</tex>, <tex>v(A) = 0.3</tex>, <tex>v(B) = 0.2</tex>, <tex>v(AB) = 0.6</tex>.</div></div>
+      <p><tex>\varphi_A = \frac12(0.2 + 0.4) = 0.3</tex>; <tex>\varphi_B = \frac12(0.1 + 0.3) = 0.2</tex>. Сумма <tex>0.1 + 0.3 + 0.2 = 0.6</tex> — прогноз.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">A — <b>+0.3</b>, B — <b>+0.2</b>. Вместе признаки дают больше суммы по отдельности (взаимодействие), и Шепли делит этот выигрыш поровну. Перебор всех подмножеств растёт как <tex>2^d</tex> — для моделей нужен быстрый алгоритм.</div></div>
+  </div>
+
+  <p class="next">Для деревьев такой алгоритм есть — TreeSHAP.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>SHAP для моделей</h2></div>
+  <p class="slead">SHAP — значения Шепли для прогнозов ML-моделей. Для деревьев и бустинга TreeSHAP считает их точно и быстро; для других моделей есть приближённые версии. Результат — для каждого объекта набор вкладов признаков, которые в сумме с базовым значением дают прогноз.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · разложение прогноза SHAP</div>
+    <texd>f(x) = \varphi_0 + \sum_{j=1}^{d}\varphi_j(x)</texd>
+    <div class="where">где <tex>f(x)</tex> — прогноз модели для объекта <tex>x</tex> (для классификаторов — обычно в логитах), <tex>\varphi_0</tex> — базовое значение (средний прогноз по данным), <tex>\varphi_j(x)</tex> — вклад признака <tex>j</tex> для этого объекта, <tex>d</tex> — число признаков. Положительный вклад толкает прогноз вверх, отрицательный — вниз. Пример: базовое −6.39 и вклады 6.50, 1.86, −0.27, 0.46, 0.83 — логит 2.99, вероятность 0.95.</div>
+  </div>
+
+  <p>Клиент с вероятностью ухода 95% (LightGBM на данных секции 1): 65 дней без входа (+6.50 к логиту), стаж 3 месяца (+1.86), помесячный тариф (+0.46), ноль обращений в поддержку (−0.27), возраст 30 лет (+0.83). Последнее настораживает: возраст в этих данных с уходом не связан. Глобальная важность — среднее <tex>|\varphi_j|</tex> по объектам — показывает то же: у возраста 0.46, почти как у обращений в поддержку.</p>
+
+  <div class="chb">
+    <div class="cht">Глобальная важность признаков по SHAP</div>
+    <div class="chsub">Ось y — средний модуль вклада признака в логит по 20 000 клиентам. Главный — дней без входа (1.09), затем стаж (0.68), обращения (0.46) и тариф (0.30). Возраст (0.46) в данных никак не влияет на уход: модель использует его, подгоняясь под шум редкого класса. SHAP честно показывает, на что опирается модель, — даже если это ошибка.</div>
+    <canvas id="c_shap"></canvas>
+  </div>
+
+  <p class="next">Как правильно читать SHAP и чего он не говорит?</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Как читать SHAP и чего он не показывает</h2></div>
+  <p class="slead">SHAP отвечает на вопрос «на что опирается модель», а не «что будет, если изменить признак». Это различие — источник главных ошибок интерпретации.</p>
+
+  <p>Стандартные графики: столбцы средних <tex>|\varphi|</tex> (глобальная важность), beeswarm — облако вкладов по объектам с цветом значения признака (видно направление и разброс эффекта), dependence plot — вклад против значения признака (форма зависимости и взаимодействия), waterfall — разложение одного прогноза для объяснения клиенту или регулятору.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · вклад в прогноз и причинный эффект</div>
+    <p>Большой SHAP признака «число обращений в поддержку» не значит, что сокращение обращений снизит отток: обращения — симптом проблем, а не их причина. Чтобы узнать эффект воздействия, нужен эксперимент (тема 13).</p>
+    <p>Пример: SHAP возраста 0.46 при отсутствии реальной связи — модель опирается на шум, в мире эффекта нет.</p>
+  </div>
+
+  <p>Коррелированные признаки делят вклад: если площадь и число комнат связаны, модель может опираться на любой, и SHAP разделит важность между ними. Подозрительные признаки с высоким SHAP проверяют перестановочной важностью на отложенных данных (тема 10) и на утечку (тема 8). Подробнее: веса и пересэмплирование — <a href="block1_02_class_imbalance.html#s4">1.2, секция 4</a>, порог по экономике ошибок — <a href="block1_02_class_imbalance.html#s6">1.2, секция 6</a>, значения Шепли — <a href="block1_04_shap.html#s2">1.4, секция 2</a>, как читать графики — <a href="block1_04_shap.html#s9">1.4, секция 9</a>, SHAP объясняет модель, а не мир — <a href="block1_04_shap.html#s10">1.4, секция 10</a>.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Объяснение отказа клиенту</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Скоринговая модель в логитах: базовое значение −2.0, порог одобрения — логит ниже −1.0. У клиента вклады: просрочки в прошлом +1.4, доход +0.3 (ниже среднего), стаж на работе −0.2, кредитная нагрузка +0.6.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Логит клиента, решение и главную причину отказа.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сумма базового значения и вкладов (формула 3); причина — наибольший положительный вклад.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 3</a> · разложение SHAP</div>
+        <texd>f(x) = -2.0 + 1.4 + 0.3 - 0.2 + 0.6</texd>
+        <div class="fr-w">где −2.0 — базовое значение <tex>\varphi_0</tex>, остальное — вклады признаков.</div></div>
+      <p><tex>f(x) = 0.1</tex>, вероятность дефолта <tex>\sigma(0.1) = 0.52</tex>; порог −1.0 превышен на 1.1.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Логит <b>0.1</b> — отказ; главная причина — <b>просрочки</b> (+1.4), вторая — нагрузка (+0.6). Даже без просрочек логит был бы −1.3 — одобрение. Waterfall по SHAP — стандартный способ объяснить решение клиенту и регулятору.</div></div>
+  </div>
+
+  <p class="next">Соберём типичные ошибки.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Где это в работе и 5 подводных камней</h2></div>
+  <p class="slead">Дисбаланс — в антифроде, оттоке, скоринге, медицине; SHAP — в каждом проекте, где модель нужно объяснить бизнесу, клиенту или регулятору и где ищут ошибки модели.</p>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Балансировка без поправки вероятностей</b><span>Средняя вероятность 31% при реальных 1.3%, 3984 флага вместо 32 (секция 1). Поправка или калибровка обязательны.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Пересэмплирование валидации</b><span>Метрики на искусственно сбалансированном тесте не похожи на прод (секция 3). Только обучающая часть.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>«Балансировка улучшит модель»</b><span>AUC 0.860 и с весами, и без (секция 1). Сначала метрика и порог, потом — если нужно — веса.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>SHAP как причинный эффект</b><span>Вклад обращений в поддержку — симптом, а не рычаг (секция 7). Эффекты воздействия меряют экспериментом.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Доверие к SHAP шумового признака</b><span>Возраст без связи с уходом получил среднюю важность 0.46 (секция 6). Проверка — перестановочная важность на отложенных данных.</span></div></div>
+
+  <p class="next">Формулы темы — на одном экране.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Шпаргалка</h2></div>
+  <p class="slead">Все формулы темы на одном экране.</p>
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s4">1</a></td><td><b>Поправка после весов</b><br><tex>p = p_w/(p_w + (1 - p_w)w)</tex><div class="cs-w">андерсэмплинг: <tex>w = 1/\beta</tex></div></td><td>вероятности после балансировки</td></tr>
+    <tr><td><a href="#s5">2</a></td><td><b>Значение Шепли</b><br><tex>\varphi_j</tex> — средний прирост от добавления признака по всем порядкам<div class="cs-w">сумма вкладов = прогноз − среднее</div></td><td>честный дележ</td></tr>
+    <tr><td><a href="#s6">3</a></td><td><b>Разложение SHAP</b><br><tex>f(x) = \varphi_0 + \sum_j\varphi_j(x)</tex><div class="cs-w"><tex>\varphi_0</tex> — средний прогноз</div></td><td>объяснение прогноза</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>10 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa" data-sec="s2"><summary>1. Почему дисбаланс классов — в первую очередь проблема метрики и порога?</summary><div class="qa-a">Модели с log-loss нормально учатся на редком классе. Ломаются accuracy и порог 0.5, поэтому смотрят PR-AUC и выбирают порог по цене ошибок.</div></details>
+  <details class="qa" data-sec="s3"><summary>2. Что делают веса классов?</summary><div class="qa-a">Умножают потерю на объектах редкого класса, и модель уделяет им больше внимания. Побочный эффект — завышенные вероятности редкого класса.</div></details>
+  <details class="qa" data-sec="s3"><summary>3. Меняет ли балансировка классов ROC-AUC?</summary><div class="qa-a">Обычно почти нет: порядок объектов сохраняется, меняется шкала вероятностей.</div></details>
+  <details class="qa" data-sec="s3"><summary>4. Когда полезен андерсэмплинг отрицательного класса?</summary><div class="qa-a">На очень больших данных: обучение ускоряется в разы почти без потери качества, а вероятности потом исправляют поправкой.</div></details>
+  <details class="qa" data-sec="s4"><summary>5. Как исправить вероятности после обучения с весом w?</summary><div class="qa-a">Разделить шансы на <tex>w</tex>: <tex>p = p_w/(p_w + (1 - p_w)w)</tex>, или откалибровать модель на отложенных данных.</div></details>
+  <details class="qa" data-sec="s5"><summary>6. Что такое значение Шепли признака?</summary><div class="qa-a">Средний прирост прогноза от добавления признака по всем порядкам добавления признаков. Вклады в сумме дают отклонение прогноза от среднего.</div></details>
+  <details class="qa" data-sec="s6"><summary>7. Из чего складывается прогноз в разложении SHAP?</summary><div class="qa-a">Из базового значения — среднего прогноза — и суммы вкладов признаков для данного объекта.</div></details>
+  <details class="qa" data-sec="s6"><summary>8. Как получить глобальную важность признаков из SHAP?</summary><div class="qa-a">Усреднить модули вкладов признака по объектам.</div></details>
+  <details class="qa" data-sec="s7"><summary>9. Почему SHAP не показывает причинный эффект?</summary><div class="qa-a">Он объясняет, на что опирается модель, а модель учит связи, а не причины: признак-симптом может иметь большой вклад без всякого эффекта воздействия.</div></details>
+  <details class="qa" data-sec="s7"><summary>10. Что происходит со SHAP у коррелированных признаков?</summary><div class="qa-a">Вклад делится между ними в зависимости от того, на какой признак опирается модель, и важность каждого по отдельности занижается.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Полные темы — <a href="block1_02_class_imbalance.html">1.2 «Дисбаланс классов»</a>, <a href="block1_04_shap.html">1.4 «SHAP»</a>, <a href="block1_07_calibration.html">1.7 «Калибровка»</a>. Дальше в экспресс-блоке: A/B-тесты (10.13).
+</div>
+
+<div class="pnav">
+  <a href="block10_11_boosting.html">← 10.11 · Бустинг</a>
+  <a class="next" href="block10_13_ab_tests.html">10.13 · A/B-тесты →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#fb7185', TL='#2dd4bf', OR='#fb923c', YL='#facc15', BL='#60a5fa', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function fn(f,a,b,n){ var p=[],i; for(i=0;i<=n;i++){ var x=a+(b-a)*i/n; p.push([x,f(x)]); } return p; }
+function barc(id,labels,sets,yl,yr){ return mk(id,{type:'bar',data:{labels:labels,datasets:sets.map(function(s){ return {label:s[0],data:s[1],backgroundColor:s[2],borderWidth:0}; })},options:{responsive:true,scales:{x:Object.assign({},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}}); }
+
+(function(){
+  var N=["дней без входа","стаж, мес","обращений в поддержку","помесячный тариф","возраст"], V=[1.0905,0.6812,0.4613,0.3012,0.4597];
+  mk('c_shap',{type:'bar',data:{labels:N,datasets:[{label:'средний |SHAP|, логит',data:V,backgroundColor:[AC,AC,AC,AC,GY],borderWidth:0}]},options:{indexAxis:'y',responsive:true,scales:{x:Object.assign({min:0,max:1.2,title:{display:true,text:'средний модуль вклада в логит'}},GRID),y:Object.assign({},GRID)},plugins:{legend:{display:false}}}});
+})();
+
+</script>
+
+</body>
+</html>
