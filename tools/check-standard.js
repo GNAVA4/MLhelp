@@ -30,7 +30,7 @@ function check(file) {
   const src = fs.readFileSync(file, 'utf8');
   // компактные темы временных рядов (ADR 019, владелец: ~2 ч чтения): структура та же, объём втрое меньше
   const C = /block5_|block3_02_/.test(path.basename(file));
-  const N = C ? { f: [7, 12], ch: [5, 9], tr: [2, 3], ex: 5 } : { f: [15, 20], ch: [11, 16], tr: [4, 7], ex: 8 };
+  const N = C ? { f: [7, 12], ch: [5, 9], tr: [2, 3], ex: 4, qa: 20, pf: 10, boards: 3 } : { f: [15, 20], ch: [11, 16], tr: [4, 7], ex: 8, qa: 30, pf: 15, boards: 5 };
   const base = path.basename(file).replace('.src.html', '');
   const out = [];
   const E = (rule, msg) => out.push(['E', rule, msg]);
@@ -60,11 +60,11 @@ function check(file) {
 
   // §3 Q&A и задачи у доски
   const qa = $$('details.qa');
-  if (qa.length !== 30) E('§3/§6', `Q&A ${qa.length}, нужно 30`);
+  if (qa.length !== N.qa) E('§3/§6', `Q&A ${qa.length}, нужно ${N.qa}`);
   if (qa.some(d => !d.closest('#s15'))) E('§3', 'details.qa вне секции 15 (мост считает их вопросами)');
   if ($$('details.qi').length) E('§3', 'class="qi" в теме нового стандарта');
   const tasks = $$('#s14 .task');
-  if (tasks.length !== 5) E('§6', `задач у доски ${tasks.length}, нужно 5`);
+  if (tasks.length !== N.boards) E('§6', `задач у доски ${tasks.length}, нужно ${N.boards}`);
   if (tasks.some(t => !t.querySelector('details'))) E('§3', 'решение задачи у доски не в <details>');
 
   // §4 графики
@@ -86,7 +86,7 @@ function check(file) {
   }
   const s1 = doc.getElementById('s1');
   if (s1 && !/План темы/.test(txt(s1))) E('§5', 's1: нет плана темы («План темы»)');
-  if ($$('.pf').length !== 15) E('§6', `подводных камней ${$$('.pf').length}, нужно 15`);
+  if ($$('.pf').length !== N.pf) E('§6', `подводных камней ${$$('.pf').length}, нужно ${N.pf}`);
   if (!$$('.play').length) E('§6', 'нет интерактива (.play)');
   const traces = $$('.trace').length;
   if (traces < N.tr[0] || traces > N.tr[1]) W('§6', `трассировок ${traces} (норма ${N.tr[0]}–${N.tr[1]})`);

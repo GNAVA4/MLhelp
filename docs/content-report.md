@@ -72,7 +72,7 @@
 | block4_05_sequential_testing.html | 197 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block4_06_srm_diagnostics.html | 181 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block4_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| block5_01_time_series_basics.html | 1025 | 15 | 30 | 8 / 8 |  | 0 |  |
+| block5_01_time_series_basics.html | 986 | 15 | 20 | 8 / 8 |  | 0 |  |
 | block6_01_collab_filtering.html | 276 | 15 | 30 | 14 / 14 | да | 0 |  |
 | block6_02_two_tower.html | 225 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block6_03_cold_start.html | 249 | 15 | 30 | 13 / 13 | да | 0 |  |
