@@ -28,6 +28,9 @@ function idsOf(file) {
 
 function check(file) {
   const src = fs.readFileSync(file, 'utf8');
+  // компактные темы временных рядов (ADR 019, владелец: ~2 ч чтения): структура та же, объём втрое меньше
+  const C = /block5_|block3_02_/.test(path.basename(file));
+  const N = C ? { f: [7, 12], ch: [5, 9], tr: [2, 3], ex: 5 } : { f: [15, 20], ch: [11, 16], tr: [4, 7], ex: 8 };
   const base = path.basename(file).replace('.src.html', '');
   const out = [];
   const E = (rule, msg) => out.push(['E', rule, msg]);
@@ -52,7 +55,7 @@ function check(file) {
 
   // §2 карточки формул: 15–20, у каждой расшифровка
   const fboxes = $$('.fbox');
-  if (fboxes.length < 15 || fboxes.length > 20) W('§2', `карточек формул ${fboxes.length} (норма 15–20)`);
+  if (fboxes.length < N.f[0] || fboxes.length > N.f[1]) W('§2', `карточек формул ${fboxes.length} (норма ${N.f[0]}–${N.f[1]})`);
   for (const fb of fboxes) if (!fb.querySelector('.where, .fnote')) E('§2/§7.2', `формула без расшифровки (.where/.fnote): ${short(txt(fb.querySelector('.flabel')))}`);
 
   // §3 Q&A и задачи у доски
@@ -68,7 +71,7 @@ function check(file) {
   if (!/<!--CHARTJS-->/.test(src)) E('§4', 'нет <!--CHARTJS--> (Chart.js не встраивается)');
   if (!/Chart\.defaults\.animation\s*=\s*false/.test(src)) E('§4', 'нет Chart.defaults.animation=false');
   const charts = $$('canvas').length;
-  if (charts < 11 || charts > 16) W('§6', `графиков ${charts} (норма 11–15)`);
+  if (charts < N.ch[0] || charts > N.ch[1]) W('§6', `графиков ${charts} (норма ${N.ch[0]}–${N.ch[1] - 1})`);
 
   // §5 и §6: секции, подводки, переходы
   const secs = $$('section[id^="s"]');
@@ -86,7 +89,7 @@ function check(file) {
   if ($$('.pf').length !== 15) E('§6', `подводных камней ${$$('.pf').length}, нужно 15`);
   if (!$$('.play').length) E('§6', 'нет интерактива (.play)');
   const traces = $$('.trace').length;
-  if (traces < 4 || traces > 7) W('§6', `трассировок ${traces} (норма 4–7)`);
+  if (traces < N.tr[0] || traces > N.tr[1]) W('§6', `трассировок ${traces} (норма ${N.tr[0]}–${N.tr[1]})`);
 
   // §5 задачи: Ситуация → Что найти → Как рассуждаем → Решение → Ответ и вывод
   const exs = $$('.ex');
@@ -106,7 +109,7 @@ function check(file) {
       else if (!c.querySelector('.fr .fr-w') && !/\\sum|\\int|=/.test(c.querySelector('.fr').innerHTML)) W('§7.9', `${name}: в .fr нет строки «где»`);
     }
   }
-  if (exs.length < 8) W('§5', `задач с условием всего ${exs.length}`);
+  if (exs.length < N.ex) W('§5', `задач с условием всего ${exs.length}`);
 
   // §7.1 справка обозначений
   const gl = s1 && s1.querySelector('details.gl');

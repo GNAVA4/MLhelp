@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5.1 · Ряд как данные: тренд, сезонность, автокорреляция</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#0ea5e9; --ac-d:#7dd3fc; --ac-l:rgba(14,165,233,.08); --ac-b:rgba(14,165,233,.35); --ac-m:#0284c7; --ac-s:#082f49;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#0ea5e9; --okl:rgba(14,165,233,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(14,165,233,.24),transparent 60%),linear-gradient(135deg,#020617,#0c2a3f 55%,#082f49);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(14,165,233,.14);border:1px solid rgba(125,211,252,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#e0f2fe;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#0ea5e9;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#0ea5e9;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(14,165,233,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(14,165,233,.07),rgba(56,189,248,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 5 · тема 1 · временные ряды</div>
+    <h1>Ряд как данные: тренд, сезонность, автокорреляция</h1>
+    <p>Даркстор считает заказы по дням. Менеджер видит, что в пятницу заказов на 18% больше, чем в среду, и решает, что сработала акция. Аналитик находит, что недельные заказы почти идеально коррелируют с числом установок приложения (r = 0.90), и предлагает вкладываться в установки. Оба вывода ошибочны, и причина одна: строки временного ряда не независимы. В теме разберём, из чего состоит ряд — тренд, сезонность, остаток, — как это увидеть через скользящее среднее, декомпозицию и автокорреляцию, что такое стационарность и как к ней приводят разностями и логарифмом.</p>
+    <div class="meta">
+      <span>15 секций</span><span>9 формул с задачами</span><span>6 графиков</span><span>песочница «собери ряд»</span><span>15 подводных камней</span><span>5 задач у доски</span><span>30 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Ряд</a>
+    <a href="#s3">3 · Тренд</a>
+    <a href="#s4">4 · Сезонность</a>
+    <a href="#s5">5 · Декомпозиция</a>
+    <a href="#s6">6 · Автокорреляция</a>
+    <a href="#s7">7 · Ложная связь</a>
+    <a href="#s8">8 · Стационарность</a>
+    <a href="#s9">9 · Разности</a>
+    <a href="#s10">10 · Тесты</a>
+    <a href="#s11">11 · Логарифм</a>
+    <a href="#s12">12 · Календарь и аномалии</a>
+    <a href="#s13">13 · В ML и ошибки</a>
+    <a href="#s14">14 · Задачи у доски</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Ряд — это не таблица независимых строк</h2></div>
+  <p class="slead">Методы блока 0 считали объекты независимыми. У ряда порядок — главное: сегодня похоже на вчера, пятница — на прошлую пятницу, а два растущих показателя «связаны» просто потому, что оба растут. Прежде чем прогнозировать, ряд разбирают на части.</p>
+
+  <div class="story">
+    <p>Даркстор, 731 день заказов: в январе 2024 — 833 в день, в декабре 2025 — 1227. Данные смоделированы из роста, недельного и годового цикла, праздников и шума.</p>
+    <p>Ноябрь 2025: в пятницу в среднем <b>1284</b> заказа, в среду — <b>1084</b>, на 18.5% больше. Менеджер записывает это на счёт пятничной акции, но пятница в этом ряду всегда на 16% выше среды.</p>
+    <p style="margin:0">Недельные заказы и установки приложения коррелируют на <b>0.90</b>. Но установки смоделированы независимо, у них просто тоже есть рост: корреляция недельных <i>приростов</i> — 0.115, неотличимо от нуля.</p>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Два года дневных заказов даркстора</div>
+    <div class="chsub">Ось x — дни с 1 января 2024, ось y — заказы за день. Серые точки — дни («пила» — неделя), голубая линия — скользящее среднее за 7 дней (секция 3): рост и годовая волна с пиком в декабре. Провалы 1–3 января и скачок 31 декабря — праздники.</div>
+    <canvas id="c_story"></canvas>
+  </div>
+
+  <p>Временной ряд — наблюдения одной величины через равные промежутки времени. Его раскладывают на <b>тренд</b> (медленное изменение уровня), <b>сезонность</b> (цикл известной длины) и <b>остаток</b>. Почти каждая ошибка анализа рядов — перепутанные части: сезонность принята за эффект, тренд — за связь.</p>
+
+  <div class="intuition"><b>План темы.</b> Сначала — что такое ряд как структура данных (секция 2). Затем три его части: тренд через скользящее среднее (3), сезонность через сезонные индексы (4) и декомпозиция целиком (5). Дальше — автокорреляция (6) и почему корреляция трендовых рядов обманывает (7). Потом — стационарность (8), разности (9), тесты (10) и логарифм (11). В конце — праздники, пропуски и аномалии (12), с песочницей.</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>y_t</tex>, <tex>t</tex>, <tex>n</tex></td><td>Значение ряда в момент <tex>t</tex>; номер момента от 1 до <tex>n</tex> — длины ряда (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>y_1 = 516</tex> — заказы 1 января 2024, праздник</span></td></tr>
+      <tr><td><tex>\hat T_t</tex></td><td>Оценка тренда в момент <tex>t</tex> — центрированное скользящее среднее (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: среднее за неделю 3–9 ноября — 1204.4</span></td></tr>
+      <tr><td><tex>m</tex>, <tex>S_t</tex>, <tex>s_d</tex></td><td>Период сезонности; сезонная часть ряда; сезонный индекс дня недели <tex>d</tex> (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>m = 7</tex>, <tex>s_{\text{сб}} = 1.17</tex></span></td></tr>
+      <tr><td><tex>T_t</tex>, <tex>R_t</tex></td><td>Тренд и остаток в декомпозиции (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>y = T\cdot S\cdot R</tex></span></td></tr>
+      <tr><td><tex>r_k</tex>, <tex>k</tex></td><td>Автокорреляция на лаге <tex>k</tex>; лаг — сдвиг во времени (<a href="#s6">секция 6</a>)<br><span class="gl-ex">Пример: <tex>r_7 = 0.82</tex></span></td></tr>
+      <tr><td><tex>\varepsilon_t</tex>, <tex>\sigma^2</tex></td><td>Случайный шаг (шум) и его дисперсия (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>\sigma = 6</tex> заказов</span></td></tr>
+      <tr><td><tex>\Delta y_t</tex>, <tex>\Delta_m y_t</tex></td><td>Первая разность и сезонная разность с периодом <tex>m</tex> (<a href="#s9">секция 9</a>)<br><span class="gl-ex">Пример: <tex>\Delta_7 y_t = y_t - y_{t-7}</tex></span></td></tr>
+      <tr><td><tex>\gamma</tex>, <tex>\lambda</tex></td><td>Коэффициент при <tex>y_{t-1}</tex> в тесте Дики — Фуллера; параметр преобразования Бокса — Кокса (<a href="#s10">секции 10</a>, <a href="#s11">11</a>)<br><span class="gl-ex">Пример: <tex>\lambda = 0</tex> — логарифм</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с самого простого: что такое ряд как структура данных и что с ним можно сделать до любой модели.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Временной ряд: индекс, частота, агрегация</h2></div>
+  <p class="slead">У ряда есть индекс — время, и частота — шаг между наблюдениями. От частоты зависит, какая сезонность видна: в дневных заказах — неделя, в недельных — год, в часовых — сутки. Первое, что делают с рядом, — проверяют, что даты идут без пропусков, и выбирают нужную частоту агрегацией.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · ряд и агрегация до более крупного шага</div>
+    <texd>y_1, y_2, \dots, y_n \qquad Y_w = \sum_{t \in w} y_t</texd>
+    <div class="where">где <tex>y_t</tex> — значение ряда в момент <tex>t</tex> (заказы за день номер <tex>t</tex>), <tex>n</tex> — длина ряда (731 день), <tex>w</tex> — более крупный период (неделя), <tex>t \in w</tex> — дни этой недели, <tex>Y_w</tex> — значение агрегированного ряда (заказы за неделю). Для «потоковых» величин (заказы, выручка) складывают, для «уровневых» (остаток на складе, курс) берут среднее или последнее значение периода. Пример: неделя 3–9 ноября 2025 — <tex>964 + 1234 + \dots + 1231 = 8431</tex> заказ.</div>
+  </div>
+
+  <p>Пропущенный день в индексе опаснее пропуска в значении: без строки за 15 марта «сдвиг на 7 строк» уже не неделя. Индекс доводят до полной сетки дат, пропуски помечают явно. Ноль продаж — факт, отсутствие данных — дыра, её нельзя молча заменить нулём.</p>
+
+  <p><b>В коде.</b> Полная сетка дат — <code>s.asfreq('D')</code> (пропуски станут NaN), агрегация — <code>s.resample('W-SUN').sum()</code>. <code>s.shift(7)</code> сдвигает по строкам: без полной сетки это не «неделя назад».</p>
+
+  <p class="next">Ряд собран без дыр. Теперь отделим медленное движение уровня от недельной «пилы».</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Тренд и скользящее среднее</h2></div>
+  <p class="slead">Дневные заказы прыгают на 30–40% внутри недели, и рост за месяц в этих прыжках не виден. Если усреднить ровно по одному полному циклу — семи дням, — каждый день недели войдёт в среднее один раз, и цикл исчезнет. Останется тренд.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · центрированное скользящее среднее за 7 дней</div>
+    <texd>\hat T_t = \frac17\sum_{j=-3}^{3} y_{t+j} = \frac{y_{t-3} + y_{t-2} + \dots + y_{t+3}}{7}</texd>
+    <div class="where">где <tex>y_t</tex> — заказы за день <tex>t</tex>, <tex>j</tex> — сдвиг от −3 до 3 дней, <tex>\hat T_t</tex> — оценка тренда в день <tex>t</tex> («шапка» — оценка по данным). Окно центрировано: три дня до, сам день и три дня после. Длина окна равна периоду сезонности, поэтому каждый день недели входит один раз. В первые и последние три дня ряда центрированного среднего нет. Пример: для четверга 6 ноября 2025 окно — 3–9 ноября, <tex>\hat T = 8431/7 = 1204.4</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Тренд в середине недели</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Заказы даркстора 3–9 ноября 2025 (пн–вс): 964, 1234, 1131, 1091, 1303, 1477, 1231. В четверг 6 ноября было 1091 заказ.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Центрированное скользящее среднее для четверга и во сколько раз четверг ниже тренда.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Четверг — середина недели, окно формулы 2 — ровно эта неделя; отношение дня к тренду — его место в цикле.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 2</a> · центрированное скользящее среднее</div>
+        <texd>\hat T_t = \frac17\sum_{j=-3}^{3} y_{t+j}</texd>
+        <div class="fr-w">где <tex>t</tex> — четверг 6 ноября, <tex>y_{t-3}, \dots, y_{t+3}</tex> — 964, 1234, 1131, 1091, 1303, 1477, 1231.</div></div>
+      <p>Сумма <tex>964 + 1234 + 1131 + 1091 + 1303 + 1477 + 1231 = 8431</tex>, <tex>\hat T = 8431/7 = 1204.4</tex>; четверг к тренду — <tex>1091/1204.4 = 0.906</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Тренд в четверг — <b>1204.4</b> заказа в день, сам четверг — на <b>9%</b> ниже (0.906). Но четверг в этом ряду всегда ниже недельного среднего: оценивать день надо по сравнению с обычным четвергом.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · центрированное и обычное (хвостовое) скользящее среднее</div>
+    <p>Центрированное среднее использует три будущих дня — оно годится для анализа прошлого, но не для прогноза и не как признак модели. Хвостовое <code>s.rolling(7).mean()</code> берёт текущий день и шесть предыдущих: его можно знать в момент <tex>t</tex>, но оно отстаёт от тренда на три дня.</p>
+    <p>Пример: для 6 ноября центрированное — 1204.4 (окно 3–9 ноября), хвостовое — среднее 31 октября – 6 ноября.</p>
+  </div>
+
+  <p class="next">Тренд отделён. То, что осталось от дня после деления на тренд, — его место в недельном цикле. Усредним это место по многим неделям.</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Сезонность: период и сезонные индексы</h2></div>
+  <p class="slead">Сезонность — цикл известной длины: неделя в дневных данных, год в месячных, сутки в часовых. Её описывают сезонными индексами — во сколько раз (или на сколько) конкретный день недели обычно выше или ниже тренда. Индексы отвечают на вопрос менеджера: обычная это пятница или особенная.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · сезонный индекс дня недели</div>
+    <texd>s_d = \frac{1}{n_d}\sum_{t \in D_d}\frac{y_t}{\hat T_t}</texd>
+    <div class="where">где <tex>d</tex> — день недели (понедельник, …, воскресенье), <tex>m = 7</tex> — период сезонности, <tex>y_t</tex> — заказы в день <tex>t</tex>, <tex>\hat T_t</tex> — тренд (формула 2), <tex>D_d</tex> — все дни ряда, которые приходятся на день недели <tex>d</tex>, <tex>n_d</tex> — их число, <tex>s_d</tex> — сезонный индекс дня <tex>d</tex>: среднее отношение «день / тренд» по этим дням. Индексы нормируют так, чтобы их среднее было 1. Это мультипликативные индексы; аддитивные — среднее разности <tex>y_t - \hat T_t</tex>. Пример: по двум годам индексы пн–вс — 0.88, 0.93, 0.94, 0.98, 1.10, 1.17, 1.00.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Ноябрь 2025: заказы по дням недели и сезонные индексы</div>
+    <div class="chsub">Ось x — день недели. Голубые столбцы — средние заказы в этот день недели за ноябрь 2025 (левая ось), бирюзовая линия — сезонный индекс по двум годам (правая ось). Пятница выше среды на 18.5% в ноябре и на 16% по индексам (1.098 против 0.943): акция, которую менеджер «увидел», укладывается в обычную неделю.</div>
+    <canvas id="c_week"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Сработала ли пятничная акция</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">В ноябре 2025 средние заказы: среда — 1083.5, пятница — 1284.2, в среднем по месяцу — 1188.2. Сезонные индексы по двум годам: среда — 0.943, пятница — 1.098. Акция шла каждую пятницу ноября.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Насколько пятница выше среды по данным ноября и насколько она была бы выше без всякой акции, по индексам.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">При одном тренде отношение дней — отношение индексов (формула 3); эффект акции — то, что сверх него.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 3</a> · сезонный индекс</div>
+        <texd>\frac{y_{\text{пт}}}{y_{\text{ср}}} \approx \frac{\hat T\cdot s_{\text{пт}}}{\hat T\cdot s_{\text{ср}}} = \frac{s_{\text{пт}}}{s_{\text{ср}}}</texd>
+        <div class="fr-w">где <tex>s_{\text{пт}} = 1.098</tex>, <tex>s_{\text{ср}} = 0.943</tex> — индексы пятницы и среды, <tex>\hat T</tex> — тренд, в одну неделю почти одинаковый; <tex>y</tex> — средние заказы 1284.2 и 1083.5.</div></div>
+      <p>По данным: <tex>1284.2/1083.5 = 1.185</tex>; по индексам: <tex>1.098/0.943 = 1.164</tex>; сверх цикла: <tex>1.185/1.164 = 1.018</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Пятница выше среды на <b>18.5%</b>, обычная пятница — на <b>16.4%</b>. Сверх недельного цикла меньше 2% — в пределах дневного шума (около 5%). Акцию оценивают сравнением с прошлыми пятницами или с прогнозом, а не со средой.</div></div>
+  </div>
+
+  <p><b>В коде.</b> Индексы — <code>(s / s.rolling(7, center=True).mean()).groupby(s.index.dayofweek).mean()</code> (0 — понедельник). Если циклов несколько (час суток и день недели), нужна декомпозиция с несколькими периодами — <code>statsmodels.tsa.seasonal.MSTL</code>.</p>
+
+  <p class="next">Тренд и индексы — две части ряда. Сложим их в полную декомпозицию и посмотрим, что останется.</p>
+</section>
+
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Декомпозиция: тренд, сезонность, остаток</h2></div>
+  <p class="slead">Декомпозиция записывает ряд как сочетание трёх частей. Главный выбор — как они сочетаются: складываются или умножаются. Если с ростом уровня недельные колебания растут в штуках, а в процентах остаются теми же, сезонность мультипликативная — так почти всегда бывает с продажами.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · аддитивная и мультипликативная декомпозиция</div>
+    <texd>y_t = T_t + S_t + R_t \qquad y_t = T_t\cdot S_t\cdot R_t \qquad \ln y_t = \ln T_t + \ln S_t + \ln R_t</texd>
+    <div class="where">где <tex>y_t</tex> — значение ряда, <tex>T_t</tex> — тренд (оценивают скользящим средним, формула 2), <tex>S_t</tex> — сезонная часть: в день <tex>t</tex> равна индексу его дня недели (формула 3), <tex>R_t</tex> — остаток. В аддитивной записи сезонность — «плюс столько-то штук», в мультипликативной — «умножить на столько-то», и логарифм превращает вторую в первую. Пример: тренд 1200, индекс субботы 1.172 — мультипликативно <tex>1200\cdot1.172 = 1406</tex> заказов.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · классическая декомпозиция на трёх неделях</div>
+    <div class="tstep"><b>Шаг 1. Данные.</b> 3–23 ноября 2025, 21 день, понедельник — первый: 964, 1234, 1131, 1091, 1303, 1477, 1231, 1053, 1067, 1031, 1104, 1314, 1425, 1192, 1059, 1127, 1064, 1104, 1257, 1467, 1209.</div>
+    <div class="tstep"><b>Шаг 2. Тренд и отношения.</b> Центрированное среднее (формула 2) есть с 4-го по 18-й день, около 1180–1215. Отношения к нему: четверг 6 ноября <tex>1091/1204.4 = 0.906</tex>, пятница <tex>1303/1217.1 = 1.071</tex>, суббота <tex>1477/1193.3 = 1.238</tex> — и так 15 дней.</div>
+    <div class="tstep"><b>Шаг 3. Индексы.</b> Средние отношений по дням недели (формула 3): 0.893, 0.931, 0.889, 0.927, 1.097, 1.223, 1.026. По двум годам — 0.879, 0.929, 0.943, 0.977, 1.098, 1.172, 1.004: на трёх неделях каждый индекс — среднее двух-трёх чисел, ошибка до 0.05.</div>
+    <div class="tstep"><b>Шаг 4. Остаток.</b> <tex>R_t = y_t/(\hat T_t s_d)</tex>: четверг 6 ноября по индексам двух лет — <tex>1091/(1204.4\cdot0.977) = 0.927</tex>, на 7% ниже обычного четверга. Объяснять стоит именно это, а не 9% «ниже среднего».</div>
+    <div class="tstep"><b>Итог.</b> Скользящее среднее → отношения → средние по дням недели → остаток. Для индексов нужны многие циклы: по двум годам они отличаются от заложенных в данные не больше чем на 0.01.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Остаток мультипликативной декомпозиции</div>
+    <div class="chsub">Ось x — дни, ось y — остаток <tex>R_t</tex>: 1 — день ровно такой, как ожидают тренд и неделя. Обычный разброс — около ±6% (стандартное отклонение 0.058). Выбросы — праздники: 31 декабря 2024 — 1.65, 1–3 января 2025 — 0.72–0.73. Если праздники не учесть, модель будет считать их шумом или, хуже, «выучит» их в тренд.</div>
+    <canvas id="c_resid"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · аддитивная и мультипликативная сезонность</div>
+    <p>Аддитивная: суббота «плюс 150 заказов» при любом уровне. Мультипликативная: суббота «плюс 17%», и в штуках разница растёт вместе с уровнем. Проверка — сравнить размах недели в начале и в конце ряда в штуках и в процентах.</p>
+    <p>Пример: суббота минус понедельник — 242 заказа в январе–феврале 2024 (уровень 861) и 392 в октябре–ноябре 2025 (уровень 1167); в отношениях — 1.32 и 1.39. Штуки выросли на 62%, отношение — почти нет: сезонность мультипликативная.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>seasonal_decompose(s, model='multiplicative', period=7)</code> из <code>statsmodels.tsa.seasonal</code> — классическая декомпозиция из трассировки; устойчивее к выбросам <code>STL</code>.</p>
+
+  <p class="next">Декомпозиция показывает части ряда. Есть и прямой способ увидеть, насколько ряд «помнит» своё прошлое и с каким периодом — автокорреляция.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Автокорреляция</h2></div>
+  <p class="slead">Автокорреляция — корреляция ряда с самим собой, сдвинутым на <tex>k</tex> шагов. Если сегодняшние заказы похожи на вчерашние, корреляция на лаге 1 высокая; если похожи на прошлую неделю — пик на лаге 7. График автокорреляций по лагам (ACF) — первая диагностика любого ряда.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · выборочная автокорреляция на лаге k</div>
+    <texd>r_k = \frac{\sum_{t=1}^{n-k}(y_t - \bar y)(y_{t+k} - \bar y)}{\sum_{t=1}^{n}(y_t - \bar y)^2}</texd>
+    <div class="where">где <tex>k</tex> — лаг (сдвиг в шагах), <tex>n</tex> — длина ряда, <tex>y_t</tex> — значение ряда, <tex>\bar y</tex> — среднее всего ряда, <tex>r_k</tex> — автокорреляция на лаге <tex>k</tex>, от −1 до 1. В числителе — сумма произведений отклонений пар, отстоящих на <tex>k</tex>, в знаменателе — сумма квадратов отклонений всего ряда (так считает <code>statsmodels.tsa.stattools.acf</code>). Это почти корреляция Пирсона (<a href="block0_01_expectation_variance.html#s9">0.1, секция 9</a>), только оба ряда — один и тот же. Пример: дневные заказы — <tex>r_1 = 0.68</tex>, <tex>r_7 = 0.82</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Автокорреляция на лаге 1 вручную</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть дней продаж одного товара: 12, 14, 15, 13, 11, 10 штук.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Автокорреляцию на лаге 1.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Считаем отклонения от среднего, произведения соседних отклонений и делим их сумму на сумму квадратов — формула 5 при <tex>k = 1</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 5</a> · автокорреляция</div>
+        <texd>r_1 = \frac{\sum_{t=1}^{n-1}(y_t - \bar y)(y_{t+1} - \bar y)}{\sum_{t=1}^{n}(y_t - \bar y)^2}</texd>
+        <div class="fr-w">где <tex>n = 6</tex>, <tex>y_t</tex> — 12, 14, 15, 13, 11, 10, <tex>\bar y = 75/6 = 12.5</tex>.</div></div>
+      <p>Отклонения: −0.5, 1.5, 2.5, 0.5, −1.5, −2.5.</p>
+      <p>Числитель — произведения соседних отклонений: <tex>-0.75 + 3.75 + 1.25 - 0.75 + 3.75 = 7.25</tex>. Знаменатель — квадраты: <tex>0.25 + 2.25 + 6.25 + 0.25 + 2.25 + 6.25 = 17.5</tex>. <tex>r_1 = 7.25/17.5 = 0.414</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><tex>r_1</tex> = <b>0.414</b>: соседние дни похожи — рост и спад идут «волной», а не скачут случайно. На шести точках это очень грубая оценка: у независимого шума длины 6 выборочная <tex>r_1</tex> легко бывает ±0.4. Автокорреляцию оценивают на десятках и сотнях точек.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">ACF заказов: исходный ряд и после разностей</div>
+    <div class="chsub">Ось x — лаг в днях, ось y — автокорреляция <tex>r_k</tex>. Голубые столбцы — исходный ряд: всё высоко (тренд), пики на 7, 14, 21 (неделя): <tex>r_7 = 0.82</tex>. Бирюзовые — первая разность (секция 9): тренд ушёл, неделя осталась (<tex>r_7 = 0.58</tex>). Оранжевые — сезонная разность логарифма: почти всё около нуля, кроме <tex>r_7 = -0.44</tex> — след самой разности (секция 9). Серый пунктир — примерная граница шума <tex>\pm 2/\sqrt n = \pm0.074</tex>.</div>
+    <canvas id="c_acf"></canvas>
+  </div>
+
+  <p class="next">Высокая автокорреляция — не только инструмент, но и ловушка: из-за неё два независимых растущих ряда легко выглядят связанными.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Ложная корреляция трендовых рядов</h2></div>
+  <p class="slead">Корреляция Пирсона считает объекты независимыми. У двух рядов с трендом соседние точки не независимы, и общий наклон сам по себе даёт высокую корреляцию — даже если ряды никак не связаны. Это классическая ошибка: «выручка растёт вместе с числом сотрудников, значит…».</p>
+
+  <div class="chb">
+    <div class="cht">Недельные заказы и установки приложения</div>
+    <div class="chsub">Ось x — недели (102 полные недели), голубая — заказы за неделю (левая ось), оранжевая — среднее число установок за день (правая ось). Обе растут, корреляция уровней — 0.90. Установки смоделированы независимо от заказов (случайное блуждание с дрейфом): корреляция недельных приростов — 0.115, не отличима от нуля.</div>
+    <canvas id="c_spur"></canvas>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как часто независимые блуждания «коррелируют»</div>
+    <div class="tstep"><b>Шаг 1. Опыт.</b> Две независимые последовательности по 731 шагу: каждый шаг — независимый шум со средним 0. Накопленные суммы — два случайных блуждания (секция 8), никакой связи между ними нет.</div>
+    <div class="tstep"><b>Шаг 2. Корреляция уровней.</b> 2000 повторов: медиана <tex>|r|</tex> — 0.41, в 39% повторов <tex>|r| \gt 0.5</tex>. Тест на значимость корреляции (0.6) счёл бы почти все такие связи «значимыми»: он считает 731 точку независимыми, а их тут фактически единицы.</div>
+    <div class="tstep"><b>Шаг 3. Корреляция приростов.</b> Те же пары, но корреляция шагов (первых разностей, секция 9): медиана <tex>|r|</tex> — 0.025, <tex>|r| \gt 0.1</tex> — в 0.8% повторов. Приросты независимы, и корреляция ведёт себя как положено.</div>
+    <div class="tstep"><b>Итог.</b> Если оба ряда долго выше своего среднего, а потом долго ниже, произведения отклонений в формуле 5 почти всегда положительны — корреляция высока без всякой связи. Связь трендовых рядов проверяют по приростам или остаткам.</div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · общий тренд и связь</div>
+    <p>Общий тренд у двух рядов — повод проверить связь, а не доказательство. Если показатель A действительно влияет на B, всплески A отражаются во всплесках B — это видно в приростах. Если связь только в тренде, приросты некоррелированы.</p>
+    <p>Пример: уровни заказов и установок — 0.90, недельные приросты — 0.115.</p>
+  </div>
+
+  <p class="next">Корень проблемы — ряды, у которых нет постоянного уровня. Это свойство называют нестационарностью.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Стационарность</h2></div>
+  <p class="slead">Классические модели рядов (ARIMA, 5.3) предполагают, что свойства ряда не меняются во времени: среднее, разброс и связь соседних точек одни и те же. Такой ряд — стационарный. Заказы даркстора — нет: растёт уровень и есть неделя.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · слабая стационарность и случайное блуждание</div>
+    <texd>\mathbb{E}\,y_t = \mu \qquad \operatorname{Cov}(y_t, y_{t+k}) = \gamma_k \qquad y_t = y_{t-1} + \varepsilon_t \Rightarrow \operatorname{Var} y_t = t\,\sigma^2</texd>
+    <div class="where">где <tex>\mathbb{E}\,y_t</tex> — среднее ряда в момент <tex>t</tex> (матожидание, <a href="block0_01_expectation_variance.html#s5">0.1, секция 5</a>), <tex>\mu</tex> — постоянное среднее, <tex>\operatorname{Cov}(y_t, y_{t+k})</tex> — ковариация значений через <tex>k</tex> шагов, <tex>\gamma_k</tex> — число, зависящее только от лага <tex>k</tex>, а не от <tex>t</tex>. Случайное блуждание: вчерашнее значение плюс независимый шаг <tex>\varepsilon_t</tex> (среднее 0, дисперсия <tex>\sigma^2</tex>), старт <tex>y_0 = 0</tex>; дисперсия растёт со временем — нестационарно. Белый шум (сами <tex>\varepsilon_t</tex>) стационарен. Пример: шаги со стандартным отклонением 6 — через 100 дней разброс 60, через 400 — 120.</div>
+  </div>
+
+  <p>Почему <tex>\operatorname{Var} y_t = t\sigma^2</tex>. <b>Шаг 1.</b> Разворачиваем: <tex>y_t = \varepsilon_1 + \varepsilon_2 + \dots + \varepsilon_t</tex>. <b>Шаг 2.</b> Шаги независимы, дисперсия суммы независимых — сумма дисперсий (<a href="block0_01_expectation_variance.html#s8">0.1, секция 8</a>): <tex>t</tex> слагаемых по <tex>\sigma^2</tex>. Моделирование: при <tex>\sigma = 1</tex> дисперсия на шаге 100 — 99.8, на шаге 400 — 386 (теория 100 и 400). Нестационарен и ряд без всякого тренда: с сезонностью (среднее зависит от дня недели) или блуждание без наклона (растёт дисперсия).</p>
+
+  <div class="chb">
+    <div class="cht">Пять случайных блужданий и коридор ±2σ√t</div>
+    <div class="chsub">Ось x — шаг <tex>t</tex>, ось y — значение. Цветные линии — пять независимых блужданий с шагом <tex>\sigma = 6</tex>; серые пунктиры — коридор <tex>\pm 2\cdot6\sqrt t</tex>, в котором блуждание находится примерно в 95% случаев. Коридор расширяется: у блуждания нет «своего» уровня, к которому оно возвращается, и прогноз «через год» неопределённее прогноза «на завтра».</div>
+    <canvas id="c_rw"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Насколько далеко уйдёт блуждающий остаток</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Ошибка учёта остатков на складе накапливается: каждый день к расхождению «база минус факт» прибавляется независимая ошибка со средним 0 и стандартным отклонением 6 штук. Инвентаризация обнуляет расхождение.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Стандартное отклонение расхождения через 100 и 400 дней после инвентаризации и границы, в которых оно будет с вероятностью около 95% через 100 дней.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Расхождение — случайное блуждание, его дисперсия <tex>t\sigma^2</tex> (формула 6); стандартное отклонение — корень. 95% нормального распределения — в пределах двух стандартных отклонений.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 6</a> · дисперсия случайного блуждания</div>
+        <texd>\operatorname{Var} y_t = t\,\sigma^2 \qquad \operatorname{sd} y_t = \sigma\sqrt t</texd>
+        <div class="fr-w">где <tex>\sigma = 6</tex> штук — разброс дневной ошибки, <tex>t</tex> = 100 и 400 дней.</div></div>
+      <p><tex>6\sqrt{100} = 60</tex>, <tex>6\sqrt{400} = 120</tex>, коридор <tex>\pm2\cdot60 = \pm120</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Через 100 дней разброс <b>60</b> штук, через 400 — <b>120</b>; через 100 дней расхождение почти наверняка в пределах <b>±120</b>. Накопленные ошибки растут как <tex>\sqrt t</tex>: вчетверо больше времени — вдвое больше разброс.</div></div>
+  </div>
+
+  <p class="next">Как сделать ряд стационарным? Самый простой и самый частый способ — перейти от уровней к изменениям.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Разности: обычная и сезонная</h2></div>
+  <p class="slead">Если уровень блуждает, изменения могут быть стационарными: шаги блуждания — белый шум. Первая разность убирает тренд, сезонная разность — повторяющийся цикл. Модели ARIMA (5.3) так и строятся: сначала разности, потом модель для того, что осталось.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · первая и сезонная разность</div>
+    <texd>\Delta y_t = y_t - y_{t-1} \qquad \Delta_m y_t = y_t - y_{t-m}</texd>
+    <div class="where">где <tex>y_t</tex> — значение ряда в момент <tex>t</tex>, <tex>\Delta y_t</tex> — изменение за один шаг (первая разность), <tex>m</tex> — период сезонности, <tex>\Delta_m y_t</tex> — изменение по сравнению с тем же днём прошлого цикла (сезонная разность; для дневных данных с неделей <tex>m = 7</tex>). Разность случайного блуждания — его шаг <tex>\varepsilon_t</tex>, белый шум. Ряд после первой разности короче на 1, после сезонной — на <tex>m</tex>. Пример: понедельник 10 ноября — 1053, понедельник 3 ноября — 964, <tex>\Delta_7 y = 89</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Неделя к неделе</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Заказы 3–9 ноября 2025 (пн–вс): 964, 1234, 1131, 1091, 1303, 1477, 1231; 10–16 ноября: 1053, 1067, 1031, 1104, 1314, 1425, 1192.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Первые разности второй недели и сезонные разности <tex>\Delta_7</tex>; какая из них отвечает на вопрос «стало ли лучше, чем неделю назад».</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Первая разность сравнивает день с предыдущим днём и потому содержит недельный цикл. Сезонная сравнивает с тем же днём недели — цикл в ней сокращается (формула 7).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 7</a> · разности</div>
+        <texd>\Delta y_t = y_t - y_{t-1} \qquad \Delta_7 y_t = y_t - y_{t-7}</texd>
+        <div class="fr-w">где <tex>y_t</tex> — заказы 10–16 ноября, <tex>y_{t-1}</tex> — предыдущий день, <tex>y_{t-7}</tex> — тот же день неделей раньше.</div></div>
+      <p>Первые разности: понедельник <tex>1053 - 1231 = -178</tex> (к воскресенью прошлой недели), вторник <tex>1067 - 1053 = 14</tex>, дальше −36, 73, 210, 111, −233.</p>
+      <p>Сезонные разности: понедельник <tex>1053 - 964 = 89</tex>, вторник <tex>1067 - 1234 = -167</tex>, дальше −100, 13, 11, −52, −39.</p>
+      <p>Сумма сезонных разностей <tex>89 - 167 - 100 + 13 + 11 - 52 - 39 = -245</tex>, то есть неделя 10–16 ноября меньше прошлой на 245 заказов: 8186 против 8431.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Первые разности <b>−178, 14, −36, 73, 210, 111, −233</b> повторяют недельный узор и о динамике не говорят. Сезонные <b>89, −167, −100, 13, 11, −52, −39</b> показывают: неделя на 3% хуже прошлой. На вопрос «стало ли лучше» отвечает сезонная разность.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · нужная разность и лишняя</div>
+    <p>Лишняя разность не делает ряд «ещё стационарнее», а портит его: разность белого шума <tex>\varepsilon_t - \varepsilon_{t-1}</tex> имеет автокорреляцию −0.5 на лаге 1, сезонная разность — −0.5 на лаге <tex>m</tex>. Модель потом тратит параметры, чтобы это отменить.</p>
+    <p>Пример: после сезонной разности логарифма заказов почти все автокорреляции около нуля, кроме <tex>r_7 = -0.44</tex> — след самой разности: шум дня входит в разность этого дня и (с минусом) в разность через неделю.</p>
+  </div>
+
+
+  <p class="next">После разностей ряд выглядит стационарным. Можно ли это проверить формально? Да — тестами на единичный корень.</p>
+</section>
+
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Проверка стационарности: тесты ADF и KPSS</h2></div>
+  <p class="slead">По графику и ACF обычно видно, стационарен ли ряд. Формальная проверка — тесты на единичный корень. Их два, и они задают вопрос с противоположных сторон, поэтому их запускают вместе.</p>
+
+  <p>Тест Дики — Фуллера (ADF) проверяет, похож ли ряд на блуждание: если ряд возвращается к своему уровню, то чем выше он сегодня, тем сильнее завтрашнее изменение тянет вниз. У блуждания такой зависимости нет.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · регрессия теста Дики — Фуллера</div>
+    <texd>\Delta y_t = \alpha + \beta t + \gamma\, y_{t-1} + \sum_{j=1}^{p}\varphi_j\,\Delta y_{t-j} + \varepsilon_t \qquad H_0 : \gamma = 0</texd>
+    <div class="where">где <tex>\Delta y_t</tex> — первая разность (формула 7), <tex>\alpha</tex> — свободный член, <tex>\beta t</tex> — линейный тренд (его включают по выбору), <tex>\gamma</tex> — коэффициент при вчерашнем уровне <tex>y_{t-1}</tex>, <tex>\varphi_j</tex> — коэффициенты при прошлых разностях (их <tex>p</tex> штук, чтобы остаток <tex>\varepsilon_t</tex> был без автокорреляции), <tex>H_0</tex> — нулевая гипотеза (0.6). <tex>\gamma = 0</tex> — единичный корень, ряд как блуждание; <tex>\gamma \lt 0</tex> — ряд тянется к уровню. У KPSS нулевая гипотеза обратная — ряд стационарен. Пример: исходные заказы — p ADF 0.998, p KPSS меньше 0.01.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Ряд заказов (731 день)</th><th>p-value ADF · KPSS</th></tr>
+    <tr class="worst"><td>исходный</td><td class="r">0.998 · меньше 0.01</td></tr>
+    <tr><td>первая разность</td><td class="k">меньше 0.001 · больше 0.1</td></tr>
+    <tr class="best"><td>сезонная разность логарифма</td><td class="g">меньше 0.001 · больше 0.1</td></tr>
+  </table>
+  <p class="tcap">statsmodels: <code>adfuller(x, autolag='AIC')</code>, <code>kpss(x, nlags='auto')</code>. KPSS печатает p-value только в диапазоне 0.01–0.1 и предупреждает, если настоящее значение за пределами таблицы.</p>
+
+  <p>Исходный ряд: оба теста говорят «нестационарен», после разностей — оба за стационарность. Если тесты противоречат друг другу, ряд часто стационарен вокруг тренда или в нём есть сдвиг уровня — смотрят на график.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · нулевые гипотезы ADF и KPSS</div>
+    <p>ADF: <tex>H_0</tex> — нестационарен (единичный корень), маленький p — «стационарен». KPSS: <tex>H_0</tex> — стационарен, маленький p — «нестационарен». Большой p-value ни в одном тесте не доказывает свою гипотезу: на коротком ряде у теста мало данных, и он просто не может отличить одно от другого.</p>
+    <p>Пример: p ADF 0.998 у исходных заказов не значит «точно блуждание» — у них детерминированный рост и неделя, и тест отвечает только на свой узкий вопрос.</p>
+  </div>
+
+  <p class="next">Разности убирают тренд и неделю. Остаётся одна проблема мультипликативных рядов: разброс растёт вместе с уровнем. Её лечат логарифмом.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Логарифм и преобразование Бокса — Кокса</h2></div>
+  <p class="slead">У продаж разброс почти всегда растёт с уровнем: при 800 заказах колебания ±40, при 1200 — ±60. Модели с постоянной дисперсией ошибок это нарушает. Логарифм превращает «плюс 5%» в «плюс одно и то же число», и мультипликативный ряд становится аддитивным.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · преобразование Бокса — Кокса</div>
+    <texd>y^{(\lambda)} = \frac{y^{\lambda} - 1}{\lambda} \quad (\lambda \ne 0) \qquad y^{(0)} = \ln y</texd>
+    <div class="where">где <tex>y</tex> — значение ряда (должно быть положительным), <tex>\lambda</tex> — параметр преобразования, <tex>y^{(\lambda)}</tex> — преобразованное значение. <tex>\lambda = 1</tex> — сдвиг без изменения формы, <tex>\lambda = 0.5</tex> — корень, <tex>\lambda = 0</tex> — логарифм (предел формулы при <tex>\lambda \to 0</tex>). <tex>\lambda</tex> подбирают так, чтобы разброс перестал зависеть от уровня. Пример: <tex>\lambda = 0.5</tex>, <tex>y = 900</tex> — <tex>(30 - 1)/0.5 = 58</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Суббота в логарифмах</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Тренд заказов в конце ноября — 1200 в день, сезонный индекс субботы — 1.172, сезонность мультипликативная (формула 4). Модель хочет работать с аддитивной записью.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Ожидаемые заказы в субботу и запись того же прогноза в логарифмах.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Мультипликативно: тренд умножить на индекс. Логарифм произведения — сумма логарифмов (формула 9 при <tex>\lambda = 0</tex>, где <tex>\lambda</tex> — параметр Бокса — Кокса), обратный переход — экспонента.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 9</a> · логарифм как преобразование</div>
+        <texd>y^{(0)} = \ln y \qquad \ln(T\cdot s) = \ln T + \ln s</texd>
+        <div class="fr-w">где <tex>T = 1200</tex> — тренд, <tex>s = 1.172</tex> — индекс субботы.</div></div>
+      <p><tex>1200\cdot1.172 = 1406.4</tex>; в логарифмах <tex>\ln1200 + \ln1.172 = 7.0901 + 0.1587 = 7.2488</tex>, и обратно <tex>e^{7.2488} = 1406.4</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">В субботу ожидается <b>1406</b> заказов, в логарифмах <b>7.2488 = 7.0901 + 0.1587</b>: «суббота» — постоянная добавка 0.159 при любом тренде. Экспонента среднего прогноза логарифма — медиана, а не среднее.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · логарифм и нули</div>
+    <p>Логарифм нуля не определён, а у редких товаров дни без продаж обычны. Берут <tex>\ln(1 + y)</tex> (<code>np.log1p</code>) или отдельно моделируют нули (5.7). Бокс — Кокс тоже требует положительных значений; для нулей есть вариант Йео — Джонсона.</p>
+    <p>Пример: продажи 0, 1, 3 → <tex>\ln(1 + y)</tex> = 0, 0.693, 1.386.</p>
+  </div>
+
+  <p class="next">Ряд приведён в порядок математически. Осталось то, что не описывается ни трендом, ни неделей: праздники, сбои, сдвиги уровня.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Календарь, пропуски и аномалии</h2></div>
+  <p class="slead">Остаток декомпозиции редко бывает чистым шумом: в нём праздники, сбои учёта, дефицит, сдвиги уровня. Не разобравшись с ними, модель выучит их как закономерность или как тренд.</p>
+
+  <table class="ct">
+    <tr><th>Явление в остатке</th><th>Что делать</th></tr>
+    <tr><td>праздники (31 декабря — 1.65, 1–3 января — 0.72)</td><td>календарь праздников как признак</td></tr>
+    <tr><td>пропуск дат или данных</td><td>полная сетка дат, явная пометка</td></tr>
+    <tr><td>дефицит товара</td><td>продажи занижены — это не спрос (3.2)</td></tr>
+    <tr><td>сдвиг уровня</td><td>индикатор «после даты», иначе исказится тренд</td></tr>
+    <tr><td>сбой учёта</td><td>исправить или исключить из обучения</td></tr>
+  </table>
+
+  <p>Теперь можно собрать ряд из частей самому и посмотреть, как каждая из них выглядит в ACF.</p>
+
+  <div class="play">
+    <h4>Песочница: собери ряд</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">140 дней: уровень 100 плюс выбранные части. Тренд — +0.3 в день; неделя — индексы как у даркстора (суббота +17%); блуждание — накопленные случайные шаги с разбросом 3; шум — независимый, разброс 5 (есть всегда). Верхний график — ряд (или его разность), нижний — ACF на лагах 1–21 с границей шума <tex>\pm 2/\sqrt n</tex>. ACF считается по формуле 5 и совпала со <code>statsmodels</code> в 24 проверенных вариантах из 24.</p>
+    <div class="prow"><button type="button" id="pt_on" class="pbtn">тренд</button><button type="button" id="ps_on" class="pbtn">неделя</button><button type="button" id="pw_on" class="pbtn">блуждание</button></div>
+    <div class="prow"><button type="button" id="pd_0" class="pbtn">без разности</button><button type="button" id="pd_1" class="pbtn">Δ — первая разность</button><button type="button" id="pd_7" class="pbtn">Δ₇ — сезонная</button></div>
+    <div class="prow"><button type="button" id="pn_new" class="pbtn">новый шум</button></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="chb"><canvas id="c_pacf"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+  <p class="tcap" id="play_hint">Что попробовать (начальный шум). (1) Всё выключено: только шум, все <tex>r_k</tex> около нуля. (2) Неделя: пики <tex>r_7 = 0.71</tex>, <tex>r_{14} = 0.69</tex>. Включите Δ₇ — неделя исчезла, но <tex>r_7 = -0.50</tex>: след сезонной разности шума. (3) Только тренд: <tex>r_1 = 0.84</tex> и медленное убывание до 0.60 на лаге 14 — так выглядит нестационарный ряд. Первая разность убирает тренд, но даёт <tex>r_1 = -0.46</tex> — лишняя разность шума. (4) Только блуждание: <tex>r_1 = 0.87</tex>, медленное убывание; первая разность делает ряд почти белым шумом.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · выброс и событие</div>
+    <p>Выброс — ошибка данных, которую можно исправить или выбросить. Событие — настоящая часть ряда (праздник, акция), которая повторится; его не удаляют, а описывают признаком, иначе модель не будет готова к следующему 31 декабря.</p>
+    <p>Пример: 31 декабря 2024 — 1.65 от ожидаемого. Если «почистить» его как выброс, прогноз на 31 декабря 2025 будет на 40% ниже факта.</p>
+  </div>
+
+  <p class="next">Мы разобрали ряд на части и научились приводить его к стационарному. Соберём, где это нужно в работе, и пройдёмся по типичным ошибкам.</p>
+</section>
+
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в ML и 15 подводных камней</h2></div>
+  <p class="slead">Всё, что в этой теме, делается до модели: разбор ряда на части решает, какие признаки строить, какую модель брать и как её проверять. Ошибки здесь тихие — модель обучается, метрики выглядят хорошо, а выводы неверны.</p>
+
+  <p>Где нужно: прогноз спроса (3.2, 5.5), ARIMA и сглаживание (5.2, 5.3), валидация на рядах (5.4), продуктовая аналитика, мониторинг аномалий по остатку. Порядок: сетка дат → скользящее среднее → сезонные индексы и вид сезонности → логарифм → ACF и разности → календарь событий → модель.</p>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">15 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Сравнение дня с соседним днём</b><span>Пятница выше среды на 18.5% просто потому, что это пятница: по сезонным индексам (<tex>s_d</tex> — индекс дня недели) обычная разница 16.4% (задача 2). Сравнивают с тем же днём прошлой недели или с прогнозом.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Корреляция уровней двух растущих рядов</b><span>Независимые заказы и установки: 0.90 по уровням, 0.115 по приростам (секция 7). Связь проверяют по разностям или остаткам.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Пропущенные даты в индексе</b><span><code>shift(7)</code> сдвигает на 7 строк; если строки за день нет, это уже не неделя назад (секция 2). Сначала <code>asfreq('D')</code>.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Пропуск заменён нулём</b><span>«Нет данных» и «ноль продаж» — разные вещи; ноль вместо дыры занижает тренд и ломает сезонные индексы (секция 2).</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Скользящее среднее не на полный период</b><span>Окно 5 дней при недельной сезонности оставляет «пилу»: в одно окно попадают две субботы, в другое — ни одной. Окно — ровно период <tex>m</tex> (период сезонности) (секция 3).</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Центрированное среднее как признак модели</b><span>Оно использует три будущих дня — утечка из будущего (секция 3). Для признаков — только хвостовые окна по прошлому.</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Аддитивная декомпозиция мультипликативного ряда</b><span>Размах недели в штуках вырос с 242 до 392, в процентах — почти нет (секция 5). Аддитивные индексы будут занижать пики в конце ряда и завышать в начале — логарифм или мультипликативная модель.</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Сезонные индексы по нескольким неделям</b><span>Три недели дают ошибку индексов до 0.05 — как сам эффект, который хотят измерить (секция 5). Нужны многие циклы.</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>ACF по короткому ряду</b><span>На шести точках <tex>r_1 = 0.41</tex> (<tex>r_1</tex> — автокорреляция на лаге 1) ничего не доказывает: граница шума <tex>\pm2/\sqrt n</tex> там около ±0.8 (задача 3).</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Значимость корреляции по формуле для независимых</b><span>Тест корреляции считает точки независимыми; у двух блужданий он «находит» связь в большинстве случаев: <tex>|r| \gt 0.5</tex> в 39% пар (секция 7).</span></div></div>
+  <div class="pf"><div class="pfn">11</div><div class="pfc"><b>«Нет тренда — значит стационарен»</b><span>Ряд с неделей нестационарен, у блуждания нет наклона, но разброс растёт как <tex>\sigma\sqrt t</tex> (<tex>\sigma</tex> — разброс шага) (секция 8).</span></div></div>
+  <div class="pf"><div class="pfn">12</div><div class="pfc"><b>Лишняя разность</b><span>Разность шума даёт автокорреляцию −0.5: <tex>r_1 = -0.46</tex> после первой разности ряда, где был только тренд, <tex>r_7 = -0.44</tex> после сезонной (секция 9, песочница).</span></div></div>
+  <div class="pf"><div class="pfn">13</div><div class="pfc"><b>Большой p-value ADF как доказательство блуждания</b><span>Тест не отвергает свою гипотезу и при коротком ряде, и при тренде со сдвигом уровня; ADF и KPSS запускают вместе и смотрят на график (секция 10).</span></div></div>
+  <div class="pf"><div class="pfn">14</div><div class="pfc"><b>Логарифм ряда с нулями</b><span><tex>\ln 0</tex> не определён; <code>log1p</code> или отдельная модель нулей (секция 11). И экспонента прогноза логарифма — медиана, а не среднее.</span></div></div>
+  <div class="pf"><div class="pfn">15</div><div class="pfc"><b>Праздник удалён как выброс</b><span>31 декабря — 1.65 от обычного дня; удалив его, получают прогноз на следующий 31 декабря на 40% ниже факта (секция 12). События описывают признаками.</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и проверить себя на задачах с собеседований.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Все формулы темы на одном экране, затем пять задач, которые задают на собеседованиях по временным рядам. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Ряд и агрегация</b><br><tex>y_1, \dots, y_n;\ Y_w = \sum_{t \in w} y_t</tex><div class="cs-w">потоки суммируют, уровни усредняют</div></td><td>переход к другой частоте</td></tr>
+    <tr><td><a href="#s3">2</a></td><td><b>Центрированное скользящее среднее</b><br><tex>\hat T_t = \frac17\sum_{j=-3}^{3} y_{t+j}</tex><div class="cs-w">окно = период сезонности</div></td><td>оценка тренда</td></tr>
+    <tr><td><a href="#s4">3</a></td><td><b>Сезонный индекс</b><br><tex>s_d = \frac{1}{n_d}\sum_{t \in D_d} y_t/\hat T_t</tex><div class="cs-w"><tex>D_d</tex> — дни дня недели <tex>d</tex></div></td><td>обычный уровень дня недели</td></tr>
+    <tr><td><a href="#s5">4</a></td><td><b>Декомпозиция</b><br><tex>y = T + S + R</tex> или <tex>y = T\cdot S\cdot R</tex><div class="cs-w">логарифм переводит вторую в первую</div></td><td>разобрать ряд на части</td></tr>
+    <tr><td><a href="#s6">5</a></td><td><b>Автокорреляция</b><br><tex>r_k = \sum(y_t - \bar y)(y_{t+k} - \bar y)/\sum(y_t - \bar y)^2</tex><div class="cs-w">шум — в пределах <tex>\pm2/\sqrt n</tex></div></td><td>память и период ряда</td></tr>
+    <tr><td><a href="#s8">6</a></td><td><b>Стационарность и блуждание</b><br><tex>\mathbb{E}y_t = \mu,\ \operatorname{Cov}(y_t, y_{t+k}) = \gamma_k;\ \operatorname{Var}(\text{блуждание}) = t\sigma^2</tex><div class="cs-w"><tex>\sigma</tex> — разброс шага</div></td><td>можно ли моделировать уровни</td></tr>
+    <tr><td><a href="#s9">7</a></td><td><b>Разности</b><br><tex>\Delta y_t = y_t - y_{t-1};\ \Delta_m y_t = y_t - y_{t-m}</tex><div class="cs-w"><tex>m</tex> — период сезонности</div></td><td>убрать тренд и цикл</td></tr>
+    <tr><td><a href="#s10">8</a></td><td><b>Тест Дики — Фуллера</b><br><tex>\Delta y_t = \alpha + \beta t + \gamma y_{t-1} + \sum\varphi_j\Delta y_{t-j} + \varepsilon_t,\ H_0 : \gamma = 0</tex><div class="cs-w">KPSS — обратная гипотеза</div></td><td>формальная проверка</td></tr>
+    <tr><td><a href="#s11">9</a></td><td><b>Бокс — Кокс</b><br><tex>y^{(\lambda)} = (y^\lambda - 1)/\lambda;\ y^{(0)} = \ln y</tex><div class="cs-w">только для положительных <tex>y</tex></div></td><td>разброс растёт с уровнем</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте: у каждой формулы там есть смысл и численный пример.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Корреляция двух растущих метрик</div>
+    <div class="task-q">Продакт приносит график: выручка и число активных пользователей за два года, корреляция 0.95. «Значит, каждый новый пользователь приносит выручку». Что не так и как проверить связь?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Проблема.</b> Оба ряда нестационарны — у них тренд. Корреляция уровней трендовых рядов высока даже у независимых рядов: у двух независимых блужданий длины 731 <tex>|r| \gt 0.5</tex> в 39% случаев. Тест значимости считает точки независимыми и «находит» связь почти всегда.</p>
+      <p><b>Проверка.</b> Корреляция приростов (первых или сезонных разностей) или остатков после удаления тренда и сезонности. Если связь настоящая, всплески пользователей отражаются во всплесках выручки. Сильнее — эксперимент или квазиэксперимент (блок 4).</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Почему случайное блуждание нестационарно</div>
+    <div class="task-q">Ряд <tex>y_t = y_{t-1} + \varepsilon_t</tex>, <tex>y_0 = 0</tex>, шаги независимы со средним 0 и дисперсией <tex>\sigma^2</tex>. Найдите среднее, дисперсию и ковариацию <tex>y_t</tex> и <tex>y_{t+k}</tex>. Стационарен ли ряд? А его разности?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Разворачиваем.</b> <tex>y_t = \varepsilon_1 + \dots + \varepsilon_t</tex>. Среднее <tex>\mathbb{E}y_t = 0</tex> — постоянное.</p>
+      <p><b>Дисперсия.</b> Сумма независимых: <tex>\operatorname{Var}y_t = t\sigma^2</tex> — растёт с <tex>t</tex>.</p>
+      <p><b>Ковариация.</b> <tex>y_{t+k} = y_t + \varepsilon_{t+1} + \dots + \varepsilon_{t+k}</tex>, новые шаги не зависят от <tex>y_t</tex>: <tex>\operatorname{Cov}(y_t, y_{t+k}) = \operatorname{Var}y_t = t\sigma^2</tex> — зависит от <tex>t</tex>, а не только от <tex>k</tex>.</p>
+      <p><b>Вывод.</b> Нестационарен (дисперсия и ковариации зависят от времени), хотя среднее постоянно. Разности <tex>\Delta y_t = \varepsilon_t</tex> — белый шум, стационарны.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Аддитивная или мультипликативная сезонность</div>
+    <div class="task-q">Как по данным решить, какую декомпозицию брать? Что будет, если взять аддитивную для ряда продаж, который за два года вырос в полтора раза?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Проверка.</b> Сравнить размах сезонного цикла в начале и в конце: если в штуках он растёт вместе с уровнем, а в процентах постоянен — мультипликативная. В заказах даркстора суббота минус понедельник выросла с 242 до 392, отношение — с 1.32 до 1.39.</p>
+      <p><b>Ошибка аддитивной.</b> Индексы — среднее «плюс столько-то штук» по всему ряду: в начале пики будут завышены, в конце — занижены, а остаток получит сезонный узор, который растёт со временем.</p>
+      <p><b>Решение.</b> Мультипликативная модель или аддитивная на логарифме: <tex>\ln y = \ln T + \ln S + \ln R</tex>.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 4 · ACF ряда с неделей</div>
+    <div class="task-q">Дневные продажи с ростом и недельной сезонностью. Как выглядит ACF исходного ряда, первой разности и сезонной разности? Что значит отрицательная автокорреляция на лаге 7 после сезонной разности?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Исходный ряд.</b> Все <tex>r_k</tex> высокие и медленно убывают (тренд), поверх — пики на 7, 14, 21 (неделя): у заказов <tex>r_1 = 0.68</tex>, <tex>r_7 = 0.82</tex>.</p>
+      <p><b>Первая разность.</b> Тренд уходит, неделя остаётся: <tex>r_7 = 0.58</tex>.</p>
+      <p><b>Сезонная разность (логарифма).</b> Почти всё около нуля, но <tex>r_7 \approx -0.44</tex>. Это след разности: шум дня входит в разность этого дня с плюсом и в разность через неделю с минусом — у разности белого шума <tex>r_m = -0.5</tex>. Модель (сезонная MA в 5.3) это учитывает; лишние разности такой след только добавляют.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 5 · Подготовить ряд даркстора к прогнозу</div>
+    <div class="task-q">Вам дали выгрузку продаж 300 товаров по дням за два года из 40 дарксторов. Что нужно сделать с данными, прежде чем строить любую модель прогноза?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Сетка.</b> Полная сетка дат для каждой пары товар–магазин; отличить ноль продаж от отсутствия данных и от дней без товара в наличии (продажи ≠ спрос).</p>
+      <p><b>Структура.</b> Скользящее среднее за 7 дней, сезонные индексы, вид сезонности (обычно мультипликативный → логарифм или <code>log1p</code>).</p>
+      <p><b>События и диагностика.</b> Праздники, акции, открытия магазинов, сбои — признаками, а не удалением; ACF после разностей, доля нулей (редкие товары — 5.7). Валидация — только по времени (5.4).</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>30 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Чем временной ряд отличается от обычной таблицы данных?</summary><div class="qa-a">Порядок наблюдений важен: соседние значения зависимы, а у ряда есть тренд и циклы. Методы, считающие строки независимыми, дают на рядах неверные выводы.</div></details>
+
+  <details class="qa"><summary>2. Из каких частей обычно раскладывают ряд?</summary><div class="qa-a">Тренд — медленное изменение уровня, сезонность — повторяющийся цикл известной длины, остаток — всё прочее, включая шум и события.</div></details>
+
+  <details class="qa"><summary>3. Чем отличается агрегация потоковой и уровневой величины?</summary><div class="qa-a">Потоки (заказы, выручку) суммируют по периоду, уровни (остаток на складе, курс) усредняют или берут значение на конец периода. Сумма остатков за неделю ничего не значит.</div></details>
+
+  <details class="qa"><summary>4. Почему пропущенная дата в индексе опасна?</summary><div class="qa-a">Сдвиги и окна в pandas работают по строкам: без строки за день «сдвиг на 7» перестаёт быть неделей. Сначала ряд доводят до полной сетки дат.</div></details>
+
+  <details class="qa"><summary>5. Почему окно скользящего среднего берут равным периоду сезонности?</summary><div class="qa-a">Тогда каждый день цикла входит в окно ровно один раз, и сезонность взаимно гасится. Окно другой длины оставляет в среднем остатки цикла.</div></details>
+
+  <details class="qa"><summary>6. Чем центрированное скользящее среднее отличается от хвостового?</summary><div class="qa-a">Центрированное берёт дни до и после — точнее для анализа прошлого, но использует будущее. Хвостовое берёт только прошлое, его можно знать в момент прогноза, но оно отстаёт от тренда.</div></details>
+
+  <details class="qa"><summary>7. Что такое сезонный индекс?</summary><div class="qa-a">Во сколько раз определённый момент цикла (например, суббота) обычно выше или ниже тренда. Считается как среднее отношения значения к тренду по всем таким моментам.</div></details>
+
+  <details class="qa"><summary>8. Как проверить, сработала ли акция в пятницу?</summary><div class="qa-a">Сравнить пятницу с прошлыми пятницами или с прогнозом на эту пятницу, а не со средой. Разница пятницы и среды в основном объясняется недельной сезонностью.</div></details>
+
+  <details class="qa"><summary>9. Когда сезонность мультипликативная?</summary><div class="qa-a">Когда размах цикла в штуках растёт вместе с уровнем, а в процентах остаётся постоянным. Так обычно ведут себя продажи и трафик.</div></details>
+
+  <details class="qa"><summary>10. Как логарифм связан с мультипликативной декомпозицией?</summary><div class="qa-a">Логарифм произведения — сумма логарифмов, поэтому мультипликативный ряд в логарифмах становится аддитивным. Сезонность превращается в постоянную добавку при любом уровне.</div></details>
+
+  <details class="qa"><summary>11. Что остаётся в остатке декомпозиции?</summary><div class="qa-a">Шум и всё, что не описывается трендом и сезонностью: праздники, акции, сбои учёта, дефицит, сдвиги уровня. Его разбирают до построения модели.</div></details>
+
+  <details class="qa"><summary>12. Что такое автокорреляция на лаге <tex>k</tex>?</summary><div class="qa-a">Корреляция ряда с самим собой, сдвинутым на <tex>k</tex> шагов. Показывает, насколько значение похоже на значение <tex>k</tex> шагов назад.</div></details>
+
+  <details class="qa"><summary>13. Как недельная сезонность выглядит на графике ACF дневного ряда?</summary><div class="qa-a">Пики автокорреляции на лагах 7, 14, 21 — в те же дни недели значения похожи сильнее, чем в соседние дни.</div></details>
+
+  <details class="qa"><summary>14. Как тренд выглядит на графике ACF?</summary><div class="qa-a">Автокорреляции высокие на всех лагах и медленно убывают: ряд долго выше среднего, потом долго ниже, и любые сдвинутые пары похожи.</div></details>
+
+  <details class="qa"><summary>15. Какая автокорреляция на графике ACF считается шумом?</summary><div class="qa-a">Примерно та, что в пределах <tex>\pm2/\sqrt n</tex>, где <tex>n</tex> — длина ряда. На коротком ряде эта граница широкая, и даже заметные значения ничего не доказывают.</div></details>
+
+  <details class="qa"><summary>16. Почему корреляция двух растущих рядов ненадёжна?</summary><div class="qa-a">Общий тренд даёт высокую корреляцию даже независимым рядам: оба долго выше своего среднего, потом ниже. Тест значимости считает точки независимыми и «находит» связь почти всегда.</div></details>
+
+  <details class="qa"><summary>17. Как проверить связь двух трендовых рядов?</summary><div class="qa-a">Посмотреть корреляцию их приростов — разностей — или остатков после удаления тренда и сезонности. Настоящая связь видна в синхронных всплесках.</div></details>
+
+  <details class="qa"><summary>18. Что такое слабо стационарный ряд?</summary><div class="qa-a">Ряд с постоянным средним и ковариациями, которые зависят только от расстояния между моментами, а не от самих моментов. Значит, и разброс постоянен.</div></details>
+
+  <details class="qa"><summary>19. Что такое белый шум?</summary><div class="qa-a">Последовательность независимых одинаково распределённых значений со средним 0. Она стационарна, все автокорреляции около нуля, и прогнозировать в ней нечего.</div></details>
+
+  <details class="qa"><summary>20. Почему случайное блуждание нестационарно?</summary><div class="qa-a">Его дисперсия растёт со временем: значение — сумма всех прошлых шагов, и разброс через <tex>t</tex> шагов равен <tex>\sigma\sqrt t</tex>, где <tex>\sigma</tex> — разброс шага.</div></details>
+
+  <details class="qa"><summary>21. Может ли ряд без тренда быть нестационарным?</summary><div class="qa-a">Да. Ряд с сезонностью нестационарен — среднее зависит от дня недели. Случайное блуждание без наклона нестационарно из-за растущей дисперсии.</div></details>
+
+  <details class="qa"><summary>22. Зачем брать разности ряда?</summary><div class="qa-a">Первая разность убирает тренд, сезонная — повторяющийся цикл. Многие модели требуют стационарного ряда, и разности — самый простой способ его получить.</div></details>
+
+  <details class="qa"><summary>23. Чем сезонная разность отличается от первой?</summary><div class="qa-a">Первая вычитает предыдущее значение, сезонная — значение того же момента прошлого цикла, например того же дня прошлой недели. Только сезонная убирает недельный узор.</div></details>
+
+  <details class="qa"><summary>24. Чем вредна лишняя разность?</summary><div class="qa-a">Разность уже стационарного ряда добавляет отрицательную автокорреляцию около −0.5 на лаге разности. Модели приходится тратить параметры, чтобы её отменить, и прогноз становится шумнее.</div></details>
+
+  <details class="qa"><summary>25. Какую гипотезу проверяет тест Дики — Фуллера?</summary><div class="qa-a">Нулевая гипотеза — у ряда единичный корень, он ведёт себя как случайное блуждание. Маленький p-value — основание считать ряд стационарным.</div></details>
+
+  <details class="qa"><summary>26. Чем KPSS отличается от теста Дики — Фуллера?</summary><div class="qa-a">У KPSS нулевая гипотеза обратная — ряд стационарен. Поэтому тесты запускают вместе: согласие двух выводов надёжнее одного p-value.</div></details>
+
+  <details class="qa"><summary>27. Доказывает ли большой p-value теста Дики — Фуллера, что ряд — случайное блуждание?</summary><div class="qa-a">Нет. Тест мог просто не иметь силы отличить блуждание от стационарного ряда — на коротком ряде, при сдвиге уровня или неучтённом тренде.</div></details>
+
+  <details class="qa"><summary>28. Зачем нужно преобразование Бокса — Кокса?</summary><div class="qa-a">Чтобы разброс ряда перестал зависеть от уровня. Параметр <tex>\lambda</tex> подбирают: при 1 форма не меняется, при 0 это логарифм.</div></details>
+
+  <details class="qa"><summary>29. Что делать с логарифмом, если в ряду есть нули?</summary><div class="qa-a">Брать логарифм единицы плюс значение или моделировать нули отдельно. Бокс — Кокс тоже требует положительных значений; для нулей есть вариант Йео — Джонсона.</div></details>
+
+  <details class="qa"><summary>30. Чем выброс отличается от события в ряду?</summary><div class="qa-a">Выброс — ошибка данных, её исправляют или исключают. Событие — настоящая часть ряда, например праздник, оно повторится, поэтому его описывают признаком, а не удаляют.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — среднее, дисперсия суммы и корреляция из <a href="block0_01_expectation_variance.html#s8">0.1</a>, проверка гипотез из <a href="block0_06_hypothesis_testing.html#s2">0.6</a>. Дальше в блоке 5: базовые прогнозы и экспоненциальное сглаживание (5.2), ARIMA (5.3), валидация и метрики рядов (5.4), признаки и бустинг на рядах (5.5); прикладной прогноз спроса — <a href="block3_02_demand_forecasting.html">3.2</a>.
+</div>
+
+<div class="pnav">
+  <a href="index_roadmap.html">← Карта курса</a>
+  <a class="next" href="block3_02_demand_forecasting.html">3.2 · Прогнозирование спроса →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#38bdf8', TL='#2dd4bf', OR='#fb923c', YL='#facc15', RD='#f87171', GY='#94a3b8', SL='#475569', PU='#c084fc', GN='#4ade80';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||2,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+function cat(labels,xl,yl,yr,y1l,y1r){ var o={responsive:true,scales:{x:Object.assign({type:'category',labels:labels,title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)};
+  if(y1l) o.scales.y1={position:'right',min:y1r[0],max:y1r[1],title:{display:true,text:y1l},grid:{drawOnChartArea:false}}; return o; }
+function cline(vals,label,color,axis,dash){ return {type:'line',label:label,data:vals,borderColor:color,backgroundColor:color,borderWidth:2.4,pointRadius:3.5,borderDash:dash||[],yAxisID:axis||'y',spanGaps:false}; }
+function bline(vals,label){ var d=cline(vals,label,GY,'y',[4,4]); d.pointRadius=0; d.borderWidth=1.6; return d; }
+function cbar(vals,label,color,axis){ return {type:'bar',label:label,data:vals,backgroundColor:color,borderColor:color,yAxisID:axis||'y'}; }
+
+var CH={"story":{"y":[516,538,575,899,933,955,829,829,780,772,832,963,1024,947,752,734,883,857,962,975,818,820,734,793,797,1017,1023,830,784,871,778,805,963,1016,810,731,788,850,779,973,1026,947,667,772,795,902,884,969,862,772,802,756,919,901,1015,890,732,800,743,823,903,912,813,702,813,765,759,913,963,958,809,776,762,923,931,891,850,669,817,806,765,882,862,907,730,787,840,790,878,938,835,691,740,791,809,873,902,792,744,807,824,787,928,973,882,686,797,788,789,1021,1048,745,718,775,817,742,911,957,774,741,721,764,748,908,967,791,675,739,774,794,871,992,787,708,803,727,787,895,899,743,668,655,760,781,915,1038,808,712,757,740,722,845,945,800,706,713,763,771,874,874,765,706,802,767,813,980,955,791,636,727,818,748,871,935,818,672,778,794,751,764,982,819,717,678,739,787,909,950,861,677,705,776,859,841,890,904,697,764,847,768,917,998,824,719,739,775,867,816,1002,838,742,777,800,856,835,1033,881,751,780,852,936,1028,1080,779,832,798,794,863,1018,927,907,746,808,818,894,971,991,841,755,840,809,909,1046,1058,802,805,849,897,896,1070,1146,910,834,927,898,917,1121,964,992,797,756,922,979,1017,1119,987,802,874,925,886,1028,1049,894,825,888,910,961,1087,1156,925,826,821,989,985,1040,1122,1008,811,869,880,949,1144,1108,1040,875,887,972,905,1089,1158,1107,850,922,882,922,1131,1272,1063,811,870,887,975,1166,1229,1008,885,818,793,968,1007,1170,950,919,897,910,981,1174,1156,1085,834,872,945,991,1151,1181,1012,829,999,945,1012,1131,1326,935,899,1016,863,978,1124,1211,964,943,888,1046,1002,1062,1295,1044,934,994,963,986,1161,1303,1058,884,1513,662,696,784,1205,1061,939,914,947,1065,1194,1159,1100,908,975,1003,1036,1119,1222,1011,919,938,960,1004,1166,1223,1029,894,974,1071,1023,1165,1160,1010,897,1037,1021,1050,1130,1216,1066,910,892,973,1004,1041,1082,1015,889,936,980,1024,1187,1125,1041,961,997,914,1012,1133,1156,952,876,988,943,981,1091,1247,1010,804,817,949,955,1070,1262,1063,890,962,1019,981,1070,1072,1031,943,866,917,932,1122,1137,1055,813,1039,1006,947,1035,1086,996,864,885,910,954,1062,1108,1035,917,887,949,926,1104,1033,981,871,892,895,958,1064,1225,905,774,899,923,932,1039,1191,1052,826,951,940,983,1055,1122,1031,812,889,944,911,1010,1086,1011,848,863,872,966,1049,1114,909,825,843,942,934,971,1145,937,942,871,925,920,1030,1116,960,863,971,940,989,960,1229,854,866,927,916,892,1203,1181,968,934,1012,878,962,955,1071,970,921,924,1075,982,956,1096,1050,896,885,982,994,1116,1029,987,791,842,985,963,1102,1214,946,826,902,939,944,1081,1272,974,871,871,911,1005,1100,1199,980,954,1012,953,1063,1223,1177,974,941,991,887,899,1084,1310,1049,928,878,954,933,1086,1260,1041,915,940,973,1031,1102,1262,1030,1000,864,1002,1001,1177,1215,1015,949,1031,1043,1117,1190,1316,1037,916,1020,959,1005,1213,1214,1172,1012,946,1072,1044,1200,1272,1077,960,975,943,1099,1229,1259,1140,954,1094,1037,1151,1308,1441,1068,1000,1140,988,1072,1196,1313,1192,986,1095,1118,1047,1281,1337,1195,1054,1038,1053,1174,1401,1353,1178,964,1234,1131,1091,1303,1477,1231,1053,1067,1031,1104,1314,1425,1192,1059,1127,1064,1104,1257,1467,1209,1069,1062,1108,1172,1263,1334,1202,1029,1094,1220,1234,1279,1409,1206,1034,1136,1137,1146,1370,1361,1158,1119,1121,1124,1239,1289,1424,1213,1073,1086,1180,1340,1420,1480,1217,1011,1254,1621],"ma":[-1.0,-1.0,-1.0,749.3,794.0,828.6,856.7,847.1,851.4,861.3,878.1,867.1,860.6,876.4,880.0,879.9,872.9,854.4,864.1,864.1,851.3,842.7,850.6,857.4,859.1,854.0,873.6,871.4,872.6,864.9,863.9,861.0,853.4,841.6,851.9,848.1,849.6,851.0,870.6,861.4,859.1,851.3,868.9,856.1,848.0,835.9,850.9,855.1,849.6,852.0,854.4,861.0,865.0,859.3,859.0,857.1,843.4,843.7,829.0,818.0,813.7,815.6,818.7,809.6,811.0,818.3,839.0,854.3,849.0,848.6,872.0,874.6,864.3,848.9,828.9,834.7,841.0,818.4,811.4,807.3,815.4,824.1,819.9,824.7,828.3,827.7,838.6,828.3,822.7,816.0,809.0,811.7,811.0,805.9,799.7,807.3,816.9,821.6,818.4,826.3,836.4,849.3,841.0,839.6,834.4,834.7,848.0,858.7,839.1,843.7,840.6,844.7,838.0,822.3,809.3,813.4,816.7,809.0,801.4,802.3,801.9,803.3,805.7,796.3,798.9,800.3,806.9,801.6,805.1,804.6,809.3,818.4,811.7,810.7,814.1,800.9,794.6,788.9,767.7,772.4,771.6,774.4,794.3,803.6,809.9,824.4,821.6,813.1,803.1,789.9,788.7,787.9,781.6,784.9,791.9,796.0,785.9,780.9,780.9,793.6,794.1,800.1,815.3,826.9,830.6,820.6,809.9,817.1,807.9,792.3,789.4,793.3,798.4,805.7,802.3,802.7,787.4,794.1,794.3,800.7,786.4,778.6,783.7,804.4,799.9,805.9,800.1,804.0,809.3,819.6,809.9,801.3,807.4,810.3,818.7,828.9,815.9,826.7,842.1,830.7,833.9,830.3,820.0,834.1,819.7,820.3,822.3,825.6,831.0,834.6,833.0,835.7,840.1,846.3,847.6,848.0,855.4,866.9,894.4,901.1,886.6,898.1,900.7,892.4,882.0,880.6,858.7,877.0,864.7,866.1,869.6,874.0,867.3,876.4,867.0,868.3,872.9,871.6,873.7,884.4,894.0,888.4,895.6,896.9,909.4,907.6,911.0,923.6,939.0,943.1,954.3,954.4,957.4,964.7,938.7,950.4,945.1,920.7,924.1,933.0,918.1,940.3,939.6,940.3,957.1,957.6,944.3,945.9,935.9,922.6,925.9,927.9,925.7,936.4,944.9,960.1,964.6,964.7,955.1,966.4,969.9,963.1,958.3,970.1,968.0,974.9,959.3,954.1,969.0,967.0,971.6,980.7,983.3,996.4,990.1,982.3,989.4,999.0,995.4,1000.4,987.6,990.0,996.0,1012.3,1006.0,1000.4,993.0,993.7,1001.3,1006.3,1000.1,992.3,1002.9,995.4,982.0,981.0,958.3,949.9,941.6,946.4,957.7,974.4,976.3,1000.1,998.1,1017.4,1005.3,1001.7,1006.7,1008.1,1004.9,1008.4,998.0,997.3,1015.4,1015.4,1018.4,1015.6,1036.3,1025.3,1035.3,1037.7,1026.0,1021.1,1020.1,1003.7,1007.9,1014.1,995.9,1022.0,1025.4,1016.6,1028.6,1040.0,1038.7,1053.9,1042.0,1039.7,1053.9,1055.0,1057.0,1049.9,1124.0,1081.0,1039.6,985.7,971.7,972.1,980.0,894.4,935.1,987.9,1046.4,1039.9,1045.4,1041.0,1049.7,1057.7,1053.6,1042.9,1051.9,1039.1,1040.7,1035.4,1029.3,1024.7,1031.4,1031.6,1034.1,1030.6,1035.7,1051.6,1054.3,1054.1,1045.1,1042.4,1042.9,1051.9,1044.7,1048.6,1043.6,1051.6,1059.6,1061.4,1040.7,1033.9,1027.3,1014.6,995.4,988.1,985.1,991.4,992.4,995.3,1016.1,1022.3,1026.0,1036.3,1045.0,1035.6,1033.9,1026.1,1030.6,1017.9,1005.7,1004.4,1008.6,1004.1,998.1,1011.1,1019.4,1009.1,984.7,985.6,981.9,978.9,981.0,988.6,1000.9,1021.6,1031.6,1035.3,1035.3,1008.1,1003.6,1011.1,997.4,982.9,975.9,983.3,992.6,996.0,977.4,1002.1,1014.9,1017.0,1004.6,997.3,988.9,996.1,974.1,960.4,961.4,965.3,968.4,974.0,981.6,981.9,987.4,983.4,989.4,978.7,971.0,964.4,965.1,957.4,962.0,956.3,983.7,972.9,959.0,960.0,964.0,960.3,956.7,951.9,972.9,980.3,987.7,990.1,997.4,999.7,989.9,986.9,984.9,976.0,976.6,966.3,959.9,954.7,951.9,957.0,953.3,943.0,950.9,956.4,960.4,945.9,942.6,939.7,949.7,945.1,934.0,938.4,942.4,959.1,963.1,960.7,958.7,967.1,963.0,966.3,955.0,969.3,971.4,981.3,971.3,987.4,972.3,972.7,966.4,963.0,949.1,983.9,977.0,993.3,1003.0,1015.1,1009.7,1019.7,984.3,968.6,968.9,967.0,954.4,982.6,985.4,985.6,989.1,1000.6,997.0,991.4,978.1,979.9,1002.7,993.1,984.1,969.1,963.0,963.4,959.0,957.0,983.4,977.6,982.6,991.1,984.6,981.9,978.9,987.1,991.1,997.6,993.1,989.1,997.9,1000.6,990.1,991.0,1002.9,1023.0,1029.0,1037.3,1054.9,1051.7,1050.9,1049.0,1046.0,1036.6,1013.1,993.3,1012.3,1023.0,1021.1,1005.0,1014.6,1019.4,1019.7,1012.6,1011.4,1009.6,1018.4,1021.1,1035.1,1037.4,1037.7,1036.1,1048.3,1037.4,1041.6,1037.3,1048.0,1041.3,1039.1,1031.9,1055.7,1061.6,1078.1,1080.0,1094.4,1097.6,1092.9,1091.3,1079.3,1063.3,1066.6,1052.0,1071.3,1085.0,1074.4,1090.6,1096.1,1094.3,1102.6,1089.0,1081.6,1085.7,1067.3,1075.1,1079.3,1077.4,1086.4,1085.6,1102.6,1116.0,1123.4,1134.7,1160.7,1150.4,1157.0,1163.6,1156.6,1145.3,1129.3,1111.0,1128.7,1126.7,1120.3,1138.9,1135.3,1147.4,1150.9,1151.3,1161.0,1152.9,1143.6,1161.7,1178.9,1181.1,1178.7,1165.9,1193.9,1205.0,1193.1,1179.1,1196.9,1204.4,1217.1,1193.3,1179.0,1180.9,1182.4,1175.0,1169.4,1170.3,1178.9,1183.6,1183.6,1175.4,1181.4,1183.9,1185.3,1176.0,1182.3,1192.0,1192.9,1173.9,1172.9,1167.1,1171.7,1187.7,1196.6,1198.9,1209.6,1210.1,1210.9,1216.9,1205.0,1192.4,1205.4,1198.6,1191.7,1203.9,1201.7,1199.9,1213.1,1201.6,1210.6,1218.4,1211.9,1206.9,1214.9,1229.3,1248.0,1256.0,1256.6,1247.7,1271.7,1334.7,-1.0,-1.0,-1.0],"start":"2024-01-01"},"week":{"nov":[1036.2,1122.5,1083.5,1117.8,1284.2,1411.2,1202.4],"idx":[0.879,0.929,0.943,0.977,1.098,1.172,1.004]},"spur":{"orders":[6147,5981,6014,6027,6094,5851,6055,5726,5873,5942,5708,5798,5598,5945,5874,5694,5640,5632,5562,5625,5521,5466,5814,5553,5560,5641,5652,5815,5756,5924,6206,6139,6069,6219,6573,6653,6577,6458,6752,6791,6801,6993,7042,6946,6591,7122,6986,7177,7055,7280,7399,6805,7318,7274,7239,7297,7417,6917,7182,7125,7136,6920,7025,6972,6922,6818,6797,6810,6810,6908,6663,6621,6597,6764,6806,6953,6782,7004,6889,6843,6938,6937,7356,7161,7080,7253,7274,7683,7499,7623,7605,8053,7901,8059,8251,8431,8186,8287,8210,8471,8342,8529,8796],"inst":[316,314,336,355,374,401,398,389,394,408,418,424,427,450,463,469,479,490,508,521,526,525,527,537,554,550,549,576,590,598,634,639,658,681,672,697,691,694,726,742,758,776,807,817,831,841,862,853,860,874,894,894,902,905,902,877,891,902,902,904,918,927,940,961,978,976,987,996,995,987,993,998,996,999,1015,1023,1023,1035,1029,1032,1013,1015,1034,1044,1047,1051,1052,1061,1079,1082,1110,1152,1164,1172,1177,1184,1205,1207,1215,1205,1220,1238,1240],"r":0.896,"rd":0.115},"acf":{"raw":[0.676,0.39,0.306,0.323,0.39,0.646,0.818,0.641,0.379,0.295,0.293,0.379,0.627,0.797,0.629,0.363,0.278,0.284,0.366,0.611,0.779],"d1":[-0.041,-0.313,-0.163,-0.097,-0.301,0.135,0.576,0.141,-0.289,-0.139,-0.151,-0.252,0.126,0.547,0.162,-0.29,-0.152,-0.131,-0.266,0.133,0.56],"d7":[0.102,-0.002,-0.046,0.09,-0.017,-0.028,-0.439,-0.033,0.031,0.026,-0.044,0.031,-0.012,-0.009,0.065,0.032,-0.052,0.006,0.032,0.065,-0.001]},"rw":{"paths":[[0.0,1.8,0.2,-5.2,-7.9,-13.9,-13.5,-5.5,-8.4,-12.1,-9.2,-7.1,-6.4,-12.0,-12.2,-8.0,-16.1,-18.8,-30.2,-38.0,-49.0,-50.4,-58.0,-56.4,-55.5,-56.6,-71.7,-74.9,-75.2,-74.5,-83.7,-86.6,-92.5,-97.3,-90.9,-95.8,-96.0,-90.7,-94.2,-94.8,-94.2,-93.8,-101.1,-100.7,-92.5,-101.8,-96.7,-95.9,-99.8,-87.8,-83.2,-90.4,-90.0,-86.5,-87.6,-83.5,-83.9,-79.9,-71.3,-75.4,-74.1,-76.9,-76.2,-83.3,-86.8,-87.9,-82.5,-75.7,-83.6,-88.4,-84.5,-96.5,-99.2,-99.8,-92.3,-88.1,-90.1,-92.3,-93.8,-84.7,-87.2,-89.1,-87.0,-87.7,-88.9,-95.5,-95.6,-98.3,-91.3,-87.4,-87.5,-83.5,-85.5,-79.2,-79.3,-75.8,-83.5,-81.4,-91.5,-103.8,-105.6,-111.0,-110.0,-96.5,-101.5,-105.3,-104.0,-101.1,-102.1,-103.4,-99.2,-96.0,-102.2,-102.7,-102.5,-108.8,-107.3,-112.4,-106.6,-105.4,-104.9,-108.4,-109.1,-121.1,-127.9,-125.7,-138.5,-133.4,-143.9,-139.4,-144.4,-139.8,-139.0,-148.2,-140.7,-132.1,-132.5,-134.1,-135.1,-140.9,-134.3,-137.6,-137.9,-142.6,-146.4,-154.1,-146.5,-147.5,-141.7,-141.6,-145.7,-147.7,-151.1,-151.0,-153.3,-155.1,-163.3,-168.2,-158.3,-162.3,-168.6,-166.6,-158.1,-166.9,-168.1,-171.9,-182.5,-178.1,-178.2,-177.8,-182.3,-179.6,-182.8,-183.7,-190.3,-197.6,-189.6,-192.6,-190.9,-191.1,-193.7,-196.8,-193.0,-194.8,-195.7,-195.6,-188.5,-184.4,-182.1,-185.5,-193.8,-188.1,-182.3,-183.2,-179.9,-175.2,-170.2,-164.7,-167.4,-158.4],[-7.5,-2.3,0.7,5.9,17.2,26.1,19.2,9.1,14.0,7.9,7.8,12.8,3.0,-9.7,-8.1,-7.9,-9.3,-9.1,-14.3,-23.3,-24.3,-30.2,-40.0,-37.0,-37.4,-34.9,-40.9,-44.8,-50.8,-56.1,-55.0,-59.6,-57.5,-55.5,-43.3,-51.7,-46.4,-46.9,-47.0,-55.7,-58.4,-54.0,-54.5,-54.0,-55.7,-48.8,-48.9,-62.1,-66.3,-78.1,-97.6,-100.8,-92.8,-92.5,-99.5,-105.2,-98.4,-97.5,-97.2,-97.5,-97.3,-92.4,-89.1,-87.8,-94.1,-91.0,-95.1,-88.5,-96.2,-97.0,-97.0,-105.0,-94.7,-85.9,-88.7,-84.0,-81.8,-97.5,-96.0,-96.3,-95.8,-102.3,-103.9,-105.0,-97.8,-95.8,-95.9,-86.7,-90.0,-92.4,-103.3,-93.8,-88.1,-82.6,-78.5,-77.9,-76.6,-78.1,-79.3,-79.0,-69.9,-66.6,-66.9,-70.4,-74.2,-64.6,-61.6,-61.2,-63.2,-69.9,-70.3,-65.1,-67.4,-68.8,-70.1,-69.4,-79.0,-80.4,-85.5,-80.2,-84.9,-81.4,-72.3,-74.1,-77.7,-76.6,-76.6,-82.6,-79.8,-67.7,-69.3,-70.5,-76.7,-74.8,-82.3,-89.0,-81.3,-86.7,-80.2,-71.1,-69.5,-66.2,-54.5,-55.7,-59.2,-67.3,-67.1,-58.2,-52.5,-58.1,-63.2,-66.3,-64.5,-65.7,-64.5,-62.7,-64.5,-64.7,-63.5,-64.0,-61.0,-49.7,-46.2,-45.8,-56.0,-53.6,-65.3,-73.8,-68.6,-64.4,-65.3,-75.6,-77.8,-81.9,-78.0,-64.5,-63.2,-67.9,-74.9,-75.2,-76.3,-83.2,-82.5,-89.4,-82.7,-76.4,-69.9,-72.7,-69.6,-70.4,-72.7,-74.8,-82.6,-91.2,-86.5,-87.6,-86.3,-80.3,-90.7,-95.4],[1.1,3.4,1.1,7.3,8.6,1.3,-4.3,0.5,3.3,-8.1,0.0,3.6,11.7,9.4,7.6,0.8,16.1,15.0,24.5,20.6,21.6,11.6,9.3,15.2,7.7,14.1,16.2,9.9,6.9,4.1,3.8,0.6,-4.4,-6.2,-12.3,-20.1,-20.4,-15.1,-24.2,-24.2,-28.1,-34.0,-28.9,-32.0,-23.0,-27.7,-25.3,-26.7,-31.2,-27.7,-28.6,-25.0,-25.3,-31.8,-32.4,-32.1,-26.4,-31.8,-32.0,-42.4,-38.5,-45.0,-55.8,-56.1,-49.5,-58.7,-65.2,-69.6,-76.4,-74.1,-79.0,-83.3,-79.8,-84.4,-81.8,-87.6,-94.9,-105.9,-94.7,-96.6,-95.2,-95.3,-94.4,-94.1,-82.6,-88.9,-98.2,-104.3,-112.3,-107.8,-102.9,-108.7,-117.0,-119.1,-110.8,-127.7,-124.5,-131.0,-124.8,-131.2,-132.9,-142.0,-147.8,-139.5,-134.6,-137.0,-142.2,-153.6,-156.0,-156.1,-156.6,-157.2,-163.9,-164.3,-164.6,-156.8,-145.6,-146.4,-151.0,-151.4,-155.1,-159.5,-159.9,-166.1,-162.5,-163.1,-161.6,-162.7,-167.1,-172.8,-174.2,-177.5,-176.1,-176.1,-184.3,-183.9,-192.0,-195.6,-197.4,-209.9,-209.3,-208.4,-209.4,-211.9,-214.1,-220.0,-221.6,-224.9,-224.4,-231.6,-230.2,-229.3,-230.2,-232.8,-229.5,-239.5,-236.7,-235.3,-233.6,-231.3,-235.2,-236.8,-232.9,-230.4,-229.1,-238.2,-235.0,-228.0,-221.9,-220.5,-229.8,-224.2,-225.1,-240.3,-238.0,-247.0,-254.7,-258.5,-250.9,-253.1,-251.5,-241.0,-231.5,-232.1,-233.5,-241.1,-245.3,-242.7,-240.3,-239.7,-233.7,-238.3,-238.7,-234.3,-230.8,-224.3,-222.0,-223.8,-221.7,-227.7],[-9.8,-6.4,-6.7,-4.8,-15.0,-17.2,-20.8,-26.0,-39.5,-41.5,-36.1,-33.9,-37.5,-37.6,-33.0,-49.6,-50.3,-47.1,-43.0,-32.8,-26.0,-24.1,-22.3,-17.6,-20.8,-21.0,-15.6,-3.8,-4.8,-5.1,-3.9,4.2,4.0,12.8,7.0,5.9,4.7,9.4,15.7,6.6,1.1,3.2,-0.8,-9.9,-3.7,-0.7,2.2,-0.6,5.5,4.1,10.7,5.2,0.1,1.3,-2.9,1.1,2.7,-2.8,-2.4,-4.5,1.0,-2.8,-5.4,1.8,15.3,27.3,27.6,29.0,38.2,37.4,31.5,32.2,35.0,30.0,20.1,11.5,15.5,10.9,10.1,11.4,15.1,13.1,16.1,10.7,8.5,2.4,9.2,9.0,4.6,2.5,1.1,5.3,-4.2,-10.5,-12.7,2.5,8.2,7.5,11.8,24.2,22.8,20.6,27.8,30.8,34.8,31.8,43.3,53.6,57.0,61.1,48.9,52.7,51.6,54.2,58.3,56.2,46.1,48.3,43.8,41.9,38.2,36.2,22.3,29.6,31.1,37.8,49.7,49.8,39.0,33.7,26.4,23.4,23.9,11.9,13.9,4.9,6.6,6.0,4.1,3.7,0.4,-3.2,-13.3,-13.5,-2.5,9.4,17.4,21.6,17.5,26.2,25.9,25.4,23.7,24.2,21.6,21.1,14.6,12.4,26.1,25.7,24.2,27.4,31.7,25.0,23.7,29.2,30.9,31.6,40.9,36.9,37.4,34.2,43.2,31.5,27.4,24.3,28.2,31.9,40.3,30.8,35.3,33.6,29.6,32.8,27.3,14.8,12.6,3.6,-0.3,1.9,3.8,13.3,12.1,2.9,-1.6,-7.1,-14.4,-11.8,-15.7,-27.5],[4.2,3.5,5.7,6.3,10.1,10.3,17.7,20.3,22.6,25.1,16.3,15.4,13.8,15.0,6.9,16.7,17.3,10.1,-0.2,-1.9,-2.4,-6.7,-6.2,-10.0,-6.7,-11.1,-11.3,-5.4,10.0,4.0,1.2,-3.9,0.8,-6.0,-9.0,-9.1,-15.0,-20.7,-23.6,-36.2,-44.9,-47.4,-46.5,-47.6,-58.2,-61.0,-56.2,-52.9,-53.4,-58.7,-54.9,-58.4,-65.4,-70.2,-61.5,-60.2,-53.2,-56.1,-50.5,-54.1,-55.0,-40.1,-35.5,-38.5,-39.0,-37.1,-29.8,-32.7,-43.2,-44.9,-44.8,-44.1,-36.2,-34.3,-29.4,-36.0,-30.8,-18.3,-13.6,-12.1,-11.2,-0.4,-6.0,-6.7,-3.9,0.5,-2.1,-0.2,-1.9,-1.2,-2.0,-8.8,-8.9,-3.7,-9.5,-10.9,-6.9,-13.4,-12.3,-18.6,-11.8,2.1,14.2,12.9,17.3,18.0,18.7,27.9,20.0,26.4,26.1,34.5,35.6,31.6,33.3,37.7,37.9,40.8,37.7,24.9,30.3,34.5,35.4,35.8,42.0,39.3,35.0,33.9,41.0,32.7,39.9,36.0,29.4,37.0,36.4,28.6,26.4,32.0,39.2,36.6,39.1,43.3,39.5,41.6,41.4,38.2,35.2,35.6,35.8,32.4,29.9,36.6,37.8,43.1,50.4,53.9,67.5,62.6,67.4,65.5,76.6,86.8,75.1,69.3,73.3,78.0,82.4,82.0,84.8,88.7,88.2,94.4,80.8,84.6,78.4,84.2,82.8,77.5,79.7,74.2,68.8,59.4,59.2,62.2,68.3,67.5,73.7,73.9,73.3,76.7,83.1,81.0,79.6,78.6,79.1,73.7,79.9,77.5,80.2,75.3]]},"resid":{"r":[-1.0,-1.0,-1.0,1.229,1.071,0.984,0.964,1.114,0.986,0.95,0.97,1.012,1.015,1.076,0.973,0.898,1.073,1.027,1.014,0.963,0.957,1.108,0.929,0.981,0.95,1.085,0.999,0.949,1.023,1.084,0.955,0.958,1.028,1.03,0.947,0.981,0.998,1.059,0.916,1.029,1.019,1.108,0.874,0.971,0.994,1.105,0.947,0.967,1.011,1.032,1.01,0.931,1.088,0.955,1.008,1.034,0.988,1.021,0.95,1.03,1.011,0.954,0.989,0.987,1.079,0.991,0.927,0.974,0.968,1.124,1.056,0.955,0.935,1.114,1.024,0.911,1.007,0.931,1.084,1.059,0.961,0.975,0.897,1.095,1.004,1.023,1.062,0.977,0.972,0.981,1.028,0.969,0.982,1.041,1.036,0.985,0.942,0.96,1.035,1.051,1.045,0.949,1.005,0.989,1.053,0.936,1.012,0.973,0.963,1.103,1.064,0.878,0.976,1.014,1.07,0.934,1.016,1.01,0.962,1.052,0.968,1.009,0.951,1.039,1.033,0.984,0.953,0.992,1.019,1.011,0.981,1.034,0.966,0.994,1.062,0.963,1.014,1.034,0.999,0.958,0.986,0.91,1.015,0.995,1.03,1.074,0.979,0.997,1.014,0.993,0.938,0.977,1.032,1.015,1.015,0.964,1.03,1.011,1.02,0.94,0.959,1.005,1.059,0.984,1.003,1.088,1.006,0.964,0.896,0.988,1.099,0.966,0.994,0.99,1.015,0.953,1.063,1.06,0.968,0.869,1.066,1.048,1.042,0.907,0.98,1.0,1.035,1.008,1.06,0.941,0.937,1.027,1.09,0.946,0.928,1.086,0.973,0.995,1.066,0.947,1.002,1.026,1.001,0.982,0.97,1.002,1.08,0.901,1.029,1.0,1.014,1.001,1.01,1.036,0.898,1.04,1.026,0.987,0.939,1.003,1.081,1.043,1.023,0.869,1.074,0.975,0.98,1.008,1.073,0.913,1.039,0.972,1.003,0.99,1.056,1.019,0.969,0.961,0.984,1.022,0.96,1.048,1.064,1.007,0.878,1.01,1.003,1.03,0.977,1.034,1.025,0.95,0.992,1.034,1.014,0.988,1.081,0.894,1.069,0.973,0.886,1.04,1.067,0.986,0.998,1.027,0.967,0.995,1.048,0.984,1.012,0.965,0.962,1.003,1.012,1.005,1.02,1.027,1.033,0.953,0.97,0.917,1.094,1.04,0.979,0.982,1.047,0.968,0.965,0.965,1.0,1.063,0.962,1.039,1.006,0.972,1.042,0.928,0.997,0.988,1.116,0.978,0.996,0.924,0.939,1.03,1.093,1.065,0.922,0.931,0.94,1.006,1.059,1.054,1.022,1.027,0.919,0.885,1.053,0.97,1.043,0.971,1.072,0.965,0.967,0.988,1.064,0.985,1.073,0.942,0.934,0.994,1.017,1.052,0.993,0.993,0.927,1.059,0.967,1.011,0.995,1.09,0.908,1.003,1.072,0.912,0.994,1.01,1.038,0.939,1.047,0.94,1.078,0.987,0.932,1.049,0.998,1.023,1.015,0.968,0.955,1.008,0.989,0.975,0.968,1.652,0.722,0.733,0.729,1.15,1.13,1.082,0.94,0.966,1.043,1.045,0.942,1.036,0.981,1.006,1.011,1.021,0.98,1.007,0.978,1.021,0.979,0.987,0.994,1.031,1.008,0.975,0.966,0.994,1.087,1.005,1.018,0.941,0.963,0.974,1.07,1.03,1.015,0.97,0.997,1.027,1.009,0.946,1.036,1.041,0.963,0.931,1.019,1.017,0.991,1.017,1.022,1.044,0.919,1.001,1.058,1.046,0.94,1.018,1.027,0.982,0.94,0.993,1.065,0.989,0.986,0.985,1.081,1.021,0.932,0.898,1.026,0.989,0.974,1.054,1.026,0.979,1.0,1.072,1.001,0.964,0.917,1.045,1.1,0.948,0.98,0.958,1.046,0.968,1.035,0.91,1.113,1.07,0.981,0.947,0.951,1.033,1.023,0.987,0.996,1.003,0.986,0.963,1.044,1.062,0.965,1.028,0.977,1.043,0.913,1.02,1.031,1.004,0.965,1.009,1.011,1.089,0.935,0.918,1.011,1.028,0.981,0.966,1.029,1.058,0.943,1.024,1.007,1.02,0.976,0.981,1.051,0.957,0.997,1.048,0.98,0.962,0.972,1.068,1.016,0.971,0.963,1.046,1.014,1.012,0.953,0.994,0.971,1.064,1.015,0.922,1.015,0.971,1.119,0.969,1.019,0.975,0.983,0.983,0.984,1.001,1.076,1.009,1.042,0.899,1.085,0.883,1.039,1.014,0.994,0.92,1.093,0.993,0.955,1.043,1.107,0.961,1.017,0.9,0.958,0.983,1.064,1.009,1.152,1.005,0.874,0.943,1.069,1.041,0.95,1.048,1.034,1.049,0.912,1.02,0.939,0.947,1.062,1.009,1.022,1.045,0.957,0.958,0.992,1.009,0.975,0.987,1.093,0.981,0.994,0.937,0.976,1.039,0.999,1.0,0.949,1.047,1.033,0.961,1.036,1.062,0.96,0.936,1.058,1.074,0.929,0.9,0.967,1.112,1.03,1.037,0.927,0.999,0.945,0.98,1.056,1.015,1.007,0.975,0.994,1.019,0.958,1.038,0.985,1.098,0.887,1.02,0.987,1.039,0.982,0.952,1.002,1.027,1.011,1.042,0.992,1.029,0.957,0.981,1.029,0.967,0.961,1.019,0.964,1.07,1.051,0.93,1.031,0.982,1.011,1.0,1.005,1.017,0.972,0.928,1.036,1.032,0.974,1.017,0.967,1.038,0.947,1.025,1.03,1.057,0.92,0.994,1.087,0.943,0.973,0.967,1.0,1.042,0.989,1.027,1.03,0.931,1.005,0.99,1.041,1.033,0.948,0.945,1.02,1.095,0.967,0.974,0.92,1.126,1.002,0.928,0.975,1.056,1.04,1.015,0.971,0.93,0.967,1.023,1.032,1.003,1.019,1.032,0.955,0.955,0.966,1.065,1.018,1.021,0.958,1.001,1.023,0.986,0.972,1.008,0.979,0.982,1.07,1.044,0.962,0.988,0.997,0.987,1.014,1.006,0.985,1.037,0.967,0.961,1.05,1.004,0.985,1.042,0.969,1.007,0.994,0.994,0.937,0.996,1.092,1.037,0.993,0.908,-1.0,-1.0,-1.0]}};
+
+/* 1 — два года заказов */
+(function(){
+  var y=CH.story.y, ma=CH.story.ma, pts=[], mpts=[];
+  for(var i=0;i<y.length;i++){ pts.push([i+1,y[i]]); if(ma[i]>0) mpts.push([i+1,ma[i]]); }
+  mk('c_story',{type:'scatter',data:{datasets:[dots(pts,'заказы за день',GY+'99',1.6),seg(mpts,'скользящее среднее за 7 дней',AC,2.4)]},options:lin('день с 1 января 2024','заказов за день',[0,735],[400,1800])});
+})();
+
+/* 2 — ноябрь по дням недели и индексы */
+(function(){
+  var labels=['пн','вт','ср','чт','пт','сб','вс'];
+  mk('c_week',{type:'bar',data:{labels:labels,datasets:[cbar(CH.week.nov,'заказы в среднем, ноябрь 2025',AC),cline(CH.week.idx,'сезонный индекс по двум годам',TL,'y1')]},
+    options:cat(labels,'день недели','заказов в день',[0,1600],'индекс',[0.8,1.2])});
+})();
+
+/* 3 — остаток декомпозиции */
+(function(){
+  var r=CH.resid.r, pts=[]; for(var i=0;i<r.length;i++) if(r[i]>0) pts.push([i+1,r[i]]);
+  mk('c_resid',{type:'scatter',data:{datasets:[dots(pts,'остаток R',AC,2),seg([[0,1],[735,1]],'ровно как ожидается',GY,1.4,[6,4])]},options:lin('день с 1 января 2024','остаток (отношение)',[0,735],[0.6,1.8])});
+})();
+
+/* 4 — ACF */
+(function(){
+  var labels=[]; for(var k=1;k<=21;k++) labels.push(String(k));
+  var b=2/Math.sqrt(731), o=cat(labels,'лаг, дней','автокорреляция',[-0.6,1]);
+  mk('c_acf',{type:'bar',data:{labels:labels,datasets:[cbar(CH.acf.raw,'исходный ряд',AC),cbar(CH.acf.d1,'первая разность',TL),cbar(CH.acf.d7,'сезонная разность логарифма',OR),
+    bline(labels.map(function(){ return b; }),'граница шума ±2/√n'),bline(labels.map(function(){ return -b; }),'')]},options:o});
+})();
+
+/* 5 — ложная корреляция */
+(function(){
+  var a=CH.spur.orders, b=CH.spur.inst, labels=a.map(function(_,i){ return String(i+1); });
+  var o=cat(labels,'неделя','заказов за неделю',[5000,10000],'установок в день',[0,1500]); o.scales.x.ticks={maxTicksLimit:12};
+  var d1=cline(a,'заказы за неделю',AC), d2=cline(b,'установки в день (среднее за неделю)',OR,'y1'); d1.pointRadius=0; d2.pointRadius=0;
+  mk('c_spur',{type:'line',data:{labels:labels,datasets:[d1,d2]},options:o});
+})();
+
+/* 6 — случайные блуждания */
+(function(){
+  var cols=[AC,TL,OR,PU,GN], ds=[];
+  CH.rw.paths.forEach(function(p,j){ ds.push(seg(p.map(function(v,i){ return [i+1,v]; }),'',cols[j],1.8)); });
+  var up=[], dn=[]; for(var t=1;t<=200;t++){ up.push([t,2*6*Math.sqrt(t)]); dn.push([t,-2*6*Math.sqrt(t)]); }
+  ds.push(seg(up,'коридор ±2σ√t',GY,1.6,[6,4])); ds.push(seg(dn,'',GY,1.6,[6,4]));
+  mk('c_rw',{type:'scatter',data:{datasets:ds},options:lin('шаг t','значение',[0,200],[-400,400])});
+})();
+
+/* песочница 5.1: генератор ряда (тренд, недельная сезонность, шум, случайное блуждание) и выборочная ACF как в statsmodels */
+var TSG=(function(){
+  function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+  function gauss(r){ var u=0,v=0; while(u===0) u=r(); v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  var WK=[-0.12,-0.08,-0.05,-0.02,0.10,0.17,0.00];
+  /* P: {n, trend (в день), season (амплитуда в долях уровня), noise (sd), walk (sd шага), seed} */
+  function gen(P){
+    var r=rng(P.seed||1), y=[], w=0;
+    for(var t=0;t<P.n;t++){ w+=P.walk*gauss(r); y.push(100+P.trend*t+100*P.season*WK[t%7]/0.17+P.noise*gauss(r)+w); }
+    return y;
+  }
+  function diff(y,k){ var o=[]; for(var i=k;i<y.length;i++) o.push(y[i]-y[i-k]); return o; }
+  /* ACF: r_k = sum (y_t - m)(y_{t+k} - m) / sum (y_t - m)^2 */
+  function acf(y,K){ var n=y.length,m=0,i,k; for(i=0;i<n;i++) m+=y[i]; m/=n; var c0=0; for(i=0;i<n;i++) c0+=(y[i]-m)*(y[i]-m);
+    var out=[]; for(k=1;k<=K;k++){ var c=0; for(i=0;i+k<n;i++) c+=(y[i]-m)*(y[i+k]-m); out.push(c/c0); } return out; }
+  return {gen:gen, diff:diff, acf:acf};
+})();
+
+/* песочница: собери ряд */
+(function(){
+  if(!document.getElementById('c_play')) return;
+  function el(id){ return document.getElementById(id); }
+  var st={trend:false,season:false,walk:false,d:0,seed:1};
+  var labels=[]; for(var k=1;k<=21;k++) labels.push(String(k));
+  var ch1=mk('c_play',{type:'scatter',data:{datasets:[]},options:lin('день','значение',[0,140],[0,200])});
+  var o2=cat(labels,'лаг, дней','автокорреляция',[-1,1]);
+  var ch2=mk('c_pacf',{type:'bar',data:{labels:labels,datasets:[]},options:o2});
+  if(!ch1||!ch2) return;
+  function nice(lo,hi){ var span=hi-lo, step=span>200?50:(span>80?20:(span>30?10:5)); return [Math.floor(lo/step)*step,Math.ceil(hi/step)*step]; }
+  function draw(){
+    var y=TSG.gen({n:140,trend:st.trend?0.3:0,season:st.season?0.15:0,noise:5,walk:st.walk?3:0,seed:st.seed});
+    if(st.d) y=TSG.diff(y,st.d);
+    var off=st.d, pts=y.map(function(v,i){ return [i+1+off,v]; }), lo=Math.min.apply(null,y), hi=Math.max.apply(null,y), r=nice(lo,hi);
+    ch1.options.scales.y.min=r[0]; ch1.options.scales.y.max=r[1];
+    ch1.options.scales.y.title.text=st.d? (st.d===1? 'Δy — первая разность' : 'Δ₇y — сезонная разность') : 'значение';
+    ch1.data.datasets=[seg(pts,'',AC,1.8)]; ch1.update();
+    var a=TSG.acf(y,21), b=2/Math.sqrt(y.length);
+    ch2.data.datasets=[cbar(a,'автокорреляция',AC),bline(labels.map(function(){ return b; }),'граница шума'),bline(labels.map(function(){ return -b; }),'')]; ch2.update();
+    el('out_play').textContent='длина '+y.length+', граница шума ±'+b.toFixed(2)+'\nr1 = '+a[0].toFixed(2)+', r2 = '+a[1].toFixed(2)+', r7 = '+a[6].toFixed(2)+', r14 = '+a[13].toFixed(2);
+    el('pt_on').classList.toggle('on',st.trend); el('ps_on').classList.toggle('on',st.season); el('pw_on').classList.toggle('on',st.walk);
+    [0,1,7].forEach(function(d){ el('pd_'+d).classList.toggle('on',st.d===d); });
+  }
+  el('pt_on').addEventListener('click',function(){ st.trend=!st.trend; draw(); });
+  el('ps_on').addEventListener('click',function(){ st.season=!st.season; draw(); });
+  el('pw_on').addEventListener('click',function(){ st.walk=!st.walk; draw(); });
+  [0,1,7].forEach(function(d){ el('pd_'+d).addEventListener('click',function(){ st.d=d; draw(); }); });
+  el('pn_new').addEventListener('click',function(){ st.seed++; draw(); });
+  try{ draw(); }catch(e){ console.log('sandbox', e); }
+})();
+</script>
+
+</body>
+</html>
