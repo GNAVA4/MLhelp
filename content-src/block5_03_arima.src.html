@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5.3 · ARIMA и SARIMA</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#f59e0b; --ac-d:#fde68a; --ac-l:rgba(245,158,11,.08); --ac-b:rgba(245,158,11,.35); --ac-m:#d97706; --ac-s:#451a03;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#f59e0b; --okl:rgba(245,158,11,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(245,158,11,.24),transparent 60%),linear-gradient(135deg,#020617,#2a1a05 55%,#451a03);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(245,158,11,.14);border:1px solid rgba(253,230,138,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#fef3c7;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#f59e0b;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#f59e0b;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(245,158,11,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(245,158,11,.07),rgba(251,191,36,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 5 · тема 3 · временные ряды</div>
+    <h1>ARIMA и SARIMA</h1>
+    <p>После темы про сглаживание аналитик даркстора слышит: «ARIMA — классика прогнозирования» — и вызывает ARIMA(1,1,1) на тех же заказах. Её ошибка — 9.2%, хуже копирования прошлой недели (5.3%): недельный цикл модель не видит. Сезонная SARIMA на логарифме ошибается на 3.8%. Разберём, из чего собрана ARIMA, как выбрать порядки, проверить остатки, построить интервалы и добавить праздники.</p>
+    <div class="meta">
+      <span>15 секций</span><span>10 формул с задачами</span><span>5 графиков</span><span>песочница «ACF и PACF процесса»</span><span>10 подводных камней</span><span>3 задачи у доски</span><span>20 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · AR</a>
+    <a href="#s3">3 · MA</a>
+    <a href="#s4">4 · ACF и PACF</a>
+    <a href="#s5">5 · ARIMA</a>
+    <a href="#s6">6 · ARIMA и SES</a>
+    <a href="#s7">7 · SARIMA</a>
+    <a href="#s8">8 · Подбор</a>
+    <a href="#s9">9 · Остатки</a>
+    <a href="#s10">10 · Интервалы</a>
+    <a href="#s11">11 · Регрессоры</a>
+    <a href="#s12">12 · ARIMA или ETS</a>
+    <a href="#s13">13 · В ML и ошибки</a>
+    <a href="#s14">14 · Задачи</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем ещё один класс моделей</h2></div>
+  <p class="slead">Экспоненциальное сглаживание описывает ряд через уровень, тренд и сезонность. ARIMA смотрит иначе: как текущее значение зависит от прошлых значений и прошлых ошибок. Этот взгляд даёт проверяемую диагностику (остались ли в остатках закономерности), естественный способ добавить внешние факторы и модели для рядов, которые возвращаются к норме. Но классика работает, только если её правильно собрать.</p>
+
+  <div class="story">
+    <p>Ряд из 5.1 и 5.2: дневные заказы даркстора за два года, прогноз на 14 дней с каждого из 16 воскресений с 31 августа по 14 декабря 2025.</p>
+    <p style="margin:0">ARIMA(1,1,1) — первая разность и по одному параметру авторегрессии и скользящего среднего — проигрывает даже сезонному naive.</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>Модель (горизонт 14 дней, 16 прогнозов)</th><th>WAPE</th></tr>
+    <tr class="worst"><td>ARIMA(1,1,1)</td><td class="r">9.2%</td></tr>
+    <tr><td>ARIMA(2,1,2)</td><td class="k">7.4%</td></tr>
+    <tr><td>сезонный naive: прошлая неделя</td><td class="k">5.3%</td></tr>
+    <tr><td>ARIMA(7,1,0): авторегрессия на неделю назад</td><td class="k">4.9%</td></tr>
+    <tr><td>SARIMA(0,1,1)(0,1,1)<sub>7</sub> на исходном ряде</td><td class="k">4.1%</td></tr>
+    <tr><td>Холт — Уинтерс мультипликативный, затухающий тренд (5.2)</td><td class="k">3.9%</td></tr>
+    <tr class="best"><td>SARIMA(0,1,1)(0,1,1)<sub>7</sub> на логарифме</td><td class="g">3.8%</td></tr>
+  </table>
+  <p class="tcap">WAPE — сумма модулей ошибок, делённая на сумму факта (<a href="block5_02_exponential_smoothing.html#s3">5.2, секция 3</a>). Расчёт: <code>SARIMAX</code> из statsmodels, параметры подобраны на каждом обучающем отрезке.</p>
+
+  <p class="lead">Несезонная ARIMA с малыми порядками строит почти плоский прогноз и ошибается как SES. Добавить в неё неделю можно грубо — авторегрессией на 7 лагов (4.9%) — или правильно, сезонной частью (3.8%).</p>
+
+  <div class="chb">
+    <div class="cht">Прогноз на 14 дней от 14 декабря 2025</div>
+    <div class="chsub">Ось x — дни (последние 6 недель истории и 2 недели прогноза), ось y — заказы. Серая — история, белые точки — факт. Оранжевая — ARIMA(1,1,1): почти плоская линия. Бирюзовая — сезонный naive. Жёлтая — SARIMA на логарифме, пунктир — её 95%-й интервал. WAPE на этих 14 днях: 8.9%, 5.5% и 3.5%.</div>
+    <canvas id="c_story"></canvas>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Сначала — два строительных блока: авторегрессия (секция 2) и скользящее среднее ошибок (3), и как узнать их по ACF и PACF (4). Затем ARIMA с разностями (5) и её связь со сглаживанием (6), сезонная SARIMA (7), подбор порядков по AIC (8) и проверка остатков (9). В конце — интервалы прогноза (10), внешние факторы (11) и выбор между ARIMA и ETS, с песочницей (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>\varepsilon_t</tex></td><td>Белый шум: случайная ошибка шага, среднее 0, без автокорреляции (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>\varepsilon_t = +20</tex> — неожиданный всплеск</span></td></tr>
+      <tr><td><tex>\varphi_i</tex>, <tex>p</tex></td><td>Коэффициенты авторегрессии; порядок — сколько прошлых значений в модели (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: AR(1) с <tex>\varphi = 0.6</tex></span></td></tr>
+      <tr><td><tex>\theta_j</tex>, <tex>q</tex></td><td>Коэффициенты скользящего среднего ошибок; порядок — сколько прошлых ошибок (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: MA(1) с <tex>\theta = -0.4</tex></span></td></tr>
+      <tr><td><tex>r_k</tex>, PACF</td><td>Автокорреляция на лаге <tex>k</tex>; частичная автокорреляция — связь через <tex>k</tex> шагов без промежуточных (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>r_1 = 0.7</tex>, PACF на лаге 2 — 0</span></td></tr>
+      <tr><td><tex>B</tex>, <tex>d</tex></td><td>Оператор сдвига назад: <tex>B y_t = y_{t-1}</tex>; число обычных разностей (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>(1 - B)y_t = y_t - y_{t-1}</tex></span></td></tr>
+      <tr><td><tex>P, D, Q</tex>, <tex>m</tex>, <tex>\Phi</tex>, <tex>\Theta</tex></td><td>Сезонные порядки, период и сезонные коэффициенты (<a href="#s7">секция 7</a>)<br><span class="gl-ex">Пример: <tex>(0,1,1)_7</tex>, <tex>\Theta = -0.998</tex></span></td></tr>
+      <tr><td><tex>L</tex>, <tex>k</tex>, AIC</td><td>Правдоподобие модели, число параметров, критерий Акаике (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: AIC −1818.2 при <tex>k = 3</tex></span></td></tr>
+      <tr><td><tex>Q</tex></td><td>Статистика Льюнга — Бокса по автокорреляциям остатков (<a href="#s9">секция 9</a>)<br><span class="gl-ex">Пример: <tex>Q = 14.3</tex>, p-value 0.43</span></td></tr>
+      <tr><td><tex>\psi_j</tex>, <tex>\sigma^2</tex></td><td>Вес шока <tex>j</tex> шагов назад в текущем значении; дисперсия ошибки на шаг (<a href="#s10">секция 10</a>)<br><span class="gl-ex">Пример: у блуждания все <tex>\psi_j = 1</tex></span></td></tr>
+      <tr><td><tex>x_t</tex>, <tex>\beta</tex>, <tex>\eta_t</tex></td><td>Внешний фактор, его коэффициент, ошибка регрессии с ARIMA-структурой (<a href="#s11">секция 11</a>)<br><span class="gl-ex">Пример: <tex>x_t = 1</tex> 31 декабря</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с самой простой идеи: сегодняшнее значение похоже на вчерашнее.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Авторегрессия AR(p)</h2></div>
+  <p class="slead">Авторегрессия — линейная регрессия ряда на его собственные прошлые значения. Если сегодня очередь на складе выше нормы, завтра она, скорее всего, тоже будет выше, но меньше: отклонение постепенно рассасывается. AR-модель описывает именно такой возврат к среднему.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · авторегрессия порядка p</div>
+    <texd>y_t = c + \varphi_1 y_{t-1} + \varphi_2 y_{t-2} + \dots + \varphi_p y_{t-p} + \varepsilon_t</texd>
+    <div class="where">где <tex>y_t</tex> — значение ряда в момент <tex>t</tex>, <tex>c</tex> — константа, <tex>\varphi_1, \dots, \varphi_p</tex> — коэффициенты при прошлых значениях, <tex>p</tex> — порядок (сколько шагов назад смотрит модель), <tex>\varepsilon_t</tex> — белый шум: случайная ошибка со средним 0, постоянной дисперсией <tex>\sigma^2</tex> и без автокорреляции (<a href="block5_01_time_series_basics.html#s8">5.1, секция 8</a>). Для AR(1) ряд стационарен при <tex>|\varphi_1| \lt 1</tex>; при <tex>\varphi_1 = 1</tex> и <tex>c = 0</tex> это случайное блуждание. Пример: очередь заказов <tex>y_t = 16 + 0.6\,y_{t-1} + \varepsilon_t</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · как AR(1) переживает один шок</div>
+    <div class="tstep"><b>Шаг 1.</b> Модель <tex>y_t = 16 + 0.6\,y_{t-1} + \varepsilon_t</tex>: коэффициент авторегрессии <tex>\varphi = 0.6</tex>, <tex>\varepsilon_t</tex> — шок. Старт <tex>y_0 = 40</tex> — это среднее ряда: <tex>16 + 0.6\cdot40 = 40</tex>. Шоки по шагам: +20, 0, 0, −5, 0.</div>
+    <div class="tstep"><b>Шаг 2.</b> <tex>y_1 = 16 + 24 + 20 = 60</tex>: шок целиком вошёл в значение.</div>
+    <div class="tstep"><b>Шаг 3.</b> <tex>y_2 = 16 + 0.6\cdot60 = 52</tex>, <tex>y_3 = 16 + 31.2 = 47.2</tex>: отклонение от 40 уменьшается в 0.6 раза за шаг — 20, 12, 7.2.</div>
+    <div class="tstep"><b>Шаг 4.</b> <tex>y_4 = 16 + 28.32 - 5 = 39.32</tex>, <tex>y_5 = 16 + 23.59 = 39.59</tex>: новый шок −5 наложился на остаток старого.</div>
+    <div class="tstep"><b>Итог.</b> В AR-модели каждый шок живёт бесконечно, но затухает геометрически: его след через <tex>j</tex> шагов — <tex>\varphi^j</tex> от исходного. Чем ближе <tex>\varphi</tex> к 1, тем дольше память.</div>
+  </div>
+
+  <p>Из формулы 1 сразу следует прогноз. Будущие шоки неизвестны, их ожидание — ноль, поэтому прогноз AR(1) — та же рекурсия без шума. Отклонение от среднего тает в <tex>\varphi</tex> раз за шаг.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · среднее и прогноз AR(1)</div>
+    <texd>\mu = \frac{c}{1 - \varphi} \qquad \hat y_{t+h|t} = \mu + \varphi^h\,(y_t - \mu)</texd>
+    <div class="where">где <tex>\mu</tex> — среднее стационарного ряда, <tex>c</tex> — константа, <tex>\varphi</tex> — коэффициент авторегрессии, <tex>\hat y_{t+h|t}</tex> — прогноз на <tex>h</tex> шагов вперёд по данным до <tex>t</tex>, <tex>y_t</tex> — последнее значение. Прогноз стационарной модели с ростом горизонта сходится к среднему; у блуждания (<tex>\varphi = 1</tex>) он остаётся на последнем значении. Пример: <tex>c = 16</tex>, <tex>\varphi = 0.6</tex> — <tex>\mu = 40</tex>; при <tex>y_t = 70</tex> прогноз на завтра <tex>40 + 0.6\cdot30 = 58</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · На сколько дней звать временных сборщиков</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Очередь несобранных заказов на конец дня в норме — 40, отклонения подчиняются AR(1) с <tex>\varphi = 0.6</tex> (оценено по истории). После сбоя поставки сегодня в очереди 70. Временных сборщиков вызывают, пока прогноз очереди выше 45.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз очереди на ближайшие дни и на сколько дней нужны временные сборщики.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Отклонение от среднего (30) умножается на <tex>\varphi</tex> каждый день (формула 2). Ищем первый день, когда отклонение меньше 5.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s2">Формула 2</a> · прогноз AR(1)</div>
+        <texd>\hat y_{t+h|t} = \mu + \varphi^h\,(y_t - \mu)</texd>
+        <div class="fr-w">где <tex>\mu = 40</tex>, <tex>\varphi = 0.6</tex>, <tex>y_t = 70</tex>, <tex>h</tex> — дней вперёд.</div></div>
+      <p><tex>h = 1</tex>: <tex>40 + 30\cdot0.6 = 58</tex>; <tex>h = 2</tex>: <tex>40 + 30\cdot0.36 = 50.8</tex>; <tex>h = 3</tex>: <tex>46.5</tex>; <tex>h = 4</tex>: <tex>43.9</tex>. Условие <tex>30\cdot0.6^h \lt 5</tex> выполняется с <tex>h = 4</tex>: <tex>h \gt \ln 6/\ln(1/0.6) = 3.5</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прогноз — <b>58, 50.8, 46.5, 43.9</b>; сборщики нужны <b>три дня</b>, а не неделю «до нормализации». AR-модель отвечает на вопрос «как быстро рассосётся отклонение»: половина отклонения уходит за <tex>\ln 2/\ln(1/0.6) \approx 1.4</tex> дня.</div></div>
+  </div>
+
+  <p class="next">AR помнит прошлые значения. Второй строительный блок помнит прошлые ошибки.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Скользящее среднее ошибок MA(q)</h2></div>
+  <p class="slead">Бывает, что шок влияет на ряд конечное число шагов и потом исчезает полностью. Сбой приложения в понедельник: часть заказов не состоялась, часть перенеслась на вторник, в среду всё как обычно. Такую короткую память описывает модель скользящего среднего ошибок.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · MA(q) и автокорреляция MA(1)</div>
+    <texd>y_t = \mu + \varepsilon_t + \theta_1\varepsilon_{t-1} + \dots + \theta_q\varepsilon_{t-q} \qquad \rho_1 = \frac{\theta}{1 + \theta^2}</texd>
+    <div class="where">где <tex>y_t</tex> — значение ряда, <tex>\mu</tex> — среднее, <tex>\varepsilon_t</tex> — шок (белый шум) текущего шага, <tex>\varepsilon_{t-j}</tex> — шок <tex>j</tex> шагов назад, <tex>\theta_1, \dots, \theta_q</tex> — какая доля прошлого шока остаётся в значении, <tex>q</tex> — порядок (сколько шагов живёт шок). Справа — автокорреляция MA(1) на лаге 1 (<tex>\theta = \theta_1</tex>); на лагах больше <tex>q</tex> автокорреляция MA(q) равна нулю. Модель всегда стационарна; оценивать её удобно при <tex>|\theta| \lt 1</tex> (обратимость, секция 5). Пример: <tex>\theta = -0.4</tex> — <tex>\rho_1 = -0.4/1.16 = -0.345</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Сбой приложения и перенесённые заказы</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Отклонения дневных заказов от сезонной нормы описываются MA(1) с <tex>\theta = -0.4</tex>. В понедельник из-за сбоя приложения заказов на 300 меньше нормы, и этот провал — шок <tex>\varepsilon = -300</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз отклонения на вторник и среду; автокорреляцию отклонений на лаге 1.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Прогноз на шаг — <tex>\theta</tex>, умноженное на последний шок; через два шага шок MA(1) уже не действует (формула 3).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 3</a> · MA(1)</div>
+        <texd>\hat y_{t+1|t} - \mu = \theta\,\varepsilon_t \qquad \rho_1 = \frac{\theta}{1 + \theta^2}</texd>
+        <div class="fr-w">где <tex>\theta = -0.4</tex>, <tex>\varepsilon_t = -300</tex>, <tex>\mu</tex> — сезонная норма.</div></div>
+      <p>Вторник: <tex>-0.4\cdot(-300) = +120</tex> к норме. Среда: шоки после понедельника неизвестны, их ожидание 0 — прогноз равен норме. <tex>\rho_1 = -0.4/(1 + 0.16) = -0.345</tex>, на лагах 2 и дальше — 0.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Вторник — <b>+120</b> заказов к норме (перенесённые), среда — <b>норма</b>; <tex>\rho_1 = -0.345</tex>. Отрицательное <tex>\theta</tex> — «провал сегодня, добор завтра». Если в план курьеров на вторник не заложить +120, вторник тоже провалится — уже по вине склада.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · MA(q) и скользящее среднее ряда</div>
+    <p>Скользящее среднее из 5.1 — способ сгладить ряд: среднее последних <tex>k</tex> значений. MA(q) — модель: значение равно среднему плюс сумма текущего и <tex>q</tex> прошлых шоков. Общее у них только название.</p>
+    <p>Пример: MA(1) с <tex>\theta = -0.4</tex> ничего не усредняет — он переносит 40% шока на следующий день с обратным знаком.</p>
+  </div>
+
+  <p class="next">AR и MA оставляют разные следы в автокорреляциях. По ним порядок модели можно увидеть до подбора.</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>ACF и PACF: как узнать порядок</h2></div>
+  <p class="slead">Автокорреляция (ACF, <a href="block5_01_time_series_basics.html#s6">5.1, секция 6</a>) показывает связь значений через <tex>k</tex> шагов — и прямую, и переданную через промежуточные дни. Частичная автокорреляция (PACF) убирает посредников: это связь <tex>y_t</tex> и <tex>y_{t-k}</tex> при уже учтённых <tex>y_{t-1}, \dots, y_{t-k+1}</tex>. Вместе они подсказывают, AR перед нами или MA и какого порядка.</p>
+
+  <p>PACF на лаге <tex>k</tex> — последний коэффициент <tex>\varphi_{kk}</tex> регрессии <tex>y_t</tex> на <tex>k</tex> прошлых значений. У AR(1) значение через два шага связано с сегодняшним только через вчерашнее: ACF <tex>r_2 = \varphi^2</tex>, а PACF на лаге 2 — ноль. У MA(1) всё наоборот: значения через два шага не связаны вовсе (ACF обрывается), а PACF затухает.</p>
+
+  <table class="ct">
+    <tr><th>Процесс</th><th>ACF</th><th>PACF</th></tr>
+    <tr><td>AR(p)</td><td>затухает: <tex>r_k = \varphi^k</tex> у AR(1)</td><td>обрывается после лага <tex>p</tex></td></tr>
+    <tr><td>MA(q)</td><td>обрывается после лага <tex>q</tex></td><td>затухает, часто со сменой знака</td></tr>
+    <tr><td>ARMA(p, q)</td><td>затухает</td><td>затухает</td></tr>
+    <tr><td>случайное блуждание</td><td>около 1 и убывает очень медленно</td><td>один большой столбец на лаге 1</td></tr>
+  </table>
+  <p class="tcap">«Обрывается» — столбцы после лага выходят за границу шума <tex>\pm2/\sqrt n</tex> не чаще, чем примерно 1 из 20.</p>
+
+  <div class="chb">
+    <div class="cht">Теоретические ACF и PACF: AR(1) и MA(1)</div>
+    <div class="chsub">Ось x — лаг, ось y — корреляция. Жёлтые столбцы — ACF процесса AR(1) с <tex>\varphi = 0.7</tex>: 0.7, 0.49, 0.34 — затухает. Оранжевые — его PACF: 0.7 и дальше ровно 0. Бирюзовые — ACF процесса MA(1) с <tex>\theta = 0.7</tex>: 0.47 и дальше 0. Серые — его PACF: 0.47, −0.28, 0.19 — затухает со сменой знака. Зеркальная картина и есть подсказка порядка.</div>
+    <canvas id="c_acfp"></canvas>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · правило «обрывается» и смешанные процессы</div>
+    <p>Правило работает для чистых AR и MA малого порядка. У ARMA обе функции затухают, и порядок «на глаз» не читается; на реальных рядах выборочные столбцы шумят. ACF и PACF дают кандидатов, а выбирают между ними по AIC и проверке остатков (секции 8, 9).</p>
+    <p>Пример: на 300 точках ARMA(1,1) с коэффициентами AR <tex>\varphi = 0.7</tex> и MA <tex>\theta = 0.5</tex> даёт PACF 0.77, −0.37, 0.18 — похоже на AR(2), хотя это не он.</p>
+  </div>
+
+  <p class="next">AR и MA описывают стационарные ряды. У заказов есть тренд — сначала его нужно убрать разностью.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>ARIMA: разности плюс ARMA</h2></div>
+  <p class="slead">ARIMA(p, d, q) — это ARMA(p, q) для ряда после <tex>d</tex> разностей. Буква I (integrated, «проинтегрированный») значит, что прогноз разностей потом складывают обратно в уровни. Короткая запись всей модели — через оператор сдвига назад <tex>B</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · ARIMA(p, d, q) через оператор сдвига</div>
+    <texd>(1 - \varphi_1 B - \dots - \varphi_p B^p)\,(1 - B)^d\,y_t = c + (1 + \theta_1 B + \dots + \theta_q B^q)\,\varepsilon_t</texd>
+    <div class="where">где <tex>B</tex> — оператор сдвига назад: <tex>B y_t = y_{t-1}</tex>, <tex>B^2 y_t = y_{t-2}</tex>; <tex>(1 - B)y_t = y_t - y_{t-1}</tex> — первая разность (<a href="block5_01_time_series_basics.html#s9">5.1, секция 9</a>), <tex>d</tex> — сколько раз её взять (обычно 0 или 1, редко 2), <tex>\varphi_i</tex> — коэффициенты AR, <tex>p</tex> — их число, <tex>\theta_j</tex> — коэффициенты MA, <tex>q</tex> — их число, <tex>c</tex> — константа (при <tex>d = 1</tex> она означает постоянный рост за шаг — дрейф), <tex>\varepsilon_t</tex> — шок. Условия: AR-часть стационарна, MA-часть обратима (шоки однозначно восстанавливаются по ряду; для MA(1) — <tex>|\theta| \lt 1</tex>). Пример: ARIMA(1,1,0) — <tex>\Delta y_t = 0.4\,\Delta y_{t-1} + \varepsilon_t</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · прогноз ARIMA(1,1,0): от разностей к уровням</div>
+    <div class="tstep"><b>Шаг 1.</b> Модель для приростов <tex>\Delta y_t = 0.4\,\Delta y_{t-1} + \varepsilon_t</tex>, где <tex>\Delta y_t</tex> — прирост, <tex>\varepsilon_t</tex> — шок. Последние значения ряда: 100, 106 — последний прирост 6.</div>
+    <div class="tstep"><b>Шаг 2.</b> Прогноз приростов: <tex>0.4\cdot6 = 2.4</tex>, <tex>0.4\cdot2.4 = 0.96</tex>, <tex>0.384</tex> — AR(1) для приростов возвращается к нулю.</div>
+    <div class="tstep"><b>Шаг 3.</b> Складываем обратно: <tex>106 + 2.4 = 108.4</tex>, <tex>108.4 + 0.96 = 109.36</tex>, <tex>109.744</tex>.</div>
+    <div class="tstep"><b>Шаг 4.</b> Предел: <tex>106 + 6\,(0.4 + 0.4^2 + \dots) = 106 + 6\cdot0.4/0.6 = 110</tex>.</div>
+    <div class="tstep"><b>Итог.</b> Прогноз уровня — накопленная сумма прогнозов приростов. Без константы ARIMA с <tex>d = 1</tex> выходит на плато; с константой — продолжает расти на неё каждый шаг.</div>
+  </div>
+
+  <p>Сколько разностей брать, решают до подбора AR и MA: тесты ADF и KPSS (<a href="block5_01_time_series_basics.html#s10">5.1, секция 10</a>) и вид ACF — у нестационарного ряда она убывает очень медленно. Лишняя разность вредна: она добавляет автокорреляцию −0.5 на лаге 1, и модель подбирает <tex>\theta \approx -1</tex>, чтобы её отменить.</p>
+
+  <p class="next">Самая скромная ARIMA с разностью — ARIMA(0,1,1) — оказывается старым знакомым.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>ARIMA(0,1,1) — это SES</h2></div>
+  <p class="slead">Два семейства не чужие друг другу. Прогноз ARIMA(0,1,1) совпадает с прогнозом простого экспоненциального сглаживания (<a href="block5_02_exponential_smoothing.html#s5">5.2, секция 5</a>), метод Холта — с ARIMA(0,2,2), аддитивный Холт — Уинтерс — с частным случаем SARIMA. Связь помогает читать коэффициенты: <tex>\theta</tex> близко к −1 — это малое <tex>\alpha</tex>, длинная память.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · прогноз ARIMA(0,1,1) как SES</div>
+    <texd>\hat y_{t+1|t} = y_t + \theta\,e_t = \hat y_{t|t-1} + (1 + \theta)\,e_t \qquad \alpha = 1 + \theta</texd>
+    <div class="where">где <tex>\hat y_{t+1|t}</tex> — прогноз на следующий шаг, <tex>y_t</tex> — последнее значение, <tex>e_t = y_t - \hat y_{t|t-1}</tex> — ошибка вчерашнего прогноза (оценка шока <tex>\varepsilon_t</tex>), <tex>\theta</tex> — коэффициент MA(1) для первой разности, <tex>\alpha</tex> — параметр сглаживания SES. Модель: <tex>y_t = y_{t-1} + \varepsilon_t + \theta\varepsilon_{t-1}</tex>; подставляя <tex>y_t = \hat y_{t|t-1} + e_t</tex>, получаем запись SES. Обратимость <tex>-1 \lt \theta \lt 0</tex> соответствует <tex>0 \lt \alpha \lt 1</tex>. Пример: <tex>\theta = -0.8</tex> — <tex>\alpha = 0.2</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Прочитать ARIMA языком сглаживания</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Для недельных продаж товара подобрана ARIMA(0,1,1) с <tex>\theta = -0.8</tex>. Прогноз на эту неделю был 500 штук, продали 540. Менеджер спрашивает, насколько модель «поверит» росту.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз на следующую неделю двумя способами и эквивалентное <tex>\alpha</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Ошибка <tex>e_t = 40</tex>; прогноз — по записи ARIMA и по записи SES (формула 5), результаты должны совпасть.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s6">Формула 5</a> · ARIMA(0,1,1) и SES</div>
+        <texd>\hat y_{t+1|t} = y_t + \theta e_t = \hat y_{t|t-1} + (1 + \theta)e_t</texd>
+        <div class="fr-w">где <tex>y_t = 540</tex>, <tex>\hat y_{t|t-1} = 500</tex>, <tex>e_t = 40</tex>, <tex>\theta = -0.8</tex>.</div></div>
+      <p>ARIMA: <tex>540 - 0.8\cdot40 = 508</tex>. SES: <tex>500 + 0.2\cdot40 = 508</tex>, <tex>\alpha = 1 - 0.8 = 0.2</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прогноз <b>508</b>, <tex>\alpha = 0.2</tex>: модель принимает 20% неожиданного роста. Коэффициент <tex>\theta = -0.8</tex> не «отрицательное влияние», а инерция уровня. Если бы <tex>\theta</tex> было −0.99, прогноз почти не реагировал бы на новые данные — признак лишней разности или очень стабильного ряда.</div></div>
+  </div>
+
+  <p>Обратного соответствия нет для мультипликативных моделей: ETS с мультипликативной сезонностью или ошибкой не имеет ARIMA-аналога. Зато у ARIMA есть модели без аналогов в ETS — стационарные AR с возвратом к среднему (задача 1).</p>
+
+  <p class="next">Главная структура заказов — неделя. В ARIMA её добавляют отдельной сезонной частью.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Сезонная ARIMA: SARIMA</h2></div>
+  <p class="slead">Несезонная ARIMA смотрит на 1–2 шага назад и не видит, что понедельник похож на прошлый понедельник. SARIMA добавляет те же три блока на сезонных лагах: сезонную разность <tex>y_t - y_{t-m}</tex>, сезонную авторегрессию и сезонное MA. Записывают её как ARIMA(p, d, q)(P, D, Q)<sub>m</sub>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · SARIMA и «авиамодель»</div>
+    <texd>\varphi(B)\,\Phi(B^m)\,(1 - B)^d(1 - B^m)^D y_t = \theta(B)\,\Theta(B^m)\,\varepsilon_t</texd>
+    <texd>(1 - B)(1 - B^7)\,y_t = (1 + \theta B)(1 + \Theta B^7)\,\varepsilon_t</texd>
+    <div class="where">где <tex>m</tex> — период сезонности, <tex>\varphi(B)</tex> и <tex>\theta(B)</tex> — несезонные многочлены AR и MA из формулы 4, <tex>\Phi(B^m)</tex> и <tex>\Theta(B^m)</tex> — такие же многочлены от <tex>B^m</tex> порядков <tex>P</tex> и <tex>Q</tex> (связь с тем же днём прошлых циклов), <tex>(1 - B)^d</tex> — <tex>d</tex> обычных разностей, <tex>(1 - B^m)^D</tex> — <tex>D</tex> сезонных разностей, <tex>y_t</tex> — ряд, <tex>\varepsilon_t</tex> — шок. Вторая строка — ARIMA(0,1,1)(0,1,1)<sub>7</sub>, «авиамодель» (так её назвали Бокс и Дженкинс по ряду авиаперевозок): одна обычная и одна сезонная разность, <tex>\theta</tex> и <tex>\Theta</tex> — коэффициенты обычного и сезонного MA. Пример: на логарифме заказов <tex>\theta = -0.89</tex>, <tex>\Theta = -0.998</tex>.</div>
+  </div>
+
+  <p>Как увидеть авиамодель в данных. Логарифм делает недельные колебания аддитивными (<a href="block5_01_time_series_basics.html#s11">5.1, секция 11</a>), разности <tex>(1 - B)(1 - B^7)</tex> убирают тренд и неделю. В ACF результата значимы лаги 1 и 7 (оба около −0.45) и их «соседи» 6 и 8 — след произведения <tex>(1 + \theta B)(1 + \Theta B^7)</tex>, а остальное — шум. Это подпись MA(1) × сезонное MA(1).</p>
+
+  <div class="chb">
+    <div class="cht">ACF и PACF заказов после двух разностей логарифма</div>
+    <div class="chsub">Ось x — лаг в днях, ось y — корреляция. Жёлтые — ACF ряда <tex>(1 - B)(1 - B^7)\ln y_t</tex>: <tex>r_1 = -0.45</tex>, <tex>r_7 = -0.46</tex>, рядом <tex>r_6 = 0.23</tex> и <tex>r_8 = 0.20</tex>, остальное почти в пределах шума. Серые — PACF: затухает от лага 1 (−0.45, −0.28, −0.31) и от лага 7 (−0.29, затем −0.22 на 14). ACF обрывается, PACF затухает — MA на лагах 1 и 7. Пунктир — граница <tex>\pm0.074</tex>.</div>
+    <canvas id="c_ident"></canvas>
+  </div>
+
+  <p>Прогноз авиамодели проще, чем выглядит. Если все шоки обнулить, остаётся <tex>(1 - B)(1 - B^7)y = 0</tex>: завтра = сегодня + (тот же день прошлой недели − день перед ним). Пример: в воскресенье 9 ноября было 1231 заказ, 3 ноября (понедельник) — 964, 2 ноября (воскресенье) — 1178; грубый прогноз понедельника 10 ноября <tex>1231 + 964 - 1178 = 1017</tex> (факт 1053). Коэффициенты MA сглаживают этот прогноз, смешивая его с прошлыми ошибками.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · <tex>\Theta \approx -1</tex> и «сезонности нет»</div>
+    <p>Сезонный коэффициент около −1 почти отменяет сезонную разность: модель говорит, что недельный узор не меняется со временем — фиксированные индексы. Это аналог <tex>\gamma = 0</tex> у Холта — Уинтерса (<a href="block5_02_exponential_smoothing.html#s9">5.2, секция 9</a>), а не отсутствие сезонности.</p>
+    <p>Пример: <tex>\Theta = -0.998</tex> на заказах — неделя стабильна два года; вместо сезонной разности можно взять фиксированные дни недели как регрессоры (секция 11).</p>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · <tex>\varphi</tex> в ARIMA и <tex>\varphi</tex> в затухающем тренде</div>
+    <p>В ARIMA <tex>\varphi_i</tex> — коэффициенты авторегрессии, у стационарной модели они могут быть и отрицательными. В 5.2 <tex>\varphi</tex> — коэффициент затухания тренда от 0.8 до 1.</p>
+    <p>Пример: AR(1) с <tex>\varphi = -0.7</tex> — ряд «скачет» вокруг среднего; затухания с <tex>\varphi \lt 0</tex> не бывает.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>SARIMAX(np.log(y), order=(0, 1, 1), seasonal_order=(0, 1, 1, 7)).fit()</code> из <code>statsmodels.tsa.statespace.sarimax</code>; прогноз — <code>np.exp(res.forecast(14))</code>.</p>
+
+  <p class="next">Порядков у SARIMA шесть. Перебирать их на глаз долго — их подбирают по информационному критерию.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Подбор порядков: AIC и автоматический поиск</h2></div>
+  <p class="slead">Коэффициенты ARIMA при заданных порядках находят максимизацией правдоподобия (<a href="block0_05_likelihood_mle_map.html#s4">0.5, секция 4</a>). Порядки выбирают так: разности — тестами, остальное — по AIC среди кандидатов, подсказанных ACF и PACF, или автоматическим перебором.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · AIC и AICc</div>
+    <texd>\text{AIC} = -2\ln L + 2k \qquad \text{AICc} = \text{AIC} + \frac{2k(k + 1)}{n - k - 1}</texd>
+    <div class="where">где <tex>L</tex> — максимальное правдоподобие модели, <tex>k</tex> — число оцениваемых параметров (коэффициенты, константа, дисперсия шума), <tex>n</tex> — длина ряда после разностей. Меньше — лучше: первое слагаемое награждает за описание данных, второе штрафует за сложность (<a href="block0_05_likelihood_mle_map.html#s9">0.5, секция 9</a>). AICc — поправка для коротких рядов; при <tex>n = 722</tex> и <tex>k = 4</tex> она добавляет 0.06. Различие меньше 2 обычно не считают значимым. Пример: <tex>\ln L = 912.09</tex>, <tex>k = 3</tex> — <tex>\text{AIC} = -1824.18 + 6 = -1818.2</tex>.</div>
+  </div>
+
+  <p>Автоматический поиск (алгоритм Хайндмана — Хандакара, <code>auto_arima</code> в pmdarima, <code>AutoARIMA</code> в statsforecast): <tex>d</tex> — по тесту KPSS, <tex>D</tex> — по тесту силы сезонности, затем пошаговый перебор <tex>p, q, P, Q</tex>: от простой модели меняет порядки на ±1, пока AICc уменьшается. Сравнивать по AIC можно только модели с одинаковыми <tex>d</tex> и <tex>D</tex> на одном и том же ряде: разности меняют данные, на которых считается правдоподобие.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Модель с лучшим AIC</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">На логарифме заказов три кандидата с одной обычной и одной сезонной разностью (<tex>d = D = 1</tex>) и периодом <tex>m = 7</tex>: (0,1,2)(0,1,1) — <tex>\ln L = 915.74</tex>, 4 параметра; (1,1,1)(0,1,1) — 915.46, 4 параметра; авиамодель (0,1,1)(0,1,1) — 912.09, 3 параметра. Бэктест из секции 1: 3.82%, 3.82% и 3.78%.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">AIC трёх моделей и какую взять в работу.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">AIC по формуле 7; сравниваем разницу с порогом около 2 и с результатом бэктеста.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 7</a> · AIC</div>
+        <texd>\text{AIC} = -2\ln L + 2k</texd>
+        <div class="fr-w">где <tex>\ln L</tex> — логарифм правдоподобия, <tex>k</tex> — число параметров (включая дисперсию шума).</div></div>
+      <p><tex>-1831.48 + 8 = -1823.5</tex>; <tex>-1830.92 + 8 = -1822.9</tex>; <tex>-1824.18 + 6 = -1818.2</tex>. Первые две различаются на 0.6, авиамодель хуже лучшей на 5.3.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">AIC: <b>−1823.5</b>, <b>−1822.9</b>, <b>−1818.2</b>. По AIC лучше (0,1,2)(0,1,1), но на прогнозах на 14 дней все три равны (3.78–3.82%). Лишний параметр улучшает описание соседних дней, а не двухнедельный прогноз. Берут простую авиамодель; AIC сужает выбор, решает бэктест на нужном горизонте.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · AIC моделей на ряде и на его логарифме</div>
+    <p>ARIMA(1,1,1) на исходных заказах — AIC 8914, авиамодель на логарифме — −1818. Разница не значит, что вторая «лучше на 10 тысяч»: правдоподобия посчитаны для разных величин. Так же несравнимы модели с разным числом разностей.</p>
+    <p>Пример: сравнивать исходный ряд и логарифм — только бэктестом в одних единицах (заказах).</p>
+  </div>
+
+  <p class="next">Модель выбрана. Осталось проверить, что она забрала из ряда всю структуру.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Диагностика остатков</h2></div>
+  <p class="slead">Если модель описала всю зависимость, её ошибки на шаг вперёд — белый шум: без автокорреляции, со средним около нуля. Остатки, которые коррелируют сами с собой, значат, что часть предсказуемого модель не забрала — и прогноз можно улучшить. Это главное преимущество ARIMA: качество модели можно проверить, не дожидаясь будущего.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · тест Льюнга — Бокса</div>
+    <texd>Q = n(n + 2)\sum_{k=1}^{L}\frac{r_k^2}{n - k}</texd>
+    <div class="where">где <tex>r_k</tex> — автокорреляция остатков на лаге <tex>k</tex>, <tex>n</tex> — число остатков, <tex>L</tex> — сколько лагов проверяется (для дневных данных с неделей — 14 или 21). Если остатки — белый шум, <tex>Q</tex> распределена примерно как хи-квадрат (<a href="block0_04_lln_clt.html#s9">0.4, секция 9</a>) с <tex>L - p - q</tex> степенями свободы (<tex>p, q</tex> — число оцененных коэффициентов AR и MA, включая сезонные). Большое <tex>Q</tex> и маленькое p-value — в остатках осталась структура. Пример: авиамодель без праздников — <tex>Q = 54</tex> на 14 лагах, p-value меньше 0.001.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">ACF остатков двух моделей</div>
+    <div class="chsub">Ось x — лаг в днях, ось y — автокорреляция остатков. Оранжевые — ARIMA(1,1,1) на исходном ряде: <tex>r_7 = 0.63</tex>, <tex>r_{14} </tex> и <tex>r_{21}</tex> тоже высокие — вся неделя осталась в остатках, <tex>Q = 1035</tex>. Жёлтые — авиамодель на логарифме с праздниками (секция 11): всё в пределах шума, <tex>Q = 14.3</tex> на 14 лагах, p-value 0.43. Пунктир — <tex>\pm0.074</tex>.</div>
+    <canvas id="c_resid"></canvas>
+  </div>
+
+  <p>Авиамодель без праздников остатки не прошла: <tex>Q = 54</tex>. Самые большие остатки — 31 декабря и 1–3 января: модель, которая не знает про праздник, принимает его за шок, и этот «шок» по MA-структуре искажает следующие дни. С двумя индикаторами праздников <tex>Q</tex> падает до 14.3.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Прошла ли модель проверку остатков</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">По 100 остаткам модели MA(1) для недельной выручки магазина посчитали автокорреляции: <tex>r_1 = 0.30</tex>, <tex>r_2 = 0.12</tex>, <tex>r_3 = -0.05</tex>. Проверяют три лага; критическое значение хи-квадрат с 2 степенями свободы на уровне 5% — 5.99.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Статистику <tex>Q</tex> и вывод о модели.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Формула 8 с <tex>L = 3</tex>; степеней свободы <tex>3 - 1 = 2</tex>, потому что оценён один коэффициент MA.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 8</a> · Льюнг — Бокс</div>
+        <texd>Q = n(n + 2)\sum_{k=1}^{L}\frac{r_k^2}{n - k}</texd>
+        <div class="fr-w">где <tex>n = 100</tex>, <tex>L = 3</tex>, <tex>r_1 = 0.30</tex>, <tex>r_2 = 0.12</tex>, <tex>r_3 = -0.05</tex>.</div></div>
+      <p>Слагаемые: <tex>0.09/99 = 0.000909</tex>, <tex>0.0144/98 = 0.000147</tex>, <tex>0.0025/97 = 0.000026</tex>; сумма 0.001082. <tex>Q = 100\cdot102\cdot0.001082 = 11.03</tex>, больше 5.99 (p-value 0.004).</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><tex>Q = </tex> <b>11.0</b> — гипотеза «остатки — белый шум» отвергается. Почти весь вклад — от <tex>r_1 = 0.30</tex>: модель недоучла связь соседних недель. Следующий кандидат — добавить AR(1) и проверить снова.</div></div>
+  </div>
+
+  <p class="next">Модель прошла проверку — можно строить прогноз. И сразу вопрос: насколько ему верить на 14-й день?</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Прогноз и интервалы</h2></div>
+  <p class="slead">Прогноз ARIMA строят рекурсией: будущие шоки заменяют нулём, будущие значения — их прогнозами. Неопределённость считают через то, как шоки накапливаются в ряде. У стационарной модели интервал перестаёт расширяться, у модели с разностью растёт без предела — это и есть разница «вернётся к норме» и «ушло навсегда».</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · дисперсия ошибки прогноза на горизонте h</div>
+    <texd>\operatorname{Var}(y_{t+h} - \hat y_{t+h|t}) = \sigma^2\big(1 + \psi_1^2 + \dots + \psi_{h-1}^2\big)</texd>
+    <div class="where">где <tex>\sigma^2</tex> — дисперсия шока, <tex>\psi_j</tex> — вес шока <tex>j</tex> шагов назад в текущем значении (модель, переписанная как сумма шоков: <tex>y_t = \mu + \varepsilon_t + \psi_1\varepsilon_{t-1} + \psi_2\varepsilon_{t-2} + \dots</tex>), <tex>h</tex> — горизонт, <tex>y_{t+h}</tex> — будущее значение, <tex>\hat y_{t+h|t}</tex> — его прогноз. У случайного блуждания все <tex>\psi_j = 1</tex>: дисперсия <tex>\sigma^2 h</tex>, интервал растёт как <tex>\sqrt h</tex>. У AR(1) <tex>\psi_j = \varphi^j</tex>: дисперсия <tex>\sigma^2(1 - \varphi^{2h})/(1 - \varphi^2)</tex> и выходит на предел — дисперсию самого ряда. 95%-й интервал — <tex>\pm1.96</tex> стандартного отклонения (<a href="block0_04_lln_clt.html#s10">0.4, секция 10</a>). Пример: <tex>\sigma = 50</tex>, <tex>h = 10</tex> — у блуждания <tex>\pm310</tex>, у AR(1) с <tex>\varphi = 0.7</tex> — <tex>\pm137</tex>.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Полуширина 95%-го интервала: блуждание и AR(1)</div>
+    <div class="chsub">Ось x — горизонт в шагах, ось y — полуширина интервала (<tex>1.96</tex> стандартного отклонения ошибки) при <tex>\sigma = 50</tex>. Оранжевая — случайное блуждание: <tex>98\sqrt h</tex>, к 20-му шагу ±438 и растёт дальше. Жёлтая — AR(1) с <tex>\varphi = 0.7</tex>: к 5-му шагу ±135, к 10-му ±137 — это предел — разброс самого ряда.</div>
+    <canvas id="c_fan"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Остаток на складе через 10 дней</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Два ряда с одинаковой дневной ошибкой прогноза <tex>\sigma = 50</tex> штук. Остаток товара на складе ведёт себя как случайное блуждание: поставки и продажи не тянут его к норме. Дневное отклонение спроса от плана — AR(1) с коэффициентом <tex>\varphi = 0.7</tex>. Нужен 95%-й коридор на 10-й день.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Полуширину 95%-го интервала на горизонте 10 для обоих рядов.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сумма квадратов весов шоков <tex>\psi_j</tex> (формула 9): у блуждания <tex>h</tex> единиц, у AR(1) — геометрическая прогрессия.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s10">Формула 9</a> · ошибка на горизонте</div>
+        <texd>\sigma_h^2 = \sigma^2\big(1 + \psi_1^2 + \dots + \psi_{h-1}^2\big)</texd>
+        <div class="fr-w">где <tex>\sigma = 50</tex>, <tex>h = 10</tex>; блуждание — <tex>\psi_j = 1</tex>, AR(1) — <tex>\psi_j = 0.7^j</tex>.</div></div>
+      <p>Блуждание: <tex>\sigma_{10} = 50\sqrt{10} = 158.1</tex>, полуширина <tex>1.96\cdot158.1 = 310</tex>. AR(1): <tex>\sigma_{10}^2 = 2500\cdot(1 - 0.49^{10})/(1 - 0.49) = 2500\cdot1.960</tex>, <tex>\sigma_{10} = 70.0</tex>, полуширина 137.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Блуждание — <b>±310</b>, AR(1) — <b>±137</b>, хотя на завтра ошибки одинаковы. Для блуждания страховой запас растёт с горизонтом без предела, для возвращающегося к норме ряда — нет. Ошибиться с <tex>d</tex> значит ошибиться с запасом в разы.</div></div>
+  </div>
+
+  <p><b>Интервалы авиамодели.</b> На логарифме интервал строят в логарифмах и переводят экспонентой — он становится несимметричным. От 14 декабря: на завтра 1052, интервал 923–1198; на 14-й день 1216, интервал 1058–1397. С индикаторами праздников (секция 11) дисперсия шока падает с 0.0044 до 0.0029, и интервалы сужаются примерно на 20%: праздники, принятые за шоки, раздували оценку неопределённости.</p>
+
+  <p>Ещё одна тонкость логарифма: <tex>\exp</tex> от прогноза логарифма — медиана, а не среднее. Среднее больше в <tex>e^{\sigma^2/2}</tex> раз; здесь это 0.2%, но для шумного ряда с <tex>\sigma = 0.5</tex> в логарифмах — уже 13%. Для закупок, где важна сумма, поправку добавляют.</p>
+
+  <p class="next">Праздники уже дважды испортили модель. Пора научить её знать о них заранее.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Внешние факторы: регрессия с ARIMA-ошибками</h2></div>
+  <p class="slead">Праздники, промо, цены, дни зарплаты влияют на ряд, но ARIMA о них не знает и принимает их за шоки. Решение — регрессия, у которой ошибка не независима, а следует ARIMA: факторы объясняют свою часть, ARIMA — автокорреляцию остального. В statsmodels это та же <code>SARIMAX</code> с аргументом <code>exog</code>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 10 · регрессия с ARIMA-ошибками</div>
+    <texd>y_t = \beta_0 + \beta_1 x_{1,t} + \dots + \beta_r x_{r,t} + \eta_t, \qquad \eta_t \sim \text{ARIMA}(p, d, q)</texd>
+    <div class="where">где <tex>y_t</tex> — ряд (здесь логарифм заказов), <tex>x_{1,t}, \dots, x_{r,t}</tex> — внешние факторы в момент <tex>t</tex> (индикатор праздника, цена, промо), <tex>r</tex> — их число, <tex>\beta_0, \dots, \beta_r</tex> — коэффициенты, <tex>\eta_t</tex> — ошибка регрессии со структурой ARIMA, <tex>p, d, q</tex> — её порядки (формула 4). Обычная регрессия с независимыми ошибками на рядах даёт ложную точность коэффициентов (<a href="block5_01_time_series_basics.html#s7">5.1, секция 7</a>). Факторы должны быть известны на весь горизонт прогноза: календарь и запланированное промо — да, завтрашняя погода — только как прогноз. На логарифме коэффициент — относительный эффект: <tex>e^{\beta}</tex> раз. Пример: <tex>\beta = 0.457</tex> для 31 декабря — <tex>\times1.58</tex>.</div>
+  </div>
+
+  <p>Длинную сезонность — годовую у дневных данных (<tex>m = 365</tex>) или недельную у часовых (<tex>m = 168</tex>) — SARIMA тянет плохо: сезонная разность съедает целый цикл данных, а подбор становится медленным и неустойчивым. Её добавляют как внешние факторы: пары гармоник Фурье <tex>\sin(2\pi kt/m)</tex>, <tex>\cos(2\pi kt/m)</tex> для <tex>k = 1, \dots, K</tex>; несколько пар описывают гладкий годовой цикл, а короткая неделя остаётся в SARIMA.</p>
+
+  <p><b>Prophet</b> (библиотека Meta) построен на той же идее, но без ARIMA: кусочно-линейный тренд с точками излома, гармоники Фурье для недели и года, праздники как регрессоры, а ошибки считаются независимыми. Он удобен, но автокорреляцию остатков не моделирует и на бэктестах часто уступает ETS и SARIMA.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 7 · Прогноз на 31 декабря</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">17 декабря 2025 строят прогноз на 14 дней, до 31 декабря. Авиамодель на логарифме без праздников даёт на 31-е 1146 заказов. В модели с индикаторами «31 декабря» и «1–3 января» базовый прогноз на 31-е (без эффекта праздника) — 1148, коэффициент праздника <tex>\beta = 0.457</tex>; он оценён по единственному случаю — 31 декабря 2024. Факт 31 декабря 2025 — 1621.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз модели с праздником, ошибки обеих моделей и эффект праздника, который показал факт.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">На логарифме эффект умножается: база × <tex>e^{\beta}</tex> (формула 10). Фактический эффект — факт, делённый на прогноз без праздника.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 10</a> · фактор на логарифме</div>
+        <texd>\hat y = \text{база}\cdot e^{\beta}</texd>
+        <div class="fr-w">где база 1148 — прогноз модели с факторами при <tex>x = 0</tex>, <tex>\beta = 0.457</tex>, <tex>e^{0.457} = 1.58</tex>.</div></div>
+      <p>С праздником: <tex>1148\cdot1.58 = 1814</tex>, ошибка <tex>+193</tex>. Без праздника: 1146, ошибка <tex>-475</tex>. Эффект в 2025 году: <tex>1621/1146 = 1.41</tex>. WAPE на всех 14 днях: 4.9% против 6.5%.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прогноз <b>1814</b> против <b>1146</b>; ошибка уменьшилась с 475 до 193 заказов. Но эффект по одному случаю — ×1.58 при фактическом ×1.41: одно событие — одно зашумлённое наблюдение. Эффекты редких событий усредняют по нескольким годам или похожим событиям, а без них берут с осторожностью.</div></div>
+  </div>
+
+  <p class="next">ARIMA и ETS дали одинаковую точность на заказах. Когда что брать — и как увидеть строительные блоки ARIMA вживую.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>ARIMA или ETS</h2></div>
+  <p class="slead">На заказах SARIMA и Холт — Уинтерс равны (3.8% и 3.9%), и это типично: на рядах с понятным трендом и сезонностью оба семейства близки. Выбирают по свойствам ряда и задачи, а лучше — строят оба и сравнивают бэктестом или усредняют.</p>
+
+  <table class="ct">
+    <tr><th>Ситуация</th><th>Чаще подходит</th></tr>
+    <tr><td>понятные уровень, тренд, сезонность; мультипликативная сезонность без логарифма</td><td>ETS</td></tr>
+    <tr><td>ряд возвращается к норме (очередь, отклонение от плана, загрузка)</td><td>стационарная ARIMA</td></tr>
+    <tr><td>нужны внешние факторы: праздники, промо, цена</td><td>регрессия с ARIMA-ошибками</td></tr>
+    <tr><td>нужна проверка, что модель забрала всю структуру</td><td>ARIMA: остатки и Льюнг — Бокс</td></tr>
+    <tr><td>тысячи рядов, без ручной настройки</td><td>AutoETS и AutoARIMA, комбинация</td></tr>
+  </table>
+  <p class="tcap">Обе модели — по одной на ряд. Для многих связанных рядов с признаками сильнее глобальный бустинг (5.5).</p>
+
+  <div class="play">
+    <h4>Песочница: ACF и PACF процесса</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">300 точек процесса из одного и того же белого шума. AR(1): <tex>y_t = \varphi y_{t-1} + \varepsilon_t</tex>; MA(1): <tex>y_t = \varepsilon_t + \theta\varepsilon_{t-1}</tex>; ARMA(1,1): <tex>\varphi</tex> из кнопок и <tex>\theta = 0.5</tex>; блуждание: <tex>y_t = y_{t-1} + \varepsilon_t</tex> (коэффициент не используется). Верхний график — ряд, нижний — выборочные ACF и PACF на 12 лагах (в выводе — первые четыре), пунктир — граница шума <tex>\pm2/\sqrt{300} = \pm0.115</tex>. Движок совпал со statsmodels (<code>acf</code>, <code>pacf(method='ldb')</code>) во всех 12 комбинациях до <tex>10^{-13}</tex>.</p>
+    <div class="prow"><button type="button" id="pk_ar" class="pbtn">AR(1)</button><button type="button" id="pk_ma" class="pbtn">MA(1)</button><button type="button" id="pk_arma" class="pbtn">ARMA(1,1)</button><button type="button" id="pk_rw" class="pbtn">блуждание</button></div>
+    <div class="prow"><button type="button" id="pp_3" class="pbtn">коэффициент 0.3</button><button type="button" id="pp_7" class="pbtn">0.7</button><button type="button" id="pp_m7" class="pbtn">−0.7</button></div>
+    <div class="chb"><canvas id="c_play_y"></canvas></div>
+    <div class="chb"><canvas id="c_play_acf"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+  <p class="tcap" id="play_hint">Что попробовать. (1) AR(1), 0.7: ACF 0.61, 0.34, 0.20 — затухает; PACF 0.61 и дальше в пределах шума — обрыв после лага 1. (2) MA(1), 0.7: наоборот, ACF 0.40 и почти обрыв (−0.12 у границы), PACF 0.40, −0.34, 0.14 — затухает со сменой знака. (3) AR(1), −0.7: ряд «скачет», ACF меняет знак: −0.67, 0.39, −0.24. (4) Блуждание: ACF 0.98, 0.97, 0.95 — нужна разность. (5) ARMA(1,1), 0.7: обе функции затухают, и PACF 0.77, −0.37, 0.18 похожа на AR(2) — порядок на глаз не читается.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · стационарная модель и модель с разностью</div>
+    <p>ARIMA с <tex>d = 0</tex> говорит: отклонения от среднего временны, прогноз возвращается к среднему, интервал ограничен. С <tex>d = 1</tex> — изменения навсегда, прогноз остаётся у последнего уровня, интервал растёт как <tex>\sqrt h</tex>. Это разные утверждения о мире, а не технический параметр.</p>
+    <p>Пример: очередь на складе (задача 1) — <tex>d = 0</tex>; остаток товара (задача 6) — <tex>d = 1</tex>.</p>
+  </div>
+
+  <p class="next">Модели разобраны. Соберём, где ARIMA нужна в работе, и типичные ошибки.</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в ML и 10 подводных камней</h2></div>
+  <p class="slead">ARIMA — рабочий инструмент там, где рядов немного и каждый важен: финансы и экономика, нагрузка на системы, отдельные крупные товары и точки. Ещё чаще её идеи живут внутри других моделей: лаги как признаки бустинга (5.5) — это авторегрессия, проверка остатков — стандартная диагностика любой модели прогноза.</p>
+
+  <p>Где нужно: нагрузка и трафик, модели с календарными и промо-эффектами, бенчмарк рядом с ETS (<a href="block5_02_exponential_smoothing.html#s12">5.2, секция 12</a>), мониторинг аномалий по интервалу прогноза. Порядок работы: логарифм при мультипликативной сезонности → разности по тестам → кандидаты по ACF и PACF → AIC → остатки → бэктест против бенчмарков.</p>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">10 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>ARIMA без сезонной части на ряду с сезонностью</b><span>ARIMA(1,1,1) на заказах — 9.2%, хуже прошлой недели (5.3%); в остатках <tex>r_7 = 0.63</tex> (секции 1, 9). Сезонность — через SARIMA или регрессоры.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Лишняя разность</b><span>Разность стационарного ряда даёт автокорреляцию −0.5 на лаге 1, модель подбирает <tex>\theta \approx -1</tex> (коэффициент MA) и раздутые интервалы (секция 5). <tex>d</tex> — по тестам ADF и KPSS.</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>AIC моделей с разными разностями или на разных шкалах</b><span>AIC 8914 на исходном ряде и −1818 на логарифме несравнимы (секция 8). Разные <tex>d</tex>, <tex>D</tex> и преобразования сравнивают бэктестом.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Модель по лучшему AIC без бэктеста</b><span>Лучшая по AIC модель выиграла 5 единиц, а прогноз на 14 дней не улучшила (задача 4). Решает проверка на нужном горизонте.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Остатки не проверены</b><span>Авиамодель без праздников — <tex>Q = 54</tex>, p-value меньше 0.001 (<tex>Q</tex> — статистика Льюнга — Бокса); с праздниками — 14.3, p-value 0.43 (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Праздники и выбросы без регрессоров</b><span>Модель принимает их за шоки: дисперсия шока 0.0044 вместо 0.0029, интервалы шире на 20%, прогноз 31 декабря — 1146 при факте 1621 (секции 10, 11).</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Эффект события по одному случаю</b><span>Коэффициент праздника по одному году — ×1.58, а следующий год показал ×1.41 (задача 7). Редкие эффекты усредняют по нескольким событиям.</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Фактор, неизвестный на горизонте</b><span>В бэктесте подставили фактическую погоду или цену конкурента — точность отличная, в бою этих значений нет. В модель — только то, что известно заранее, или его прогноз (секция 11).</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Экспонента прогноза логарифма как среднее</b><span><tex>\exp</tex> от прогноза логарифма — медиана; среднее больше в <tex>e^{\sigma^2/2}</tex> раз (<tex>\sigma^2</tex> — дисперсия ошибки в логарифмах), для шумных рядов на 10% и больше (секция 10).</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Длинная сезонность в SARIMA</b><span><tex>m = 365</tex> или 168 — медленный и неустойчивый подбор, сезонная разность съедает год данных. Годовой цикл — гармониками Фурье как регрессорами (секция 11).</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и разобрать три задачи из работы.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Все формулы темы на одном экране, затем три прикладные задачи: как в работе собирают, проверяют и применяют ARIMA. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Авторегрессия AR(p)</b><br><tex>y_t = c + \sum_{i=1}^{p}\varphi_i y_{t-i} + \varepsilon_t</tex><div class="cs-w">AR(1) стационарна при <tex>|\varphi| \lt 1</tex></div></td><td>ряд помнит свои значения</td></tr>
+    <tr><td><a href="#s2">2</a></td><td><b>Прогноз AR(1)</b><br><tex>\mu = \frac{c}{1 - \varphi},\ \hat y_{t+h|t} = \mu + \varphi^h(y_t - \mu)</tex><div class="cs-w">отклонение тает в <tex>\varphi</tex> раз за шаг</div></td><td>возврат к норме</td></tr>
+    <tr><td><a href="#s3">3</a></td><td><b>MA(q)</b><br><tex>y_t = \mu + \varepsilon_t + \sum_{j=1}^{q}\theta_j\varepsilon_{t-j},\ \rho_1 = \frac{\theta}{1 + \theta^2}</tex><div class="cs-w">ACF обрывается после <tex>q</tex></div></td><td>шок живёт <tex>q</tex> шагов</td></tr>
+    <tr><td><a href="#s5">4</a></td><td><b>ARIMA(p, d, q)</b><br><tex>\varphi(B)(1 - B)^d y_t = c + \theta(B)\varepsilon_t</tex><div class="cs-w"><tex>B y_t = y_{t-1}</tex></div></td><td>ряд с трендом</td></tr>
+    <tr><td><a href="#s6">5</a></td><td><b>ARIMA(0,1,1) = SES</b><br><tex>\hat y_{t+1|t} = y_t + \theta e_t,\ \alpha = 1 + \theta</tex><div class="cs-w"><tex>e_t</tex> — ошибка прошлого прогноза</div></td><td>чтение коэффициентов</td></tr>
+    <tr><td><a href="#s7">6</a></td><td><b>SARIMA и авиамодель</b><br><tex>(1 - B)(1 - B^m)y_t = (1 + \theta B)(1 + \Theta B^m)\varepsilon_t</tex><div class="cs-w"><tex>\Theta \approx -1</tex> — стабильная сезонность</div></td><td>сезонный ряд</td></tr>
+    <tr><td><a href="#s8">7</a></td><td><b>AIC и AICc</b><br><tex>-2\ln L + 2k;\ +\frac{2k(k + 1)}{n - k - 1}</tex><div class="cs-w">разница меньше 2 — равны</div></td><td>выбор порядков при равных <tex>d, D</tex></td></tr>
+    <tr><td><a href="#s9">8</a></td><td><b>Льюнг — Бокс</b><br><tex>Q = n(n + 2)\sum_{k=1}^{L}\frac{r_k^2}{n - k}</tex><div class="cs-w"><tex>\chi^2</tex> с <tex>L - p - q</tex> степенями свободы</div></td><td>проверка остатков</td></tr>
+    <tr><td><a href="#s10">9</a></td><td><b>Ошибка на горизонте</b><br><tex>\sigma_h^2 = \sigma^2(1 + \psi_1^2 + \dots + \psi_{h-1}^2)</tex><div class="cs-w">блуждание <tex>\sigma^2 h</tex>; AR(1) — предел</div></td><td>интервалы, запас</td></tr>
+    <tr><td><a href="#s11">10</a></td><td><b>Регрессия с ARIMA-ошибками</b><br><tex>y_t = \beta_0 + \sum_i \beta_i x_{i,t} + \eta_t</tex><div class="cs-w"><tex>\eta_t</tex> — ARIMA; на логарифме эффект <tex>e^{\beta}</tex></div></td><td>праздники, промо, Фурье</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Аналитик прислал ARIMA(5,2,5) с лучшим AIC</div>
+    <div class="task-q">Коллега подобрал для дневных продаж ARIMA(5,2,5): AIC лучший среди всех, что он пробовал. Вас просят проверить модель перед запуском. Что вы посмотрите?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Разности.</b> <tex>d = 2</tex> для продаж почти всегда лишнее: тесты ADF и KPSS на первой разности, коэффициенты MA около −1 — признак переразностного ряда. AIC моделей с <tex>d = 1</tex> и <tex>d = 2</tex> вообще несравнимы.</p>
+      <p><b>Сезонность и остатки.</b> Есть ли неделя в остатках (ACF на лагах 7, 14), тест Льюнга — Бокса; одиннадцать коэффициентов на дневном ряде — подгонка под шум, проверить устойчивость при переобучении на соседних отрезках.</p>
+      <p><b>Бэктест.</b> Rolling origin на рабочем горизонте против сезонного naive, ETS и авиамодели. Если не лучше на 5–10% — брать простую.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Часовая нагрузка колл-центра на неделю</div>
+    <div class="task-q">Нужен прогноз числа звонков по часам на 7 дней вперёд для планирования смен. У ряда суточный цикл (24 часа) и недельный (168 часов), плюс праздники. Как построить модель на основе ARIMA?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Почему не SARIMA с m = 168.</b> Одна сезонность на выбор, сезонная разность съедает неделю данных, подбор медленный и неустойчивый.</p>
+      <p><b>Решение.</b> Регрессия с ARIMA-ошибками: гармоники Фурье для 24 и 168 часов (по несколько пар, число подбирают по AIC или бэктесту), индикаторы праздников; короткую автокорреляцию остатка берёт ARIMA малого порядка. Логарифм или корень, если разброс растёт с уровнем.</p>
+      <p><b>Проверка.</b> Бэктест на горизонте 7 дней, ошибка по часам пик отдельно (по ним планируют смены), интервалы — для числа операторов с запасом. Альтернативы для сравнения — MSTL с ETS остатка и бустинг с календарными признаками (5.5).</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Выручка с учётом запланированной акции</div>
+    <div class="task-q">Через две недели — акция со скидкой 20% на неделю. Финансы просят прогноз выручки на месяц с учётом акции. В истории было четыре похожих акции. Как это сделать и что может пойти не так?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Модель.</b> Регрессия с ARIMA-ошибками на логарифме выручки: индикатор акции (или размер скидки), отдельные индикаторы недели до и недели после — покупатели откладывают покупки и запасаются; праздники; сезонность — SARIMA или Фурье.</p>
+      <p><b>Риски.</b> Четыре акции — четыре наблюдения эффекта: коэффициент с широким интервалом, его надо показывать, а не только точку. Акции не случайны (их ставят в слабые недели) — эффект смешан с причиной. Каннибализация других товаров в выручке одного товара не видна.</p>
+      <p><b>Результат.</b> Прогноз со сценариями (эффект как в средней, слабой и сильной из прошлых акций) и интервалами; после акции — сравнение факта с прогнозом для уточнения коэффициента.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>20 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Что означают p, d и q в ARIMA(p, d, q)?</summary><div class="qa-a"><tex>p</tex> — число прошлых значений в авторегрессии, <tex>d</tex> — сколько раз взята разность, <tex>q</tex> — число прошлых шоков в скользящем среднем ошибок.</div></details>
+
+  <details class="qa"><summary>2. Чем авторегрессия отличается от обычной линейной регрессии?</summary><div class="qa-a">Признаки — прошлые значения самого ряда. Шок в AR-модели не исчезает сразу, а затухает геометрически: через <tex>j</tex> шагов от него остаётся доля <tex>\varphi^j</tex>.</div></details>
+
+  <details class="qa"><summary>3. Когда AR(1) стационарна и к чему сходится её прогноз?</summary><div class="qa-a">При <tex>|\varphi| \lt 1</tex>. Прогноз сходится к среднему <tex>c/(1 - \varphi)</tex>: отклонение уменьшается в <tex>\varphi</tex> раз за шаг.</div></details>
+
+  <details class="qa"><summary>4. Что описывает модель MA(q)?</summary><div class="qa-a">Значение — среднее плюс текущий и <tex>q</tex> прошлых шоков. Шок влияет ровно <tex>q</tex> шагов и потом исчезает, поэтому ACF обрывается после лага <tex>q</tex>.</div></details>
+
+  <details class="qa"><summary>5. Чем MA(q) отличается от скользящего среднего ряда?</summary><div class="qa-a">Скользящее среднее — способ сгладить ряд по его значениям. MA(q) — модель, в которой значение складывается из прошлых шоков. Общее только название.</div></details>
+
+  <details class="qa"><summary>6. Что показывает частичная автокорреляция?</summary><div class="qa-a">Связь значений через <tex>k</tex> шагов после того, как учтены промежуточные лаги, — последний коэффициент регрессии ряда на <tex>k</tex> своих прошлых значений.</div></details>
+
+  <details class="qa"><summary>7. Как по ACF и PACF отличить AR от MA?</summary><div class="qa-a">У AR(p) PACF обрывается после лага <tex>p</tex>, ACF затухает. У MA(q) ACF обрывается после <tex>q</tex>, PACF затухает. У ARMA затухают обе.</div></details>
+
+  <details class="qa"><summary>8. Что такое оператор сдвига B?</summary><div class="qa-a"><tex>B y_t = y_{t-1}</tex>. С ним разность — <tex>(1 - B)y_t</tex>, сезонная разность — <tex>(1 - B^m)y_t</tex>, а вся ARIMA записывается произведением многочленов от <tex>B</tex>.</div></details>
+
+  <details class="qa"><summary>9. Что означает константа в ARIMA с d = 1?</summary><div class="qa-a">Постоянный прирост за шаг — дрейф. Прогноз с ней растёт линейно, без неё выходит на плато.</div></details>
+
+  <details class="qa"><summary>10. Чем вредна лишняя разность?</summary><div class="qa-a">Она добавляет автокорреляцию −0.5 на лаге 1. Модель подбирает коэффициент MA около −1, чтобы её отменить, а интервалы прогноза растут без нужды.</div></details>
+
+  <details class="qa"><summary>11. Как связаны ARIMA(0,1,1) и простое экспоненциальное сглаживание?</summary><div class="qa-a">Их прогнозы совпадают при <tex>\alpha = 1 + \theta</tex>. Коэффициент <tex>\theta</tex> около −1 — это малое <tex>\alpha</tex> и длинная память.</div></details>
+
+  <details class="qa"><summary>12. Как читать запись SARIMA(0,1,1)(0,1,1)<sub>7</sub>?</summary><div class="qa-a">Одна обычная разность и MA(1); одна сезонная разность с периодом 7 и сезонное MA(1) на лаге 7. Это «авиамодель» для дневного ряда с неделей.</div></details>
+
+  <details class="qa"><summary>13. Что значит сезонный коэффициент MA около −1?</summary><div class="qa-a">Сезонная разность почти отменяется: сезонный узор стабилен во времени. Сезонность есть, но её можно описать фиксированными индексами или регрессорами.</div></details>
+
+  <details class="qa"><summary>14. Как подбирают порядки ARIMA автоматически?</summary><div class="qa-a">Разности — тестами (KPSS, тест силы сезонности), затем пошагово меняют <tex>p, q, P, Q</tex> на ±1, пока уменьшается AICc. Так работают <code>auto_arima</code> и <code>AutoARIMA</code>.</div></details>
+
+  <details class="qa"><summary>15. Почему нельзя сравнивать AIC моделей с разным d?</summary><div class="qa-a">Разность меняет данные, на которых считается правдоподобие. Так же несравнимы AIC ряда и его логарифма — такие модели сравнивают бэктестом.</div></details>
+
+  <details class="qa"><summary>16. Зачем проверять остатки модели?</summary><div class="qa-a">Если в остатках есть автокорреляция, модель не забрала часть предсказуемой структуры и прогноз можно улучшить. Хорошая модель оставляет белый шум.</div></details>
+
+  <details class="qa"><summary>17. Что проверяет тест Льюнга — Бокса?</summary><div class="qa-a">Что первые <tex>L</tex> автокорреляций остатков вместе равны нулю. Статистику сравнивают с хи-квадрат с <tex>L - p - q</tex> степенями свободы.</div></details>
+
+  <details class="qa"><summary>18. Почему интервал у модели с разностью растёт без предела, а у стационарной — нет?</summary><div class="qa-a">В модели с разностью шоки накапливаются навсегда: у блуждания дисперсия ошибки <tex>\sigma^2 h</tex>. В стационарной шоки затухают, и дисперсия сходится к дисперсии ряда.</div></details>
+
+  <details class="qa"><summary>19. Чем регрессия с ARIMA-ошибками лучше обычной регрессии на ряде?</summary><div class="qa-a">Обычная регрессия считает ошибки независимыми и на рядах завышает уверенность в коэффициентах. ARIMA-ошибки забирают автокорреляцию, и оценки эффектов становятся честными.</div></details>
+
+  <details class="qa"><summary>20. Какие внешние факторы можно включать в модель прогноза?</summary><div class="qa-a">Только известные на весь горизонт: календарь, праздники, запланированные промо и цены. Неизвестные заранее (погода, действия конкурентов) — только через их прогноз, иначе бэктест покажет нереальную точность.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — автокорреляция, разности и тесты стационарности из <a href="block5_01_time_series_basics.html#s6">5.1</a>, экспоненциальное сглаживание из <a href="block5_02_exponential_smoothing.html#s5">5.2</a>, правдоподобие и AIC из <a href="block0_05_likelihood_mle_map.html#s9">0.5</a>. Дальше в блоке 5: валидация и метрики рядов (5.4), признаки и бустинг на рядах (5.5), вероятностный прогноз (5.6); прикладной прогноз спроса — <a href="block3_02_demand_forecasting.html">3.2</a>.
+</div>
+
+<div class="pnav">
+  <a href="block5_02_exponential_smoothing.html">← 5.2 · Сглаживание</a>
+  <a class="next" href="index_roadmap.html">Карта курса →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#fbbf24', TL='#2dd4bf', OR='#fb923c', RD='#f87171', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+/* столбики корреляций по лагам + граница шума */
+function bars(id,K,sets,bound,yr){
+  var labels=[], i; for(i=1;i<=K;i++) labels.push(i);
+  var ds=sets.map(function(s){ return {type:'bar',label:s[0],data:s[1].slice(0,K),backgroundColor:s[2],borderWidth:0}; });
+  if(bound){ var b=labels.map(function(){ return bound; }), nb=labels.map(function(){ return -bound; });
+    ds.push({type:'line',label:'',data:b,borderColor:GY,borderDash:[5,4],borderWidth:1.2,pointRadius:0,fill:false});
+    ds.push({type:'line',label:'',data:nb,borderColor:GY,borderDash:[5,4],borderWidth:1.2,pointRadius:0,fill:false}); }
+  return mk(id,{type:'bar',data:{labels:labels,datasets:ds},options:{responsive:true,scales:{x:Object.assign({title:{display:true,text:'лаг'}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:'корреляция'}},GRID)},plugins:Object.assign({},LEG)}});
+}
+
+var CH={"story":{"hist":[964.0,1234.0,1131.0,1091.0,1303.0,1477.0,1231.0,1053.0,1067.0,1031.0,1104.0,1314.0,1425.0,1192.0,1059.0,1127.0,1064.0,1104.0,1257.0,1467.0,1209.0,1069.0,1062.0,1108.0,1172.0,1263.0,1334.0,1202.0,1029.0,1094.0,1220.0,1234.0,1279.0,1409.0,1206.0,1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0],"act":[1119.0,1121.0,1124.0,1239.0,1289.0,1424.0,1213.0,1073.0,1086.0,1180.0,1340.0,1420.0,1480.0,1217.0],"a111":[1175.4,1181.8,1184.2,1185.1,1185.4,1185.5,1185.5,1185.6,1185.6,1185.6,1185.6,1185.6,1185.6,1185.6],"sn":[1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0,1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0],"air":[1051.7,1112.0,1130.0,1170.5,1318.7,1411.1,1210.2,1056.4,1116.9,1135.0,1175.7,1324.6,1417.4,1215.6],"lo":[923.4,975.7,990.8,1025.6,1154.7,1234.7,1058.2,922.9,975.1,990.2,1025.0,1154.0,1234.0,1057.6],"hi":[1197.8,1267.4,1288.8,1335.9,1506.1,1612.8,1384.1,1209.2,1279.4,1301.0,1348.6,1520.4,1628.0,1397.1]},"th":{"ar_acf":[0.7,0.49,0.343,0.24,0.168,0.118,0.082,0.058,0.04,0.028],"ar_pacf":[0.7,0.0,-0.0,0.0,0.0,-0.0,0.0,-0.0,0.0,-0.0],"ma_acf":[0.47,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"ma_pacf":[0.47,-0.283,0.186,-0.126,0.087,-0.06,0.042,-0.029,0.021,-0.014]},"ident":{"acf":[-0.446,-0.024,-0.089,0.134,-0.059,0.228,-0.458,0.197,0.03,0.04,-0.082,0.073,-0.026,-0.05,0.066,0.031,-0.08,0.012,-0.007,0.063,-0.006],"pacf":[-0.447,-0.279,-0.308,-0.108,-0.104,0.263,-0.293,-0.188,-0.115,-0.106,-0.044,0.017,0.213,-0.215,-0.065,0.06,-0.037,-0.026,-0.013,0.216,-0.093]},"resid":{"a111":[0.142,-0.267,-0.259,-0.205,-0.25,0.226,0.628,0.229,-0.247,-0.241,-0.245,-0.218,0.216,0.602,0.242,-0.248,-0.252,-0.232,-0.227,0.217,0.607],"air":[-0.014,-0.077,-0.016,0.026,-0.056,-0.048,0.02,0.034,0.019,-0.036,0.001,0.046,-0.029,0.031,0.112,0.059,-0.066,-0.043,0.03,0.042,0.003]},"fan":{"h":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"rw":[98.0,138.6,169.7,196.0,219.1,240.0,259.3,277.2,294.0,309.9,325.0,339.5,353.3,366.7,379.6,392.0,404.1,415.8,427.2,438.3],"ar":[98.0,119.6,128.9,133.2,135.3,136.3,136.8,137.0,137.1,137.2,137.2,137.2,137.2,137.2,137.2,137.2,137.2,137.2,137.2,137.2]}};
+
+/* 1 — прогноз на 14 дней */
+(function(){
+  var S=CH.story, nh=S.hist.length, hist=S.hist.map(function(v,i){ return [i-nh+1,v]; });
+  function f(a){ return a.map(function(v,i){ return [i+1,v]; }); }
+  mk('c_story',{type:'scatter',data:{datasets:[seg(hist,'история',GY,1.6),dots(f(S.act),'факт',WH,3.5),seg(f(S.a111),'ARIMA(1,1,1)',OR,2.2),seg(f(S.sn),'сезонный naive',TL,2.2,[6,3]),seg(f(S.air),'SARIMA на логарифме',AC,2.6),seg(f(S.lo),'95%-й интервал',AC,1.2,[4,4]),seg(f(S.hi),'',AC,1.2,[4,4])]},
+    options:lin('день относительно 14 декабря 2025','заказов',[-42,14],[800,1700])});
+})();
+
+/* 2 — теоретические ACF и PACF */
+(function(){
+  var T=CH.th;
+  bars('c_acfp',8,[['AR(1): ACF',T.ar_acf,AC],['AR(1): PACF',T.ar_pacf,OR],['MA(1): ACF',T.ma_acf,TL],['MA(1): PACF',T.ma_pacf,GY]],0,[-0.4,0.8]);
+})();
+
+/* 3 — идентификация на заказах */
+(function(){
+  var I=CH.ident;
+  bars('c_ident',21,[['ACF',I.acf,AC],['PACF',I.pacf,GY]],0.074,[-0.6,0.4]);
+})();
+
+/* 4 — ACF остатков */
+(function(){
+  var R=CH.resid;
+  bars('c_resid',21,[['ARIMA(1,1,1)',R.a111,OR],['авиамодель с праздниками',R.air,AC]],0.074,[-0.2,0.7]);
+})();
+
+/* 5 — полуширина интервала */
+(function(){
+  var F=CH.fan; function p(v){ return F.h.map(function(h,i){ return [h,v[i]]; }); }
+  var a=seg(p(F.rw),'случайное блуждание',OR,2.4), b=seg(p(F.ar),'AR(1), φ = 0.7',AC,2.4); a.pointRadius=2.5; b.pointRadius=2.5;
+  mk('c_fan',{type:'scatter',data:{datasets:[a,b]},options:lin('горизонт, шагов','полуширина 95%-го интервала',[0,20],[0,450])});
+})();
+
+var SAND={"e": [0.105, -0.807, 0.892, -0.929, -1.136, 0.513, 1.319, 1.276, 1.356, 0.403, -0.349, 0.578, 0.579, 0.066, -0.699, -0.178, 0.266, -1.155, -0.364, -1.217, 1.776, 0.711, -0.141, 0.953, 0.176, -0.548, 0.029, -0.131, 3.642, -0.986, -2.785, 0.767, -1.326, -1.399, 1.356, -0.893, -1.323, 0.018, -1.265, 0.742, -0.794, 0.094, 1.506, 2.02, -2.268, -0.501, -0.406, 0.853, -0.439, -0.931, 1.513, 1.341, 0.132, -2.136, -0.142, -1.406, 2.073, 0.513, 0.377, 0.898, 0.734, -1.234, 0.635, 0.355, -2.61, 1.209, 0.447, -0.095, 0.552, -0.84, 1.084, -0.386, -1.293, 2.119, 0.855, 0.089, 0.301, 0.563, 1.538, 0.775, 1.438, -0.656, -0.744, 0.254, 0.479, -0.029, -0.843, -0.296, 0.928, 0.859, -1.178, 0.862, 0.498, 0.4, 0.974, 0.312, 1.807, -0.492, -0.938, 0.316, 0.499, -1.063, 0.529, 0.324, -1.133, -0.29, 1.136, 1.007, -1.095, 0.81, 0.082, 2.199, -0.184, 0.664, -1.581, 1.164, -0.016, -0.548, -0.5, -0.143, -0.573, 0.621, -0.484, -0.284, 3.022, -0.045, 0.512, 0.311, -0.056, 0.142, -1.348, 0.75, 0.248, 0.153, -1.142, 0.961, -1.408, -0.091, -0.701, -1.438, 1.562, 1.434, 1.287, -0.006, -0.89, 0.184, -0.141, -1.824, 1.204, 0.837, -0.633, -1.04, -0.076, 0.211, 2.196, 0.414, -1.033, 0.661, -1.232, -1.053, 0.511, -0.221, -1.45, -0.708, -0.484, -1.051, -0.493, 0.129, -0.27, -0.88, 0.745, 1.583, 0.883, -1.095, -0.821, 0.095, 0.183, -0.954, 0.484, 0.022, -1.231, -1.773, 0.006, -0.67, 1.96, -0.95, -0.599, 2.835, -1.178, 1.038, 0.194, -0.299, -1.081, 0.144, 1.579, 0.892, 0.007, 0.94, -0.352, 0.205, 1.215, 0.094, 0.893, 0.147, -1.051, 1.346, -0.704, 1.372, 1.103, 1.454, 0.807, -0.151, -0.903, -0.511, -0.513, 1.07, -1.656, 0.999, -0.252, 0.461, 0.938, 0.64, 1.082, -0.681, -0.422, -1.327, -0.198, -0.111, 0.414, 0.605, 1.241, 1.324, -0.571, -0.184, -0.382, -0.286, 1.14, 1.563, 0.749, 0.581, -0.846, -0.504, -0.087, -2.331, 0.416, -0.154, 1.857, -0.114, -1.672, 0.147, -0.134, 0.286, -1.11, 0.056, -1.791, 0.396, -0.15, -2.28, 0.736, 1.103, 1.184, 0.732, -0.586, -0.715, 0.53, 1.148, 2.821, 0.355, -1.748, -0.309, 0.867, 0.664, 1.078, -0.889, -0.41, 0.718, 0.438, 0.417, -0.6, -0.47, 0.528, 0.922, -1.273, 0.224, 0.602, 0.32, 0.351, -0.077, -0.735, 1.174, -1.276, 0.292, -1.164, -0.637, -0.15, -1.063, 0.071, 0.845, 1.185, -0.464]};
+/* движок песочницы 5.3: процесс по готовому шуму, выборочные ACF и PACF (Дурбин — Левинсон) */
+var AP={
+  sim:function(e,kind,p){
+    var n=e.length, y=new Array(n), i;
+    y[0]=e[0];
+    for(i=1;i<n;i++){
+      if(kind==='ar') y[i]=p*y[i-1]+e[i];
+      else if(kind==='ma') y[i]=e[i]+p*e[i-1];
+      else if(kind==='arma') y[i]=p*y[i-1]+e[i]+0.5*e[i-1];
+      else y[i]=y[i-1]+e[i];
+    }
+    return y;
+  },
+  acf:function(y,K){
+    var n=y.length, m=0, i, k, c0=0, r=[];
+    for(i=0;i<n;i++) m+=y[i]; m/=n;
+    for(i=0;i<n;i++) c0+=(y[i]-m)*(y[i]-m);
+    for(k=1;k<=K;k++){ var c=0; for(i=k;i<n;i++) c+=(y[i]-m)*(y[i-k]-m); r.push(c/c0); }
+    return r;
+  },
+  pacf:function(r,K){
+    var out=[r[0]], phi=[r[0]], v=1-r[0]*r[0], k, j;
+    for(k=2;k<=K;k++){
+      var num=r[k-1]; for(j=1;j<k;j++) num-=phi[j-1]*r[k-j-1];
+      var a=num/v, nphi=[];
+      for(j=1;j<k;j++) nphi.push(phi[j-1]-a*phi[k-j-1]);
+      nphi.push(a); phi=nphi; v*=(1-a*a); out.push(a);
+    }
+    return out;
+  }
+};
+
+/* песочница: ACF и PACF процесса */
+(function(){
+  if(!document.getElementById('c_play_y')) return;
+  function el(id){ return document.getElementById(id); }
+  var st={kind:'ar',p:0.7}, K=12, BD=2/Math.sqrt(SAND.e.length);
+  var cy=mk('c_play_y',{type:'scatter',data:{datasets:[]},options:lin('шаг','значение',[0,300],[-5,5])});
+  var ca=bars('c_play_acf',K,[['ACF',[],AC],['PACF',[],GY]],BD,[-1,1]);
+  if(!cy||!ca) return;
+  function draw(){
+    var y=AP.sim(SAND.e,st.kind,st.p), r=AP.acf(y,K), q=AP.pacf(r,K);
+    var lo=Math.min.apply(null,y), hi=Math.max.apply(null,y), step=hi-lo>20?5:1;
+    cy.options.scales.y.min=Math.floor(lo/step)*step; cy.options.scales.y.max=Math.ceil(hi/step)*step;
+    cy.data.datasets=[seg(y.map(function(v,i){ return [i,v]; }),'',AC,1.4)]; cy.update();
+    ca.data.datasets[0].data=r; ca.data.datasets[1].data=q; ca.update();
+    function f(a){ return a.slice(0,4).map(function(v){ return v.toFixed(2); }).join('  '); }
+    var oa=0, op=0, k; for(k=1;k<K;k++){ if(Math.abs(r[k])>BD) oa++; if(Math.abs(q[k])>BD) op++; }
+    el('out_play').textContent='ACF:  '+f(r)+'\nPACF: '+f(q)+'\nвне ±'+BD.toFixed(3)+' на лагах 2–12:\nACF — '+oa+', PACF — '+op;
+    ['ar','ma','arma','rw'].forEach(function(k){ el('pk_'+k).classList.toggle('on',st.kind===k); });
+    [[0.3,'3'],[0.7,'7'],[-0.7,'m7']].forEach(function(p){ el('pp_'+p[1]).classList.toggle('on',st.kind!=='rw'&&st.p===p[0]); });
+  }
+  ['ar','ma','arma','rw'].forEach(function(k){ el('pk_'+k).addEventListener('click',function(){ st.kind=k; draw(); }); });
+  [[0.3,'3'],[0.7,'7'],[-0.7,'m7']].forEach(function(p){ el('pp_'+p[1]).addEventListener('click',function(){ st.p=p[0]; draw(); }); });
+  try{ draw(); }catch(e){ console.log('sandbox', e); }
+})();
+</script>
+
+</body>
+</html>
