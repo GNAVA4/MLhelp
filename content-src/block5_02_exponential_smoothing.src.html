@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5.2 · Базовые прогнозы и экспоненциальное сглаживание</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#22c55e; --ac-d:#86efac; --ac-l:rgba(34,197,94,.08); --ac-b:rgba(34,197,94,.35); --ac-m:#16a34a; --ac-s:#052e16;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#22c55e; --okl:rgba(34,197,94,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(34,197,94,.24),transparent 60%),linear-gradient(135deg,#020617,#0a2a17 55%,#052e16);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(34,197,94,.14);border:1px solid rgba(134,239,172,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#dcfce7;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#22c55e;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#22c55e;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(34,197,94,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(34,197,94,.07),rgba(74,222,128,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 5 · тема 2 · временные ряды</div>
+    <h1>Базовые прогнозы и экспоненциальное сглаживание</h1>
+    <p>Даркстору нужен прогноз заказов на две недели вперёд — под него планируют курьеров и закупки. Аналитик строит метод Холта: «у ряда же тренд». На 16 прогнозах за осень его ошибка — 8.9% заказов. Простое копирование прошлой недели ошибается на 5.3%, а Холт — Уинтерс с недельной сезонностью — на 3.9%. В теме разберём базовые прогнозы, без которых нельзя оценить ни одну модель, и семейство экспоненциального сглаживания: SES, Холт, затухающий тренд, Холт — Уинтерс и ETS, — как они устроены, как выбрать параметры и почему интервал прогноза расширяется с горизонтом.</p>
+    <div class="meta">
+      <span>15 секций</span><span>9 формул с задачами</span><span>6 графиков</span><span>песочница «сглаживание»</span><span>10 подводных камней</span><span>3 задачи у доски</span><span>20 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Наивные</a>
+    <a href="#s3">3 · Сравнение</a>
+    <a href="#s4">4 · Скользящее среднее</a>
+    <a href="#s5">5 · SES</a>
+    <a href="#s6">6 · Выбор α</a>
+    <a href="#s7">7 · Холт</a>
+    <a href="#s8">8 · Затухание</a>
+    <a href="#s9">9 · Холт — Уинтерс</a>
+    <a href="#s10">10 · ETS</a>
+    <a href="#s11">11 · Интервалы</a>
+    <a href="#s12">12 · Бенчмарк</a>
+    <a href="#s13">13 · В ML и ошибки</a>
+    <a href="#s14">14 · Задачи</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем начинать с простых прогнозов</h2></div>
+  <p class="slead">Любая модель прогноза имеет смысл только в сравнении. «Ошибка 8%» ничего не говорит, пока неизвестно, сколько ошибается прогноз «как на прошлой неделе». Простые методы — точка отсчёта, и на рядах с понятной сезонностью их трудно обойти. Экспоненциальное сглаживание — следующий шаг: та же простота, но с весами, которые подстраиваются под ряд.</p>
+
+  <div class="story">
+    <p>Ряд из 5.1: дневные заказы даркстора за два года. Нужен прогноз на 14 дней с каждого воскресенья. Проверка — 16 воскресений с 31 августа по 14 декабря 2025: на каждое строим прогноз по данным до него и сравниваем с фактом.</p>
+    <p style="margin:0">Аналитик выбирает метод Холта (уровень плюс тренд): ошибка WAPE — <b>8.9%</b> заказов. Сезонный naive — «повторить прошлую неделю» — <b>5.3%</b>. Холт — Уинтерс с мультипликативной недельной сезонностью и затухающим трендом — <b>3.9%</b>.</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>Метод (горизонт 14 дней, 16 прогнозов)</th><th>WAPE</th></tr>
+    <tr class="worst"><td>среднее всей истории</td><td class="r">18.4%</td></tr>
+    <tr><td>naive: последнее значение</td><td class="k">9.4%</td></tr>
+    <tr><td>скользящее среднее за 7 дней</td><td class="k">9.0%</td></tr>
+    <tr><td>SES — простое экспоненциальное сглаживание</td><td class="k">9.0%</td></tr>
+    <tr><td>Холт: уровень и тренд</td><td class="k">8.9%</td></tr>
+    <tr><td>сезонный naive: прошлая неделя</td><td class="k">5.3%</td></tr>
+    <tr><td>Холт — Уинтерс аддитивный</td><td class="k">4.2%</td></tr>
+    <tr class="best"><td>Холт — Уинтерс мультипликативный, затухающий тренд</td><td class="g">3.9%</td></tr>
+  </table>
+  <p class="tcap">WAPE — сумма модулей ошибок, делённая на сумму факта (секция 3). Расчёт: statsmodels, параметры подобраны на каждом обучающем отрезке.</p>
+
+  <p class="lead">Методы без сезонности ошибаются почти вдвое сильнее, чем копирование прошлой недели: недельный цикл — главная структура этого ряда. Тренд важнее не в первые дни, а на длинном горизонте, и там его надо «затухать».</p>
+
+  <div class="chb">
+    <div class="cht">Прогноз на 14 дней от 14 декабря 2025</div>
+    <div class="chsub">Ось x — дни (последние 6 недель истории и 2 недели прогноза), ось y — заказы. Серая — история, белые точки — факт. Оранжевая — Холт: прямая без недельного цикла. Бирюзовая — сезонный naive. Зелёная — Холт — Уинтерс: повторяет неделю и учитывает уровень. WAPE на этих 14 днях: 8.6%, 5.5% и 3.9%.</div>
+    <canvas id="c_story"></canvas>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Сначала — наивные прогнозы (секция 2) и как честно сравнивать прогнозы (3). Затем скользящее среднее (4) и экспоненциальное сглаживание: SES (5) и выбор параметра (6), тренд Холта (7) и его затухание (8), сезонность Холта — Уинтерса (9), семейство ETS (10). В конце — интервалы прогноза (11) и простые методы как бенчмарк, с песочницей (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>y_t</tex>, <tex>h</tex>, <tex>\hat y_{t+h|t}</tex></td><td>Значение ряда; горизонт — на сколько шагов вперёд; прогноз на <tex>t + h</tex> по данным до <tex>t</tex> (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>\hat y_{t+1|t}</tex> — прогноз на завтра</span></td></tr>
+      <tr><td><tex>m</tex></td><td>Период сезонности (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>m = 7</tex> для дневных данных</span></td></tr>
+      <tr><td>WAPE, MAE</td><td>Доля ошибок от суммы факта; средняя абсолютная ошибка (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: WAPE 5.3%</span></td></tr>
+      <tr><td><tex>\ell_t</tex>, <tex>\alpha</tex></td><td>Уровень ряда после наблюдения <tex>t</tex>; параметр сглаживания уровня от 0 до 1 (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>\alpha = 0.3</tex></span></td></tr>
+      <tr><td><tex>b_t</tex>, <tex>\beta</tex></td><td>Наклон (тренд за шаг); параметр сглаживания наклона (<a href="#s7">секция 7</a>)<br><span class="gl-ex">Пример: <tex>b = 4</tex> заказа в день</span></td></tr>
+      <tr><td><tex>\varphi</tex></td><td>Коэффициент затухания тренда (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>\varphi = 0.95</tex></span></td></tr>
+      <tr><td><tex>s_t</tex>, <tex>\gamma</tex></td><td>Сезонный индекс; параметр его сглаживания (<a href="#s9">секция 9</a>)<br><span class="gl-ex">Пример: <tex>s_{\text{сб}} = 1.17</tex></span></td></tr>
+      <tr><td><tex>\sigma^2</tex></td><td>Дисперсия ошибки прогноза на один шаг (<a href="#s11">секция 11</a>)<br><span class="gl-ex">Пример: <tex>\sigma = 60</tex> заказов</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с прогнозов, которые не требуют никакой модели.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Наивные прогнозы</h2></div>
+  <p class="slead">Четыре прогноза строятся без обучения, за секунды, и каждый отвечает на свой вопрос: что если всё останется как сейчас, как в прошлом цикле, как в среднем, как в последней тенденции. Любой новый метод сравнивают с лучшим из них.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · наивные прогнозы</div>
+    <texd>\hat y_{t+h|t} = y_t \qquad \hat y_{t+h|t} = y_{t+h-m} \qquad \hat y_{t+h|t} = \bar y \qquad \hat y_{t+h|t} = y_t + h\,\frac{y_t - y_1}{t - 1}</texd>
+    <div class="where">где <tex>\hat y_{t+h|t}</tex> — прогноз на момент <tex>t + h</tex>, сделанный в момент <tex>t</tex>, <tex>h</tex> — горизонт, <tex>y_t</tex> — последнее известное значение, <tex>m</tex> — период сезонности. По порядку: naive (последнее значение), сезонный naive (то же место прошлого цикла; для <tex>h \gt m</tex> берут ещё более ранний цикл), среднее всей истории <tex>\bar y</tex>, дрейф (последнее значение плюс средний прирост за шаг, <tex>y_1</tex> — первое значение). Пример: в воскресенье 9 ноября прогноз сезонного naive на понедельник 10 ноября — заказы понедельника 3 ноября, 964.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Прошлая неделя как прогноз</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Планировщик курьеров в воскресенье 9 ноября берёт заказы 3–9 ноября (964, 1234, 1131, 1091, 1303, 1477, 1231) как прогноз на 10–16 ноября. Факт: 1053, 1067, 1031, 1104, 1314, 1425, 1192.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Ошибки по дням и долю ошибки от суммы факта; на какой день недели прогноз хуже всего.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Сезонный naive при <tex>m = 7</tex> (формула 1); доля ошибки — сумма модулей на сумму факта (формула 2 в секции 3).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s2">Формула 1</a> · сезонный naive</div>
+        <texd>\hat y_{t+h|t} = y_{t+h-7}</texd>
+        <div class="fr-w">где <tex>t</tex> — воскресенье 9 ноября, <tex>h</tex> = 1…7, <tex>y_{t+h-7}</tex> — тот же день прошлой недели.</div></div>
+      <p>Модули ошибок: <tex>|964 - 1053| = 89</tex>, 167, 100, 13, 11, 52, 39; сумма 471. Сумма факта — 8186; <tex>471/8186 = 0.0575</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Ошибка — <b>5.75%</b> заказов недели; хуже всего вторник (167). Для планирования это неплохо: бесплатный прогноз уже ошибается на 6%, и модель, которая не даёт меньше, не нужна. Но вторник прошлой недели был необычно высоким, и прогноз скопировал этот выброс — методы следующих секций сглаживают такие случайности.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · naive и сезонный naive</div>
+    <p>Naive повторяет последнее значение на весь горизонт — плоская линия. Сезонный naive повторяет последний цикл — «пила», повторяющая прошлую неделю. На ряду с сильной неделей первый ошибается почти вдвое сильнее второго.</p>
+    <p>Пример: 9.4% против 5.3% на 16 прогнозах.</p>
+  </div>
+
+  <p class="next">Чтобы говорить «лучше» и «хуже», нужна мера ошибки и правило сравнения.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Как сравнивать прогнозы</h2></div>
+  <p class="slead">Прогноз проверяют так, как его будут использовать: стоя в прошлом, без знания будущего, на том же горизонте. Ошибку меряют в понятных бизнесу единицах. Подробно валидация и метрики — тема 5.4; здесь минимум, чтобы читать таблицы.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · средняя абсолютная ошибка и WAPE</div>
+    <texd>\text{MAE} = \frac1N\sum_{i=1}^{N}|y_i - \hat y_i| \qquad \text{WAPE} = \frac{\sum_i |y_i - \hat y_i|}{\sum_i |y_i|}</texd>
+    <div class="where">где <tex>i</tex> — номер прогнозируемой точки (день и точка прогноза), <tex>N</tex> — число таких точек, <tex>y_i</tex> — факт, <tex>\hat y_i</tex> — прогноз. MAE — в штуках, WAPE (weighted absolute percentage error) — доля от суммарного факта: «ошиблись на 5% заказов». В отличие от MAPE (средней доли по точкам, <a href="block0_17_metrics_basics.html#s11">0.17, секция 11</a>), WAPE не взрывается на маленьких значениях. Пример: модули ошибок недели 471 при факте 8186 — WAPE 5.75%, MAE 67.3.</div>
+  </div>
+
+  <p>Проверка «с точки прогноза» (rolling origin): выбирают несколько моментов в прошлом, в каждый строят прогноз только по данным до него и сравнивают с тем, что было потом. Так получено 16 прогнозов из таблицы секции 1. Случайное деление дней на обучение и тест для рядов не годится: модель увидит соседние дни будущего (5.4).</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Неплохой прогноз, который систематически завышает</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Прогноз на 10–16 ноября: 1100, 1150, 1120, 1130, 1280, 1400, 1210. Факт: 1053, 1067, 1031, 1104, 1314, 1425, 1192.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">MAE, WAPE и суммарное смещение (прогноз минус факт); стоит ли доверять прогнозу при закупках.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Модули ошибок — для MAE и WAPE (формула 2); сумма ошибок со знаком — смещение: модули его не видят.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 2</a> · MAE и WAPE</div>
+        <texd>\text{MAE} = \frac1N\sum_i|y_i - \hat y_i| \qquad \text{WAPE} = \frac{\sum_i|y_i - \hat y_i|}{\sum_i y_i}</texd>
+        <div class="fr-w">где <tex>N = 7</tex>, <tex>\hat y_i</tex> — прогноз, <tex>y_i</tex> — факт, сумма факта 8186.</div></div>
+      <p>Модули: 47, 83, 89, 26, 34, 25, 18, сумма 322. <tex>\text{MAE} = 322/7 = 46.0</tex>, <tex>\text{WAPE} = 322/8186 = 0.0393</tex>. Ошибки со знаком: +47, +83, +89, +26, −34, −25, −18, сумма <tex>+204</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">MAE <b>46</b>, WAPE <b>3.9%</b> — лучше сезонного naive. Но прогноз завышает на <b>204</b> заказа за неделю (2.5%): в будни всегда выше факта. Для закупок систематическое завышение — это списания; смещение проверяют отдельно от точности.</div></div>
+  </div>
+
+  <p class="next">Вернёмся к методам. Самый простой способ сгладить случайность — усреднить последние значения.</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Скользящее среднее как прогноз</h2></div>
+  <p class="slead">Среднее последних <tex>k</tex> значений убирает шум и недельный цикл (при <tex>k = 7</tex>, <a href="block5_01_time_series_basics.html#s3">5.1, секция 3</a>), но у него две слабости: все дни в окне весят одинаково, а всё, что за окном, не весит ничего. И оно отстаёт, если у ряда тренд.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · прогноз скользящим средним</div>
+    <texd>\hat y_{t+h|t} = \frac1k\sum_{j=0}^{k-1} y_{t-j}</texd>
+    <div class="where">где <tex>k</tex> — длина окна, <tex>y_{t-j}</tex> — значения за последние <tex>k</tex> шагов (<tex>j = 0</tex> — последний), <tex>\hat y_{t+h|t}</tex> — прогноз, одинаковый для всех горизонтов <tex>h</tex>. При тренде прогноз отстаёт примерно на <tex>(k - 1)/2</tex> шагов наклона. Пример: окно 7 при росте 0.45 заказа в день отстаёт на <tex>3\cdot0.45 \approx 1.4</tex> заказа — мало; при росте 20 в день — на 60.</div>
+  </div>
+
+  <p>На заказах скользящее среднее за 7 дней дало 9.0% — как SES и Холт: все три выдают плоский прогноз и не воспроизводят неделю. Скользящее среднее полезно скорее для анализа (тренд в 5.1), чем как прогноз.</p>
+
+  <p class="next">Естественное улучшение — дать недавним значениям больший вес, чем старым, и не обрывать память на краю окна. Это экспоненциальное сглаживание.</p>
+</section>
+
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Простое экспоненциальное сглаживание (SES)</h2></div>
+  <p class="slead">SES хранит одно число — текущий уровень ряда — и после каждого наблюдения сдвигает его к новому значению на долю <tex>\alpha</tex>. Прогноз на любой горизонт — этот уровень. Метод годится для рядов без тренда и сезонности и лежит в основе всех следующих.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · SES: обновление уровня и прогноз</div>
+    <texd>\ell_t = \alpha\,y_t + (1 - \alpha)\,\ell_{t-1} \qquad \hat y_{t+h|t} = \ell_t</texd>
+    <div class="where">где <tex>\ell_t</tex> — уровень после наблюдения <tex>t</tex>, <tex>y_t</tex> — новое значение, <tex>\alpha</tex> — параметр сглаживания от 0 до 1 (какую долю «удивления» <tex>y_t - \ell_{t-1}</tex> принять), <tex>\ell_{t-1}</tex> — прошлый уровень, <tex>\hat y_{t+h|t}</tex> — прогноз, одинаковый на все горизонты <tex>h</tex>. Эквивалентная запись: <tex>\ell_t = \ell_{t-1} + \alpha(y_t - \ell_{t-1})</tex>. Начальный уровень <tex>\ell_0</tex> берут первым значением, средним первых точек или подбирают вместе с <tex>\alpha</tex>. Пример: уровень 1180, пришло 1250, <tex>\alpha = 0.3</tex> — <tex>\ell = 0.3\cdot1250 + 0.7\cdot1180 = 1201</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · SES на пяти точках, α = 0.3</div>
+    <div class="tstep"><b>Шаг 1.</b> Ряд: 10, 12, 11, 15, 13. Начальный уровень — первое значение: <tex>\ell_1 = 10</tex>.</div>
+    <div class="tstep"><b>Шаг 2.</b> <tex>\ell_2 = 0.3\cdot12 + 0.7\cdot10 = 3.6 + 7 = 10.6</tex>; <tex>\ell_3 = 0.3\cdot11 + 0.7\cdot10.6 = 3.3 + 7.42 = 10.72</tex>.</div>
+    <div class="tstep"><b>Шаг 3.</b> Скачок до 15: <tex>\ell_4 = 4.5 + 0.7\cdot10.72 = 12.004</tex> — уровень сдвинулся на 30% от удивления <tex>15 - 10.72 = 4.28</tex>, а не до 15.</div>
+    <div class="tstep"><b>Шаг 4.</b> <tex>\ell_5 = 3.9 + 0.7\cdot12.004 = 12.303</tex>. Прогноз на любой горизонт — 12.30.</div>
+    <div class="tstep"><b>Итог.</b> Уровень реагирует на новые данные постепенно: одиночный выброс сдвигает его на <tex>\alpha</tex> долю, устойчивое изменение — за несколько шагов.</div>
+  </div>
+
+  <p>Почему «экспоненциальное». Подставим формулу саму в себя: <tex>\ell_t = \alpha y_t + \alpha(1 - \alpha)y_{t-1} + \alpha(1 - \alpha)^2 y_{t-2} + \dots</tex> Прогноз — взвешенное среднее всей истории, веса убывают в геометрической прогрессии.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · SES как взвешенное среднее прошлого</div>
+    <texd>\ell_t = \sum_{j=0}^{t-1}\alpha(1 - \alpha)^j\,y_{t-j} + (1 - \alpha)^t\,\ell_0</texd>
+    <div class="where">где <tex>\ell_t</tex> — уровень, <tex>y_{t-j}</tex> — значение ряда <tex>j</tex> шагов назад, <tex>j</tex> — сколько шагов назад было наблюдение, <tex>t</tex> — номер последнего наблюдения, <tex>\alpha(1 - \alpha)^j</tex> — его вес, <tex>\ell_0</tex> — начальный уровень, вес которого <tex>(1 - \alpha)^t</tex> быстро исчезает. Сумма всех весов равна 1. Большое <tex>\alpha</tex> — вес сосредоточен на последних точках, малое — память длинная. Пример: <tex>\alpha = 0.3</tex> — веса 0.3, 0.21, 0.147, 0.103, 0.072; на последние пять точек приходится 83%.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Веса прошлых наблюдений в SES</div>
+    <div class="chsub">Ось x — сколько шагов назад (0 — последнее наблюдение), ось y — вес в прогнозе. Зелёная — <tex>\alpha = 0.7</tex>: почти всё решают два последних значения. Бирюзовая — 0.3. Оранжевая — 0.1: веса медленно убывают, прогноз опирается на две-три недели. У скользящего среднего за 7 дней все семь весов были бы по 0.14, а дальше — ноль.</div>
+    <canvas id="c_weights"></canvas>
+  </div>
+
+  <p class="next">Всё решает <tex>\alpha</tex>. Как его выбрать?</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Выбор параметра сглаживания</h2></div>
+  <p class="slead">Малое <tex>\alpha</tex> даёт плавный, инертный прогноз, большое — нервный, гоняющийся за шумом. Параметр подбирают по данным: минимизируют ошибку прогноза на один шаг вперёд по всей истории. Именно так делает <code>fit()</code> в statsmodels.</p>
+
+  <p>Ошибка на шаг вперёд для SES: <tex>e_t = y_t - \ell_{t-1}</tex> — насколько новое значение отличается от прогноза, сделанного накануне. Подбирают <tex>\alpha</tex> (и <tex>\ell_0</tex>), минимизирующие <tex>\sum e_t^2</tex>. Это обычная оптимизация (0.16): параметров мало, функция гладкая.</p>
+
+  <div class="chb">
+    <div class="cht">Ошибка SES на шаг вперёд от α</div>
+    <div class="chsub">Ось x — <tex>\alpha</tex>, ось y — корень из средней квадратичной ошибки прогноза на завтра (заказы). Оранжевая — исходный ряд заказов: минимум при <tex>\alpha \approx 0.1</tex> (118.6), а statsmodels подбирает 0.057. Зелёная — тот же ряд, делённый на недельные индексы из 5.1: ошибка вдвое меньше и минимум при 0.2 (66.6). Недельная «пила» для SES — шум, и он вынужден брать малое <tex>\alpha</tex>, чтобы её не повторять.</div>
+    <canvas id="c_alpha"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Сколько поверить скачку</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Уровень спроса на товар по SES — 1180 штук в неделю. На этой неделе продали 1250. Аналитик сравнивает <tex>\alpha = 0.3</tex> и <tex>\alpha = 0.8</tex>; на следующей неделе продали 1170 — скачок оказался случайным.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз на следующую неделю при обоих <tex>\alpha</tex> и ошибки этих прогнозов.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Новый уровень — формула 4; он и есть прогноз. Ошибка — факт минус прогноз.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 4</a> · обновление уровня</div>
+        <texd>\ell_t = \alpha\,y_t + (1 - \alpha)\,\ell_{t-1}</texd>
+        <div class="fr-w">где <tex>y_t = 1250</tex>, <tex>\ell_{t-1} = 1180</tex>, <tex>\alpha</tex> — 0.3 и 0.8.</div></div>
+      <p><tex>\alpha = 0.3</tex>: <tex>0.3\cdot1250 + 0.7\cdot1180 = 375 + 826 = 1201</tex>, ошибка <tex>1170 - 1201 = -31</tex>. <tex>\alpha = 0.8</tex>: <tex>1000 + 236 = 1236</tex>, ошибка <tex>-66</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прогнозы <b>1201</b> и <b>1236</b>, ошибки −31 и −66. Большое <tex>\alpha</tex> поверило случайному скачку и ошиблось вдвое сильнее. Если бы рост оказался устойчивым, выиграло бы оно. Поэтому <tex>\alpha</tex> не выбирают «на глаз», а подбирают по истории ошибок на шаг вперёд.</div></div>
+  </div>
+
+  <p class="next">SES не знает о тренде: на растущем ряде его прогноз всегда ниже будущего. Добавим наклон.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Тренд: метод Холта</h2></div>
+  <p class="slead">Холт хранит два числа: уровень и наклон — изменение за шаг. Оба сглаживаются экспоненциально, каждый своим параметром. Прогноз — прямая: уровень плюс наклон, умноженный на горизонт.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · метод Холта</div>
+    <texd>\ell_t = \alpha y_t + (1 - \alpha)(\ell_{t-1} + b_{t-1}) \qquad b_t = \beta(\ell_t - \ell_{t-1}) + (1 - \beta)b_{t-1} \qquad \hat y_{t+h|t} = \ell_t + h\,b_t</texd>
+    <div class="where">где <tex>\ell_t</tex> — уровень, <tex>b_t</tex> — наклон (оценка изменения за шаг), <tex>\alpha</tex>, <tex>\beta</tex> — параметры сглаживания уровня и наклона (от 0 до 1), <tex>y_t</tex> — новое значение, <tex>h</tex> — горизонт. Уровень сдвигается к новому значению от «ожидаемого» <tex>\ell_{t-1} + b_{t-1}</tex>; наклон — к последнему изменению уровня. Пример: <tex>\ell = 115.9</tex>, <tex>b = 3.94</tex> — прогноз на 3 шага <tex>115.9 + 3\cdot3.94 = 127.7</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · Холт на пяти точках, α = 0.5, β = 0.3</div>
+    <div class="tstep"><b>Шаг 1.</b> Ряд: 100, 104, 109, 111, 116. Старт: уровень <tex>\ell_1 = 100</tex>, наклон <tex>b_1 = 104 - 100 = 4</tex>.</div>
+    <div class="tstep"><b>Шаг 2.</b> <tex>t = 2</tex>: ожидали <tex>100 + 4 = 104</tex>, пришло 104 — <tex>\ell_2 = 104</tex>, <tex>b_2 = 0.3\cdot4 + 0.7\cdot4 = 4</tex>.</div>
+    <div class="tstep"><b>Шаг 3.</b> <tex>t = 3</tex>: ожидали 108, пришло 109 — <tex>\ell_3 = 0.5\cdot109 + 0.5\cdot108 = 108.5</tex>, <tex>b_3 = 0.3\cdot4.5 + 0.7\cdot4 = 4.15</tex>.</div>
+    <div class="tstep"><b>Шаг 4.</b> <tex>t = 4</tex>: ожидали 112.65, пришло 111 — <tex>\ell_4 = 111.825</tex>, <tex>b_4 = 0.3\cdot3.325 + 0.7\cdot4.15 = 3.903</tex>; <tex>t = 5</tex>: <tex>\ell_5 = 115.864</tex>, <tex>b_5 = 3.943</tex>.</div>
+    <div class="tstep"><b>Итог.</b> Прогноз на 3 шага: <tex>115.864 + 3\cdot3.943 = 127.69</tex>. Наклон почти не меняется (около 4 в шаг): <tex>\beta = 0.3</tex> делает его инертнее уровня.</div>
+  </div>
+
+  <p>На заказах Холт (8.9%) почти не лучше SES (9.0%): рост — 0.45 заказа в день, за 14 дней это 6 заказов, а недельная «пила» — ±150. Тренд важен на длинных горизонтах и на быстро растущих рядах.</p>
+
+  <p class="next">Прямая «уровень плюс наклон на горизонт» опасна: на горизонте в квартал она уводит прогноз далеко. Наклон стоит гасить.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Затухающий тренд</h2></div>
+  <p class="slead">Тренды в бизнесе редко продолжаются бесконечно: рост замедляется, рынок насыщается. Затухающий тренд (damped trend) с каждым шагом горизонта уменьшает вклад наклона в <tex>\varphi</tex> раз, и прогноз выходит на плато. На практике это одна из самых надёжных моделей.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · прогноз с затухающим трендом</div>
+    <texd>\hat y_{t+h|t} = \ell_t + (\varphi + \varphi^2 + \dots + \varphi^h)\,b_t \qquad \lim_{h\to\infty}\hat y_{t+h|t} = \ell_t + \frac{\varphi}{1 - \varphi}\,b_t</texd>
+    <div class="where">где <tex>\hat y_{t+h|t}</tex> — прогноз на <tex>h</tex> шагов вперёд, <tex>\ell_t</tex> — уровень, <tex>b_t</tex> — наклон, <tex>h</tex> — горизонт, <tex>\varphi</tex> — коэффициент затухания (обычно 0.8–0.98; <tex>\varphi = 1</tex> — обычный Холт). Сумма <tex>\varphi + \dots + \varphi^h</tex> — сколько «шагов наклона» набирается к горизонту <tex>h</tex>; её предел — <tex>\varphi/(1 - \varphi)</tex>. В обновлениях уровня и наклона <tex>b_{t-1}</tex> тоже умножается на <tex>\varphi</tex>. Пример: <tex>\varphi = 0.95</tex> — прогноз никогда не уйдёт дальше уровня плюс 19 наклонов.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Прогноз на 60 дней: линейный и затухающий тренд</div>
+    <div class="chsub">Ось x — горизонт в днях, ось y — прогноз заказов. Уровень 1200, наклон 4 заказа в день. Оранжевая — Холт (<tex>\varphi = 1</tex>): 1440 к 60-му дню. Зелёная — <tex>\varphi = 0.95</tex>: 1272 к 60-му дню, предел 1276. Бирюзовая — <tex>\varphi = 0.85</tex>: плато около 1223 уже через две недели.</div>
+    <canvas id="c_damped"></canvas>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Сколько курьеров нанимать на месяц вперёд</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Сезонно скорректированный уровень заказов — 1200 в день, оценка наклона — +4 в день (быстрый рост последних недель после открытия соседнего ЖК). Найм курьеров планируют по прогнозу на 30-й день. Сравниваются Холт и затухающий тренд с <tex>\varphi = 0.95</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз на 30-й день обоими методами и предел затухающего прогноза.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">У Холта наклон умножается на горизонт (формула 6), у затухающего — на сумму степеней <tex>\varphi</tex> (формула 7): <tex>\varphi(1 - \varphi^h)/(1 - \varphi)</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 7</a> · затухающий тренд</div>
+        <texd>\hat y_{t+h|t} = \ell_t + \frac{\varphi(1 - \varphi^h)}{1 - \varphi}\,b_t</texd>
+        <div class="fr-w">где <tex>\ell_t = 1200</tex>, <tex>b_t = 4</tex>, <tex>h = 30</tex>, <tex>\varphi = 0.95</tex>, <tex>\varphi^{30} = 0.215</tex>.</div></div>
+      <p>Холт: <tex>1200 + 30\cdot4 = 1320</tex>. Затухающий: <tex>0.95\cdot(1 - 0.215)/0.05 = 14.92</tex> наклона, <tex>1200 + 4\cdot14.92 = 1259.7</tex>. Предел: <tex>1200 + 19\cdot4 = 1276</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Холт — <b>1320</b>, затухающий — <b>1260</b> заказов в день: разница 60 заказов, это несколько курьеров. Если рост — эффект нового ЖК, он закончится, и линейный прогноз переоценит потребность. Для найма и закупок на длинный горизонт затухающий тренд — безопасный выбор по умолчанию.</div></div>
+  </div>
+
+  <p class="next">Тренд затухает, но главная структура заказов — неделя — всё ещё не учтена. Добавим сезонность.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Сезонность: метод Холта — Уинтерса</h2></div>
+  <p class="slead">Холт — Уинтерс добавляет третий компонент — сезонные индексы, по одному на каждый день цикла, и сглаживает их своим параметром <tex>\gamma</tex>. Сезонность может быть аддитивной («плюс 150 в субботу») или мультипликативной («плюс 17%», <a href="block5_01_time_series_basics.html#s5">5.1, секция 5</a>).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · мультипликативный Холт — Уинтерс</div>
+    <texd>\ell_t = \alpha\frac{y_t}{s_{t-m}} + (1 - \alpha)(\ell_{t-1} + b_{t-1}) \qquad s_t = \gamma\frac{y_t}{\ell_{t-1} + b_{t-1}} + (1 - \gamma)s_{t-m} \qquad \hat y_{t+h|t} = (\ell_t + h b_t)\,s_{t+h-m}</texd>
+    <div class="where">где <tex>y_t</tex> — новое значение, <tex>\hat y_{t+h|t}</tex> — прогноз на <tex>h</tex> шагов, <tex>\ell_t</tex> — уровень без сезонности, <tex>b_t</tex> — наклон (обновляется как у Холта, формула 6), <tex>s_t</tex> — сезонный индекс момента <tex>t</tex>, <tex>m</tex> — период, <tex>s_{t-m}</tex> — индекс того же дня прошлого цикла, <tex>\alpha</tex>, <tex>\gamma</tex> — параметры сглаживания уровня и индексов, <tex>h \le m</tex> (для дальних горизонтов берут индекс соответствующего дня последнего цикла). Значение делится на индекс, чтобы обновить уровень, и делится на уровень, чтобы обновить индекс. С затухающим трендом <tex>h b_t</tex> заменяют суммой из формулы 7. Пример: уровень 1180, наклон 2, индекс субботы 1.17, суббота через 6 дней — <tex>(1180 + 12)\cdot1.17 = 1395</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Прогноз субботы</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">В воскресенье Холт — Уинтерс даёт: уровень (без недели) 1180 заказов, наклон +2 в день, индекс субботы 1.17. Нужен прогноз на ближайшую субботу — через 6 дней.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Прогноз субботы; во сколько раз он отличается от прогноза SES, у которого уровень по исходному ряду около 1190.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Прогноз — тренд на горизонте, умноженный на индекс дня (формула 8).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s9">Формула 8</a> · прогноз Холта — Уинтерса</div>
+        <texd>\hat y_{t+h|t} = (\ell_t + h\,b_t)\,s_{t+h-m}</texd>
+        <div class="fr-w">где <tex>\ell_t = 1180</tex>, <tex>b_t = 2</tex>, <tex>h = 6</tex>, <tex>s_{t+h-m} = 1.17</tex> — индекс субботы.</div></div>
+      <p><tex>(1180 + 6\cdot2)\cdot1.17 = 1192\cdot1.17 = 1394.6</tex>; к SES: <tex>1394.6/1190 = 1.17</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Прогноз субботы — <b>1395</b> заказов, на 17% выше плоского прогноза SES. Отсюда разница в таблице секции 1: методы без сезонности ошибаются в каждую субботу и каждый понедельник, и никакой подбор <tex>\alpha</tex> это не исправит.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · γ в Холте — Уинтерсе и γ в других темах</div>
+    <p>Здесь <tex>\gamma</tex> — параметр сглаживания сезонных индексов от 0 до 1. В XGBoost (0.22) <tex>\gamma</tex> — штраф за лист, в тесте Дики — Фуллера (5.1) — коэффициент при прошлом уровне. Одна буква, три смысла.</p>
+    <p>Пример: подобранное на заказах <tex>\gamma = 0</tex> значит «индексы не меняются», а не «сезонности нет».</p>
+  </div>
+
+  <p><b>В коде.</b> <code>ExponentialSmoothing(y, trend='add', damped_trend=True, seasonal='mul', seasonal_periods=7).fit()</code> из <code>statsmodels.tsa.holtwinters</code>. На заказах подобраны <tex>\alpha = 0.065</tex>, <tex>\beta = 0.065</tex>, <tex>\gamma = 0</tex>, <tex>\varphi = 0.95</tex>: недельный узор стабилен, и индексы не нужно обновлять.</p>
+
+  <p class="next">SES, Холт, затухающий тренд и Холт — Уинтерс — частные случаи одного семейства. Его систематизация — ETS.</p>
+</section>
+
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>ETS: семейство и автоматический выбор</h2></div>
+  <p class="slead">ETS (Error, Trend, Seasonal) — единая запись всех методов экспоненциального сглаживания как статистических моделей. Каждая модель — тройка: какая ошибка (аддитивная или мультипликативная), какой тренд (нет, аддитивный, затухающий), какая сезонность (нет, аддитивная, мультипликативная). Раз это модель с правдоподобием, их можно сравнивать по AIC и получать честные интервалы.</p>
+
+  <table class="ct">
+    <tr><th>Модель ETS</th><th>Что это за метод</th></tr>
+    <tr><td>(A, N, N)</td><td>SES</td></tr>
+    <tr><td>(A, A, N)</td><td>Холт</td></tr>
+    <tr><td>(A, Ad, N)</td><td>затухающий тренд</td></tr>
+    <tr><td>(A, A, A)</td><td>аддитивный Холт — Уинтерс</td></tr>
+    <tr><td>(M, A, M)</td><td>мультипликативный Холт — Уинтерс с мультипликативной ошибкой</td></tr>
+  </table>
+  <p class="tcap">N — нет, A — аддитивный, Ad — затухающий, M — мультипликативный. Первая буква — ошибка, вторая — тренд, третья — сезонность.</p>
+
+  <p>При одинаковых параметрах точечные прогнозы (A, ·, ·) и (M, ·, ·) с теми же трендом и сезонностью совпадают — тип ошибки влияет на правдоподобие (а значит, на подбор параметров) и на интервалы: при мультипликативной ошибке разброс растёт вместе с уровнем. AIC (критерий Акаике, <a href="block0_05_likelihood_mle_map.html#s9">0.5, секция 9</a>) штрафует число параметров: из всех моделей берут ту, у которой он меньше. На заказах лучшая по AIC — (M, A, M), 8155; без сезонности (M, N, N) — 9054.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · AIC и ошибка прогноза</div>
+    <p>AIC сравнивает модели по качеству описания обучающего ряда с поправкой на сложность и годится только для моделей на одних и тех же данных (нельзя сравнивать ряд и его логарифм). Качество прогноза на нужном горизонте проверяют бэктестом (секция 3).</p>
+    <p>Пример: (M, A, M) и (M, Ad, M) различаются по AIC на 1.5 — это не повод выбирать, а повод проверить обе на прогнозах.</p>
+  </div>
+
+  <p><b>В коде.</b> <code>statsmodels.tsa.exponential_smoothing.ets.ETSModel(y, error='mul', trend='add', seasonal='mul', seasonal_periods=7).fit()</code>, у результата — <code>.aic</code> и интервалы в <code>get_prediction(...).summary_frame()</code>. Автоматический перебор моделей — в пакете statsforecast (<code>AutoETS</code>) или в R-пакете forecast.</p>
+
+  <p class="next">Точечный прогноз — полдела. Для запасов и найма нужна неопределённость: насколько факт может отклониться.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Интервалы прогноза</h2></div>
+  <p class="slead">Чем дальше горизонт, тем больше неопределённость: накапливаются будущие случайности, а для моделей с адаптивным уровнем — ещё и его возможные сдвиги. У SES разброс ошибки на горизонте <tex>h</tex> выражается явно через <tex>\alpha</tex>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · дисперсия ошибки SES на горизонте h</div>
+    <texd>\operatorname{Var}(y_{t+h} - \hat y_{t+h|t}) = \sigma^2\big(1 + (h - 1)\alpha^2\big) \qquad y \in \hat y \pm 1.96\,\sigma\sqrt{1 + (h - 1)\alpha^2}</texd>
+    <div class="where">где <tex>t</tex> — момент прогноза, <tex>y_{t+h}</tex> — будущее значение, <tex>\sigma^2</tex> — дисперсия ошибки на один шаг, <tex>h</tex> — горизонт, <tex>\alpha</tex> — параметр сглаживания, <tex>\hat y</tex> — прогноз; 1.96 — квантиль нормального распределения для 95% (<a href="block0_04_lln_clt.html#s10">0.4, секция 10</a>). Чем больше <tex>\alpha</tex>, тем сильнее уровень «гуляет» и тем быстрее расширяется интервал. Формула верна для модели (A, N, N); у моделей с трендом интервал расширяется быстрее. Пример: <tex>\sigma = 60</tex>, <tex>\alpha = 0.5</tex>, <tex>h = 14</tex> — <tex>\pm242</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Какой страховой запас закладывать на 14-й день</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Ошибка прогноза SES на завтра — около 60 заказов (стандартное отклонение). Для двух товарных групп подобраны разные <tex>\alpha</tex>: 0.06 (устойчивый спрос) и 0.5 (быстро меняющийся). Нужен коридор, в который факт попадёт с вероятностью 95%, на 14-й день.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Ширину 95%-го коридора на 14-й день для обоих <tex>\alpha</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Стандартное отклонение ошибки на горизонте 14 — формула 9; коридор — ±1.96 отклонения.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 9</a> · ошибка SES на горизонте</div>
+        <texd>\sigma_h = \sigma\sqrt{1 + (h - 1)\alpha^2}</texd>
+        <div class="fr-w">где <tex>\sigma = 60</tex>, <tex>h = 14</tex>, <tex>\alpha</tex> — 0.06 и 0.5.</div></div>
+      <p><tex>\alpha = 0.06</tex>: <tex>60\sqrt{1 + 13\cdot0.0036} = 60\cdot1.023 = 61.4</tex>, коридор <tex>\pm1.96\cdot61.4 = \pm120</tex>. <tex>\alpha = 0.5</tex>: <tex>60\sqrt{1 + 13\cdot0.25} = 60\cdot2.06 = 123.7</tex>, коридор <tex>\pm242</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Коридор <b>±120</b> для устойчивого спроса и <b>±242</b> для быстро меняющегося — вдвое шире при той же ошибке на завтра. Страховой запас на 14-й день считают по ошибке на 14-й день, а не на завтра. Интервалы статистических моделей обычно занижены (модель не знает о своих ошибках спецификации) — их проверяют бэктестом (5.6).</div></div>
+  </div>
+
+  <p class="next">Остался главный практический вопрос: когда простых методов достаточно и как использовать их как точку отсчёта.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Простые методы как бенчмарк</h2></div>
+  <p class="slead">В соревнованиях прогнозирования M3 и M4 (тысячи рядов из бизнеса, экономики и демографии) экспоненциальное сглаживание и их комбинации долго обыгрывали сложные модели; в M4 тройка лучших — гибриды со сглаживанием или комбинации. Простые методы — не учебный этап, а планка, которую новая модель обязана перепрыгнуть.</p>
+
+  <p>Практика: на каждый новый ряд — сезонный naive и ETS как бенчмарк, той же процедурой бэктеста, что и основная модель. Если модель не лучше бенчмарка на 5–10% — её сложность не окупается. Комбинация (среднее прогнозов) нескольких простых методов часто устойчивее любого из них.</p>
+
+  <div class="play">
+    <h4>Песочница: сглаживание</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">Ряд — 140 дней обучения и 14 дней проверки. «Заказы» — даркстор из 5.1 (неделя, слабый рост), «подписчики» — ряд с устойчивым ростом без сезонности. <tex>\beta = 0.05</tex>, <tex>\gamma = 0.1</tex>, <tex>\varphi = 0.95</tex>, старт — средние первых двух недель. График — последние 8 недель обучения, факт и прогноз на 14 дней. Движок совпал со statsmodels (<code>initialization_method='known'</code>) во всех сглаженных значениях и прогнозах SES и обоих вариантов Холта (48 случаев); у Холта — Уинтерса прогнозы на 7-й и 14-й день отличаются до 0.45%: statsmodels не обновляет индекс последним днём обучения, движок — обновляет, как в учебной записи.</p>
+    <div class="prow"><button type="button" id="py_orders" class="pbtn">заказы</button><button type="button" id="py_subs" class="pbtn">подписчики</button></div>
+    <div class="prow"><button type="button" id="pm_ses" class="pbtn">SES</button><button type="button" id="pm_holt" class="pbtn">Холт</button><button type="button" id="pm_damped" class="pbtn">затухающий</button><button type="button" id="pm_hw" class="pbtn">Холт — Уинтерс</button></div>
+    <div class="prow"><button type="button" id="pa_05" class="pbtn">α = 0.05</button><button type="button" id="pa_2" class="pbtn">α = 0.2</button><button type="button" id="pa_5" class="pbtn">α = 0.5</button></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+  <p class="tcap" id="play_hint">Что попробовать. (1) Заказы: SES, Холт и затухающий дают 8.6–9.0% при любом <tex>\alpha</tex> — плоский прогноз не видит недели. Холт — Уинтерс с <tex>\alpha = 0.05</tex> — 3.9%, с 0.5 — 6.9%: уровень гоняется за шумом. (2) Подписчики: SES с <tex>\alpha = 0.05</tex> — 10.6%, весь прогноз ниже факта (отстаёт от роста); Холт с 0.2 — 0.9%. Затухающий тренд здесь хуже (3.2%): рост устойчив, и гасить его не нужно. (3) Холт — Уинтерс на подписчиках — 3.2%: находит «сезонность» в шуме.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · бенчмарк и базовая модель продукта</div>
+    <p>Бенчмарк — простой метод для сравнения, его строят всегда. Базовая модель продукта — то, что уже работает (ручной прогноз планировщика, правило «как год назад»). Новую модель сравнивают с обоими: с бенчмарком — чтобы понять, есть ли в ней смысл, с текущим процессом — чтобы понять, есть ли польза.</p>
+    <p>Пример: если планировщик и так ставит «прошлую неделю плюс 3%», сезонный naive — почти его прогноз.</p>
+  </div>
+
+  <p class="next">Простые методы разобраны. Соберём, где они нужны в работе, и типичные ошибки.</p>
+</section>
+
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в ML и 10 подводных камней</h2></div>
+  <p class="slead">Простые прогнозы и сглаживание — рабочие инструменты: бенчмарк для любой модели, прогноз для тысяч рядов, где нет данных для сложных моделей, признак для бустинга (5.5) и запасной прогноз, когда основная модель сломалась.</p>
+
+  <p>Где нужно: прогноз спроса и нагрузки по многим товарам и точкам (3.2), планирование штата и закупок, бенчмарк в каждом проекте прогнозирования, мониторинг (отклонение факта от прогноза ETS — сигнал аномалии). Порядок: сезонный naive → ETS с затухающим трендом и сезонностью → бэктест на нужном горизонте → смещение и интервалы → только потом сложные модели.</p>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">10 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Модель без бенчмарка</b><span>«Ошибка 8.9%» звучит хорошо, пока не видно, что копирование прошлой недели даёт 5.3% (секция 1). Сезонный naive и ETS — в каждом сравнении.</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Тренд вместо сезонности</b><span>Холт на ряду с сильной неделей — 8.9%, Холт — Уинтерс — 3.9%: главная структура заказов — неделя, а не рост 0.45 в день (секции 7, 9).</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Линейный тренд на длинный горизонт</b><span>Наклон 4 в день за 30 дней даёт +120 заказов, затухающий (<tex>\varphi</tex> — коэффициент затухания, 0.95) — +60 (задача 4). Для найма и закупок — затухающий тренд.</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>α подобран «на глаз»</b><span>Большое <tex>\alpha</tex> (параметр сглаживания) верит случайным скачкам, малое — отстаёт; на ряду с неделей SES вынужден брать <tex>\alpha \approx 0.06</tex> (секция 6). Параметры подбирают по ошибке на шаг вперёд.</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Только модули ошибок, без смещения</b><span>WAPE 3.9% и при этом завышение на 2.5% каждую неделю (задача 2): для закупок это списания. Смещение — отдельная метрика.</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>MAPE на рядах с малыми значениями</b><span>Ошибка 5 штук при факте 1 — 500%: MAPE взрывается, WAPE — нет (секция 3).</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Интервал на горизонте как на завтра</b><span>При <tex>\alpha = 0.5</tex> (параметр сглаживания) ошибка на 14-й день вдвое больше, чем на завтра: ±242 против ±118 (задача 6). Страховой запас — по ошибке нужного горизонта.</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Сравнение моделей по AIC на разных данных</b><span>AIC ряда и его логарифма несравнимы, и AIC не заменяет бэктест на нужном горизонте (секция 10).</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Аддитивная сезонность у растущего ряда</b><span>Индексы «плюс 150 штук» занижают субботы при росте уровня; аддитивный Холт — Уинтерс — 4.2%, мультипликативный — 3.9% (секции 1, 9).</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Сезонность у ряда без сезонности</b><span>Холт — Уинтерс на ряде подписчиков подгоняет индексы под шум: 3.2% против 0.9% у Холта (песочница). Сезонность включают, когда её видно в ACF и индексах (5.1).</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и разобрать три задачи из работы.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Все формулы темы на одном экране, затем три прикладные задачи: как в работе выбирают и проверяют простые прогнозы. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Наивные прогнозы</b><br><tex>y_t;\ y_{t+h-m};\ \bar y;\ y_t + h\frac{y_t - y_1}{t - 1}</tex><div class="cs-w">naive, сезонный, среднее, дрейф</div></td><td>бенчмарк</td></tr>
+    <tr><td><a href="#s3">2</a></td><td><b>MAE и WAPE</b><br><tex>\frac1N\sum|y - \hat y|;\ \sum|y - \hat y|/\sum|y|</tex><div class="cs-w">смещение — сумма ошибок со знаком</div></td><td>сравнение прогнозов</td></tr>
+    <tr><td><a href="#s4">3</a></td><td><b>Скользящее среднее</b><br><tex>\hat y = \frac1k\sum_{j=0}^{k-1} y_{t-j}</tex><div class="cs-w">отстаёт при тренде на <tex>(k - 1)/2</tex> шагов</div></td><td>сглаживание шума</td></tr>
+    <tr><td><a href="#s5">4</a></td><td><b>SES</b><br><tex>\ell_t = \alpha y_t + (1 - \alpha)\ell_{t-1},\ \hat y = \ell_t</tex><div class="cs-w"><tex>\alpha</tex> — доля принятого «удивления»</div></td><td>ряд без тренда и сезонности</td></tr>
+    <tr><td><a href="#s5">5</a></td><td><b>SES как взвешенное среднее</b><br><tex>\ell_t = \sum_j \alpha(1 - \alpha)^j y_{t-j}</tex><div class="cs-w">веса убывают геометрически</div></td><td>смысл <tex>\alpha</tex></td></tr>
+    <tr><td><a href="#s7">6</a></td><td><b>Холт</b><br><tex>\ell_t = \alpha y_t + (1 - \alpha)(\ell_{t-1} + b_{t-1}),\ b_t = \beta(\ell_t - \ell_{t-1}) + (1 - \beta)b_{t-1}</tex><div class="cs-w">прогноз <tex>\ell_t + h b_t</tex></div></td><td>ряд с трендом</td></tr>
+    <tr><td><a href="#s8">7</a></td><td><b>Затухающий тренд</b><br><tex>\hat y = \ell_t + (\varphi + \dots + \varphi^h)b_t</tex><div class="cs-w">предел <tex>\ell_t + \frac{\varphi}{1 - \varphi}b_t</tex></div></td><td>длинный горизонт</td></tr>
+    <tr><td><a href="#s9">8</a></td><td><b>Холт — Уинтерс мультипликативный</b><br><tex>\hat y = (\ell_t + h b_t)\,s_{t+h-m}</tex><div class="cs-w"><tex>s</tex> — сезонные индексы, <tex>\gamma</tex> — их сглаживание</div></td><td>тренд и сезонность</td></tr>
+    <tr><td><a href="#s11">9</a></td><td><b>Ошибка SES на горизонте</b><br><tex>\sigma_h^2 = \sigma^2(1 + (h - 1)\alpha^2)</tex><div class="cs-w">95%: <tex>\pm1.96\sigma_h</tex></div></td><td>интервал и страховой запас</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Команда хочет нейросеть для прогноза</div>
+    <div class="task-q">Команда предлагает нейросетевую модель прогноза продаж на 14 дней для 300 товаров. Вас просят оценить, стоит ли она того. Что вы построите и как сравните?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Бенчмарки.</b> Сезонный naive и ETS (с затухающим трендом и сезонностью, подбор по AIC) по каждому ряду — их строят за минуты.</p>
+      <p><b>Одинаковая проверка.</b> Rolling origin: 10–20 точек прогноза в прошлом, горизонт 14 дней, одни и те же точки для всех моделей; WAPE в целом и по горизонтам 1–7 и 8–14, смещение, отдельно для частых и редких товаров.</p>
+      <p><b>Решение.</b> Если нейросеть не лучше ETS на 5–10% WAPE или проигрывает на части товаров — её стоимость (обучение, поддержка, объяснимость) не окупается. Часто выигрывает комбинация простых методов.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Какой тренд закладывать в план на квартал</div>
+    <div class="task-q">Новый сервис растёт на 40% в год, последние два месяца — быстрее обычного после рекламной кампании. Нужен прогноз на квартал для бюджета. Холт, затухающий тренд или что-то третье?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Холт</b> продлит наклон последних недель на 90 дней — с учётом ускорения после кампании это почти наверняка переоценка.</p>
+      <p><b>Затухающий тренд</b> — разумный выбор по умолчанию: рост продолжается, но гаснет. <tex>\varphi</tex> подбирают по бэктесту на горизонте квартала, а не по ошибке на завтра.</p>
+      <p><b>Дополнительно.</b> Эффект кампании — отдельным событием (5.5), чтобы он не попал в тренд; сценарии (база, оптимистичный, пессимистичный) и интервалы вместо одной цифры; сравнение с прогнозом на логарифме (рост 40% в год — мультипликативный).</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Ежедневный прогноз для 2000 товаров к 6 утра</div>
+    <div class="task-q">Каждую ночь нужен прогноз на 7 дней для 2000 товаров в 40 магазинах (80 000 рядов). Предложите решение на экспоненциальном сглаживании и назовите, где оно сломается.</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Решение.</b> ETS по каждому ряду с автоматическим выбором (statsforecast <code>AutoETS</code> считает тысячи рядов в минуту), сезонный naive как запасной прогноз при ошибке подгонки; бэктест раз в неделю, мониторинг WAPE и смещения по группам.</p>
+      <p><b>Где сломается.</b> Короткие ряды и новые товары (нет двух недель истории — брать прогноз группы); редкие товары с нулями (5.7); промо и праздники, которых ETS не видит (5.5); дефицит — продажи занижены, и модель учит заниженный спрос (3.2).</p>
+      <p><b>Дальше.</b> Глобальная модель бустинга на всех рядах с признаками (5.5) обычно сильнее на такой задаче; ETS остаётся бенчмарком и признаком для неё.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>20 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Зачем строить наивный прогноз, если есть модель?</summary><div class="qa-a">Чтобы понять, есть ли в модели смысл. Ошибка модели без сравнения с простым прогнозом ничего не говорит: на рядах с сильной сезонностью копирование прошлого цикла бывает трудно обойти.</div></details>
+
+  <details class="qa"><summary>2. Что такое сезонный naive?</summary><div class="qa-a">Прогноз значением того же момента прошлого цикла: на понедельник — прошлый понедельник. Главный бенчмарк для рядов с сезонностью.</div></details>
+
+  <details class="qa"><summary>3. Чем WAPE лучше MAPE?</summary><div class="qa-a">WAPE делит сумму модулей ошибок на сумму факта и не взрывается на маленьких значениях. MAPE усредняет доли по точкам, и одна точка с фактом около нуля его ломает.</div></details>
+
+  <details class="qa"><summary>4. Почему нужно смотреть на смещение прогноза отдельно от точности?</summary><div class="qa-a">Модули ошибок не видят знака: прогноз может быть точным в среднем по модулю, но систематически завышать. Для закупок это прямые списания или дефицит.</div></details>
+
+  <details class="qa"><summary>5. Почему скользящее среднее отстаёт при тренде?</summary><div class="qa-a">Оно усредняет прошлые значения, а при росте они ниже текущего уровня. Отставание — примерно половина окна, умноженная на наклон.</div></details>
+
+  <details class="qa"><summary>6. Как работает простое экспоненциальное сглаживание?</summary><div class="qa-a">Хранит уровень и после каждого наблюдения сдвигает его к новому значению на долю <tex>\alpha</tex> разницы. Прогноз на любой горизонт — текущий уровень.</div></details>
+
+  <details class="qa"><summary>7. Почему сглаживание называется экспоненциальным?</summary><div class="qa-a">Уровень — взвешенное среднее всей истории, и веса прошлых наблюдений убывают геометрически: <tex>\alpha</tex>, <tex>\alpha(1 - \alpha)</tex>, <tex>\alpha(1 - \alpha)^2</tex> и так далее.</div></details>
+
+  <details class="qa"><summary>8. Что будет при большом и при маленьком <tex>\alpha</tex>?</summary><div class="qa-a">Большое — прогноз быстро реагирует, но верит случайным скачкам. Маленькое — прогноз плавный, но медленно замечает настоящие изменения.</div></details>
+
+  <details class="qa"><summary>9. Как подбирают параметры экспоненциального сглаживания?</summary><div class="qa-a">Минимизируют сумму квадратов ошибок прогноза на один шаг вперёд по всей истории. Начальные уровень, наклон и индексы можно подбирать вместе с ними.</div></details>
+
+  <details class="qa"><summary>10. Что добавляет метод Холта к SES?</summary><div class="qa-a">Наклон — оценку изменения за шаг, сглаживаемую своим параметром <tex>\beta</tex>. Прогноз становится прямой: уровень плюс наклон, умноженный на горизонт.</div></details>
+
+  <details class="qa"><summary>11. Зачем затухающий тренд?</summary><div class="qa-a">Линейный тренд на длинном горизонте уводит прогноз далеко, а реальный рост обычно замедляется. Затухание с коэффициентом <tex>\varphi</tex> выводит прогноз на плато.</div></details>
+
+  <details class="qa"><summary>12. Куда стремится прогноз с затухающим трендом?</summary><div class="qa-a">К уровню плюс наклон, умноженный на <tex>\varphi/(1 - \varphi)</tex>, где <tex>\varphi</tex> — коэффициент затухания. При 0.95 это 19 наклонов.</div></details>
+
+  <details class="qa"><summary>13. Что добавляет Холт — Уинтерс?</summary><div class="qa-a">Сезонные индексы — по одному на каждый момент цикла, сглаживаемые параметром <tex>\gamma</tex>. Прогноз — тренд на горизонте, умноженный на индекс (или плюс индекс).</div></details>
+
+  <details class="qa"><summary>14. Когда выбирать мультипликативную сезонность в Холте — Уинтерсе?</summary><div class="qa-a">Когда размах сезонных колебаний растёт вместе с уровнем ряда. Аддитивные индексы в этом случае занижают пики при росте.</div></details>
+
+  <details class="qa"><summary>15. Что такое ETS?</summary><div class="qa-a">Запись методов экспоненциального сглаживания как статистических моделей: тип ошибки, тренда и сезонности. Модели можно сравнивать по AIC и строить для них интервалы.</div></details>
+
+  <details class="qa"><summary>16. Можно ли выбирать модель прогноза только по AIC?</summary><div class="qa-a">Нет. AIC сравнивает описание обучающего ряда и только для моделей на одних данных. Качество прогноза на нужном горизонте проверяют бэктестом.</div></details>
+
+  <details class="qa"><summary>17. Почему интервал прогноза расширяется с горизонтом?</summary><div class="qa-a">Накапливаются будущие случайности и возможные сдвиги уровня. У SES дисперсия ошибки на горизонте <tex>h</tex> растёт как <tex>1 + (h - 1)\alpha^2</tex>.</div></details>
+
+  <details class="qa"><summary>18. Почему интервалы статистических моделей прогноза часто слишком узкие?</summary><div class="qa-a">Они предполагают, что модель верна, и не учитывают ошибку выбора модели и неопределённость параметров. Покрытие интервалов проверяют на истории.</div></details>
+
+  <details class="qa"><summary>19. Почему простые методы часто выигрывают соревнования прогнозирования?</summary><div class="qa-a">Бизнес-ряды короткие и шумные, и сложная модель подгоняется под шум. Простые методы устойчивы, а их комбинации снижают риск выбрать неудачный.</div></details>
+
+  <details class="qa"><summary>20. Где ломается экспоненциальное сглаживание по каждому ряду?</summary><div class="qa-a">На коротких рядах и новых товарах, на редком спросе с нулями, на промо и праздниках, которых модель не видит, и при дефиците, когда продажи занижают спрос.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — разбор ряда на тренд и сезонность из <a href="block5_01_time_series_basics.html#s5">5.1</a>, метрики из <a href="block0_17_metrics_basics.html#s11">0.17</a>, AIC из <a href="block0_05_likelihood_mle_map.html#s9">0.5</a>. Дальше в блоке 5: ARIMA (5.3), валидация и метрики рядов (5.4), признаки и бустинг на рядах (5.5), вероятностный прогноз (5.6); прикладной прогноз спроса — <a href="block3_02_demand_forecasting.html">3.2</a>.
+</div>
+
+<div class="pnav">
+  <a href="block5_01_time_series_basics.html">← 5.1 · Ряд как данные</a>
+  <a class="next" href="index_roadmap.html">Карта курса →</a>
+</div>
+
+</div>
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var AC='#4ade80', TL='#2dd4bf', OR='#fb923c', YL='#facc15', RD='#f87171', GY='#94a3b8', WH='#e2e8f0';
+function seg(pts,label,color,w,dash){ return {label:label,data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),borderColor:color,backgroundColor:color,showLine:true,pointRadius:0,borderWidth:w||2.4,borderDash:dash||[],fill:false,type:'scatter'}; }
+function dots(pts,label,color,r){ return {label:label,type:'scatter',data:pts.map(function(p){ return {x:p[0],y:p[1]}; }),backgroundColor:color,borderColor:color,pointRadius:r||3,clip:false}; }
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function lin(xl,yl,xr,yr){ return {responsive:true,scales:{x:Object.assign({type:'linear',min:xr[0],max:xr[1],title:{display:true,text:xl}},GRID),y:Object.assign({min:yr[0],max:yr[1],title:{display:true,text:yl}},GRID)},plugins:Object.assign({},LEG)}; }
+
+var CH={"story":{"hist":[964.0,1234.0,1131.0,1091.0,1303.0,1477.0,1231.0,1053.0,1067.0,1031.0,1104.0,1314.0,1425.0,1192.0,1059.0,1127.0,1064.0,1104.0,1257.0,1467.0,1209.0,1069.0,1062.0,1108.0,1172.0,1263.0,1334.0,1202.0,1029.0,1094.0,1220.0,1234.0,1279.0,1409.0,1206.0,1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0],"act":[1119.0,1121.0,1124.0,1239.0,1289.0,1424.0,1213.0,1073.0,1086.0,1180.0,1340.0,1420.0,1480.0,1217.0],"sn":[1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0,1034.0,1136.0,1137.0,1146.0,1370.0,1361.0,1158.0],"holt":[1204.0,1205.0,1205.0,1206.0,1206.0,1207.0,1207.0,1208.0,1209.0,1209.0,1210.0,1210.0,1211.0,1211.0],"hw":[1049.0,1113.0,1125.0,1164.0,1314.0,1406.0,1204.0,1050.0,1114.0,1126.0,1165.0,1315.0,1406.0,1205.0],"origin":"2025-12-14"},"res":{"naive":{"wape":0.0935,"wape_h1_7":0.0943,"wape_h8_14":0.0927,"bias":-0.0081},"snaive":{"wape":0.0531,"wape_h1_7":0.0553,"wape_h8_14":0.051,"bias":-0.0158},"mean":{"wape":0.1838,"wape_h1_7":0.1795,"wape_h8_14":0.1881,"bias":-0.1831},"drift":{"wape":0.0929,"wape_h1_7":0.0937,"wape_h8_14":0.0921,"bias":-0.002},"ma7":{"wape":0.0901,"wape_h1_7":0.0896,"wape_h8_14":0.0906,"bias":-0.0158},"ses":{"wape":0.0898,"wape_h1_7":0.0889,"wape_h8_14":0.0907,"bias":-0.0275},"holt":{"wape":0.0893,"wape_h1_7":0.0878,"wape_h8_14":0.0908,"bias":-0.0077},"holt_damped":{"wape":0.0895,"wape_h1_7":0.0885,"wape_h8_14":0.0905,"bias":-0.0257},"hw_add":{"wape":0.042,"wape_h1_7":0.0411,"wape_h8_14":0.0428,"bias":0.0022},"hw_mul":{"wape":0.0394,"wape_h1_7":0.0381,"wape_h8_14":0.0407,"bias":-0.0203}},"weights":{"0.1":[0.1,0.09,0.081,0.0729,0.0656,0.059,0.0531,0.0478,0.043,0.0387,0.0349,0.0314,0.0282,0.0254,0.0229],"0.3":[0.3,0.21,0.147,0.1029,0.072,0.0504,0.0353,0.0247,0.0173,0.0121,0.0085,0.0059,0.0042,0.0029,0.002],"0.7":[0.7,0.21,0.063,0.0189,0.0057,0.0017,0.0005,0.0002,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"alpha":{"a":[0.02,0.05,0.1,0.2,0.3,0.5,0.7,0.9],"raw":[133.7,121.0,118.6,120.5,123.1,126.3,126.9,126.8],"adj":[88.9,72.5,67.6,66.6,67.6,70.8,75.0,80.3]},"damped":{"h":[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60],"lin":[1200,1208,1216,1224,1232,1240,1248,1256,1264,1272,1280,1288,1296,1304,1312,1320,1328,1336,1344,1352,1360,1368,1376,1384,1392,1400,1408,1416,1424,1432,1440],"d95":[1200,1207.4,1214.1,1220.1,1225.6,1230.5,1234.9,1238.9,1242.6,1245.8,1248.8,1251.4,1253.8,1256.0,1257.9,1259.7,1261.3,1262.7,1264.0,1265.2,1266.2,1267.2,1268.0,1268.8,1269.5,1270.2,1270.7,1271.2,1271.7,1272.1,1272.5],"d85":[1200,1206.3,1210.8,1214.1,1216.5,1218.2,1219.4,1220.3,1221.0,1221.5,1221.8,1222.0,1222.2,1222.3,1222.4,1222.5,1222.5,1222.6,1222.6,1222.6,1222.6,1222.6,1222.6,1222.7,1222.7,1222.7,1222.7,1222.7,1222.7,1222.7,1222.7]}};
+
+/* 1 — прогноз на 14 дней */
+(function(){
+  var S=CH.story, nh=S.hist.length, hist=S.hist.map(function(v,i){ return [i-nh+1,v]; });
+  function f(a){ return a.map(function(v,i){ return [i+1,v]; }); }
+  mk('c_story',{type:'scatter',data:{datasets:[seg(hist,'история',GY,1.6),dots(f(S.act),'факт',WH,3.5),seg(f(S.holt),'Холт',OR,2.2),seg(f(S.sn),'сезонный naive',TL,2.2,[6,3]),seg(f(S.hw),'Холт — Уинтерс',AC,2.6)]},
+    options:lin('день относительно 14 декабря 2025','заказов',[-42,14],[800,1800])});
+})();
+
+/* 2 — веса SES */
+(function(){
+  var cols={'0.7':AC,'0.3':TL,'0.1':OR}, ds=[];
+  ['0.7','0.3','0.1'].forEach(function(k){ var d=seg(CH.weights[k].map(function(v,j){ return [j,v]; }),'α = '+k,cols[k],2.2); d.pointRadius=3; ds.push(d); });
+  mk('c_weights',{type:'scatter',data:{datasets:ds},options:lin('шагов назад','вес в прогнозе',[0,14],[0,0.8])});
+})();
+
+/* 3 — ошибка на шаг вперёд от alpha */
+(function(){
+  var A=CH.alpha; function p(v){ return A.a.map(function(a,i){ return [a,v[i]]; }); }
+  var d1=seg(p(A.raw),'исходный ряд',OR,2.4), d2=seg(p(A.adj),'ряд без недели',AC,2.4); d1.pointRadius=3; d2.pointRadius=3;
+  mk('c_alpha',{type:'scatter',data:{datasets:[d1,d2]},options:lin('α','ошибка на шаг вперёд (RMSE)',[0,1],[50,150])});
+})();
+
+/* 4 — затухающий тренд */
+(function(){
+  var D=CH.damped; function p(v){ return D.h.map(function(h,i){ return [h,v[i]]; }); }
+  mk('c_damped',{type:'scatter',data:{datasets:[seg(p(D.lin),'Холт, φ = 1',OR,2.4),seg(p(D.d95),'φ = 0.95',AC,2.4),seg(p(D.d85),'φ = 0.85',TL,2.4),seg([[0,1276],[60,1276]],'предел при φ = 0.95',GY,1.2,[6,4])]},
+    options:lin('горизонт, дней','прогноз заказов',[0,60],[1150,1450])});
+})();
+
+var SAND={"orders": [871.0, 871.0, 911.0, 1005.0, 1100.0, 1199.0, 980.0, 954.0, 1012.0, 953.0, 1063.0, 1223.0, 1177.0, 974.0, 941.0, 991.0, 887.0, 899.0, 1084.0, 1310.0, 1049.0, 928.0, 878.0, 954.0, 933.0, 1086.0, 1260.0, 1041.0, 915.0, 940.0, 973.0, 1031.0, 1102.0, 1262.0, 1030.0, 1000.0, 864.0, 1002.0, 1001.0, 1177.0, 1215.0, 1015.0, 949.0, 1031.0, 1043.0, 1117.0, 1190.0, 1316.0, 1037.0, 916.0, 1020.0, 959.0, 1005.0, 1213.0, 1214.0, 1172.0, 1012.0, 946.0, 1072.0, 1044.0, 1200.0, 1272.0, 1077.0, 960.0, 975.0, 943.0, 1099.0, 1229.0, 1259.0, 1140.0, 954.0, 1094.0, 1037.0, 1151.0, 1308.0, 1441.0, 1068.0, 1000.0, 1140.0, 988.0, 1072.0, 1196.0, 1313.0, 1192.0, 986.0, 1095.0, 1118.0, 1047.0, 1281.0, 1337.0, 1195.0, 1054.0, 1038.0, 1053.0, 1174.0, 1401.0, 1353.0, 1178.0, 964.0, 1234.0, 1131.0, 1091.0, 1303.0, 1477.0, 1231.0, 1053.0, 1067.0, 1031.0, 1104.0, 1314.0, 1425.0, 1192.0, 1059.0, 1127.0, 1064.0, 1104.0, 1257.0, 1467.0, 1209.0, 1069.0, 1062.0, 1108.0, 1172.0, 1263.0, 1334.0, 1202.0, 1029.0, 1094.0, 1220.0, 1234.0, 1279.0, 1409.0, 1206.0, 1034.0, 1136.0, 1137.0, 1146.0, 1370.0, 1361.0, 1158.0, 1119.0, 1121.0, 1124.0, 1239.0, 1289.0, 1424.0, 1213.0, 1073.0, 1086.0, 1180.0, 1340.0, 1420.0, 1480.0, 1217.0], "subs": [483.0, 501.0, 509.0, 502.0, 514.0, 519.0, 518.0, 525.0, 527.0, 518.0, 533.0, 534.0, 544.0, 538.0, 546.0, 553.0, 551.0, 548.0, 545.0, 564.0, 579.0, 585.0, 570.0, 580.0, 578.0, 560.0, 574.0, 583.0, 581.0, 597.0, 598.0, 597.0, 612.0, 602.0, 603.0, 605.0, 611.0, 610.0, 617.0, 621.0, 622.0, 632.0, 639.0, 629.0, 628.0, 642.0, 646.0, 659.0, 661.0, 662.0, 672.0, 665.0, 675.0, 692.0, 677.0, 692.0, 689.0, 693.0, 698.0, 699.0, 707.0, 704.0, 717.0, 715.0, 708.0, 732.0, 724.0, 741.0, 735.0, 749.0, 754.0, 749.0, 753.0, 758.0, 746.0, 771.0, 762.0, 767.0, 770.0, 774.0, 772.0, 758.0, 769.0, 757.0, 778.0, 766.0, 782.0, 776.0, 772.0, 772.0, 776.0, 781.0, 800.0, 806.0, 809.0, 801.0, 804.0, 805.0, 798.0, 805.0, 817.0, 825.0, 811.0, 810.0, 829.0, 814.0, 829.0, 817.0, 833.0, 828.0, 835.0, 838.0, 837.0, 848.0, 847.0, 860.0, 852.0, 869.0, 863.0, 862.0, 881.0, 878.0, 887.0, 896.0, 906.0, 911.0, 915.0, 914.0, 912.0, 918.0, 914.0, 924.0, 921.0, 929.0, 931.0, 936.0, 950.0, 947.0, 958.0, 947.0, 957.0, 972.0, 956.0, 968.0, 982.0, 987.0, 988.0, 1004.0, 999.0, 989.0, 1006.0, 1007.0, 1010.0, 1024.0]};
+/* песочница 5.2: экспоненциальное сглаживание с фиксированными параметрами (как statsmodels ExponentialSmoothing, initialization_method='known').
+   P: {method: 'ses'|'holt'|'damped'|'hw', alpha, beta, gamma, phi, m, l0, b0, s0 (массив m)} */
+var ES=(function(){
+  function run(y,P,H){
+    var m=P.m||7, l=P.l0, b=P.method==='ses'?0:P.b0, phi=P.method==='damped'||P.method==='hw'?P.phi:1;
+    var seas=P.method==='hw'? P.s0.slice() : null, fit=[];
+    for(var t=0;t<y.length;t++){
+      var si=seas? seas[t%m] : 1, base=l+phi*b, f=base*si; fit.push(f);
+      var ln=P.alpha*(y[t]/si)+(1-P.alpha)*base;
+      if(P.method!=='ses'){ b=P.beta*(ln-l)+(1-P.beta)*phi*b; }
+      if(seas){ seas[t%m]=P.gamma*(y[t]/base)+(1-P.gamma)*si; }
+      l=ln;
+    }
+    var fc=[], acc=0;
+    for(var h=1;h<=H;h++){ acc+=Math.pow(phi,h); var tr=P.method==='ses'? l : l+(P.method==='holt'? h : acc)*b; fc.push(tr*(seas? seas[(y.length+h-1)%m] : 1)); }
+    return {fit:fit, fc:fc};
+  }
+  /* простая начальная оценка: уровень — среднее первой недели, наклон — разность средних первых двух недель / m, сезон — первая неделя / её среднее */
+  function init(y,m){ m=m||7; var a=0,c=0,i; for(i=0;i<m;i++){ a+=y[i]; c+=y[i+m]; } a/=m; c/=m; var s=[]; for(i=0;i<m;i++) s.push(y[i]/a); return {l0:a, b0:(c-a)/m, s0:s}; }
+  return {run:run, init:init};
+})();
+
+/* песочница: сглаживание */
+(function(){
+  if(!document.getElementById('c_play')) return;
+  function el(id){ return document.getElementById(id); }
+  var st={ser:'orders',method:'hw',alpha:0.05};
+  var ch=mk('c_play',{type:'scatter',data:{datasets:[]},options:lin('день (0 — последний день обучения)','значение',[-56,14],[0,100])});
+  if(!ch) return;
+  function draw(){
+    var all=SAND[st.ser], y=all.slice(0,140), act=all.slice(140), I=ES.init(y,7);
+    var r=ES.run(y,{method:st.method,alpha:st.alpha,beta:0.05,gamma:0.1,phi:0.95,m:7,l0:I.l0,b0:I.b0,s0:I.s0},14);
+    var hist=[], i; for(i=84;i<140;i++) hist.push([i-139,y[i]]);
+    var a=act.map(function(v,k){ return [k+1,v]; }), f=r.fc.map(function(v,k){ return [k+1,v]; });
+    var vals=y.slice(84).concat(act,r.fc), lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), step=hi-lo>400?100:50;
+    ch.options.scales.y.min=Math.floor(lo/step)*step; ch.options.scales.y.max=Math.ceil(hi/step)*step;
+    ch.data.datasets=[seg(hist,'обучение',GY,1.6),dots(a,'факт',WH,3.5),seg(f,'прогноз',AC,2.6)]; ch.update();
+    var e=0,s=0,b=0; r.fc.forEach(function(v,k){ e+=Math.abs(v-act[k]); s+=act[k]; b+=v-act[k]; });
+    el('out_play').textContent='WAPE на 14 днях: '+(100*e/s).toFixed(1)+'%\nсмещение: '+(b>=0?'+':'')+(100*b/s).toFixed(1)+'% (плюс — прогноз выше факта)';
+    ['orders','subs'].forEach(function(k){ el('py_'+k).classList.toggle('on',st.ser===k); });
+    ['ses','holt','damped','hw'].forEach(function(k){ el('pm_'+k).classList.toggle('on',st.method===k); });
+    [[0.05,'05'],[0.2,'2'],[0.5,'5']].forEach(function(p){ el('pa_'+p[1]).classList.toggle('on',st.alpha===p[0]); });
+  }
+  ['orders','subs'].forEach(function(k){ el('py_'+k).addEventListener('click',function(){ st.ser=k; draw(); }); });
+  ['ses','holt','damped','hw'].forEach(function(k){ el('pm_'+k).addEventListener('click',function(){ st.method=k; draw(); }); });
+  [[0.05,'05'],[0.2,'2'],[0.5,'5']].forEach(function(p){ el('pa_'+p[1]).addEventListener('click',function(){ st.alpha=p[0]; draw(); }); });
+  try{ draw(); }catch(e){ console.log('sandbox', e); }
+})();
+</script>
+
+</body>
+</html>

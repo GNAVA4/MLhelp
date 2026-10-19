@@ -2,7 +2,7 @@
 
 Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-10-19. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 96 страниц, без проблем — 96, с проблемами — 0.
+**Итого:** 97 страниц, без проблем — 97, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -73,6 +73,7 @@
 | block4_06_srm_diagnostics.html | 181 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block4_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block5_01_time_series_basics.html | 986 | 15 | 20 | 8 / 8 |  | 0 |  |
+| block5_02_exponential_smoothing.html | 982 | 15 | 20 | 5 / 5 |  | 0 |  |
 | block6_01_collab_filtering.html | 276 | 15 | 30 | 14 / 14 | да | 0 |  |
 | block6_02_two_tower.html | 225 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block6_03_cold_start.html | 249 | 15 | 30 | 13 / 13 | да | 0 |  |
@@ -103,4 +104,4 @@
 | block9_05_finetuning.html | 255 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block9_06_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 65 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 66 | 0 | 0 | 0 / 0 |  | 0 |  |
