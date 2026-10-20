@@ -77,7 +77,7 @@
 | block2_11_hierarchical_clv.html | 175 | 15 | 30 | 14 / 14 | да | 0 |  |
 | block2_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block3_01_dynamic_pricing.html | 87 | 0 | 12 | 7 / 7 | да | 0 |  |
-| block3_02_demand_forecasting.html | 87 | 0 | 12 | 5 / 5 | да | 0 |  |
+| block3_02_demand_forecasting.html | 854 | 15 | 20 | 5 / 5 |  | 0 |  |
 | block3_03_fraud_detection.html | 74 | 0 | 12 | 5 / 5 | да | 0 |  |
 | block3_04_ltv_prediction.html | 75 | 0 | 12 | 4 / 4 | да | 0 |  |
 | block3_quiz.html | 52 | 0 | 0 | 0 / 0 |  | 0 |  |
@@ -126,4 +126,4 @@
 | block9_05_finetuning.html | 255 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block9_06_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 74 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 75 | 0 | 0 | 0 / 0 |  | 0 |  |
