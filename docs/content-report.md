@@ -49,7 +49,7 @@
 | block10_14_time_series.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
 | block10_15_recsys.html | 692 | 10 | 0 | 1 / 1 |  | 0 |  |
 | block10_16_neural_llm.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
-| block1_01_validation_schemes.html | 176 | 15 | 30 | 12 / 12 | да | 0 |  |
+| block1_01_validation_schemes.html | 919 | 15 | 20 | 6 / 6 |  | 0 |  |
 | block1_02_feature_engineering.html | 153 | 15 | 30 | 11 / 11 | да | 0 |  |
 | block1_03_shap.html | 189 | 15 | 30 | 15 / 15 | да | 0 |  |
 | block1_04_leakage.html | 204 | 15 | 30 | 14 / 14 | да | 0 |  |
