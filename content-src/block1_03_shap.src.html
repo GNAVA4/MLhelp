@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1.3 · SHAP</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#14b8a6; --ac-d:#5eead4; --ac-l:rgba(20,184,166,.08); --ac-b:rgba(20,184,166,.35); --ac-m:#0d9488; --ac-s:#042f2e;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#14b8a6; --okl:rgba(20,184,166,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(20,184,166,.24),transparent 60%),linear-gradient(135deg,#020617,#062421 55%,#042f2e);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(20,184,166,.14);border:1px solid rgba(94,234,212,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ccfbf1;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#14b8a6;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#14b8a6;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(20,184,166,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(20,184,166,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(129,140,248,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 1 · тема 3 · табличный ML на практике</div>
+    <h1>SHAP: разбор прогноза по признакам</h1>
+    <p>Бустинг выдал клиенту отказ, и нужно сказать почему. SHAP раскладывает прогноз на вклады признаков так, что вклады складываются ровно в прогноз. Но у одного и того же прогноза бывает два разных разложения, признак может получить вклад, хотя модель на него не смотрит, а вклад легко прочитать как причину, которой нет. Здесь — как SHAP устроен, какой режим выбрать под вопрос и где он вводит в заблуждение.</p>
+    <div class="meta">
+      <span>15 секций</span><span>11 формул с задачами</span><span>6 графиков</span><span>песочница «interventional и conditional»</span><span>10 подводных камней</span><span>3 задачи у доски</span><span>20 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Значения Шепли</a>
+    <a href="#s3">3 · Свойства</a>
+    <a href="#s4">4 · TreeSHAP</a>
+    <a href="#s5">5 · Два режима</a>
+    <a href="#s6">6 · Выбор режима</a>
+    <a href="#s7">7 · Взаимодействия</a>
+    <a href="#s8">8 · Глобальная важность</a>
+    <a href="#s9">9 · Графики</a>
+    <a href="#s10">10 · Модель, а не мир</a>
+    <a href="#s11">11 · Коррелированные</a>
+    <a href="#s12">12 · Альтернативы</a>
+    <a href="#s13">13 · В работе и ошибки</a>
+    <a href="#s14">14 · Задачи</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: четыре вопроса к объяснению</h2></div>
+  <p class="slead">Что такое SHAP и чем он лучше встроенной важности бустинга, показано в <a href="block0_24_boosting_practice.html#s11">0.24, секция 11</a>: вклады признаков складываются в прогноз, а gain завышает шумовые признаки. Здесь — как эти вклады считаются, от чего зависят и на какие вопросы отвечают.</p>
+
+  <div class="story">
+    <p>Банк отказал клиенту в кредите по прогнозу бустинга. К аналитику приходят четыре человека с четырьмя вопросами. Разработчик: «почему модель ошиблась на этой заявке?» Руководитель: «можно ли выпускать модель — не опирается ли она на утечку?» Клиент: «что мне сделать, чтобы одобрили?» Юрист: «не использует ли модель пол клиента, хотя этого поля в ней нет?»</p>
+    <p style="margin:0">Все четыре вопроса звучат как «объясните модель», но методы для них нужны разные. SHAP хорошо отвечает на первые два. На третий он не отвечает: это вопрос о причинах (секция 10). На четвёртый — только в одном из двух режимов, и это главная тонкость темы (секции 5–6).</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>Вопрос</th><th>Чем отвечать · чем нельзя</th></tr>
+    <tr><td>почему такой прогноз у объекта</td><td>SHAP · одно число важности на всю модель</td></tr>
+    <tr><td>на какие признаки опирается модель</td><td>SHAP в режиме interventional · gain</td></tr>
+    <tr><td>нет ли утечки</td><td>SHAP на отложенной выборке · SHAP на обучающей</td></tr>
+    <tr><td>не восстанавливает ли модель запрещённый признак</td><td>восстановимость из прогноза, conditional · interventional</td></tr>
+    <tr><td>что будет, если изменить признак</td><td>эксперимент, причинный вывод (блок 2) · SHAP</td></tr>
+    <tr><td>форма зависимости от признака</td><td>dependence plot, ALE · одно число важности</td></tr>
+  </table>
+  <p class="tcap">Подробности — в секциях 5–6 (режимы), 10 (причинность) и 12 (альтернативы).</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · интерпретируемость и объяснимость</div>
+    <p>Интерпретируемая модель понятна по устройству: у линейной регрессии вклад признака читается из коэффициента. Объяснимость — свойство метода, который объясняет непрозрачную модель задним числом. SHAP — метод объяснения: он не делает бустинг понятным, а раскладывает его конкретный прогноз. В секции 12 — когда проще взять интерпретируемую модель.</p>
+  </div>
+
+  <div class="intuition"><b>План темы.</b> Значения Шепли руками (секция 2) и почему именно они (3). Как их считают для деревьев за доли секунды (4). Два режима — interventional и conditional — и какой выбрать под вопрос (5–6). Взаимодействия признаков (7), глобальная важность из локальных вкладов (8) и чтение графиков (9). Три ловушки: SHAP — не причина (10), коррелированные признаки делят важность (11), и иногда нужен другой инструмент (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>f(x)</tex>, <tex>\varphi_0</tex></td><td>Прогноз модели для объекта <tex>x</tex> и базовое значение — средний прогноз по фоновой выборке (<a href="#s3">секция 3</a>)<br><span class="gl-ex">Пример: <tex>\varphi_0 = 0.30</tex>, <tex>f(x) = 0.72</tex></span></td></tr>
+      <tr><td><tex>\varphi_j</tex></td><td>Вклад признака <tex>j</tex> в прогноз объекта — значение Шепли (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>\varphi_{\text{доход}} = 0.155</tex></span></td></tr>
+      <tr><td><tex>M</tex>, <tex>F</tex>, <tex>S</tex></td><td>Число признаков, множество всех признаков и коалиция — подмножество «известных» признаков (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>M = 3</tex>, <tex>S = \{\text{доход}\}</tex></span></td></tr>
+      <tr><td><tex>v(S)</tex></td><td>Ценность коалиции: насколько прогноз отходит от базового, если известны только признаки из <tex>S</tex> (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>v(\{\text{доход}\}) = 0.12</tex></span></td></tr>
+      <tr><td><tex>T</tex>, <tex>L</tex>, <tex>D</tex></td><td>Число деревьев, листьев в дереве и глубина (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: 500 деревьев по 64 листа глубины 6</span></td></tr>
+      <tr><td><tex>\rho</tex></td><td>Корреляция двух признаков (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: доход и средний чек, <tex>\rho = 0.94</tex></span></td></tr>
+      <tr><td><tex>\Phi_{ij}</tex></td><td>Вклад взаимодействия признаков <tex>i</tex> и <tex>j</tex>; <tex>\Phi_{ii}</tex> — собственный эффект (<a href="#s7">секция 7</a>)<br><span class="gl-ex">Пример: <tex>\Phi_{\text{доход, просрочки}} = 0.030</tex></span></td></tr>
+      <tr><td><tex>I_j</tex></td><td>Глобальная важность — средний модуль вклада по объектам (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>I_j = 0.152</tex></span></td></tr>
+      <tr><td><tex>\Phi_G</tex></td><td>Суммарный вклад группы коррелированных признаков (<a href="#s11">секция 11</a>)<br><span class="gl-ex">Пример: шесть копий одного сигнала, <tex>I_G = 0.95</tex></span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с того, как делить прогноз между признаками честно.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Значения Шепли: расчёт по всем порядкам</h2></div>
+  <p class="slead">Трое сделали проект и получили премию. Как поделить её справедливо, если программист без дизайнера сделал бы меньше, чем с ним? Шепли предложил перебрать все порядки, в которых участники могли присоединяться, посчитать прирост от каждого прихода и усреднить. С признаками так же: «участники» — признаки, «премия» — отклонение прогноза от среднего.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · значение Шепли через порядки</div>
+    <texd>\varphi_j = \frac{1}{M!}\sum_{\pi}\Big[v\big(S_j^{\pi}\cup\{j\}\big) - v\big(S_j^{\pi}\big)\Big]</texd>
+    <div class="where">где <tex>\varphi_j</tex> — вклад признака <tex>j</tex>, <tex>M</tex> — число признаков, сумма идёт по всем <tex>M!</tex> порядкам <tex>\pi</tex> (перестановкам признаков), <tex>S_j^{\pi}</tex> — признаки, стоящие в порядке <tex>\pi</tex> перед <tex>j</tex>, <tex>v(S)</tex> — ценность коалиции <tex>S</tex> (насколько прогноз отходит от базового, если известны только признаки из <tex>S</tex>). Разность в скобках — маргинальный вклад: сколько добавил признак <tex>j</tex>, присоединившись к уже известным. Пример: <tex>M = 3</tex> — шесть порядков, вклад — среднее шести приростов.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · вклады трёх признаков по шести порядкам</div>
+    <div class="tstep"><b>Шаг 1. Игра.</b> Модель одобрения кредита, признаки: доход (Д), возраст (В), просрочки (П). Базовое значение 0.30, прогноз для заявки 0.72, делить надо <tex>0.72 - 0.30 = 0.42</tex>. Ценности коалиций заданы: <tex>v(\varnothing) = 0</tex>, <tex>v(Д) = 0.12</tex>, <tex>v(В) = 0.02</tex>, <tex>v(П) = 0.20</tex>, <tex>v(ДВ) = 0.15</tex>, <tex>v(ДП) = 0.38</tex>, <tex>v(ВП) = 0.23</tex>, <tex>v(ДВП) = 0.42</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Порядок Д → В → П.</b> Д: <tex>0.12 - 0 = 0.12</tex>; В: <tex>0.15 - 0.12 = 0.03</tex>; П: <tex>0.42 - 0.15 = 0.27</tex>. Сумма 0.42. В порядке П → Д → В доход добавляет уже <tex>0.38 - 0.20 = 0.18</tex>: когда просрочки известны, доход значит больше.</div>
+    <div class="tstep"><b>Шаг 3. Все шесть порядков.</b> Приросты дохода: 0.12, 0.12, 0.13, 0.19, 0.18, 0.19 (порядки Д→В→П, Д→П→В, В→Д→П, В→П→Д, П→Д→В, П→В→Д). Возраста: 0.03, 0.04, 0.02, 0.02, 0.04, 0.03. Просрочек: 0.27, 0.26, 0.27, 0.21, 0.20, 0.20.</div>
+    <div class="tstep"><b>Шаг 4. Среднее.</b> <tex>\varphi_Д = 0.93/6 = 0.155</tex>, <tex>\varphi_В = 0.18/6 = 0.030</tex>, <tex>\varphi_П = 1.41/6 = 0.235</tex>. Сумма <tex>0.155 + 0.030 + 0.235 = 0.420</tex> — ровно отклонение прогноза.</div>
+    <div class="tstep"><b>Итог.</b> Вклад дохода в разных порядках — от 0.12 до 0.19, в полтора раза. Взять один порядок — получить произвольный ответ; среднее по всем снимает произвол. Водопад этой заявки: 0.30 → +0.235 (нет просрочек) → +0.155 (доход) → +0.030 (возраст) → 0.72.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Прирост от признака зависит от порядка</div>
+    <div class="chsub">Ось x — шесть порядков присоединения, ось y — прирост прогноза от признака в этом порядке. Пунктир — значения Шепли (среднее по порядкам). Доход добавляет 0.12, если приходит раньше просрочек, и 0.18–0.19, если позже.</div>
+    <canvas id="c_perm"></canvas>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · то же через подмножества</div>
+    <texd>\begin{gathered}\varphi_j = \sum_{S \subseteq F\setminus\{j\}} w_S\,\big[v(S\cup\{j\}) - v(S)\big] \\ w_S = \frac{|S|!\,(M - |S| - 1)!}{M!}\end{gathered}</texd>
+    <div class="where">где <tex>F</tex> — множество всех признаков, <tex>S \subseteq F\setminus\{j\}</tex> — коалиция (подмножество признаков) без признака <tex>j</tex>, <tex>|S|</tex> — её размер, <tex>M</tex> — число признаков, <tex>v(S)</tex> — ценность коалиции. Вес <tex>w_S</tex> — доля порядков, в которых перед <tex>j</tex> стоят ровно признаки из <tex>S</tex>: сами они переставляются <tex>|S|!</tex> способами, остальные после <tex>j</tex> — <tex>(M - |S| - 1)!</tex>. Пример: <tex>M = 3</tex>, <tex>|S| = 1</tex> — вес <tex>1!\cdot 1!/3! = 1/6</tex>; при <tex>|S| = 0</tex> и <tex>|S| = 2</tex> — по <tex>2/6</tex>.</div>
+  </div>
+
+  <p>Форма через подмножества короче: вместо <tex>M!</tex> порядков — <tex>2^{M-1}</tex> коалиций на признак. По ней и видно, почему точный расчёт недоступен уже при десятках признаков (секция 4). Расчёт трассировки повторён по обеим формулам — вклады совпали до последнего знака.</p>
+
+  <p><b>Откуда берутся <tex>v(S)</tex>.</b> В трассировке ценности коалиций заданы. В модели их приходится считать: что значит «известны только доход и возраст», если модель требует все три признака? Неизвестные признаки чем-то заменяют, и от способа замены зависит ответ (секция 5).</p>
+
+  <p class="next">Почему делить именно так, а не каким-то более простым способом?</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Четыре свойства и почему решение одно</h2></div>
+  <p class="slead">Значения Шепли — не одна из эвристик. Это единственный способ поделить выигрыш, у которого одновременно выполнены четыре естественных требования. Самое полезное на практике — первое: вклады складываются ровно в прогноз.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · эффективность: вклады складываются в прогноз</div>
+    <texd>f(x) = \varphi_0 + \sum_{j=1}^{M}\varphi_j(x) \qquad \varphi_0 = \mathbb{E}\big[f(X)\big]</texd>
+    <div class="where">где <tex>f(x)</tex> — прогноз модели для объекта <tex>x</tex>, <tex>\varphi_0</tex> — базовое значение (средний прогноз по фоновой выборке <tex>X</tex>), <tex>\varphi_j(x)</tex> — вклад признака <tex>j</tex>, <tex>M</tex> — число признаков, <tex>\mathbb{E}</tex> — среднее. У классификатора <tex>f(x)</tex> по умолчанию — логит, а не вероятность. Пример: <tex>0.30 + 0.155 + 0.030 + 0.235 = 0.72</tex> (секция 2).</div>
+  </div>
+
+  <p><b>Четыре свойства.</b> <i>Эффективность</i> — формула 3: ничего не теряется и не берётся из ниоткуда, поэтому «признак добавил +0.155» сказано в единицах самого прогноза. <i>Симметрия</i> — два признака, дающие одинаковый прирост в любой коалиции, получают одинаковый вклад. <i>Фиктивность</i> — признак, не меняющий <tex>v(S)</tex> ни в одной коалиции, получает ноль. <i>Аддитивность</i> — для суммы моделей вклады складываются: вклад в бустинге из 500 деревьев — сумма вкладов в каждом дереве, и на этом построен быстрый алгоритм (секция 4).</p>
+
+  <table class="ct">
+    <tr><th>Метод</th><th>Эффективность · симметрия · фиктивность · аддитивность</th></tr>
+    <tr><td>SHAP</td><td>да · да · да · да</td></tr>
+    <tr><td>коэффициенты линейной модели</td><td>да · да · да · да (это и есть SHAP, формула 4)</td></tr>
+    <tr><td>LIME</td><td>нет · приближённо · приближённо · нет</td></tr>
+    <tr><td>перестановочная важность</td><td>не про прогноз объекта · да · да · нет</td></tr>
+    <tr><td>gain бустинга</td><td>нет · нет · да · да</td></tr>
+  </table>
+  <p class="tcap">Gain нарушает симметрию: признак с многими уникальными значениями получает больше разбиений и больше gain при той же пользе (<a href="block0_24_boosting_practice.html#s11">0.24, секция 11</a>).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · SHAP линейной модели</div>
+    <texd>f(x) = b + \sum_j \beta_j x_j \;\Rightarrow\; \varphi_j(x) = \beta_j\big(x_j - \mathbb{E}[X_j]\big)</texd>
+    <div class="where">где <tex>f(x)</tex> — прогноз модели (у логистической регрессии — логит), <tex>b</tex> — свободный член, <tex>\beta_j</tex> — коэффициент признака <tex>j</tex>, <tex>x_j</tex> — его значение у объекта, <tex>\mathbb{E}[X_j]</tex> — его среднее по фоновой выборке, <tex>\varphi_j(x)</tex> — вклад. Верно, когда неизвестные признаки заменяют значениями из фона независимо (режим interventional, секция 5). Пример: <tex>\beta = 0.03</tex> на тысячу рублей дохода, доход 90 тыс. при среднем 60 — вклад <tex>0.03\cdot 30 = 0.9</tex>.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Разложить прогноз логистической регрессии</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Логит одобрения: <tex>-1 + 0.03\cdot\text{доход} - 0.9\cdot\text{просрочки}</tex>, доход в тысячах рублей. В фоновой выборке средний доход 60, среднее число просрочек 0.4. Клиент: доход 90, просрочек нет.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Базовое значение, вклады признаков и проверку суммы.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Для линейной модели вклад — коэффициент, умноженный на отклонение от среднего (формула 4). Базовое значение — логит в средней точке, сумма должна дать логит клиента (формула 3).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 4</a> · SHAP линейной модели</div>
+        <texd>\varphi_j(x) = \beta_j\big(x_j - \mathbb{E}[X_j]\big)</texd>
+        <div class="fr-w">где <tex>\beta_j</tex> — 0.03 и −0.9, <tex>x_j</tex> — 90 и 0, <tex>\mathbb{E}[X_j]</tex> — 60 и 0.4.</div></div>
+      <texd>\varphi_{\text{доход}} = 0.03\cdot(90 - 60) = 0.90 \qquad \varphi_{\text{проср}} = -0.9\cdot(0 - 0.4) = 0.36</texd>
+      <p>Базовое значение: <tex>\varphi_0 = -1 + 0.03\cdot 60 - 0.9\cdot 0.4 = 0.44</tex>. Логит клиента: <tex>-1 + 0.03\cdot 90 = 1.70</tex>. Проверка: <tex>0.44 + 0.90 + 0.36 = 1.70</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Доход добавил <b>0.90</b> логита, отсутствие просрочек — <b>0.36</b>, база <b>0.44</b>. Просрочек у клиента ноль, а вклад положительный: SHAP мерит отклонение от среднего клиента, у которого 0.4 просрочки. Вклады в логитах; в вероятности их переводить отдельно (секция 6).</div></div>
+  </div>
+
+  <p><b>Фиктивность — на проверку.</b> Добавим к игре секции 2 признак «цвет глаз», который модель не использует: <tex>v(S\cup\{\text{цвет}\}) = v(S)</tex> для любой коалиции. Его прирост в каждом порядке ноль, вклады остальных не меняются. В секции 5 окажется, что в одном из режимов это свойство относится к модели, а в другом — к данным, и признак, которого в модели нет, получает вклад.</p>
+
+  <p class="next">Перебор всех коалиций экспоненциален. Почему тогда SHAP для бустинга считается за секунды?</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>TreeSHAP и KernelSHAP: цена расчёта</h2></div>
+  <p class="slead">Коалиций <tex>2^M</tex>: при 20 признаках — миллион, при 40 — триллион. Перебор невозможен уже на обычной таблице. Есть два выхода: сэмплировать коалиции для любой модели (KernelSHAP) или использовать устройство дерева и считать точно (TreeSHAP).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · перебор против TreeSHAP</div>
+    <texd>\text{перебор: } 2^M \text{ коалиций} \qquad \text{TreeSHAP: } O\big(T\,L\,D^2\big) \text{ на объект}</texd>
+    <div class="where">где <tex>M</tex> — число признаков, <tex>T</tex> — число деревьев, <tex>L</tex> — листьев в дереве, <tex>D</tex> — глубина, <tex>O(\cdot)</tex> — порядок числа операций. Экспонента по числу признаков заменяется многочленом по размеру деревьев. Пример: <tex>M = 100</tex> — <tex>1.27\cdot 10^{30}</tex> коалиций, при миллиарде в секунду это <tex>4\cdot 10^{13}</tex> лет; 500 деревьев по 64 листа глубины 6 — <tex>500\cdot 64\cdot 36 = 1\,152\,000</tex> операций.</div>
+  </div>
+
+  <p><b>Как TreeSHAP обходит перебор.</b> Объект с известными признаками идёт по дереву одним путём. Если признак «неизвестен», в узле с разбиением по нему объект идёт в обе ветки с весами, пропорциональными долям обучающих объектов. Алгоритм проходит по дереву один раз и для каждого узла инкрементально пересчитывает, какая доля коалиций сюда приходит и с каким весом Шепли. В листе его значение распределяется между признаками пути. Отсюда <tex>D^2</tex> вместо <tex>2^D</tex>, а по аддитивности (секция 3) деревья считаются по отдельности и складываются.</p>
+
+  <table class="ct">
+    <tr><th>Способ · что считает</th><th>Время</th></tr>
+    <tr><td>TreeSHAP по путям (<code>pred_contrib=True</code>) · точно</td><td>3.8 с на 10 000 объектов</td></tr>
+    <tr><td>TreeSHAP interventional, фон 100 объектов · точно</td><td>8.6 мс на объект</td></tr>
+    <tr><td>то же, фон 1 000 · точно</td><td>92 мс на объект</td></tr>
+    <tr><td>KernelSHAP, 2 048 коалиций, фон 100 · приближённо</td><td>0.72 с на объект, около 2 ч на 10 000</td></tr>
+  </table>
+  <p class="tcap">Замер: LightGBM, 500 деревьев до 64 листьев, 40 признаков, shap 0.54.1, обычный ноутбук. Режимы TreeSHAP — в секции 6.</p>
+
+  <div class="chb">
+    <div class="cht">Цена точного перебора и TreeSHAP</div>
+    <div class="chsub">Ось x — число признаков, ось y — операций на объект (логарифмическая шкала). Оранжевая — перебор <tex>2^M</tex> коалиций, голубая — TreeSHAP для 500 деревьев по 64 листа глубины 6 (от числа признаков не зависит), серая — миллиард операций, около секунды.</div>
+    <canvas id="c_cost"></canvas>
+  </div>
+
+  <p><b>KernelSHAP</b> работает с любой моделью: сэмплирует коалиции, для каждой заменяет неизвестные признаки значениями из фоновой выборки, прогоняет модель и решает взвешенную линейную регрессию, коэффициенты которой и есть вклады. Цена — прогоны модели: в замере три запуска на одном объекте дали вклад первого признака −0.140, −0.168 и −0.173 при точном −0.175. Для нейросетей есть свои приближения (DeepSHAP, GradientSHAP), для деревьев — только TreeSHAP.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Сколько будет считаться KernelSHAP</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Нужно объяснить 50 000 заявок. KernelSHAP: 2 048 коалиций на объект, фоновая выборка 100 строк. Замер: модель прогоняет 204 800 строк за 0.51 с; TreeSHAP по путям — 3.8 с на 10 000 объектов.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Время KernelSHAP и TreeSHAP на всех заявках.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">На каждую коалицию KernelSHAP прогоняет модель по всей фоновой выборке: прогонов на объект — коалиции × фон. Время прогонов известно из замера.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 5</a> · сравнение способов</div>
+        <texd>\text{перебор: } 2^M \qquad \text{TreeSHAP: } O(T\,L\,D^2)</texd>
+        <div class="fr-w">где перебор заменён выборкой 2 048 коалиций, каждая прогоняется на 100 строках фона; TreeSHAP не прогоняет модель, а идёт по деревьям.</div></div>
+      <texd>2048\cdot 100 = 204\,800 \text{ прогонов} \approx 0.51\text{ с} \qquad 50\,000\cdot 0.51 = 25\,500\text{ с} \approx 7.1\text{ ч}</texd>
+      <p>TreeSHAP: <tex>3.8\cdot 50\,000/10\,000 = 19</tex> с.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">KernelSHAP — около <b>7 часов</b> и приближённо, TreeSHAP — <b>19 секунд</b> и точно. Для деревьев KernelSHAP не берут. Для других моделей главный рычаг — фон: время линейно по его размеру, 50–100 строк, отобранных кластеризацией (<code>shap.kmeans</code>), обычно хватает.</div></div>
+  </div>
+
+  <p class="next">Все способы что-то подставляют вместо «неизвестных» признаков. От того, что именно, зависит смысл ответа.</p>
+</section>
+
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>Interventional и conditional: два ответа на один вопрос</h2></div>
+  <p class="slead">Чтобы посчитать <tex>v(S)</tex>, признаки вне коалиции надо чем-то заменить. Можно брать их из фоновой выборки независимо от известных — «подменим и посмотрим, что сделает модель». А можно брать из распределения при известных — «что обычно бывает у таких объектов». Когда признаки коррелируют, ответы расходятся, и оба верны: они отвечают на разные вопросы.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · два определения ценности коалиции</div>
+    <texd>v_{\text{int}}(S) = \mathbb{E}_{X_{\bar S}}\big[f(x_S, X_{\bar S})\big] - \varphi_0 \qquad v_{\text{cond}}(S) = \mathbb{E}\big[f(X)\mid X_S = x_S\big] - \varphi_0</texd>
+    <div class="where">где <tex>v_{\text{int}}(S)</tex> и <tex>v_{\text{cond}}(S)</tex> — ценность коалиции в двух режимах, <tex>S</tex> — коалиция известных признаков, <tex>\bar S</tex> — остальные, <tex>x_S</tex> — значения известных признаков у объекта, <tex>X_{\bar S}</tex> — неизвестные признаки, взятые из фоновой выборки, <tex>f</tex> — модель, <tex>\varphi_0</tex> — базовое значение, <tex>\mathbb{E}[\cdot\mid\cdot]</tex> — условное среднее. Слева (interventional) неизвестные берутся из фона независимо от <tex>x_S</tex>, справа (conditional) — только у объектов с такими же <tex>x_S</tex>. Пример: при независимых признаках оба определения совпадают.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · признак, которого нет в модели, получает 42% вклада</div>
+    <div class="tstep"><b>Шаг 1. Постановка.</b> Доход и средний чек в магазине — нормальные величины с корреляцией <tex>\rho = 0.94</tex> (в единицах стандартного отклонения от среднего). Модель смотрит только на доход: 0.8, если он не ниже медианы, иначе 0.2. Базовое значение <tex>\varphi_0 = 0.5</tex>. Клиент: доход на 0.6, чек на 0.5 стандартного отклонения выше среднего, прогноз 0.8, делить <tex>0.8 - 0.5 = 0.3</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Interventional.</b> <tex>v(Д) = 0.3</tex>: доход известен, прогноз 0.8 при любом чеке. <tex>v(Ч) = 0</tex>: чек известен, доход берётся из фона независимо — прогноз в среднем 0.5. Два порядка с весом ½: <tex>\varphi_Д = \tfrac12(0.3 + 0.3) = 0.3</tex>, <tex>\varphi_Ч = \tfrac12(0 + 0) = 0</tex>. Чек получил ноль: модель на него не смотрит.</div>
+    <div class="tstep"><b>Шаг 3. Conditional.</b> <tex>v(Ч)</tex> — средний прогноз у клиентов с таким же чеком. Доля дохода не ниже медианы среди них — <tex>\Phi\big(0.94\cdot 0.5/\sqrt{1 - 0.94^2}\big) = \Phi(1.378) = 0.916</tex>, где <tex>\Phi</tex> — функция стандартного нормального распределения. Прогноз <tex>0.2 + 0.6\cdot 0.916 = 0.750</tex>, <tex>v(Ч) = 0.250</tex>.</div>
+    <div class="tstep"><b>Шаг 4. Вклады.</b> <tex>\varphi_Ч = \tfrac12\big[(0.250 - 0) + (0.3 - 0.3)\big] = 0.125</tex>, <tex>\varphi_Д = \tfrac12\big[0.3 + (0.3 - 0.250)\big] = 0.175</tex>. Сумма 0.3.</div>
+    <div class="tstep"><b>Итог.</b> Чек, которого в модели нет, получил 0.125 из 0.3 — 42%. Это не ошибка: conditional отвечает на вопрос «насколько наблюдение чека говорит о решении», а наблюдать высокий чек — почти то же, что знать высокий доход. Фиктивность здесь относится к данным, а не к модели.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Корреляция <tex>\rho</tex></th><th>Доля вклада чека: interventional · conditional</th></tr>
+    <tr><td>0</td><td>0% · 0%</td></tr>
+    <tr><td>0.4</td><td>0% · 8.6%</td></tr>
+    <tr><td>0.7</td><td>0% · 18.8%</td></tr>
+    <tr><td>0.9</td><td>0% · 34.9%</td></tr>
+    <tr><td>0.94</td><td>0% · 41.6%</td></tr>
+    <tr><td>0.99</td><td>0% · 50.0%</td></tr>
+  </table>
+  <p class="tcap">Тот же клиент (чек на 0.5 стандартного отклонения выше среднего). При <tex>\rho \to 1</tex> два одинаковых признака делят вклад пополам, какой бы из них ни был в модели.</p>
+
+  <p><b>Чем плох interventional.</b> Подставляя признаки независимо, он строит объекты, которых не бывает. Возраст и стаж (корреляция 0.68 в примере, стаж не больше «возраст − 16»): при независимой подстановке 22% пар невозможны, а для клиентов моложе 25 лет — 71%: девятнадцатилетний со стажем 30 лет. Модель на таких точках не обучалась и выдаёт что угодно, и это «что угодно» входит в вклады. Conditional таких точек не создаёт, но размазывает вклад по коррелированным признакам. Хорошего решения нет — есть выбор под вопрос (секция 6).</p>
+
+  <div class="play">
+    <h4>Песочница: interventional и conditional</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">Модель из трассировки: 0.8, если доход не ниже медианы, иначе 0.2; доход клиента выше медианы. Задайте корреляцию дохода и чека и чек клиента в стандартных отклонениях от среднего. График — доля вклада чека в режиме conditional при разной корреляции; в режиме interventional она всегда 0. Расчёт совпал с Python в 40 из 40 проверочных сочетаний.</p>
+    <div class="prow"><label for="sl_r">Корреляция ρ</label><input type="range" id="sl_r" min="0" max="9" step="1" value="7"><output id="o_r"></output></div>
+    <div class="prow"><label for="sl_c">Чек клиента</label><input type="range" id="sl_c" min="0" max="8" step="1" value="5"><output id="o_c"></output></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · conditional SHAP и режим tree_path_dependent</div>
+    <p>TreeSHAP по путям (режим по умолчанию без фоновой выборки, секция 6) заменяет неизвестные признаки по долям обучающих объектов в узлах — это приближение к условному среднему, но только по признакам, на которых есть разбиения. Признак, которого в дереве нет, получает ноль в обоих режимах TreeSHAP: на пне по доходу из трассировки чек получил 0 и по путям, и interventional. Сорок два процента вклада чеку даст только настоящий conditional — отдельный расчёт условных распределений.</p>
+  </div>
+
+  <p class="next">Раз оба ответа верны, выбирать надо по вопросу, а не по удобству.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Какой режим выбрать и что делает библиотека</h2></div>
+  <p class="slead">Interventional отвечает «на что смотрит модель», conditional — «что говорят наблюдения о решении». Отладка, отбор признаков, поиск утечки и объяснение клиенту — вопросы о модели. Описание данных и аудит косвенной дискриминации — о данных.</p>
+
+  <table class="ct">
+    <tr><th>Задача</th><th>Режим · почему</th></tr>
+    <tr><td>отладка прогноза</td><td>interventional · нужен вклад того, на что смотрит модель</td></tr>
+    <tr><td>отбор признаков</td><td>interventional · conditional делает «нужными» все коррелированные</td></tr>
+    <tr><td>поиск утечки</td><td>interventional · один виновник не размазан по группе</td></tr>
+    <tr><td>объяснение отказа клиенту</td><td>interventional · менять имеет смысл только то, на что смотрит модель</td></tr>
+    <tr><td>описание данных</td><td>conditional · информативность наблюдений</td></tr>
+    <tr><td>признаки независимы</td><td>любой · режимы совпадают</td></tr>
+  </table>
+
+  <p><b>Отбор признаков по conditional.</b> Двенадцать признаков в четырёх группах по три, внутри группы корреляция 0.85. Линейная модель использует по одному признаку из группы с коэффициентами 1, 0.8, 0.6 и 0.4. Точный conditional SHAP (перебор всех 4 096 коалиций с гауссовскими условными средними) отдал восьми неиспользуемым признакам 52.6% суммарной важности. Порог «важность выше 10% от максимальной» прошли все 12 признаков, по interventional — 4. Отбор по conditional оставил бы втрое больше признаков, чем модели нужно.</p>
+
+  <p><b>Аудит косвенного использования.</b> Пол клиента убран из признаков, но доход, должность и рабочие часы с ним связаны. Interventional даёт полу ноль по построению — признака в модели нет, и это ничего не доказывает. Вопрос юриста — о данных: восстанавливается ли пол из решения. В симуляции пол предсказывается по прогнозу модели с AUC 0.708 (по самим признакам — 0.746), а в верхние 30% по прогнозу попали 17% одной группы и 43% другой. Это и есть ответ: модель косвенно различает группы. Считают его напрямую — восстановимостью и долями одобрения по группам, а не вкладами.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · режимы TreeExplainer в shap</div>
+    <p><code>shap.TreeExplainer(model)</code> без фоновой выборки — режим <code>tree_path_dependent</code>; с <code>data=X_bg</code> — <code>interventional</code>. Добавили аргумент — значения изменились без единого предупреждения. Проверено на shap 0.54.1: <code>explainer.feature_perturbation</code> показывает режим; <code>model_output="probability"</code> без фона даёт <code>ValueError</code> (вклады в вероятностях считаются только в interventional); фон больше 100 строк молча урезается до случайных 100 — с предупреждением в журнале, и базовое значение зависит от того, какие строки попали.</p>
+  </div>
+
+  <p><b>Шкала вкладов.</b> По умолчанию вклады классификатора — в логитах: <tex>+0.5</tex> логита при базовой вероятности 2% и 50% значат разное. Для отчёта клиенту переводят в вероятности (<code>model_output="probability"</code> с фоновой выборкой) — тогда вклады складываются в вероятность. LightGBM сам считает вклады по путям: <code>model.predict(X, pred_contrib=True)</code> — столбцы вкладов и последний столбец <tex>\varphi_0</tex>; в замере они совпали с shap в режиме по путям до последнего знака.</p>
+
+  <p><b>Практика.</b> Задавать режим и фоновую выборку явно, фон хранить вместе с версией модели — иначе объяснение через год не воспроизвести. Подписывать режим на графиках: по картинке interventional от conditional не отличить.</p>
+
+  <p class="next">Пока каждый признак получал одно число. Но часть вклада возникает только от сочетания признаков.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Вклады взаимодействий</h2></div>
+  <p class="slead">В секции 2 доход добавлял 0.12, приходя первым, и 0.18–0.19 после просрочек. Эта разница — взаимодействие: высокий доход значит больше у клиента без просрочек. Вклады взаимодействий раскладывают <tex>\varphi_j</tex> на собственный эффект признака и доли, общие с партнёрами.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · вклад взаимодействия пары</div>
+    <texd>\Phi_{ij} = \sum_{S\subseteq F\setminus\{i,j\}} \frac{|S|!\,(M - |S| - 2)!}{2\,(M-1)!}\,\delta_{ij}(S) \qquad \Phi_{ii} = \varphi_i - \sum_{j\ne i}\Phi_{ij}</texd>
+    <div class="where">где <tex>\delta_{ij}(S) = v(S\cup\{i,j\}) - v(S\cup\{i\}) - v(S\cup\{j\}) + v(S)</tex> — насколько пара вместе добавляет больше суммы поодиночке (ноль, если эффекты просто складываются), <tex>S \subseteq F\setminus\{i,j\}</tex> — коалиция без <tex>i</tex> и <tex>j</tex>, <tex>F</tex> — все признаки, <tex>M</tex> — их число, <tex>\Phi_{ij} = \Phi_{ji}</tex> — вклад взаимодействия, <tex>\Phi_{ii}</tex> — собственный эффект признака <tex>i</tex>. Двойка в знаменателе делит эффект пары поровну между двумя клетками матрицы. Сумма строки матрицы — <tex>\varphi_i</tex>.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · матрица взаимодействий для игры секции 2</div>
+    <div class="tstep"><b>Шаг 1. Веса.</b> При <tex>M = 3</tex> у пары один свободный признак, <tex>S</tex> — пустое или из третьего признака. Вес <tex>0!\cdot 1!/(2\cdot 2!) = 1/4</tex> и <tex>1!\cdot 0!/(2\cdot 2!) = 1/4</tex>.</div>
+    <div class="tstep"><b>Шаг 2. Доход и просрочки.</b> <tex>S = \varnothing</tex>: <tex>\delta = 0.38 - 0.12 - 0.20 + 0 = 0.06</tex>. <tex>S = \{В\}</tex>: <tex>\delta = 0.42 - 0.15 - 0.23 + 0.02 = 0.06</tex>. <tex>\Phi_{ДП} = \tfrac14\cdot 0.06 + \tfrac14\cdot 0.06 = 0.030</tex>.</div>
+    <div class="tstep"><b>Шаг 3. Остальные пары.</b> Доход и возраст: <tex>\delta = 0.15 - 0.12 - 0.02 = 0.01</tex> и <tex>0.42 - 0.38 - 0.23 + 0.20 = 0.01</tex>, <tex>\Phi_{ДВ} = 0.005</tex>. Возраст и просрочки — так же, <tex>\Phi_{ВП} = 0.005</tex>.</div>
+    <div class="tstep"><b>Шаг 4. Собственные эффекты.</b> <tex>\Phi_{ДД} = 0.155 - 0.005 - 0.030 = 0.120</tex>, <tex>\Phi_{ВВ} = 0.030 - 0.010 = 0.020</tex>, <tex>\Phi_{ПП} = 0.235 - 0.035 = 0.200</tex> — ровно <tex>v</tex> одиночных коалиций.</div>
+    <div class="tstep"><b>Итог.</b> Диагональ <tex>0.120 + 0.020 + 0.200 = 0.340</tex>, вне диагонали каждая пара дважды: <tex>2\cdot(0.030 + 0.005 + 0.005) = 0.080</tex>, всего 0.420. Взаимодействия дали 19% отклонения, из них три четверти — пара «доход × просрочки».</div>
+  </div>
+
+  <p><b>Цена.</b> Вклады взаимодействий в <tex>M</tex> раз дороже обычных, а матрица <tex>N\times M\times M</tex> для <tex>N</tex> объектов занимает память: <tex>10^5</tex> объектов и 200 признаков в float64 — <tex>10^5\cdot 200^2\cdot 8 = 32</tex> ГБ. Считают на подвыборке в 1–5 тысяч объектов и для двух десятков главных признаков.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · вклады взаимодействий в двух режимах</div>
+    <p>В shap 0.54.1 <code>shap_interaction_values</code> считаются только в режиме по путям. В режиме interventional вызов не падает: в журнал печатается строка «does not support interactions», а возвращается матрица из нулей. Ноль везде — повод проверить режим, а не вывод «взаимодействий нет».</p>
+  </div>
+
+  <p class="next">Матрица на объект — подробно. Обычно же нужна одна картинка на всю модель.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Глобальная важность из локальных вкладов</h2></div>
+  <p class="slead">Стандартная глобальная важность — средний модуль вклада по объектам. Одно число скрывает форму распределения: признак, слабо влияющий на всех, и признак, решающий исход у трёх процентов, получают одинаковую важность. При удалении они ведут себя по-разному.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · глобальная важность и доля задействованных объектов</div>
+    <texd>I_j = \frac{1}{N}\sum_{i=1}^{N}\big|\varphi_j(x_i)\big| \qquad q_j(\tau) = \frac{1}{N}\sum_{i=1}^{N}\mathbb{1}\big[|\varphi_j(x_i)| \gt \tau\big]</texd>
+    <div class="where">где <tex>N</tex> — число объектов, <tex>x_i</tex> — объект <tex>i</tex>, <tex>\varphi_j(x_i)</tex> — вклад признака <tex>j</tex> в его прогноз, <tex>I_j</tex> — средний модуль вклада, <tex>q_j(\tau)</tex> — доля объектов, у которых модуль вклада больше порога <tex>\tau</tex>, <tex>\mathbb{1}[\cdot]</tex> — индикатор. Средний вклад со знаком почти ноль у любого признака: базовое значение — средний прогноз, отклонения в обе стороны гасятся. Пример: <tex>I_j = 0.152</tex>, <tex>q_j(0.1) = 53\%</tex>.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Сводка вкладов</th><th>A — слабый у всех · B — редкий решающий</th></tr>
+    <tr><td>средний модуль <tex>I_j</tex></td><td>0.152 · 0.155</td></tr>
+    <tr><td>средний со знаком</td><td>−0.0009 · −0.0003</td></tr>
+    <tr><td>доля объектов <tex>|\varphi| \gt 0.1</tex></td><td>53% · 3.2%</td></tr>
+    <tr><td>95-й перцентиль <tex>|\varphi|</tex></td><td>0.44 · 0.09</td></tr>
+    <tr><td>максимум <tex>|\varphi|</tex></td><td>1.08 · 3.06</td></tr>
+    <tr class="worst"><td>падение AUC без признака</td><td><b>0.002 · 0.021</b></td></tr>
+  </table>
+  <p class="tcap">Модельные данные: 40 000 строк; A — непрерывный признак со слабым эффектом, B — флаг у 3% строк с сильным эффектом. LightGBM, вклады в логитах на отложенных 12 000 строках; модель без признака переобучена заново.</p>
+
+  <div class="chb">
+    <div class="cht">Два признака с одинаковой важностью</div>
+    <div class="chsub">Ось x — модуль вклада признака (интервалы), ось y — доля объектов. У A вклады размазаны от 0 до 0.8, у B 97% объектов получают около −0.08, а 3% — от 1.6 до 3.2. Средний модуль у обоих 0.15.</div>
+    <canvas id="c_prof"></canvas>
+  </div>
+
+  <p>По столбику средней важности A и B одинаковы. Без A качество почти не меняется, без B падает в 9 раз сильнее: он решает исход у каждого тридцатого объекта. Даже 95-й перцентиль B меньше, чем у A, — эффект сидит в 3% строк, и его ловят только максимум и доля объектов выше порога.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Какой признак убрать</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Нужно убрать один признак из двух с одинаковой средней важностью 0.15. Сводка вкладов — таблица выше: у A <tex>q(0.1) = 53\%</tex> и максимум 1.08, у B — 3.2% и 3.06.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Какой признак кандидат на удаление и как проверить.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Средний модуль одинаков, поэтому смотрим на форму: сколько объектов задействует признак и насколько сильно (формула 8). Редкий сильный вклад — решающий для меньшинства.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 8</a> · важность и доля задействованных</div>
+        <texd>I_j = \frac{1}{N}\sum_i |\varphi_j(x_i)| \qquad q_j(\tau) = \frac{1}{N}\sum_i \mathbb{1}\big[|\varphi_j(x_i)| \gt \tau\big]</texd>
+        <div class="fr-w">где <tex>I_A = 0.152</tex>, <tex>I_B = 0.155</tex>; при <tex>\tau = 0.1</tex> <tex>q_A = 0.53</tex>, <tex>q_B = 0.032</tex>.</div></div>
+      <p>У B 97% объектов вносят около 0.08 каждый: <tex>0.97\cdot 0.08 \approx 0.078</tex>. Остальные <tex>0.155 - 0.078 = 0.077</tex> средней важности дают 3% объектов — в среднем около <tex>0.077/0.03 \approx 2.6</tex> логита на объект. У A вклад больше 0.1 у половины объектов, но максимум всего 1.08. Удаление B ломает прогноз у 3% объектов, удаление A слегка смещает его у всех. Проверка — переобучить без признака: −0.002 AUC без A, −0.021 без B.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Кандидат на удаление — <b>A</b>. Решение об удалении принимают по проверке на отложенной выборке без признака, а сводка вкладов подсказывает, кого проверять первым. Считают её на отложенной выборке: на обучающей модель переобучена, и вклады отражают запомненный шум.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · важность внутри модели и между моделями</div>
+    <p>Вклады — в единицах выхода модели. Модель с более уверенными логитами даст бо́льшие вклады при том же качестве. Сравнивать <tex>I_j</tex> можно между признаками одной модели; между моделями — только после перевода в общую шкалу, например в вероятности.</p>
+  </div>
+
+  <p class="next">Распределение вкладов видно на графиках — если знать, что на каждом искать.</p>
+</section>
+
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Как читать графики SHAP</h2></div>
+  <p class="slead">Четыре стандартных графика показывают одни и те же вклады с разных сторон. Самый недооценённый — график зависимости: на нём видны форма зависимости и взаимодействия, которых нет ни в одном столбике важности.</p>
+
+  <table class="ct">
+    <tr><th>График</th><th>Что показывает</th></tr>
+    <tr><td>водопад (waterfall)</td><td>один объект: от базового значения через вклады к прогнозу; сумма сходится точно</td></tr>
+    <tr><td>рой (beeswarm)</td><td>все объекты: точка — вклад признака у объекта, цвет — значение признака; видны сила, направление и форма распределения</td></tr>
+    <tr><td>зависимость (dependence)</td><td>ось x — значение признака, ось y — его вклад; разброс по вертикали при одном <tex>x</tex> — взаимодействия</td></tr>
+    <tr><td>силы (force)</td><td>компактный водопад: что толкает прогноз вверх и вниз</td></tr>
+  </table>
+
+  <p><b>Пример.</b> Модель отклика на страховку жизни: 30 000 клиентов, признаки — возраст, наличие ипотеки, доход, регион, стаж. LightGBM, AUC 0.721. Средний модуль вклада возраста — 0.33, третье место из пяти. Больше столбик важности ничего не сообщает.</p>
+
+  <table class="ct">
+    <tr><th>Возраст</th><th>Средний вклад · разброс <tex>\sigma</tex> · с ипотекой · без ипотеки</th></tr>
+    <tr><td>18–24</td><td>−0.61 · 0.20 · −0.94 · −0.59</td></tr>
+    <tr><td>25–34</td><td>+0.04 · 0.22 · −0.31 · +0.13</td></tr>
+    <tr><td>35–49</td><td>+0.20 · 0.16 · <b>+0.35</b> · <b>+0.06</b></td></tr>
+    <tr><td>50–64</td><td>+0.28 · 0.15 · +0.37 · +0.13</td></tr>
+    <tr><td>65+</td><td>−0.53 · 0.25 · −0.70 · −0.26</td></tr>
+  </table>
+  <p class="tcap">Вклады в логитах на отложенных 9 000 клиентах. В данных клиенты 35–64 лет с ипотекой откликаются заметно чаще, без ипотеки — реже.</p>
+
+  <div class="chb">
+    <div class="cht">График зависимости для возраста</div>
+    <div class="chsub">Ось x — возраст, ось y — вклад возраста в логит. Голубые точки — клиенты с ипотекой, оранжевые — без. Зависимость немонотонна, а в 35–64 года вклад распадается на две полосы по ипотеке.</div>
+    <canvas id="c_dep"></canvas>
+  </div>
+
+  <p><b>Что видно.</b> Первое — немонотонность: вклад растёт до 50–64 лет и падает после 65. Второе — разброс: при одном возрасте вклад отличается на 0.3–0.4 у разных клиентов. Раскраска по ипотеке разбивает его на две полосы: в 35–49 лет разброс внутри подгрупп — 0.05 и 0.09 вместо 0.16. Проверка вкладами взаимодействий (секция 7, 3 000 клиентов): средний модуль <tex>\Phi</tex> возраста с ипотекой — 0.169, с доходом — 0.036, со стажем — 0.037, с регионом — 0.022.</p>
+
+  <p>Рабочий цикл такой: увидели вертикальный разброс на графике зависимости → раскрасили точки по подозреваемому признаку → разброс распался на полосы → подтвердили вкладами взаимодействий. Полосы есть и в других возрастах: ипотека меняет вклад возраста везде, потому что вклад отсчитывается от среднего клиента, а он — смесь клиентов с ипотекой и без.</p>
+
+  <p><b>Чего не показывает ни один график.</b> Режим — interventional или conditional (секция 5): два одинаковых на вид роя могут быть построены в разных режимах. Попадают ли подстановки в область данных. Причинное направление (секция 10). Устойчивость: на другой выборке порядок коррелированных признаков меняется (секция 11). Отсюда практика — писать режим и размер фона прямо в заголовке: <code>plt.title("SHAP, interventional, фон 1000")</code>.</p>
+
+  <p class="next">Самая дорогая ошибка чтения — принять вклад за причину.</p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>SHAP объясняет модель, а не мир</h2></div>
+  <p class="slead">SHAP описывает модель. Модель описывает связи в данных. Связи в данных отражают и то, как эти данные собирались. Из «модель повышает риск при признаке» не следует «признак повышает риск» — знак причинного эффекта бывает противоположным.</p>
+
+  <div class="story">
+    <p style="margin:0">Известный случай из медицины: модель риска смерти от пневмонии выучила, что астма риск снижает. Пациентов с астмой и пневмонией сразу отправляли в интенсивную терапию, и они действительно выживали чаще. Объяснение модели верно: она снижает прогноз при астме. Вывод «астматиков можно лечить дома» — смертельно неверен.</p>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · наблюдаемая разница и причинный эффект</div>
+    <texd>\begin{gathered}\Delta_{\text{набл}} = \mathbb{E}[Y\mid Z{=}1] - \mathbb{E}[Y\mid Z{=}0] \\ \text{ATE} = \sum_{u}P(U{=}u)\,\Delta_u \\ \Delta_u = \mathbb{E}[Y\mid Z{=}1, u] - \mathbb{E}[Y\mid Z{=}0, u]\end{gathered}</texd>
+    <div class="where">где <tex>Y</tex> — исход (ушёл клиент или нет), <tex>Z</tex> — признак (звонил ли в поддержку), <tex>U</tex> — скрытая общая причина признака и исхода (конфаундер; здесь — проблема с продуктом), <tex>\Delta_{\text{набл}}</tex> — разница, которую видят модель и SHAP, ATE — средний причинный эффект, <tex>\Delta_u</tex> — разница исхода со звонком и без при одинаковом <tex>u</tex>, усреднённая по распределению <tex>U</tex>, <tex>\mathbb{E}[\cdot\mid\cdot]</tex> — условное среднее, <tex>P(U{=}u)</tex> — вероятность значения <tex>u</tex>. Пример: <tex>\Delta_{\text{набл}} = +16.7</tex> п.п., ATE <tex>= -7.75</tex> п.п. (задача 4).</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Звонки в поддержку и отток</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">В модели оттока признак «звонил в поддержку» получает крупный положительный вклад. Скрытая причина — проблема с продуктом, она у 25% клиентов. С проблемой звонят 80%, без неё — 5%. Отток: проблема и звонок — 30%, проблема без звонка — 55%, без проблемы со звонком — 4%, без проблемы без звонка — 6%.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Наблюдаемую разницу оттока у звонивших и незвонивших, причинный эффект звонка и что будет, если сократить поддержку так, что никто не дозвонится.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Наблюдаемую разницу считаем через доли проблемных среди звонивших и незвонивших (формула Байеса), причинный эффект — сравнением при одинаковой проблеме (формула 9).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s10">Формула 9</a> · наблюдаемая разница и ATE</div>
+        <texd>\Delta_{\text{набл}} = \mathbb{E}[Y\mid Z{=}1] - \mathbb{E}[Y\mid Z{=}0] \qquad \text{ATE} = \sum_u P(u)\,\Delta_u</texd>
+        <div class="fr-w">где <tex>u</tex> — есть проблема или нет, <tex>P(u)</tex> — 0.25 и 0.75, <tex>\Delta_u</tex> — разница оттока со звонком и без при данном <tex>u</tex>.</div></div>
+      <p>Звонят <tex>0.25\cdot 0.8 + 0.75\cdot 0.05 = 0.2375</tex>. Среди звонивших с проблемой <tex>0.2/0.2375 = 0.842</tex>, среди незвонивших <tex>0.05/0.7625 = 0.066</tex>.</p>
+      <texd>\mathbb{E}[Y\mid Z{=}1] = 0.842\cdot 0.30 + 0.158\cdot 0.04 = 0.259 \qquad \mathbb{E}[Y\mid Z{=}0] = 0.066\cdot 0.55 + 0.934\cdot 0.06 = 0.092</texd>
+      <texd>\text{ATE} = 0.25\cdot(0.30 - 0.55) + 0.75\cdot(0.04 - 0.06) = -0.0775</texd>
+      <p>Сейчас отток <tex>0.2375\cdot 0.259 + 0.7625\cdot 0.092 = 0.132</tex>. Без поддержки: <tex>0.25\cdot 0.55 + 0.75\cdot 0.06 = 0.1825</tex>.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Звонившие уходят на <b>16.7 п.п.</b> чаще, а звонок снижает отток на <b>7.75 п.п.</b> Сокращение поддержки «по SHAP» подняло бы отток с 13.2% до 18.25% — на 5.1 п.п. На 20 000 клиентов это 1 015 ушедших, при выручке 2 400 ₽ в месяц — 7.3 млн ₽ за квартал. SHAP не ошибся: он верно описал модель. Ошибка — в шаге от «связано» к «вызывает».</div></div>
+  </div>
+
+  <p><b>Что делать вместо этого.</b> Вопрос «что изменится, если вмешаться» решают экспериментом или методами причинного вывода (блок 2: A/B-тесты, uplift-модели). SHAP хорош для одного: понять, что делает модель. Признак-симптом полезен для прогноза и бесполезен для действия.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · «модель повышает риск» и «признак повышает риск»</div>
+    <p>Вывод по SHAP начинают со слова «модель»: «модель повышает оценку риска у звонивших в поддержку» — верное и проверяемое утверждение. «Звонки повышают отток» — причинное утверждение, для которого нужны другие данные. Разница в одном слове; цена ошибки — от бесполезной задачи в плане работ до вреда клиентам.</p>
+  </div>
+
+  <p class="next">Вторая ловушка тоньше: коррелированные признаки делят между собой важность, и важный сигнал выглядит слабым.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>Коррелированные признаки: важность делится</h2></div>
+  <p class="slead">Если один сигнал представлен несколькими почти одинаковыми признаками, дерево в каждом разбиении берёт один из них, и вклад сигнала расходится по копиям. Каждая копия по отдельности выглядит слабой, а вместе они — главный признак.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 10 · суммарный вклад группы</div>
+    <texd>\Phi_G(x) = \sum_{j\in G}\varphi_j(x) \qquad I_G = \frac{1}{N}\sum_{i=1}^{N}\big|\Phi_G(x_i)\big|</texd>
+    <div class="where">где <tex>G</tex> — группа коррелированных признаков, <tex>\varphi_j(x)</tex> — вклад признака <tex>j</tex>, <tex>\Phi_G(x)</tex> — вклад группы в прогноз объекта, <tex>I_G</tex> — её глобальная важность, <tex>x_i</tex> — объект номер <tex>i</tex>, <tex>N</tex> — число объектов. Сумма — простое приближение; точный групповой SHAP считает группу одним участником игры. Пример: шесть копий по 0.09–0.24, сумма их важностей 1.03, а важность группы <tex>I_G = 0.95</tex> — у части объектов копии тянут прогноз в разные стороны.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Копий сигнала</th><th>Важность каждой копии · их сумма · места копий в рейтинге</th></tr>
+    <tr><td>1</td><td>0.865 · 0.865 · 1</td></tr>
+    <tr><td>2</td><td>0.43, 0.51 · 0.94 · 3, 1</td></tr>
+    <tr><td>3</td><td>0.33, 0.41, 0.23 · 0.97 · 5, 2, 9</td></tr>
+    <tr><td>4</td><td>0.20, 0.30, 0.15, 0.34 · 0.99 · 9, 6, 12, 4</td></tr>
+    <tr class="worst"><td>6</td><td>0.13, 0.22, 0.09, 0.24, 0.24, 0.12 · 1.03 · 12, 9, 16, 8, 7, 14</td></tr>
+  </table>
+  <p class="tcap">Модельные данные: 30 000 строк, сигнал плюс 11 других признаков (средний модуль вклада лучших — 0.45, 0.40, 0.38); копии — сигнал с шумом, корреляция между копиями 0.9. LightGBM, вклады в логитах на отложенных 9 000 строках.</p>
+
+  <div class="chb">
+    <div class="cht">Сигнал, размазанный по копиям</div>
+    <div class="chsub">Ось x — число копий сигнала, ось y — средний модуль вклада. Голубые — сумма важностей копий, оранжевые — самая важная копия, серая линия — третий по важности из остальных признаков (0.38). При четырёх копиях ни одна не входит в тройку, хотя группа — главный признак.</div>
+    <canvas id="c_copy"></canvas>
+  </div>
+
+  <p><b>Ловушка удаления по одному.</b> Шесть копий, удаляем по одной и каждый раз переобучаем: AUC 0.834 → 0.834 → 0.833 → 0.832 → 0.829 → 0.824. Каждый шаг выглядит безопасным. Шестое удаление — 0.726, обвал на 0.098. Пока хоть одна копия осталась, сигнал доступен, и остальные действительно избыточны; проверка «на шаг вперёд» обвала не видит.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Пройдёт ли группа отбор</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Правило отбора: оставить 10 признаков с наибольшей средней важностью. В модели шесть копий одного сигнала с важностями 0.13, 0.22, 0.09, 0.24, 0.24, 0.12; у остальных признаков — от 0.45 вниз, десятый по важности признак — 0.19.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сколько копий пройдёт отбор и что покажет суммарная важность группы.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">По отдельности сравниваем с десятым признаком (0.19); группу считаем одним признаком через сумму вкладов (формула 10).</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s11">Формула 10</a> · вклад группы</div>
+        <texd>\Phi_G(x) = \sum_{j\in G}\varphi_j(x)</texd>
+        <div class="fr-w">где <tex>G</tex> — шесть копий; средний модуль суммы не больше суммы средних модулей и равен ей, когда вклады копий одного знака.</div></div>
+      <texd>0.13 + 0.22 + 0.09 + 0.24 + 0.24 + 0.12 = 1.04 \;\ge\; I_G = 0.95</texd>
+      <p>Выше 0.19 — копии с 0.22, 0.24 и 0.24; три остальные отбор не проходят. Важность группы <tex>I_G = 0.95</tex> по расчёту — вдвое больше любого другого признака (0.45).</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Проходят <b>3 копии из 6</b> — здесь сигнал выживет. Если копий окажется больше или порог выше, отбор выбросит главный признак целиком. Отбор делают по группам: кластеризуют признаки по корреляции (например, порог <tex>|\rho| \gt 0.8</tex>) и оценивают группу целиком, удаляя её проверкой на отложенной выборке.</div></div>
+  </div>
+
+  <p><b>Порядок внутри группы — случайность.</b> При смене сида модели места копий в рейтинге сдвигались на одно; на другой выборке тех же данных — на 2–5 мест: копия, которая в одном расчёте на 6-м месте, в другом на 11-м. Обсуждать, «какая копия важнее», бессмысленно: ответ определяют шум выборки и жадность построения деревьев, а не данные.</p>
+
+  <table class="ct">
+    <tr><th>Способ борьбы</th><th>Что даёт · цена</th></tr>
+    <tr><td>групповая важность</td><td>суммарный вклад группы · нужна кластеризация признаков</td></tr>
+    <tr><td>удалять группами</td><td>обвал виден сразу · больше переобучений</td></tr>
+    <tr><td>оставить по одному из группы</td><td>расщепления нет · теряется усреднение шума копий</td></tr>
+    <tr><td>усреднить важность по нескольким выборкам</td><td>устойчивый рейтинг · время ×5–10</td></tr>
+    <tr><td>interventional вместо conditional</td><td>не помогает: расщепление — свойство модели</td></tr>
+  </table>
+
+  <p>Шесть копий подняли AUC с 0.826 до 0.834: усреднение шума копий даёт модели чуть более чистый сигнал. Поэтому «оставить одну» — не всегда бесплатно.</p>
+
+  <p class="next">Иногда SHAP — вообще не тот инструмент.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Альтернативы и когда они лучше</h2></div>
+  <p class="slead">SHAP отвечает на вопрос «какой вклад признак внёс в этот прогноз». Для формы зависимости есть ALE, для вопроса «что изменить» — контрфактические объяснения, а там, где объяснение — жёсткое требование, бывает проще взять модель, которая понятна по устройству.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 11 · PDP и ALE</div>
+    <texd>\begin{gathered}\text{PDP}(z) = \frac{1}{N}\sum_{i=1}^{N} f(z, x_{i,\bar j}) \\ \text{ALE}(z) = \sum_{k\,:\,z_k \le z}\frac{1}{n_k}\sum_{i\in B_k}\delta_{ik} \\ \delta_{ik} = f(z_k, x_{i,\bar j}) - f(z_{k-1}, x_{i,\bar j})\end{gathered}</texd>
+    <div class="where">где <tex>z</tex> — значение признака <tex>j</tex>, <tex>x_{i,\bar j}</tex> — остальные признаки объекта <tex>i</tex>, <tex>N</tex> — число объектов, <tex>f</tex> — модель; для ALE диапазон признака разбит на интервалы <tex>[z_{k-1}, z_k]</tex>, <tex>B_k</tex> — объекты, у которых признак <tex>j</tex> попал в интервал <tex>k</tex>, <tex>n_k</tex> — их число, <tex>\delta_{ik}</tex> — прирост прогноза объекта <tex>i</tex> на интервале <tex>k</tex>. PDP подставляет <tex>z</tex> всем объектам, ALE — только соседям по интервалу и складывает локальные приросты. Пример: площадь квартиры 30 м² PDP подставляет и в шестикомнатные.</div>
+  </div>
+
+  <p><b>PDP и ALE.</b> Площадь и число комнат, корреляция 0.93; цена — 0.11 млн ₽ за метр плюс 0.6 млн за комнату. PDP при 30 м² подставляет площадь всем квартирам: у 41.5% из них число комнат, которого у квартир около 30 м² не встречается; при 145 м² — у 58.5%. ALE берёт только квартиры из узкого интервала площадей, и невозможных точек нет. В этом примере модель почти аддитивна, и обе кривые близки к правде: наклон PDP — 11.7 млн ₽ на 100 м², ALE — 10.7, истинный — 11. Расхождение появляется, когда модель на невозможных точках ведёт себя странно — а это заранее не проверить.</p>
+
+  <div class="chb">
+    <div class="cht">Цена от площади: PDP, ALE и правда</div>
+    <div class="chsub">Ось x — площадь, м², ось y — цена, млн ₽. Оранжевая — PDP, голубая — ALE (сдвинута к среднему прогнозу), серая пунктирная — истинная зависимость при среднем числе комнат. LightGBM на 20 000 квартир.</div>
+    <canvas id="c_pdp"></canvas>
+  </div>
+
+  <p><b>LIME</b> подгоняет линейную модель к прогнозам в случайной окрестности объекта. Быстро, но ответ зависит от выборки окрестности: пять запусков на одном объекте дали коэффициент главного признака от 1.035 до 1.125 при 500 точках окрестности и от 1.068 до 1.091 при 5 000; TreeSHAP на том же объекте детерминирован. Гарантии эффективности у LIME нет: коэффициенты не складываются в прогноз.</p>
+
+  <p><b>Контрфактические объяснения</b> отвечают на вопрос клиента «что сделать»: ищут ближайшую точку, где решение меняется, при ограничениях — возраст и историю не изменить, доход и долг можно. «Отказ: вклад просрочек −0.34» клиенту ничего не говорит; «для одобрения достаточно погасить просрочку по карте» — говорит. Это другой жанр: SHAP отвечает «почему», контрфактическое — «что делать».</p>
+
+  <table class="ct">
+    <tr><th>Модель</th><th>AUC при слабом · сильном взаимодействии</th></tr>
+    <tr><td>логистическая регрессия</td><td>0.767 · 0.758</td></tr>
+    <tr><td>бустинг из пней (аддитивная модель)</td><td>0.771 · 0.766</td></tr>
+    <tr><td>полный бустинг</td><td>0.769 · 0.784</td></tr>
+    <tr class="best"><td>пни + одно явное парное сочетание</td><td><b>0.775 · 0.787</b></td></tr>
+    <tr><td>потолок (настоящая вероятность)</td><td>0.779 · 0.792</td></tr>
+  </table>
+  <p class="tcap">Модельные данные: 30 000 строк, пять признаков, нелинейность и одно парное взаимодействие силы 0.4 или 0.8. LightGBM, 600 деревьев.</p>
+
+  <p><b>Интерпретируемая по устройству модель.</b> Бустинг из пней (деревьев глубины 1) — аддитивная модель: прогноз — сумма функций одного признака, и каждую можно нарисовать. Добавление нескольких явных пар — идея EBM (Explainable Boosting Machine). В примере такая модель не уступила полному бустингу ни при слабом, ни при сильном взаимодействии, а без пары при сильном взаимодействии потеряла 0.018 AUC. Объяснение в ней точное и бесплатное: никакого выбора режима, фона и приближений. Если объяснимость — жёсткое требование (кредиты, медицина), это стоит проверить до того, как строить объяснения поверх бустинга. Шаг поменьше — монотонные ограничения бустинга (<a href="block0_24_boosting_practice.html#s9">0.24, секция 9</a>): направление влияния признака задают при обучении, и «больший долг никогда не повышает шанс одобрения» гарантировано заранее, а не проверяется объяснением задним числом.</p>
+
+  <table class="ct">
+    <tr><th>Метод</th><th>Отвечает на · локально · цена · детерминирован</th></tr>
+    <tr><td>TreeSHAP</td><td>вклад в прогноз · да · низкая · да</td></tr>
+    <tr><td>KernelSHAP</td><td>то же для любой модели · да · высокая · нет</td></tr>
+    <tr><td>LIME</td><td>локальное линейное приближение · да · средняя · нет</td></tr>
+    <tr><td>перестановочная важность</td><td>зависимость качества от признака · нет · низкая · почти</td></tr>
+    <tr><td>PDP · ALE</td><td>форма зависимости · нет · низкая · да</td></tr>
+    <tr><td>контрфактические</td><td>что изменить · да · средняя · зависит от поиска</td></tr>
+    <tr><td>аддитивная модель (пни, EBM)</td><td>модель и есть объяснение · да · бесплатно · да</td></tr>
+  </table>
+
+  <p class="next">Осталось собрать, где всё это нужно в работе и где ошибаются чаще всего.</p>
+</section>
+
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в работе и 10 подводных камней</h2></div>
+  <p class="slead">SHAP считают почти в каждом проекте на табличных данных: при отладке, перед выкатом, в объяснениях клиентам и в мониторинге. Ошибаются чаще всего не в расчёте, а в выборе режима и в чтении.</p>
+
+  <table class="ct">
+    <tr><th>Где</th><th>Как применяют</th></tr>
+    <tr><td>кредитный скоринг, разъяснение отказа</td><td>interventional с фиксированным фоном, сверху — контрфактический слой; неизменяемые признаки клиенту не называют (секции 6, 12)</td></tr>
+    <tr><td>проверка перед выкатом</td><td>доля прогноза от одного признака, ступенька на графике зависимости, сравнение рейтинга с прошлой версией — ловит утечки (секции 8–9, <a href="block1_04_leakage.html#s1">1.4</a>)</td></tr>
+    <tr><td>медицина, решение за человеком</td><td>часто аддитивная модель: врач видит кривую по каждому признаку и может обоснованно не согласиться (секция 12)</td></tr>
+    <tr><td>объяснения под нагрузкой</td><td>маленький фон, расчёт только для отказов и пограничных решений, кэш по вектору признаков (секция 4)</td></tr>
+    <tr><td>мониторинг</td><td>сравнение распределения вкладов между неделями: модель начала опираться на другое раньше, чем пришли метки</td></tr>
+    <tr><td>отбор признаков</td><td>interventional, группами коррелированных, с проверкой удаления на отложенной выборке (секции 6, 11)</td></tr>
+  </table>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">10 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Не знать, какой режим посчитан</b><span><code>TreeExplainer(model)</code> без фона — по путям, с <code>data</code> — interventional; добавили аргумент — вклады изменились молча (секция 6).</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Читать вклад как причину</b><span>Звонившие в поддержку уходят на 16.7 п.п. чаще, а звонок снижает отток на 7.75 п.п. (секция 10).</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Отбирать признаки по conditional</b><span>Неиспользуемые признаки получили 52.6% важности, порог прошли 12 признаков вместо 4 (секция 6).</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Судить по одному среднему модулю <tex>I_j</tex></b><span>Два признака с <tex>I_j \approx 0.15</tex>: без одного AUC падает на 0.002, без другого — на 0.021; смотреть долю <tex>q_j(\tau)</tex> и максимум (секция 8).</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Удалять коррелированные признаки по одному</b><span>Пять шагов почти без потерь, шестой — AUC 0.824 → 0.726; оценивать группу целиком через <tex>I_G</tex> (секция 11).</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Забыть про шкалу</b><span>Вклады классификатора — в логитах; в вероятностях — <code>model_output="probability"</code>, и только с фоновой выборкой (секция 6).</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Не следить за фоновой выборкой</b><span>Время interventional линейно по фону: 8.6 мс на объект при 100 строках, 92 мс при 1 000; фон больше 100 строк shap молча урезает до случайных 100 (секции 4, 6).</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Считать вклады на обучающей выборке</b><span>Там модель переобучена, вклады отражают запомненный шум, а утечка выглядит обычным признаком; считать на отложенной (секция 8).</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Вклады взаимодействий <tex>\Phi_{ij}</tex> в режиме interventional</b><span>Вызов не падает и возвращает нули; «взаимодействий нет» — неверный вывод (секция 7).</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>Спорить о порядке внутри коррелированной группы</b><span>Копия одного сигнала на другой выборке переходит с 6-го места на 11-е; порядок определяет шум, а не данные (секция 11).</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и разобрать три задачи из работы.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Все формулы темы на одном экране, затем три прикладные задачи об объяснениях в проде. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Значение Шепли через порядки</b><br><tex>\varphi_j = \frac{1}{M!}\sum_\pi [v(S_j^\pi\cup\{j\}) - v(S_j^\pi)]</tex><div class="cs-w"><tex>S_j^\pi</tex> — признаки перед <tex>j</tex></div></td><td>расчёт руками на малом <tex>M</tex></td></tr>
+    <tr><td><a href="#s2">2</a></td><td><b>Через подмножества</b><br><tex>\sum_S \frac{|S|!(M-|S|-1)!}{M!}[v(S\cup\{j\}) - v(S)]</tex><div class="cs-w">вес — доля порядков</div></td><td>понять, откуда <tex>2^M</tex></td></tr>
+    <tr><td><a href="#s3">3</a></td><td><b>Эффективность</b><br><tex>f(x) = \varphi_0 + \sum_j \varphi_j</tex><div class="cs-w"><tex>\varphi_0</tex> — средний прогноз фона</div></td><td>проверка расчёта, водопад</td></tr>
+    <tr><td><a href="#s3">4</a></td><td><b>SHAP линейной модели</b><br><tex>\varphi_j = \beta_j(x_j - \mathbb{E}X_j)</tex><div class="cs-w"><tex>\beta_j</tex> — коэффициент</div></td><td>линейные модели, проверка</td></tr>
+    <tr><td><a href="#s4">5</a></td><td><b>Перебор и TreeSHAP</b><br><tex>2^M</tex> против <tex>O(T L D^2)</tex><div class="cs-w"><tex>T, L, D</tex> — деревья, листья, глубина</div></td><td>оценить время</td></tr>
+    <tr><td><a href="#s5">6</a></td><td><b>Два режима</b><br><tex>\mathbb{E}_{X_{\bar S}} f(x_S, X_{\bar S})</tex> и <tex>\mathbb{E}[f(X)\mid x_S]</tex><div class="cs-w">interventional и conditional</div></td><td>выбор под вопрос</td></tr>
+    <tr><td><a href="#s7">7</a></td><td><b>Вклад взаимодействия</b><br><tex>\Phi_{ij} = \sum_S \frac{|S|!(M-|S|-2)!}{2(M-1)!}\delta_{ij}(S)</tex><div class="cs-w"><tex>\delta_{ij}</tex> — пара сверх суммы</div></td><td>найти пары признаков</td></tr>
+    <tr><td><a href="#s8">8</a></td><td><b>Глобальная важность и доля</b><br><tex>I_j = \frac1N\sum_i|\varphi_j|</tex>, <tex>q_j(\tau)</tex><div class="cs-w"><tex>\tau</tex> — порог модуля</div></td><td>сводка по модели</td></tr>
+    <tr><td><a href="#s10">9</a></td><td><b>Наблюдаемая разница и ATE</b><br><tex>\Delta_{\text{набл}}</tex> против <tex>\sum_u P(u)\Delta_u</tex><div class="cs-w"><tex>u</tex> — конфаундер</div></td><td>нельзя ли действовать по SHAP</td></tr>
+    <tr><td><a href="#s11">10</a></td><td><b>Вклад группы</b><br><tex>\Phi_G = \sum_{j\in G}\varphi_j</tex>, <tex>I_G = \frac1N\sum_i|\Phi_G|</tex><div class="cs-w"><tex>G</tex> — коррелированная группа</div></td><td>отбор, рейтинг</td></tr>
+    <tr><td><a href="#s12">11</a></td><td><b>PDP и ALE</b><br>среднее <tex>f(z, x_{\bar j})</tex> по всем или сумма локальных приростов<div class="cs-w"><tex>z</tex> — значение признака</div></td><td>форма зависимости</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · Разъяснение отказа в кредите</div>
+    <div class="task-q">Регулятор требует сообщать клиенту главные причины отказа. Модель — бустинг на 40 признаках, 200 тысяч решений в день, разбор жалобы возможен через несколько лет. Спроектируйте объяснения.</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Режим.</b> Interventional: причина должна быть той, на которую модель смотрит, — иначе клиент изменит признак и получит второй отказ. Фоновая выборка фиксирована (сотни-тысяча строк), версионируется вместе с моделью, иначе объяснение не воспроизвести при разборе жалобы.</p>
+      <p><b>Слой для клиента.</b> Топ отрицательных вкладов переводится в действия (контрфактический поиск): «погасить просрочку», «подтвердить доход». Признаки помечены изменяемыми и неизменяемыми — возраст клиенту не называют, даже если вклад крупнейший.</p>
+      <p><b>Хранение и аудит.</b> Вклады всех решений — в отдельное хранилище: 40 чисел float32 по 4 байта на решение, <tex>40\cdot 4\cdot 200\,000 = 32</tex> МБ в сутки. Раз в квартал — проверка косвенной дискриминации: восстановимость защищённых признаков из прогноза и доли одобрения по группам.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Новая модель подозрительно хороша</div>
+    <div class="task-q">Новая версия модели оттока даёт AUC 0.97 против 0.84 у прошлой. Как с помощью SHAP проверить её перед выкатом и что встроить в конвейер?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Подозрение.</b> Скачок на 0.13 почти всегда означает утечку. Вклады — interventional, на отложенной выборке: на обучающей утечка выглядит обычным признаком.</p>
+      <p><b>Проверки.</b> Доля прогноза, приходящаяся на один признак (например, больше половины средних модулей); резкая ступенька на графике зависимости; новый признак в тройке лидеров по сравнению с прошлой версией. Найденный признак проверить по смыслу: известен ли он к моменту прогноза (<a href="block1_02_feature_engineering.html#s5">1.2, секция 5</a>).</p>
+      <p><b>В конвейер.</b> Хранить вектор средних модулей по версиям; при выкате считать ранговую корреляцию с прошлой версией и при резком падении отправлять на ручной разбор. Это ловит и утечки, и тихую смену смысла признака в источнике.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Объяснения в реальном времени</div>
+    <div class="task-q">Сервис отвечает за 20 мс, прогноз занимает 1 мс. Объяснение нужно показывать при отказе. Замер: interventional с фоном 1 000 строк — 92 мс на объект, с фоном 100 — 8.6 мс, по путям — 3 мс. Как уложиться?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Фон.</b> Сократить фон до 100 строк, отобранных кластеризацией: 8.6 мс укладывается в бюджет. В замере вклады с фоном 100 отличались от фона 1 000 в среднем на 0.01 при среднем модуле вклада 0.10 — проверить, что топ причин у клиентов не меняется.</p>
+      <p><b>Считать не всем.</b> Объяснение нужно только при отказе и пограничных решениях — остальным его не считают. Повторные заявки — из кэша по вектору признаков; аналитика и мониторинг — пакетно ночью.</p>
+      <p><b>Чего не делать.</b> Не переходить молча на режим по путям ради 3 мс: смена режима меняет смысл объяснений (секции 5–6). Если переход нужен — это решение о смысле объяснений, а не оптимизация.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>20 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Что такое значение Шепли одним предложением?</summary><div class="qa-a">Средний по всем порядкам присоединения прирост прогноза от признака. Усреднение по порядкам нужно, потому что прирост зависит от того, какие признаки уже известны.</div></details>
+
+  <details class="qa"><summary>2. Почему нельзя взять один порядок присоединения?</summary><div class="qa-a">Прирост от признака зависит от порядка: при взаимодействиях он меняется в разы. Любой один порядок дал бы произвольный ответ, а среднее по всем снимает произвол.</div></details>
+
+  <details class="qa"><summary>3. Что означает базовое значение <tex>\varphi_0</tex>?</summary><div class="qa-a">Средний прогноз модели по фоновой выборке. SHAP объясняет отклонение прогноза от него; сменили фон — изменились и базовое значение, и вклады.</div></details>
+
+  <details class="qa"><summary>4. Какие четыре свойства гарантирует SHAP?</summary><div class="qa-a">Эффективность (вклады складываются в прогноз), симметрию, фиктивность (неиспользуемый признак — ноль) и аддитивность. Значения Шепли — единственное деление с этими свойствами.</div></details>
+
+  <details class="qa"><summary>5. Чем SHAP лучше встроенной важности gain?</summary><div class="qa-a">Gain считает прирост на разбиениях обучающих данных и завышает признаки с многими уникальными значениями. SHAP мерит вклад в прогноз и складывается в него точно.</div></details>
+
+  <details class="qa"><summary>6. Как TreeSHAP избегает перебора коалиций?</summary><div class="qa-a">Проходит по дереву один раз и инкрементально пересчитывает веса коалиций на путях. Сложность — многочлен от размера деревьев вместо <tex>2^M</tex>, и результат точный.</div></details>
+
+  <details class="qa"><summary>7. Чем отличаются режимы interventional и conditional?</summary><div class="qa-a">Interventional берёт неизвестные признаки из фона независимо — «что делает модель». Conditional — из распределения при известных — «что говорят наблюдения о решении».</div></details>
+
+  <details class="qa"><summary>8. Может ли признак, которого нет в модели, получить вклад?</summary><div class="qa-a">В режиме conditional — да, если он коррелирует с используемым: наблюдать его почти то же, что знать используемый. В interventional — строго ноль.</div></details>
+
+  <details class="qa"><summary>9. Чем плох режим interventional?</summary><div class="qa-a">Он подставляет признаки независимо и строит невозможные объекты — например, девятнадцатилетнего со стажем 30 лет. На таких точках модель не обучалась.</div></details>
+
+  <details class="qa"><summary>10. Какой режим брать для отбора признаков?</summary><div class="qa-a">Interventional. Conditional размазывает важность по коррелированным признакам, и «нужными» выглядят даже те, которых в модели нет.</div></details>
+
+  <details class="qa"><summary>11. Как проверить, не использует ли модель запрещённый признак косвенно?</summary><div class="qa-a">Измерить, насколько он восстанавливается из прогноза модели, и сравнить решения по группам. Вклады interventional тут не помогут: признака в модели нет, и вклад — ноль по построению.</div></details>
+
+  <details class="qa"><summary>12. Как узнать, какой режим считает TreeExplainer?</summary><div class="qa-a">Без фоновой выборки — по путям дерева, с <code>data</code> — interventional; точно покажет <code>explainer.feature_perturbation</code>. Режим лучше задавать явно.</div></details>
+
+  <details class="qa"><summary>13. Что такое вклад взаимодействия в SHAP?</summary><div class="qa-a">Часть вклада, возникающая только от совместного присутствия двух признаков. Строка матрицы взаимодействий складывается в обычный вклад признака.</div></details>
+
+  <details class="qa"><summary>14. Как заметить взаимодействие без расчёта матрицы?</summary><div class="qa-a">По вертикальному разбросу на графике зависимости. Если раскраска по признаку-партнёру разбивает разброс на полосы — взаимодействие найдено.</div></details>
+
+  <details class="qa"><summary>15. Достаточно ли среднего модуля вклада, чтобы удалить признак?</summary><div class="qa-a">Нет. Слабый у всех и решающий у немногих признаки дают одинаковое среднее. Нужны доля объектов с заметным вкладом, максимум и проверка удаления.</div></details>
+
+  <details class="qa"><summary>16. Можно ли по SHAP решать, что менять в продукте?</summary><div class="qa-a">Нет. SHAP описывает связь в модели, а у причинного эффекта может быть даже противоположный знак. Для решений о вмешательстве нужен эксперимент или причинный вывод.</div></details>
+
+  <details class="qa"><summary>17. Почему важный признак может выглядеть неважным?</summary><div class="qa-a">Его сигнал поделён между коррелированными копиями: каждая по отдельности ниже порога отбора, а вместе они — главный признак.</div></details>
+
+  <details class="qa"><summary>18. Почему опасно удалять коррелированные признаки по одному?</summary><div class="qa-a">Пока остаётся хоть одна копия, сигнал доступен, и каждый шаг выглядит безопасным. Обвал качества происходит на последней копии.</div></details>
+
+  <details class="qa"><summary>19. Чем ALE лучше PDP?</summary><div class="qa-a">PDP подставляет значение признака всем объектам и строит невозможные сочетания. ALE складывает локальные приросты только у соседей по значению признака.</div></details>
+
+  <details class="qa"><summary>20. Когда вместо SHAP стоит взять интерпретируемую модель?</summary><div class="qa-a">Когда объяснимость — жёсткое требование, а аддитивная модель с несколькими парами почти не уступает бустингу. Тогда объяснение точное, без режимов и фона.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — важность признаков в бустинге из <a href="block0_24_boosting_practice.html#s11">0.24</a>, деревья из <a href="block0_19_decision_trees.html#s2">0.19</a>, признаки из <a href="block1_02_feature_engineering.html#s5">1.2</a>; дальше SHAP нужен для поиска утечек и отбора признаков в <a href="block1_04_leakage.html#s1">1.4</a>, а причинные вопросы разобраны в блоке 2 (<a href="block2_08_uplift.html#s1">2.8</a>).
+</div>
+
+<div class="pnav">
+  <a href="block1_02_feature_engineering.html">← 1.2 · Конструирование признаков</a>
+  <a class="next" href="block1_04_leakage.html">1.4 · Отбор признаков и утечки →</a>
+</div>
+
+</div>
+
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var BL='#60a5fa', OR='#fb923c', RD='#f87171', GY='#94a3b8', WH='#e2e8f0', TL='#5eead4', GR='#4ade80';
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function L(v,label,color,dash,w){ return {type:'line',label:label,data:v,borderColor:color,backgroundColor:color,borderWidth:w||2.2,borderDash:dash||[],pointRadius:0,fill:false,tension:0}; }
+function XY(v,label,color,dash,w,pr){ return Object.assign(L(v.map(function(p){ return {x:p[0],y:p[1]}; }),label,color,dash,w),{pointRadius:pr||0}); }
+
+/* числа — scratchpad t13: sim13a.py, cost13.py, prof13.py, dep13.py, copy13.py, alt13.py */
+var CH={
+  perm:{lab:['Д→В→П','Д→П→В','В→Д→П','В→П→Д','П→Д→В','П→В→Д'],d:[0.12,0.12,0.13,0.19,0.18,0.19],v:[0.03,0.04,0.02,0.02,0.04,0.03],p:[0.27,0.26,0.27,0.21,0.20,0.20],phi:[0.155,0.030,0.235]},
+  prof:{lab:['0–0.05','0.05–0.1','0.1–0.2','0.2–0.4','0.4–0.8','0.8–1.6','1.6–3.2'],a:[14.82,31.86,30.22,17.11,5.75,0.24,0],b:[0,96.84,0.15,0,0,0,3.01]},
+  dep:{m1:[[49.8,0.384],[40.6,0.203],[27.4,-0.419],[42.5,0.367],[59.3,0.4],[63.5,0.233],[73,-0.845],[55.1,0.382],[42.3,0.311],[59.3,0.39],[58.3,0.404],[44.7,0.326],[60.4,0.436],[43.1,0.349],[52.5,0.443],[29.8,-0.386],[49.6,0.39],[46.6,0.408],[72.8,-0.47],[46.8,0.357],[70.6,-0.811],[30.6,-0.341],[65.3,-0.536],[48.6,0.379],[52.3,0.428],[27.4,-0.298],[45.2,0.36],[71.6,-0.715],[45.4,0.364],[71.7,-0.743],[68.8,-0.823],[30,-0.504],[59.8,0.333],[38,0.313],[48.1,0.339],[24.4,-1.09],[27.9,-0.401],[45.6,0.355],[68.5,-0.802],[60,0.388],[51.3,0.434],[42.4,0.273],[53.6,0.285],[46.3,0.33],[49.7,0.407],[58.2,0.477],[52.4,0.425],[63.6,0.243],[45.1,0.33],[53.1,0.271],[68,-0.805],[59.1,0.406],[62.8,0.322],[33.9,-0.287],[35,0.246],[56.8,0.284],[52.6,0.439],[61,0.331],[48.2,0.356],[36.7,0.323],[44.2,0.369],[67.8,-0.77],[71.7,-0.702],[50.9,0.377],[70.4,-0.689],[48.1,0.387],[51,0.44],[55.9,0.379],[69.1,-0.935],[59.2,0.369],[54.9,0.409],[34.9,0.143],[36.7,0.299],[35.3,0.226],[71.8,-0.729],[54.4,0.389],[38.9,0.362],[57.3,0.36],[42,0.287],[31.1,-0.371],[56.9,0.301],[48,0.271],[47.8,0.39],[73,-0.775],[56.2,0.353],[72.8,-0.751],[66.2,-0.213],[38,0.255],[32.5,-0.324],[25,-0.577],[47.3,0.358],[60.9,0.355],[66.7,-0.729],[62,0.235],[73.4,-0.901],[45,0.302],[41.5,0.398],[72.3,-0.815],[42.4,0.3],[61.4,0.179],[51,0.358],[44.8,0.397],[67.6,-0.771],[67.6,-0.776],[46,0.354],[68.8,-0.653],[56.4,0.383],[67.7,-0.643],[23.8,-0.93],[66.5,-0.575],[57.5,0.371],[40.5,0.317],[46,0.326],[33.3,-0.321],[59.1,0.4],[74.2,-0.482],[58.8,0.417],[57.3,0.493],[38.3,0.324],[74.7,-0.651],[73.7,-0.926],[68.4,-0.749],[57.5,0.391],[44.4,0.33],[61.9,0.198],[65.5,-0.643],[72.5,-0.749],[54.5,0.382],[44.1,0.354],[42.7,0.358],[35.4,0.169]],m0:[[65.5,-0.206],[46.3,0.045],[23.4,-0.465],[54.8,0.192],[24.3,-0.492],[46.8,0.224],[46.6,0.247],[26.9,0.285],[55.8,0.097],[56.3,0.174],[26.6,0.217],[25.9,0.129],[46.4,0.32],[65.5,-0.114],[38.7,0.01],[31.2,0.058],[21.8,-0.684],[27.7,0.124],[59.5,0.379],[26.3,0.11],[40.2,-0.017],[28,0.14],[38.8,0.102],[32.3,0.098],[50.4,0.33],[36.2,-0.083],[48,0.155],[29.7,0.125],[39.3,0.104],[67.6,-0.272],[29.8,0.105],[31,0.115],[59.6,0.154],[58.3,0.229],[29.8,0.155],[50.5,0.177],[53.8,0.059],[60.6,0.038],[31.2,0.126],[23,-0.713],[39.9,0.097],[26.8,0.293],[48.9,0.082],[70.7,-0.241],[31.8,0.139],[23.1,-0.936],[18.2,-0.728],[21.4,-0.533],[71,-0.239],[49.4,0.122],[63.6,0.054],[63.6,-0.077],[34.7,0.269],[43.1,-0.005],[23.9,-0.653],[35.5,0.202],[25.2,0.16],[37.5,0.035],[57.7,0.119],[38.9,0.112],[21.9,-0.634],[47.5,0.172],[55,0.179],[41,0.062],[29.3,0.127],[33.8,0.116],[18.2,-0.436],[62.2,0.024],[71.2,-0.293],[31.1,0.078],[25.7,-0.033],[60.3,0.081],[28.4,-0.007],[48.9,0.138],[28.4,-0.074],[45,-0.029],[43.6,0.173],[35.1,0.138],[21,-0.795],[56,0.157],[36.2,0.034],[31.3,0.206],[52.7,0.14],[56.9,0.012],[41.6,-0.101],[23.1,-0.333],[19.3,-0.521],[21.4,-0.574],[29.7,0.116],[42.2,0.06],[22.5,-0.739],[25.8,0.18],[21,-0.633],[50.8,0.171],[30.7,0.115],[29.8,0.065],[32.2,0.103],[72.2,-0.167],[67.9,-0.224],[22.2,-0.888],[45.5,-0.008],[64.7,0.067],[72,-0.216],[20.7,-0.783],[53.3,0.091],[57.1,0.193],[40.1,0.06],[29.3,0.125],[32,0.117],[22.1,-0.79],[49.7,0.172],[55.8,0.148],[19.7,-0.53],[27.7,0.118],[29.6,0.068],[52.5,0.181],[68.9,-0.255],[24.3,-0.379],[25.5,0.03],[29.8,0.114],[55.6,0.156],[62.3,0.119],[33.3,0.13],[19.6,-0.698],[67.1,-0.156],[48.4,0.163],[38,0.014],[62.2,0.099],[24.3,-0.434],[64.6,0.052],[39.7,0.043],[58.2,0.189],[43.1,0.1],[72.4,-0.356],[43.3,0.117],[21,-0.611],[26.9,0.251],[20.6,-0.383],[70,-0.288],[56.8,0.031],[18.1,-0.65],[53.2,0.182],[68.9,-0.266],[59.5,0.07],[56.3,0.155],[59.6,0.039],[32.6,0.128],[19.8,-0.421],[27,0.292],[59.1,0.112],[35.7,0.142],[21.9,-0.662],[31.6,0.149],[36.4,-0.054],[38.7,0.12],[74.9,-0.295],[24.6,-0.513],[30.8,0.146],[24.9,-0.338],[71.1,-0.22],[29.9,0.113],[21.1,-0.51],[20,-0.499],[64,0.055],[22.8,-0.849],[72.7,-0.438],[48.3,0.194],[25.7,0.219],[24.4,-0.474]]},
+  copy:{k:['1','2','3','4','6'],sum:[0.865,0.94,0.969,0.989,1.033],top:[0.865,0.512,0.408,0.336,0.24],third:0.38},
+  pdp:{grid:[30,50,70,90,110,130,145],pdp:[4.961,7.295,9.222,11.803,14.191,16.626,18.427],ale:[5.373,7.382,9.485,11.814,13.961,16.239,17.685],truth:[5.18,7.38,9.58,11.78,13.98,16.18,17.83]}
+};
+
+/* 1 — прирост по порядкам */
+(function(){
+  var P=CH.perm;
+  mk('c_perm',{type:'bar',data:{labels:P.lab,datasets:[
+    {label:'доход',data:P.d,backgroundColor:BL,borderWidth:0},{label:'возраст',data:P.v,backgroundColor:GY,borderWidth:0},{label:'просрочки',data:P.p,backgroundColor:OR,borderWidth:0},
+    L(P.lab.map(function(){ return P.phi[0]; }),'',BL,[5,4],1.4),L(P.lab.map(function(){ return P.phi[2]; }),'',OR,[5,4],1.4)]},
+    options:{responsive:true,scales:{x:Object.assign({ticks:{autoSkip:false,maxRotation:60,minRotation:0,font:{size:11}}},GRID),y:Object.assign({min:0,max:0.3,ticks:{stepSize:0.05},title:{display:true,text:'прирост прогноза'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 2 — цена перебора и TreeSHAP */
+(function(){
+  var ex=[], tr=[], s=[], M;
+  for(M=5;M<=100;M+=5){ ex.push([M,Math.pow(2,M)]); tr.push([M,1152000]); s.push([M,1e9]); }
+  mk('c_cost',{type:'line',data:{datasets:[XY(ex,'перебор 2^M',OR,null,2.4,2),XY(tr,'TreeSHAP',BL,null,2.4),XY(s,'миллиард операций',GY,[5,4],1.4)]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:0,max:100,ticks:{stepSize:10},title:{display:true,text:'число признаков M'}},GRID),
+      y:Object.assign({type:'logarithmic',min:10,max:1e31,title:{display:true,text:'операций на объект'},ticks:{autoSkip:false,callback:function(v){ var e=Math.log10(v); return Math.abs(e-Math.round(e))<1e-9&&Math.round(e)%5===0?'1e'+Math.round(e):''; }}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 3 — два профиля вкладов */
+(function(){
+  var D=CH.prof;
+  mk('c_prof',{type:'bar',data:{labels:D.lab,datasets:[{label:'A — слабый у всех',data:D.a,backgroundColor:BL,borderWidth:0},{label:'B — редкий решающий',data:D.b,backgroundColor:OR,borderWidth:0}]},
+    options:{responsive:true,scales:{x:Object.assign({ticks:{autoSkip:false,maxRotation:60,minRotation:0,font:{size:11}},title:{display:true,text:'модуль вклада'}},GRID),y:Object.assign({min:0,max:100,ticks:{stepSize:20},title:{display:true,text:'% объектов'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 4 — зависимость вклада от возраста */
+(function(){
+  var D=CH.dep, f=function(a){ return a.map(function(p){ return {x:p[0],y:p[1]}; }); };
+  mk('c_dep',{type:'scatter',data:{datasets:[{label:'с ипотекой',data:f(D.m1),backgroundColor:BL,pointRadius:2.6},{label:'без ипотеки',data:f(D.m0),backgroundColor:OR,pointRadius:2.6}]},
+    options:{responsive:true,scales:{x:Object.assign({min:18,max:76,ticks:{stepSize:10},title:{display:true,text:'возраст'}},GRID),y:Object.assign({min:-1.2,max:0.6,ticks:{stepSize:0.3},title:{display:true,text:'вклад возраста'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 5 — копии сигнала */
+(function(){
+  var D=CH.copy;
+  mk('c_copy',{type:'bar',data:{labels:D.k,datasets:[{label:'сумма важностей копий',data:D.sum,backgroundColor:BL,borderWidth:0},{label:'самая важная копия',data:D.top,backgroundColor:OR,borderWidth:0},
+    L(D.k.map(function(){ return D.third; }),'третий из остальных',GY,[5,4],1.4)]},
+    options:{responsive:true,scales:{x:Object.assign({title:{display:true,text:'копий сигнала'}},GRID),y:Object.assign({min:0,max:1.2,ticks:{stepSize:0.2},title:{display:true,text:'средний модуль вклада'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 6 — PDP и ALE */
+(function(){
+  var D=CH.pdp, z=function(v){ return D.grid.map(function(g,i){ return [g,v[i]]; }); };
+  mk('c_pdp',{type:'line',data:{datasets:[XY(z(D.pdp),'PDP',OR,null,2.4,3),XY(z(D.ale),'ALE',BL,null,2.4,3),XY(z(D.truth),'правда',GY,[5,4],1.6)]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:25,max:150,ticks:{stepSize:25},title:{display:true,text:'площадь, м²'}},GRID),y:Object.assign({min:0,max:20,ticks:{stepSize:5},title:{display:true,text:'цена, млн ₽'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* interventional против conditional: модель 0.8 при доходе не ниже медианы, иначе 0.2; доход и чек — стандартные нормальные с корреляцией rho (= engine13.py 40/40) */
+var MD={
+  RS:[0,0.2,0.4,0.6,0.7,0.8,0.9,0.94,0.97,0.99], CS:[-1.5,-1,-0.5,0,0.25,0.5,1,1.5,2], LO:0.2, HI:0.8,
+  ncdf:function(z){ var x=Math.abs(z)/Math.SQRT2, t=1/(1+0.3275911*x), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return z>=0?(1+y)/2:(1-y)/2; },
+  one:function(rho,c){ var p=MD.ncdf(rho*c/Math.sqrt(1-rho*rho)), base=(MD.LO+MD.HI)/2, fx=MD.HI, vC=MD.LO+(MD.HI-MD.LO)*p;
+    var pc=0.5*(vC-base); return {p:p,vC:vC,dI:fx-base,cI:0,dC:fx-base-pc,cC:pc,share:pc/(fx-base)}; },
+  calc:function(ri,ci){ var rho=MD.RS[ri], c=MD.CS[ci], r=MD.one(rho,c); r.rho=rho; r.c=c;
+    r.curve=MD.RS.map(function(rr){ return [rr,MD.one(rr,c).share]; }); return r; },
+  sg:function(c){ return (c>0?'+':(c<0?'−':''))+Math.abs(c); },
+  text:function(r){ var f=function(v){ return (v<0?'−':'')+Math.abs(v).toFixed(4); };
+    return 'ρ = '+r.rho+', чек клиента '+MD.sg(r.c)+' σ от среднего'+
+      '\nдоля клиентов с доходом не ниже медианы при таком чеке: '+r.p.toFixed(4)+
+      '\nconditional: φ дохода = '+f(r.dC)+', φ чека = '+f(r.cC)+' ('+(r.share<0?'−':'')+Math.abs(r.share*100).toFixed(1)+'% вклада)'+
+      '\ninterventional: φ дохода = 0.3000, φ чека = 0'; }
+};
+
+
+/* песочница: interventional и conditional */
+(function(){
+  if(!document.getElementById('c_play')) return;
+  function el(id){ return document.getElementById(id); }
+  var ch=mk('c_play',{type:'line',data:{datasets:[]},options:{responsive:true,scales:{x:Object.assign({type:'linear',min:0,max:1,ticks:{stepSize:0.2},title:{display:true,text:'корреляция дохода и чека ρ'}},GRID),y:Object.assign({min:-60,max:60,ticks:{stepSize:20},title:{display:true,text:'доля вклада чека, %'}},GRID)},plugins:Object.assign({},LEG)}});
+  if(!ch) return;
+  function draw(){
+    var r=MD.calc(+el('sl_r').value,+el('sl_c').value);
+    ch.data.datasets=[XY(r.curve.map(function(p){ return [p[0],p[1]*100]; }),'conditional',TL,null,2.4,3),XY([[0,0],[1,0]],'interventional',OR,[5,4],1.6),XY([[r.rho,r.share*100]],'',WH,null,1,7)];
+    ch.update();
+    el('o_r').textContent=r.rho; el('o_c').textContent=MD.sg(r.c)+' σ';
+    el('out_play').textContent=MD.text(r);
+  }
+  ['sl_r','sl_c'].forEach(function(id){ el(id).addEventListener('input',draw); });
+  try{ draw(); }catch(e){ console.log('sandbox', e); }
+})();
+</script>
+
+</body>
+</html>

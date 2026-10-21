@@ -51,7 +51,7 @@
 | block10_16_neural_llm.html | 676 | 10 | 0 | 1 / 1 |  | 0 |  |
 | block1_01_validation_schemes.html | 919 | 15 | 20 | 6 / 6 |  | 0 |  |
 | block1_02_feature_engineering.html | 894 | 15 | 20 | 7 / 7 |  | 0 |  |
-| block1_03_shap.html | 189 | 15 | 30 | 15 / 15 | да | 0 |  |
+| block1_03_shap.html | 1056 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_04_leakage.html | 204 | 15 | 30 | 14 / 14 | да | 0 |  |
 | block1_05_missing.html | 188 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_06_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
@@ -127,4 +127,4 @@
 | block8_08_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block8_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 75 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 76 | 0 | 0 | 0 / 0 |  | 0 |  |
