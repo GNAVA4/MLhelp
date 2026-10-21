@@ -13,6 +13,7 @@
 // settings   = { newPerDay, haptics?: false — вибрация выключена (APK), _t: ms последнего изменения }
 // Синхронизация с облаком — lib/sync.js (users/{uid}/state/{раздел}, attempts — отдельными документами).
 import { useSyncExternalStore } from 'react';
+import { migrateTopicIds } from './topicMap.js';
 
 const KEY = 'mlc:progress';
 // Новых вопросов в день по умолчанию: 20 — обычный старт в FSRS/Anki (~3–5 мин новых + их повторения).
@@ -24,12 +25,14 @@ const MAX_ATTEMPTS = 300;
 function read() {
   try {
     const v = JSON.parse(localStorage.getItem(KEY));
-    if (!v || !v.topics) return EMPTY;
-    return { ...EMPTY, ...v, marks: { ...EMPTY.marks, ...v.marks }, settings: { ...EMPTY.settings, ...v.settings } };
-  } catch { return EMPTY; }
+    if (!v || !v.topics) return migrateTopicIds(EMPTY);
+    return migrateTopicIds({ ...EMPTY, ...v, marks: { ...EMPTY.marks, ...v.marks }, settings: { ...EMPTY.settings, ...v.settings } });
+  } catch { return migrateTopicIds(EMPTY); }
 }
 
 let state = read();
+// миграция номеров тем (ADR 022) сохраняется сразу, а не при первой правке
+try { if (localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* приватный режим */ }
 const listeners = new Set();
 
 function commit(next) {

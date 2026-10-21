@@ -8,11 +8,15 @@ import '@fontsource/onest/700.css';
 import './index.css';
 import App from './App.jsx';
 import { initSync } from './lib/sync.js';
+import { resetStaleUiKeys } from './lib/topicMap.js';
 import UpdateBanner from './ui/UpdateBanner.jsx';
 import { Capacitor } from '@capacitor/core';
 import { initBackButton } from './lib/back.js';
 import { initHaptics } from './lib/haptics.js';
 import { initReminders } from './lib/reminders.js';
+
+// перенумерация тем (ADR 022): сохранённые фильтры ссылались на старые номера блоков
+resetStaleUiKeys();
 
 initSync();
 initBackButton();

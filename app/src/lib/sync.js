@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from 'react';
 import { getProgress, updateState, subscribeProgress } from './progress.js';
 import { mergeProgress } from './merge.js';
+import { migrateTopicIds } from './topicMap.js';
 // APK (Capacitor, ADR 011): в WebView Google запрещает вход попапом/редиректом (disallowed_useragent) —
 // idToken даёт нативный Google Sign-In, а входит им web-SDK (его использует Firestore).
 // Плагин импортируется статически: ленивый import() плагинов в WebView виснет (опыт Life OS, session 014). Вес — тонкий мост.
@@ -70,7 +71,8 @@ async function start(uid) {
   sSnap.forEach((d) => { const v = d.data()?.value; if (typeof v === 'string') { cloudStr[d.id] = v; cloud[d.id] = dec(v); } });
   cloud.attempts = [];
   aSnap.forEach((d) => { const v = dec(d.data()?.value); if (v) { cloud.attempts.push(v); me.pushedAttempts.add(v.id); } });
-  const merged = mergeProgress(getProgress(), cloud);
+  // облако могло остаться со старыми номерами тем (ADR 022) — переводим до слияния
+  const merged = mergeProgress(getProgress(), migrateTopicIds(cloud));
   for (const s of SECTIONS) me.lastPushed[s] = cloudStr[s];
   updateState(() => merged);
 
@@ -87,7 +89,7 @@ async function start(uid) {
       me.lastPushed[ch.doc.id] = v;
       remote[ch.doc.id] = dec(v);
     });
-    if (Object.keys(remote).length) updateState((s) => mergeProgress(s, remote));
+    if (Object.keys(remote).length) updateState((s) => mergeProgress(s, migrateTopicIds(remote)));
   }, (e) => setStatus({ phase: 'error', error: e.message })));
   me.unsubs.push(f.onSnapshot(attCol, (snap) => {
     const add = [];
