@@ -53,7 +53,7 @@
 | block1_02_feature_engineering.html | 894 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_03_shap.html | 1056 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_04_leakage.html | 929 | 15 | 20 | 7 / 7 |  | 0 |  |
-| block1_05_missing.html | 188 | 15 | 30 | 12 / 12 | да | 0 |  |
+| block1_05_missing.html | 869 | 15 | 20 | 6 / 6 |  | 0 |  |
 | block1_06_class_imbalance.html | 208 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block1_07_calibration.html | 219 | 15 | 30 | 16 / 16 | да | 0 |  |
 | block1_08_ensembles.html | 177 | 15 | 30 | 12 / 12 | да | 0 |  |
@@ -127,4 +127,4 @@
 | block8_08_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block8_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 76 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 77 | 0 | 0 | 0 / 0 |  | 0 |  |
