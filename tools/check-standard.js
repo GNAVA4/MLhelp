@@ -28,8 +28,8 @@ function idsOf(file) {
 
 function check(file) {
   const src = fs.readFileSync(file, 'utf8');
-  // компактные темы временных рядов (ADR 019, владелец: ~2 ч чтения): структура та же, объём втрое меньше
-  const C = /block5_|block3_02_/.test(path.basename(file));
+  // компактные темы (~2 ч чтения): временные ряды (ADR 019) и новые темы блока 0 с 0.24 (ADR 021); структура та же, объём втрое меньше
+  const C = /block5_|block3_02_|block0_24_/.test(path.basename(file));
   // экспресс-блок 10 «База ML» (ADR 020): ~1 ч на тему, 10 секций, без задач у доски, песочница по желанию
   const X = /^block10_/.test(path.basename(file));
   const N = X ? { f: [3, 7], ch: [1, 4], tr: [0, 2], ex: 2, qa: 10, pf: 5, boards: 0, secs: 10 }
