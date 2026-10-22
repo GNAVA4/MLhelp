@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1.9 · Optuna и AutoML</title>
+<!--CHARTJS-->
+<!--KATEX_CSS-->
+<style>
+:root{
+  --ac:#f97316; --ac-d:#fdba74; --ac-l:rgba(249,115,22,.08); --ac-b:rgba(249,115,22,.35); --ac-m:#ea580c; --ac-s:#431407;
+  --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+  --bg:#0b1120; --cd:#111827; --cd2:#0f172a; --bd:#1f2937; --bd2:#334155;
+  --ok:#f97316; --okl:rgba(249,115,22,.08); --bad:#f87171; --badl:rgba(248,113,113,.08); --wr:#fbbf24; --wrl:rgba(251,191,36,.08);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.7;font-size:16.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px;overflow-x:clip}
+a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.28;margin:0;color:#f1f5f9}
+b,strong{color:#f8fafc}
+code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.9em;background:#1e293b;padding:1px 6px;border-radius:4px;color:var(--ac-d)}
+.katex{font-size:1.08em;color:#f1f5f9}
+.tx-d{overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.tx-d .katex-display{margin:.35em 0}
+
+.hero{background:radial-gradient(1200px 400px at 80% 0%,rgba(249,115,22,.24),transparent 60%),linear-gradient(135deg,#020617,#2a0d04 55%,#431407);color:#fff;padding:66px 24px 58px;border-bottom:1px solid var(--bd)}
+.hero-in{max-width:1180px;margin:0 auto}
+.lvltag{display:inline-block;background:rgba(249,115,22,.14);border:1px solid rgba(253,186,116,.4);color:var(--ac-d);padding:4px 13px;border-radius:20px;font-size:12.5px;letter-spacing:.5px;text-transform:uppercase;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.6px;margin-bottom:16px}
+.hero p{font-size:18.5px;color:#cbd5e1;max-width:900px;margin:0}
+.hero .meta{margin-top:26px;font-size:14px;color:#94a3b8;display:flex;gap:22px;flex-wrap:wrap}
+
+.snav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px 0;margin-bottom:38px;overflow-x:auto;white-space:nowrap}
+.snav{scrollbar-width:thin;scrollbar-color:#334155 transparent}
+.snav::-webkit-scrollbar{height:6px}.snav::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.snav::-webkit-scrollbar-track{background:transparent}
+html{color-scheme:dark}
+.snav-in{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:6px}
+.snav a{font-size:12.5px;color:var(--tx2);padding:5px 10px;border-radius:6px;flex-shrink:0;font-weight:500}
+.snav a:hover{background:var(--ac-l);color:var(--ac-d);text-decoration:none}
+.snav a.act{background:var(--ac-s);color:#ffedd5;box-shadow:inset 0 0 0 1px var(--ac-b)}
+
+section{margin-bottom:64px;scroll-margin-top:70px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--ac-s);border:1px solid var(--ac-b);color:var(--ac-d);font-size:15px;font-weight:700;margin-right:13px;flex-shrink:0}
+.sh{display:flex;align-items:center;margin-bottom:8px}
+.sh h2{font-size:26px;font-weight:750;letter-spacing:-.35px}
+.slead{color:var(--tx2);font-size:16.5px;margin:0 0 24px 45px;max-width:940px}
+p{margin:0 0 16px}
+section > p, section > ul, section > ol{max-width:960px}
+ul,ol{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:7px}
+
+.def{background:var(--ac-l);border:1px solid var(--ac-b);border-left:4px solid var(--ac);border-radius:10px;padding:18px 22px;margin:0 0 22px}
+.def-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.def p{margin:0 0 10px;font-size:15.5px}
+.def p:last-child{margin-bottom:0}
+.def b{color:var(--ac-d)}
+
+.intuition{background:var(--wrl);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:16px 20px;margin:0 0 22px;font-size:15.5px}
+.intuition b{color:var(--wr)}
+/* «Не путать» — разводит похожие записи; «Минимум, чтобы читать дальше» — короткая справка по аппарату со ссылкой на подробный раздел; .fr — формула перед числами в решении; .cs — шпаргалка */
+.nb{background:var(--badl);border:1px solid rgba(248,113,113,.3);border-left:4px solid var(--bad);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.nb-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--bad);margin-bottom:8px}
+.nb p{margin:0 0 8px}.nb p:last-child{margin-bottom:0}
+.prim{background:var(--cd2);border:1px solid var(--bd2);border-left:4px solid var(--ok);border-radius:10px;padding:14px 20px;margin:0 0 22px;font-size:15px}
+.prim-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ok);margin-bottom:8px}
+.prim p{margin:0 0 8px}.prim p:last-child{margin-bottom:0}
+.fr{background:var(--ac-l);border-left:3px solid var(--ac);border-radius:8px;padding:8px 14px 7px;margin:2px 0 12px}
+.fr-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac)}
+.fr-t a{color:inherit}
+.fr-w{font-size:14px;color:var(--tx2);margin-top:3px}
+.ex-c .fr .tx-d{background:none;border:none;padding:2px 0;margin:2px 0}
+.cs-w{font-size:13px;color:var(--tx3);margin-top:4px}
+@media (max-width:720px){
+  .ct.cs tr:first-child{display:none}
+  .ct.cs tr{display:grid;grid-template-columns:30px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+  .ct.cs td{border-bottom:none}
+  .ct.cs td:nth-child(3){grid-column:2;padding-top:0;color:var(--tx2);font-size:14px}
+  .ct.cs td:nth-child(3)::before{content:"Когда: ";color:var(--tx3)}
+}
+details.gl{background:var(--cd);border:1px solid var(--ac-b);border-radius:10px;margin:0 0 22px;overflow:hidden}
+details.gl summary{cursor:pointer;padding:13px 19px;font-size:15px;font-weight:650;color:var(--ac-d);list-style:none}
+details.gl summary::-webkit-details-marker{display:none}
+details.gl summary::before{content:'+ ';font-weight:800}
+details.gl[open] summary::before{content:'− '}
+details.gl[open] summary{border-bottom:1px solid var(--bd)}
+.gl-b{padding:10px 10px 12px;font-size:14.5px;overflow-x:auto}
+.gl-b .ct{margin:0}
+.gl-b .ct td,.gl-b .ct th{padding:8px 9px}
+.gl-b .ct td:first-child{white-space:nowrap}
+.gl-ex{color:var(--tx2);font-size:13.5px}
+
+.ct{width:100%;border-collapse:collapse;font-size:14.5px;margin:0 0 12px;background:var(--cd);border-radius:9px;overflow:hidden;border:1px solid var(--bd)}
+.ct th{background:#1e293b;padding:10px 13px;text-align:left;font-weight:650;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tx2);border-bottom:1px solid var(--bd2)}
+.ct th .katex{text-transform:none}
+.ct td{padding:9px 13px;border-bottom:1px solid var(--bd);vertical-align:top}
+.ct tr:last-child td{border-bottom:none}
+.ct td.k{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#cbd5e1}
+.ct td.g{color:var(--ok);font-weight:650}
+.ct td.r{color:var(--bad);font-weight:650}
+.ct td.a{color:var(--wr);font-weight:650}
+.ct td.note{color:var(--tx3);font-size:13.5px}
+.ct tr.best{background:var(--okl)}
+.ct tr.worst{background:var(--badl)}
+.tcap{font-size:13.5px;color:var(--tx3);margin:-4px 0 22px;max-width:940px}
+
+.trace{background:#020617;border:1px solid var(--bd);border-radius:12px;padding:0;margin:0 0 22px;overflow:hidden}
+.trace-hd{background:#0f172a;padding:12px 20px;color:#e2e8f0;font-size:13px;font-weight:650;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--bd)}
+.tstep{padding:14px 20px;border-bottom:1px solid #111827;color:#cbd5e1;font-size:15px}
+.tstep:last-child{border-bottom:none}
+.tstep b{color:var(--ac-d);font-weight:650}
+.calc{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.5px;color:#94a3b8;margin-top:7px;line-height:1.85;white-space:pre-wrap}
+.calc .hl{color:#fbbf24}
+.calc .res{color:#f97316;font-weight:700}
+.calc .bad{color:#f87171;font-weight:700}
+.calc .dim{color:#64748b}
+.calc .lbl{color:#e2e8f0}
+.tstep .tx-d{margin-top:4px}
+.res{color:#f97316;font-weight:700}
+
+.chb{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:20px 22px 16px;margin:0 0 22px}
+.cht{font-size:15.5px;font-weight:680;margin-bottom:3px;color:#f1f5f9}
+.chsub{font-size:13.5px;color:var(--tx2);margin-bottom:15px}
+.chb canvas{max-height:340px}
+
+.play{background:linear-gradient(135deg,rgba(249,115,22,.08),rgba(56,189,248,.04));border:1px solid var(--ac-b);border-radius:12px;padding:20px 22px;margin:0 0 22px}
+.play h4{font-size:15.5px;color:var(--ac-d);margin-bottom:14px}
+.prow{display:flex;align-items:center;gap:13px;margin-bottom:11px;flex-wrap:wrap}
+.prow label{font-size:14px;min-width:250px;color:var(--tx2)}
+.prow input[type=range]{flex:1;min-width:180px;accent-color:var(--ac)}
+.prow output{font-family:'SF Mono',Menlo,monospace;font-size:14px;font-weight:700;color:var(--ac-d);min-width:78px;text-align:right}
+.pout{background:var(--cd2);border:1px solid var(--bd2);border-radius:9px;padding:14px 17px;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.85;margin-top:13px;white-space:pre-wrap;color:var(--tx)}
+.play .chb{background:var(--cd2)}
+
+.task{background:var(--cd);border:1px solid var(--bd);border-radius:12px;margin:0 0 18px;overflow:hidden}
+.task-h{background:#1e293b;padding:13px 20px;font-weight:680;font-size:15.5px;border-bottom:1px solid var(--bd);color:var(--ac-d)}
+.task-q{padding:15px 20px 6px;font-size:15px;color:#cbd5e1}
+.task details{margin:0 20px 16px;border:1px solid var(--bd2);border-radius:9px;background:var(--cd2)}
+.task summary{cursor:pointer;padding:10px 15px;font-weight:650;font-size:14px;color:var(--ac);list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:'▸ ';}
+.task details[open] summary::before{content:'▾ ';}
+.task .sol{padding:2px 16px 14px;font-size:15px}
+.task .sol p{margin:0 0 10px}
+
+.pf{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--bad);border-radius:9px;padding:14px 19px;margin:0 0 12px;display:flex;gap:15px}
+.pfn{font-size:20px;font-weight:800;color:var(--bad);opacity:.55;flex-shrink:0;min-width:32px}
+.pfc{font-size:15px}
+.pfc b{display:block;margin-bottom:4px;color:#f8fafc}
+.pfc span{color:var(--tx2)}
+
+details.qa{background:var(--cd);border:1px solid var(--bd);border-radius:9px;margin:0 0 10px;overflow:hidden}
+details.qa summary{cursor:pointer;padding:14px 19px;font-size:15.5px;font-weight:650;color:#f1f5f9;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::before{content:'+';color:var(--ac);font-weight:800;width:14px;flex-shrink:0}
+details.qa[open] summary::before{content:'−'}
+details.qa[open] summary{border-bottom:1px solid var(--bd);background:#0f172a}
+details.qa summary:hover{background:#0f172a}
+.qa-a{padding:13px 19px 15px 43px;font-size:15px;color:#cbd5e1}
+.qa-ctrl{display:flex;gap:8px;margin:0 0 16px}
+.qa-ctrl button{background:var(--cd);border:1px solid var(--bd2);color:var(--tx2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.qa-ctrl button:hover{color:var(--ac-d);border-color:var(--ac-b)}
+
+.pnav{display:flex;justify-content:space-between;gap:14px;margin-top:52px;padding-top:26px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.pnav a{background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:13px 19px;font-size:14.5px;font-weight:600}
+.pnav a:hover{border-color:var(--ac);background:var(--ac-l);text-decoration:none}
+.pnav a.next{margin-left:auto}
+.roadmini{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:15px 20px;font-size:14px;color:var(--tx2);margin-top:22px}
+.roadmini b{color:var(--ac-d)}
+
+.fbox{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;padding:16px 22px;margin:0 0 22px;text-align:center}
+.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin-bottom:4px;font-weight:700}
+.fbox .katex{font-size:1.3em}
+.fnote{font-size:13.5px;color:var(--tx2);margin-top:6px;text-align:left}
+.where{text-align:left;font-size:14.5px;color:#cbd5e1;margin-top:8px;border-top:1px dashed var(--bd2);padding-top:10px}
+.where ul{margin:4px 0 0;padding-left:20px}.where li{margin-bottom:3px}
+
+.fx{background:var(--cd);border:1px solid var(--ac-b);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.fx-n{background:var(--ac-l);padding:9px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);border-bottom:1px solid var(--ac-b)}
+.fx-f{padding:10px 20px 12px;text-align:center;border-bottom:1px dashed var(--bd2)}
+.fx-f .katex{font-size:1.3em}
+.fx-f small{display:block;font-size:13px;color:var(--tx2)}
+.fx-r{display:grid;grid-template-columns:120px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.fx-r:last-child{border-bottom:none}
+.fx-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3)}
+.fx-c{padding:11px 20px 11px 8px;font-size:15px;color:#cbd5e1}
+.fx-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.fx-c .m{display:block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:13.8px;background:var(--cd2);border:1px solid var(--bd);border-radius:7px;padding:9px 13px;margin-top:6px;white-space:pre-wrap;line-height:1.8;color:var(--tx)}
+.ok{color:var(--ok);font-weight:700}.warn{color:var(--wr);font-weight:700}.mut{color:var(--tx3)}
+
+@media (max-width:720px){
+  .hero h1{font-size:30px}
+  .prow label{min-width:100%}
+  .wrap{padding:0 16px 70px}
+  .fx-r{grid-template-columns:minmax(0,1fr)}.fx-h{padding:10px 16px 0}
+}
+.gridwrap{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.gridwrap canvas{width:100%;max-width:640px;display:block;margin:0 auto;image-rendering:pixelated}
+.legend2{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--tx2);margin-top:12px;justify-content:center}
+.legend2 i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ex{background:var(--cd);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:12px;margin:0 0 24px;overflow:hidden}
+.ex-n{background:#0f172a;padding:10px 20px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ac);border-bottom:1px solid var(--bd)}
+.ex-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid var(--bd)}
+.ex-r:last-child{border-bottom:none}
+.ex-h{padding:13px 0 12px 20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3)}
+.ex-c{padding:11px 20px 11px 8px;font-size:15.5px;color:#cbd5e1}
+.ex-c .tx-d{background:var(--cd2);border:1px solid var(--bd);border-radius:8px;padding:6px 14px;margin:6px 0}
+.ex-r.ans{background:rgba(249,115,22,.05)}.ex-r.ans .ex-h{color:var(--ok)}
+.ex-r.q .ex-h{color:var(--wr)}
+.lead{font-size:17px;color:#e2e8f0;max-width:960px}
+.story{background:linear-gradient(135deg,rgba(249,115,22,.07),rgba(129,140,248,.05));border:1px solid var(--bd2);border-radius:12px;padding:18px 22px;margin:0 0 22px;font-size:16px}
+.story b{color:var(--ac-d)}
+.next{border-left:3px solid var(--ac);padding:8px 0 8px 16px;margin:26px 0 0;color:var(--tx2);font-size:15.5px;max-width:960px}
+.next b{color:var(--ac-d)}
+@media (max-width:720px){.ex-r{grid-template-columns:minmax(0,1fr)}.ex-h{padding:10px 16px 0}}
+.ex-c .ct td:first-child,.tstep .ct td:first-child{white-space:nowrap}
+.sqw{max-width:440px;margin:0 auto}
+.chb .sqw canvas{max-height:none}
+.cgraph{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:18px 20px;margin:0 0 22px}
+.cgraph svg{width:100%;max-width:760px;display:block;margin:0 auto;height:auto}
+.cgraph svg.gv{display:none;max-width:380px}
+@media (max-width:600px){.cgraph svg.gh{display:none}.cgraph svg.gv{display:block}}
+.pcv{width:100%;max-width:560px;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;touch-action:manipulation;background:#020617}
+.pbtn{background:var(--cd);border:1px solid var(--bd2);color:var(--ac-d);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:600}
+.pbtn:hover{border-color:var(--ac-b)}
+.pbtn.on{background:var(--ac-b);color:#0b1120;border-color:var(--ac)}
+.play .prow .pbtn{margin:0}
+.cm2{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:6px;max-width:520px;margin:0 0 18px;font-size:14.5px}
+.cm2 div{background:var(--cd2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:9px 10px;text-align:center}
+.cm2 .h{background:transparent;border:0;color:var(--tx3);font-size:13px}
+.cm2 .ok{border-color:rgba(74,222,128,.55)}
+.cm2 .no{border-color:rgba(248,113,113,.55)}
+.cm2 b{display:block;font-size:19px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="lvltag">Блок 1 · тема 9 · табличный ML на практике</div>
+    <h1>Optuna и AutoML</h1>
+    <p>Подбор параметров LightGBM за 40 испытаний поднял AUC с 0.789 до 0.797–0.802, но разница между случайным поиском и TPE укладывается в разброс по сидам. А расширение одного диапазона, упёршегося в границу, дало больше, чем смена метода поиска. Здесь — как устроен подбор гиперпараметров и что в нём важно на самом деле: сетка и случайный поиск, шкалы, байесовская оптимизация и TPE, ранний отсев (Successive Halving, Hyperband, ASHA), Optuna на практике, многокритериальный поиск и фронт Парето, AutoGluon, H2O и FLAML, коротко о поиске архитектур и о подборе в регулярном переобучении.</p>
+    <div class="meta">
+      <span>15 секций</span><span>10 формул с задачами</span><span>7 графиков</span><span>песочница «отсев против случайного поиска»</span><span>10 подводных камней</span><span>3 задачи у доски</span><span>20 Q&amp;A</span>
+    </div>
+  </div>
+</div>
+
+<div class="snav">
+  <div class="snav-in">
+    <a href="#s1">1 · Зачем</a>
+    <a href="#s2">2 · Постановка</a>
+    <a href="#s3">3 · Сетка и случайный</a>
+    <a href="#s4">4 · Байесовская оптимизация</a>
+    <a href="#s5">5 · TPE</a>
+    <a href="#s6">6 · Оптимизм и остановка</a>
+    <a href="#s7">7 · Successive Halving</a>
+    <a href="#s8">8 · Hyperband и ASHA</a>
+    <a href="#s9">9 · Optuna на практике</a>
+    <a href="#s10">10 · Парето</a>
+    <a href="#s11">11 · AutoML-фреймворки</a>
+    <a href="#s12">12 · NAS и прод</a>
+    <a href="#s13">13 · В работе и ошибки</a>
+    <a href="#s14">14 · Задачи</a>
+    <a href="#s15">15 · Q&amp;A</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sh"><span class="snum">1</span><h2>Зачем: что искать важнее, чем как</h2></div>
+  <p class="slead">Гиперпараметры бустинга и ручной рецепт настройки — в <a href="block0_24_boosting_practice.html#s2">0.24, секции 2</a> и <a href="block0_24_boosting_practice.html#s7">7</a>; там же вероятность попасть в лучшие сочетания случайным поиском. Завышение победителя перебора и вложенная проверка — в <a href="block1_01_validation_schemes.html#s10">1.1, секции 10–11</a>; жадный отбор ансамбля — в <a href="block1_08_ensembles.html#s5">1.8, секция 5</a>. Здесь — методы автоматического поиска, их цена и ловушки.</p>
+
+  <div class="story">
+    <p>Отток, 8 000 клиентов на обучение, 4 000 на проверку, 50 000 на тест; потолок — AUC настоящих вероятностей — 0.8188. LightGBM с параметрами по умолчанию даёт на тесте 0.7886. Команда запускает Optuna на 40 испытаний по семи параметрам: шаг, листья, минимум объектов в листе, доли строк и признаков, два штрафа.</p>
+    <p style="margin:0">Случайный поиск — 0.7967–0.7985 на трёх сидах, TPE — 0.7970–0.8017, TPE с ранним отсевом — 0.7935–0.7982 за треть времени. Подбор дал около +0.01 AUC, а выбор метода — тысячные, в пределах разброса. Потом аналитик заметил, что у двух победителей число листьев упёрлось в нижнюю границу 8. Диапазон расширили до 2 — и TPE дал 0.7998–0.8017, в среднем 0.8009. Пространство поиска решило больше, чем алгоритм.</p>
+  </div>
+
+  <table class="ct">
+    <tr><th>Что сделали (тест, 50 000)</th><th>AUC · время</th></tr>
+    <tr><td>LightGBM по умолчанию</td><td>0.7886</td></tr>
+    <tr><td>случайный поиск, 40 испытаний</td><td>0.7974 в среднем · 35 с</td></tr>
+    <tr><td>TPE, 40 испытаний</td><td>0.7989 · 35 с</td></tr>
+    <tr><td>TPE + Hyperband</td><td>0.7965 · 13 с</td></tr>
+    <tr class="best"><td>TPE, листья от 2 вместо 8</td><td>0.8009</td></tr>
+  </table>
+  <p class="tcap">Модельные данные темы 1.8 (20 признаков, линейная часть, пороги, взаимодействия); среднее по трём сидам поиска. Все числа темы — из этих расчётов, если не сказано иное.</p>
+
+  <div class="intuition"><b>План темы.</b> Постановка: целевая функция, бюджет, выбор алгоритма вместе с параметрами (секция 2). Сетка, случайный поиск и шкалы (3). Байесовская оптимизация: суррогат и функция выбора точки (4), TPE — как устроен поиск в Optuna (5). Завышение победителя и когда остановиться (6). Ранний отсев: Successive Halving (7), Hyperband, ASHA и BOHB (8). Optuna на практике и разбор исследования (9), многокритериальный поиск и фронт Парето (10). AutoGluon, H2O, FLAML (11), поиск архитектур нейросетей и подбор в проде (12).</div>
+
+  <details class="gl">
+    <summary>Как читать обозначения этой темы — справка, к которой можно вернуться</summary>
+    <div class="gl-b">
+    <table class="ct">
+      <tr><th>Запись</th><th>Как читать</th></tr>
+      <tr><td><tex>\lambda</tex>, <tex>\Lambda</tex></td><td>Конфигурация гиперпараметров и пространство поиска (<a href="#s2">секция 2</a>)<br><span class="gl-ex">Пример: <tex>\lambda</tex> = (шаг 0.05, 14 листьев, …)</span></td></tr>
+      <tr><td><tex>f(\lambda)</tex>, <tex>f^+</tex></td><td>Качество конфигурации на проверке и лучшее найденное (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>f^+ = 0.800</tex></span></td></tr>
+      <tr><td><tex>\mu(\lambda)</tex>, <tex>\sigma(\lambda)</tex></td><td>Прогноз суррогата и его неуверенность в точке <tex>\lambda</tex> (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>\mu = 0.795</tex>, <tex>\sigma = 0.010</tex></span></td></tr>
+      <tr><td><tex>\Phi</tex>, <tex>\varphi</tex>, <tex>Z</tex></td><td>Функция распределения и плотность стандартного нормального, нормированный отрыв от рекорда (<a href="#s4">секция 4</a>)<br><span class="gl-ex">Пример: <tex>Z = -0.5</tex>, <tex>\Phi = 0.309</tex></span></td></tr>
+      <tr><td><tex>\ell(\lambda)</tex>, <tex>g(\lambda)</tex>, <tex>\gamma</tex></td><td>Плотности параметра у хороших и плохих испытаний, доля хороших (<a href="#s5">секция 5</a>)<br><span class="gl-ex">Пример: <tex>\ell/g = 27</tex> при шаге 0.045</span></td></tr>
+      <tr><td><tex>n</tex>, <tex>\eta</tex>, <tex>r</tex></td><td>Число конфигураций, коэффициент отсева и стартовый бюджет (<a href="#s7">секция 7</a>)<br><span class="gl-ex">Пример: <tex>n = 27</tex>, <tex>\eta = 3</tex>, <tex>r = 50</tex> раундов</span></td></tr>
+      <tr><td><tex>R</tex>, <tex>s</tex>, <tex>s_{\max}</tex></td><td>Полный бюджет, номер брекета Hyperband и наибольший номер (<a href="#s8">секция 8</a>)<br><span class="gl-ex">Пример: <tex>R = 81</tex>, <tex>s_{\max} = 4</tex></span></td></tr>
+      <tr><td><tex>a \succ b</tex></td><td>Конфигурация <tex>a</tex> доминирует <tex>b</tex>: не хуже ни по одной цели и лучше хотя бы по одной (<a href="#s10">секция 10</a>)<br><span class="gl-ex">Пример: AUC 0.814 за 3.2 мс <tex>\succ</tex> 0.811 за 4.0 мс</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <p class="next">Начнём с того, что именно оптимизирует поиск и чем за это платит.</p>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sh"><span class="snum">2</span><h2>Постановка: целевая функция, бюджет, выбор алгоритма</h2></div>
+  <p class="slead">Подбор гиперпараметров — оптимизация дорогой шумной функции без градиента: одно её значение — обучение модели и оценка на проверке. Ограничение — бюджет: число испытаний или часы. AutoML расширяет пространство: выбирает и алгоритм, и его параметры, и способ объединить модели.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 1 · выбор алгоритма вместе с параметрами (CASH)</div>
+    <texd>\begin{gathered}\bigl(A^*, \lambda^*\bigr) = \arg\min_{A \in \mathcal{A},\ \lambda \in \Lambda_A} \\ \frac{1}{K}\sum_{k=1}^{K}\mathcal{L}\bigl(A_\lambda,\ D^{(k)}_{\text{обуч}},\ D^{(k)}_{\text{пров}}\bigr)\end{gathered}</texd>
+    <div class="where">где <tex>\mathcal{A}</tex> — набор алгоритмов (LightGBM, CatBoost, логистическая регрессия…), <tex>\Lambda_A</tex> — пространство гиперпараметров алгоритма <tex>A</tex>, <tex>\lambda</tex> — конфигурация, <tex>A_\lambda</tex> — алгоритм с этими параметрами, <tex>K</tex> — число фолдов, <tex>\mathcal{L}</tex> — ошибка модели, обученной на <tex>D^{(k)}_{\text{обуч}}</tex> и проверенной на <tex>D^{(k)}_{\text{пров}}</tex>. CASH — Combined Algorithm Selection and Hyperparameter optimization (Thornton и др., 2013). Пространство условное: <code>num_leaves</code> существует только у LightGBM, <code>C</code> — только у регрессии. Пример: <tex>\mathcal{A}</tex> из одного LightGBM, <tex>\Lambda</tex> — 7 параметров, <tex>K = 1</tex> (отдельная проверка) — подбор из секции 1.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Уровень автоматизации</th><th>что ищут · инструменты</th></tr>
+    <tr><td>подбор гиперпараметров (HPO)</td><td>параметры одной модели · Optuna, Hyperopt, Ray Tune</td></tr>
+    <tr><td>CASH</td><td>модель и её параметры · auto-sklearn, TPOT</td></tr>
+    <tr><td>полный AutoML</td><td>плюс подготовка признаков и ансамбли · AutoGluon, H2O AutoML, FLAML</td></tr>
+    <tr><td>поиск архитектур (NAS)</td><td>устройство нейросети · DARTS, EfficientNet (секция 12)</td></tr>
+    <tr><td>метаобучение</td><td>старт с параметров похожих задач · auto-sklearn 2.0, OpenML</td></tr>
+  </table>
+
+  <p><b>Что AutoML не чинит.</b> Он оптимизирует ровно ту оценку, которую ему дали. Утечку в признаках, неверную схему валидации, метрику, не совпадающую с деньгами, он не исправит, а использует: из всех конфигураций выберет ту, что лучше всех эксплуатирует ошибку (секция 11). Поэтому сначала схема проверки (<a href="block1_01_validation_schemes.html#s2">1.1</a>) и признаки, потом подбор.</p>
+
+  <p><b>Когда окупается.</b> Много похожих моделей (по странам, магазинам, сегментам) — вручную их не настроить. Быстрая оценка «есть ли сигнал» — AutoGluon за час даёт честную верхнюю планку. Регулярное переобучение, где оптимум параметров дрейфует вместе с данными. Не окупается на малых данных — подбор подгоняет шум проверки — и там, где нужна объяснимая модель. Главная польза в проде часто не в +0.01 AUC, а в воспроизводимости: поиск записан кодом и историей испытаний, а не живёт в голове одного человека.</p>
+
+  <p class="next">Простейшие способы поиска — сетка и случайные точки. Уже на них видно, почему важно, куда и как ставить точки.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sh"><span class="snum">3</span><h2>Сетка, случайный поиск и шкалы</h2></div>
+  <p class="slead">Сетка перебирает все сочетания и растёт как произведение числа значений. Случайный поиск при том же бюджете пробует больше разных значений каждого параметра — а обычно важны один-два. Шаг обучения и штрафы надо искать в логарифмической шкале, иначе почти все пробы уходят в большие значения.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 2 · размер сетки</div>
+    <texd>N_{\text{сетка}} = \prod_{i=1}^{d} k_i</texd>
+    <div class="where">где <tex>d</tex> — число гиперпараметров, <tex>k_i</tex> — число значений <tex>i</tex>-го, <tex>N_{\text{сетка}}</tex> — число обучений. Каждый новый параметр умножает стоимость. При этом у каждого параметра на сетке всего <tex>k_i</tex> разных значений, а у случайного поиска с тем же бюджетом — <tex>N_{\text{сетка}}</tex>. Пример: 5 параметров по 4 значения — 1 024 обучения, 7 по 5 — 78 125.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Сетка 3 × 3 и 9 случайных точек</div>
+    <div class="chsub">Ось x — важный параметр, ось y — почти не влияющий. Оранжевые — сетка: у важного параметра всего 3 значения, 6 обучений из 9 варьируют бесполезную ось. Голубые — случайные точки: 9 разных значений важного.</div>
+    <canvas id="c_grid"></canvas>
+  </div>
+
+  <p><b>Проверка расчётом.</b> Функция, где важен один параметр из <tex>d</tex>, а остальные почти не влияют; оптимум важного — в случайном месте; 2 000 повторов. Сетка 3 × 3 против 9 случайных точек: среднее отставание от оптимума 0.021 против 0.008, случайные точки лучше в 74% повторов. Сетка 4 × 4 × 4 против 64 случайных — 0.010 против 0.0016, лучше в 88%. Сколько случайных проб нужно, чтобы попасть в лучшие 5% пространства, — <a href="block0_24_boosting_practice.html#s7">0.24, секция 7</a>: 59, независимо от числа параметров.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 3 · доля проб в отрезке при равномерной и логарифмической шкале</div>
+    <texd>p_{\text{равн}} = \frac{b - a}{B - A} \qquad p_{\text{лог}} = \frac{\ln(b/a)}{\ln(B/A)}</texd>
+    <div class="where">где <tex>[A, B]</tex> — диапазон поиска, <tex>[a, b]</tex> — отрезок внутри него, <tex>p</tex> — вероятность, что одна случайная проба попадёт в отрезок. При логарифмической шкале равномерно распределён логарифм значения, и каждая декада получает равную долю. Пример: <tex>[A, B] = [0.001, 0.3]</tex>, <tex>[a, b] = [0.001, 0.01]</tex> — 3% и 40%.</div>
+  </div>
+
+  <p><b>Шкала.</b> Шаг обучения от 0.001 до 0.3 при равномерном выборе попадает в [0.001, 0.01] лишь в 3% проб, в [0.1, 0.3] — в 67%. Но разница между 0.001 и 0.01 огромна, а между 0.29 и 0.30 — незаметна. Логарифмическая шкала даёт каждой декаде равную долю: 40% на [0.001, 0.01], 40% на [0.01, 0.1], 19% на [0.1, 0.3]. В Optuna: <code>trial.suggest_float('lr', 1e-3, 0.3, log=True)</code>; то же для штрафов, <code>C</code> регрессии, <code>num_leaves</code> и <code>min_child_samples</code> (<code>suggest_int(..., log=True)</code>). Шаг сетки <code>step</code> с <code>log=True</code> не сочетается: Optuna падает с <code>ValueError</code>.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 1 · Сколько проб уйдёт в малые шаги</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шаг ищут в [0.001, 0.3], 60 случайных проб. Хорошие шаги для этой задачи — от 0.003 до 0.03.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сколько проб в среднем попадёт в хороший диапазон при равномерной и при логарифмической шкале.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">При равномерной шкале вероятность попасть в отрезок — его длина, делённая на длину всего диапазона. При логарифмической — то же для логарифмов концов. Ожидаемое число попаданий — вероятность, умноженная на число проб.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s3">Формула 3</a> · доля проб в отрезке</div>
+        <texd>p_{\text{равн}} = \frac{b - a}{B - A} \qquad p_{\text{лог}} = \frac{\ln(b/a)}{\ln(B/A)}</texd>
+        <div class="fr-w">где <tex>[A, B] = [0.001, 0.3]</tex> — диапазон поиска, <tex>[a, b] = [0.003, 0.03]</tex> — хорошие значения, <tex>p</tex> — вероятность одной пробы попасть в них; проб 60.</div></div>
+      <texd>p_{\text{равн}} = \frac{0.03 - 0.003}{0.3 - 0.001} = \frac{0.027}{0.299} = 0.090 \qquad 60\cdot 0.090 = 5.4</texd>
+      <texd>p_{\text{лог}} = \frac{\ln 10}{\ln 300} = \frac{2.303}{5.704} = 0.404 \qquad 60\cdot 0.404 = 24.2</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Равномерно — около <b>5</b> проб из 60, логарифмически — около <b>24</b>, в 4.5 раза больше. Остальные 55 равномерных проб уходят в шаги больше 0.03, где модель уже переобучается или недоучена. Ошибка не видна: поиск просто тратит бюджет не там.</div></div>
+  </div>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · σ в этой теме и σ шума проверки</div>
+    <p><tex>\sigma(\lambda)</tex> в секциях 4–5 — неуверенность суррогата в точке, которую он ещё не видел; она падает рядом с проверенными точками. Шум проверки — разброс самой оценки качества от нарезки и сида (<a href="block1_01_validation_schemes.html#s10">1.1, секция 10</a>); его не убрать новыми испытаниями. Пример: <tex>\sigma(\lambda) = 0.010</tex> вдали от проб, а шум оценки AUC на 4 000 объектах — около 0.008 везде.</p>
+  </div>
+
+  <p class="next">Сетка и случайный поиск ничего не помнят: 41-я точка выбирается так же слепо, как первая. Байесовская оптимизация учится на прошлых испытаниях.</p>
+</section>
+
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sh"><span class="snum">4</span><h2>Байесовская оптимизация: суррогат и выбор следующей точки</h2></div>
+  <p class="slead">По уже проверенным конфигурациям строят дешёвую модель качества — суррогат, — которая в каждой точке даёт прогноз и неуверенность. Следующую точку выбирают функцией полезности: она высока и там, где прогноз хороший, и там, где суррогат ничего не знает. Дорогое только обучение модели; суррогат и выбор точки — миллисекунды.</p>
+
+  <p><b>Цикл.</b> История испытаний <tex>(\lambda_i, f(\lambda_i))</tex> → суррогат строит <tex>\mu(\lambda)</tex> и <tex>\sigma(\lambda)</tex> → функция выбора (acquisition) оценивает тысячи кандидатов → лучшего обучают по-настоящему → результат идёт в историю. Суррогаты: гауссовский процесс (GP), случайный лес (SMAC), TPE (секция 5).</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 4 · ожидаемое улучшение (EI) при максимизации</div>
+    <texd>\text{EI}(\lambda) = \mathbb{E}\max\bigl(f(\lambda) - f^+,\ 0\bigr) = \bigl(\mu - f^+\bigr)\Phi(Z) + \sigma\,\varphi(Z) \qquad Z = \frac{\mu - f^+}{\sigma}</texd>
+    <div class="where">где <tex>f^+</tex> — лучшее найденное качество, <tex>\mu = \mu(\lambda)</tex> и <tex>\sigma = \sigma(\lambda)</tex> — прогноз суррогата и его неуверенность (качество в точке считается нормальным), <tex>\Phi</tex> и <tex>\varphi</tex> — функция распределения и плотность стандартного нормального, <tex>Z</tex> — на сколько неуверенностей прогноз выше рекорда, <tex>\mathbb{E}</tex> — среднее по возможным значениям <tex>f(\lambda)</tex>. Первое слагаемое велико, где прогноз выше рекорда (эксплуатация), второе — где неуверенность большая (исследование). При минимизации ошибки знак отрыва меняется: <tex>f^+ - \mu</tex>. Пример: <tex>\mu = 0.795</tex>, <tex>\sigma = 0.010</tex>, <tex>f^+ = 0.800</tex> — EI 0.00198.</div>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 5 · верхняя граница уверенности (UCB)</div>
+    <texd>\text{UCB}(\lambda) = \mu(\lambda) + \kappa\,\sigma(\lambda)</texd>
+    <div class="where">где <tex>\mu(\lambda)</tex> и <tex>\sigma(\lambda)</tex> — прогноз и неуверенность суррогата, <tex>\kappa \ge 0</tex> — явная ручка баланса: 0 — только эксплуатация, большое — исследование, обычно 1–3. Точку оценивают по оптимистичной границе: о которой ничего не известно, ту обязательно попробуют. Та же идея — в UCB для многоруких бандитов. Пример: <tex>\kappa = 2</tex>, <tex>\mu = 0.795</tex>, <tex>\sigma = 0.010</tex> — 0.815.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 2 · Куда пойдёт байесовская оптимизация</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Лучшее найденное AUC <tex>f^+ = 0.800</tex>. Суррогат для трёх кандидатов: A — <tex>\mu = 0.802</tex>, <tex>\sigma = 0.001</tex> (рядом с проверенными точками); B — <tex>\mu = 0.795</tex>, <tex>\sigma = 0.010</tex> (неисследованная область); C — <tex>\mu = 0.790</tex>, <tex>\sigma = 0.002</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">EI каждого кандидата и UCB при <tex>\kappa = 2</tex>; кого выберет каждая функция.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Для EI считаем <tex>Z</tex>, затем два слагаемых по формуле 4; значения <tex>\Phi</tex> и <tex>\varphi</tex> — из таблицы нормального распределения. UCB — по формуле 5.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s4">Формула 4</a> · ожидаемое улучшение</div>
+        <texd>\text{EI} = \bigl(\mu - f^+\bigr)\Phi(Z) + \sigma\,\varphi(Z) \qquad Z = \frac{\mu - f^+}{\sigma}</texd>
+        <div class="fr-w">где <tex>f^+ = 0.800</tex>; <tex>\mu</tex> — 0.802, 0.795, 0.790; <tex>\sigma</tex> — 0.001, 0.010, 0.002; <tex>\Phi(2) = 0.9772</tex>, <tex>\varphi(2) = 0.0540</tex>, <tex>\Phi(-0.5) = 0.3085</tex>, <tex>\varphi(-0.5) = 0.3521</tex>.</div></div>
+      <texd>Z_A = \frac{0.002}{0.001} = 2 \qquad \text{EI}_A = 0.002\cdot 0.9772 + 0.001\cdot 0.0540 = 0.001954 + 0.000054 = 0.002008</texd>
+      <texd>Z_B = \frac{-0.005}{0.010} = -0.5 \qquad \text{EI}_B = -0.005\cdot 0.3085 + 0.010\cdot 0.3521 = -0.001543 + 0.003521 = 0.001978</texd>
+      <texd>Z_C = \frac{-0.010}{0.002} = -5 \qquad \text{EI}_C \approx 0</texd>
+      <texd>\text{UCB}_A = 0.802 + 2\cdot 0.001 = 0.804 \qquad \text{UCB}_B = 0.795 + 2\cdot 0.010 = 0.815 \qquad \text{UCB}_C = 0.794</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">EI: A <b>0.00201</b>, B <b>0.00198</b>, C — ноль; EI выберет A, но почти поровну с B. UCB при <tex>\kappa = 2</tex> выберет B (0.815): он сильнее тянет в неизвестность. A — уверенное малое улучшение, B — неуверенная попытка с шансом на большое. C с прогнозом на пять неуверенностей ниже рекорда не нужен никому.</div></div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Гауссовский процесс как суррогат</th><th>что это значит</th></tr>
+    <tr><td>стоимость <tex>O(n^3)</tex> по числу испытаний</td><td>обращение матрицы; на сотнях испытаний суррогат сам становится медленным</td></tr>
+    <tr><td>категориальные и условные параметры</td><td>плохо: нужны особые ядра, «num_leaves только у gbdt» GP не понимает</td></tr>
+    <tr><td>размерность</td><td>хорош до десятков параметров, дальше приближается к случайному поиску</td></tr>
+    <tr class="best"><td>мало испытаний, гладкое непрерывное пространство</td><td>самый экономный по числу испытаний</td></tr>
+  </table>
+
+  <p><b>Проверка расчётом.</b> Долина «шаг × число деревьев» — хорошо только при определённом произведении двух параметров — плюс три пустых параметра, 60 испытаний. Отставание от оптимума в среднем: случайный поиск 0.00093, TPE с независимыми параметрами 0.00046, TPE по умолчанию 0.00021, <code>GPSampler</code> Optuna (5 сидов) — 0.00001. На гладкой низкоразмерной функции GP лучше всех; на табличных задачах с условными и категориальными параметрами чаще берут TPE.</p>
+
+  <p><b>Шум.</b> Байесовская оптимизация предполагает, что значение в точке — свойство точки. Но AUC одной конфигурации гуляет от сида и нарезки (на 4 000 объектах — около 0.008), и если различия конфигураций того же порядка, суррогат гоняется за шумом. Помогают фиксированный сид, кросс-валидация вместо одной проверки и суррогаты, явно моделирующие шум.</p>
+
+  <p class="next">Гауссовский процесс моделирует «качество при параметрах». TPE, сэмплер Optuna по умолчанию, переворачивает задачу.</p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sh"><span class="snum">5</span><h2>TPE: какие параметры бывают у хороших испытаний</h2></div>
+  <p class="slead">TPE делит испытания на хорошие и плохие, строит плотность параметров у каждой группы и пробует там, где хороших плотно, а плохих нет. В Optuna 5 он по умолчанию многомерный — учитывает связи параметров; первые 10 испытаний — случайные; хорошими считаются лучшие 10%, но не больше 25 испытаний.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 6 · критерий TPE</div>
+    <texd>\lambda_{\text{след}} = \arg\max_{\lambda}\ \frac{\ell(\lambda)}{g(\lambda)} \qquad \ell(\lambda) = p\bigl(\lambda \mid f \ge f^*\bigr) \qquad g(\lambda) = p\bigl(\lambda \mid f \lt f^*\bigr)</texd>
+    <div class="where">где <tex>f^*</tex> — порог: качество, выше которого лежат лучшие <tex>\gamma</tex> испытаний, <tex>\ell(\lambda)</tex> — плотность параметров у хороших испытаний, <tex>g(\lambda)</tex> — у плохих, <tex>p(\lambda \mid \cdot)</tex> — оценка Парзена: сумма колокольчиков вокруг проверенных значений. Максимум отношения равносилен максимуму EI (Bergstra и др., 2011). В Optuna число хороших — <tex>\min(\lceil 0.1n\rceil, 25)</tex> при <tex>n</tex> испытаниях: при 20 испытаниях — 2, при 400 — 25. Кандидатов, среди которых ищут максимум, — 24, их берут из <tex>\ell</tex>. Пример: <tex>\ell = 1.39</tex>, <tex>g = 0.051</tex> — отношение 27.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · TPE выбирает шаг обучения после 20 испытаний</div>
+    <div class="tstep"><b>Шаг 1. Группы.</b> Для наглядности хорошими считаем 5 лучших: шаги 0.03, 0.04, 0.045, 0.05, 0.08. Плохие 15: 0.0005, 0.0008, 0.001, 0.0015, 0.002, 0.003, 0.004 (слишком малые — модель не доучилась за 600 деревьев) и 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.28, 0.3 (слишком большие).</div>
+    <div class="tstep"><b>Шаг 2. Плотности.</b> На оси <tex>\log_{10}</tex> шага вокруг каждого значения ставим нормальный колокольчик шириной 0.25 и усредняем внутри группы. У <tex>\ell</tex> один пик около 0.045; у <tex>g</tex> — два горба: у малых шагов и у 0.2–0.3.</div>
+    <div class="tstep"><b>Шаг 3. Отношение в кандидатах.</b> Шаг 0.045: <tex>\ell = 1.388</tex>, <tex>g = 0.051</tex>, отношение <b>27.1</b>. Шаг 0.12: 0.493 и 0.534 — 0.92. Шаг 0.27: 0.043 и 0.695 — 0.06. Шаг 0.002: <tex>\ell \approx 0</tex> — 0. Шаг 0.01: 0.087 и 0.045 — 1.9: хороших там мало, но и плохих нет.</div>
+    <div class="tstep"><b>Шаг 4. Максимум.</b> На сетке значений максимум отношения — у шага 0.023, левее пика хороших: справа от пика начинаются плохие большие шаги, слева их нет. TPE пойдёт туда, где хорошие уже встречались, а плохие — ещё нет.</div>
+    <div class="tstep"><b>Итог.</b> Встроенное исследование: точки, где <tex>g</tex> близко к нулю, получают большое отношение даже при малом <tex>\ell</tex>. А с правилом Optuna при 20 испытаниях хорошими были бы только 2 лучших — плотность <tex>\ell</tex> строилась бы по двум точкам.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Плотности хороших и плохих испытаний</div>
+    <div class="chsub">Ось x — <tex>\log_{10}</tex> шага обучения, ось y — плотность. Зелёная — <tex>\ell</tex> по 5 лучшим испытаниям, серая — <tex>g</tex> по 15 остальным. TPE пробует там, где зелёная высока, а серая низка.</div>
+    <canvas id="c_tpe"></canvas>
+  </div>
+
+  <p><b>Почему «tree-structured».</b> Не из-за решающих деревьев: пространство поиска — дерево, где часть параметров существует только при определённых значениях других (<code>drop_rate</code> — только при <code>boosting='dart'</code>). TPE строит плотности по каждой ветке. Отсюда define-by-run в Optuna: пространство задаётся обычным кодом с <code>if</code> внутри функции цели.</p>
+
+  <p><b>Многомерный TPE.</b> Классический TPE строит плотность по каждому параметру отдельно и не видит, что большой шаг хорош только при малом числе деревьев. Многомерный строит совместную плотность. В Optuna 5.0 <code>TPESampler()</code> при одной цели по умолчанию многомерный (<code>multivariate=None</code> означает «да»); в старых версиях по умолчанию был независимый. На долине «шаг × деревья» многомерный отстал от оптимума вдвое меньше независимого (0.00021 против 0.00046).</p>
+
+  <p><b>Стартовые пробы и узкие пики.</b> Первые <code>n_startup_trials=10</code> испытаний TPE — случайные: без них плотности строились бы по одной-двум точкам. В расчёте первые 10 испытаний TPE совпали со случайным поиском того же сида до последнего знака. Но стартовые пробы не спасают от узкого высокого пика: на функции с широким холмом (0.6) и узким пиком (1.0) случайный поиск нашёл пик в 12% из 40 запусков, TPE — в 0–3% при 1, 10 или 30 стартовых пробах. Модельный поиск идёт туда, где уже хорошо; редкий узкий оптимум находит только случайность.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 3 · Сколько испытаний TPE считает хорошими</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">TPESampler по умолчанию. Исследование длиной 20, 100 и 400 испытаний. В статьях про TPE часто пишут «хорошие — лучшие 15–25%».</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Сколько испытаний пойдёт в <tex>\ell</tex> в каждом случае и какую долю это составляет.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Правило Optuna — формула 6: <tex>\min(\lceil 0.1n\rceil, 25)</tex>; доля — это число, делённое на <tex>n</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s5">Формула 6</a> · число хороших испытаний в Optuna</div>
+        <texd>n_\ell = \min\bigl(\lceil 0.1\,n\rceil,\ 25\bigr)</texd>
+        <div class="fr-w">где <tex>n</tex> — число завершённых испытаний: 20, 100, 400; <tex>n_\ell</tex> — сколько из них строят <tex>\ell</tex>.</div></div>
+      <texd>n = 20:\ \min(2, 25) = 2,\ 10\% \qquad n = 100:\ \min(10, 25) = 10,\ 10\% \qquad n = 400:\ \min(40, 25) = 25,\ 6.25\%</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><b>2, 10 и 25</b> испытаний — 10%, 10% и 6%. В длинном исследовании доля хороших падает: <tex>\ell</tex> держится узкой и фокусируется на лучших. Если сделать хороших половину, <tex>\ell</tex> и <tex>g</tex> почти совпадут, отношение будет около 1 везде, и поиск выродится в случайный.</div></div>
+  </div>
+
+  <p class="next">Любой поиск выбирает лучшее из многих шумных оценок — и этим завышает его. Насколько, и когда пора остановиться?</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sh"><span class="snum">6</span><h2>Завышение победителя и когда остановиться</h2></div>
+  <p class="slead">Победитель перебора завышен, потому что ему повезло с шумом проверки: верхняя граница <tex>\sigma\sqrt{2\ln C}</tex> и точные множители — в <a href="block1_01_validation_schemes.html#s10">1.1, секция 10</a>. Чем больше похожих конфигураций сравнивают, тем больше завышение; цифру для отчёта берут на данных, не участвовавших в поиске (<a href="block1_01_validation_schemes.html#s11">1.1, секция 11</a>).</p>
+
+  <table class="ct">
+    <tr><th>40 испытаний, три сида</th><th>лучшее на проверке · на тесте · завышение победителя</th></tr>
+    <tr><td>случайный поиск</td><td>0.7809 · 0.7974 · +0.0004</td></tr>
+    <tr><td>TPE</td><td>0.7832 · 0.7989 · +0.0017</td></tr>
+    <tr><td>TPE + Hyperband</td><td>0.7812 · 0.7965 · +0.0012</td></tr>
+  </table>
+  <p class="tcap">Проверка и тест — разные выборки, и проверка в среднем на 0.017 «труднее» теста у всех конфигураций (разброс этой разности между конфигурациями 0.0024). Завышение победителя — насколько его разность «проверка − тест» больше средней по всем испытаниям исследования.</p>
+
+  <p><b>Почему у TPE больше.</b> Случайный поиск ставит точки далеко друг от друга, и они различаются по-настоящему. TPE к концу пробует много близких конфигураций рядом с лучшей — почти одинаковых по качеству, — и победитель среди них чаще выбирается шумом. Завышение здесь мало (тысячные), потому что испытаний 40; при сотнях похожих конфигураций оно сравнимо со всем выигрышем подбора (<a href="block1_01_validation_schemes.html#s10">1.1, таблица в секции 10</a>). В случайном поиске сида 0 лучшая на тесте конфигурация (0.7985) не была победителем по проверке (0.7970).</p>
+
+  <div class="chb">
+    <div class="cht">Лучшее найденное по ходу поиска</div>
+    <div class="chsub">Ось x — номер испытания, ось y — лучшее AUC на проверке к этому моменту, среднее по трём сидам. Серая — случайный поиск, зелёная — TPE. Первые 10 испытаний совпадают: это стартовые случайные пробы TPE с тем же сидом.</div>
+    <canvas id="c_hist"></canvas>
+  </div>
+
+  <p><b>Когда остановиться.</b> По кривой «лучшее найденное»: случайный поиск после 16-го испытания не улучшился ни разу, TPE рос до 33-го. Правило из практики — остановиться, если последние 20–30% испытаний не дали улучшения больше шума оценки; бюджет задают временем (<code>timeout</code>), а не числом испытаний, чтобы поиск укладывался в окно переобучения. Улучшения меньше шума проверки — это уже не находка, а подгонка под неё.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · проверка для поиска и тест для отчёта</div>
+    <p>Проверочная выборка участвует в выборе: по ней сравнивают испытания и останавливают бустинг. Тест — один взгляд в конце. Если по тесту хотя бы раз выбрали конфигурацию, диапазон или число испытаний, он стал второй проверкой, и честной цифры больше нет (<a href="block1_01_validation_schemes.html#s11">1.1, секция 11</a>).</p>
+  </div>
+
+  <p class="next">Завышение и остановка касаются числа испытаний. Ранний отсев экономит другое — стоимость каждого испытания.</p>
+</section>
+
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sh"><span class="snum">7</span><h2>Successive Halving: не доучивать проигравших</h2></div>
+  <p class="slead">Все конфигурации получают малый бюджет — несколько десятков деревьев; лучшая треть получает втрое больше, и так до полного бюджета. Каждый раунд стоит одинаково, а экономия против полного перебора растёт с числом раундов. Работает, если лучшая конфигурация не выглядит плохой на малом бюджете.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 7 · Successive Halving: раунды и экономия</div>
+    <texd>n_k = \Bigl\lfloor\frac{n}{\eta^k}\Bigr\rfloor \qquad r_k = r\,\eta^k \qquad n_k r_k \approx n\,r \qquad \frac{C_{\text{полн}}}{C_{\text{SHA}}} = \frac{n\cdot r\,\eta^{L-1}}{L\cdot n\,r} = \frac{\eta^{L-1}}{L}</texd>
+    <div class="where">где <tex>n</tex> — число конфигураций, <tex>r</tex> — стартовый бюджет каждой (деревья, эпохи, доля данных), <tex>\eta</tex> — коэффициент отсева: остаётся лучшая <tex>1/\eta</tex> доля, <tex>k = 0, 1, \dots, L - 1</tex> — номер раунда, <tex>n_k</tex> и <tex>r_k</tex> — сколько конфигураций в раунде и сколько бюджета у каждой, <tex>L</tex> — число раундов (в последнем <tex>r_{L-1}</tex> — полный бюджет), <tex>C_{\text{полн}}</tex> — стоимость обучить все <tex>n</tex> до конца, <tex>C_{\text{SHA}}</tex> — стоимость отсева, <tex>\lfloor x\rfloor</tex> — округление вниз до целого. Пример: <tex>n = 27</tex>, <tex>r = 50</tex>, <tex>\eta = 3</tex>, <tex>L = 3</tex> — 1 350 в каждом раунде, всего 4 050 против 12 150, в 3 раза меньше.</div>
+  </div>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · отсев на настоящих кривых обучения 27 конфигураций</div>
+    <div class="tstep"><b>Шаг 1. Кривые.</b> 27 случайных конфигураций LightGBM из пространства секции 1, каждая обучена на 600 деревьев; после каждого дерева записан AUC на проверке. Лучшая по полному бюджету — шаг 0.051, 40 листьев, AUC 0.7806.</div>
+    <div class="tstep"><b>Шаг 2. Раунд 0.</b> Все 27 по 22 дерева: <tex>27\cdot 22 = 594</tex>. Лучшая конфигурация на 20-м дереве была лишь 10-й: быстрый шаг 0.24 уже вышел на свой предел 0.7655, а она ещё растёт. В следующий раунд проходят 9 — и она среди них.</div>
+    <div class="tstep"><b>Шаг 3. Раунды 1–3.</b> 9 по 67 деревьев (603), 3 по 200 (600), 1 до 600 (600). Итого 2 397 деревьев — 4.0 полных обучения вместо 27. Победитель — та самая лучшая, 0.7806.</div>
+    <div class="tstep"><b>Шаг 4. Порядок на малом бюджете.</b> Ранговая корреляция Спирмена с итоговым качеством: на 20 деревьях (3% бюджета) −0.21, на 60 (10%) 0.21, на 200 (33%) 0.74. Порядок в начале почти случайный — медленные конфигурации с шагом меньше 0.01 стоят внизу, — но лучшей достаточно попасть в верхнюю треть.</div>
+    <div class="tstep"><b>Итог.</b> На 300 случайных наборах по 27 из 81 кривой отсев стоимостью 4.0 полных обучения отстал от лучшей конфигурации набора в среднем на 0.0029 AUC и нашёл её в 18% наборов; случайный поиск из 3 полных обучений — на 0.0062 и в 11%. Правило «корреляция на малом бюджете выше 0.7 — отсев безопасен» слишком строгое: важно, чтобы лучшие выживали, а не чтобы совпадал весь порядок.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Кривые обучения четырёх конфигураций</div>
+    <div class="chsub">Ось x — число деревьев, ось y — лучший AUC на проверке к этому дереву (с ранней остановкой). Зелёная — лучшая по полному бюджету (шаг 0.051), оранжевая — быстрая (шаг 0.24): лидирует до 60 деревьев и замирает; голубая — медленная (шаг 0.007): внизу на малом бюджете и всё ещё растёт на 600 деревьях; серая — худшая (456 листьев, шаг 0.002). Пунктир — бюджеты раундов отсева.</div>
+    <canvas id="c_curves"></canvas>
+  </div>
+
+  <div class="play">
+    <h4>Песочница: отсев против случайного поиска той же стоимости</h4>
+    <p style="font-size:14.5px;color:var(--tx2);margin:0 0 12px">У каждой конфигурации итоговое качество и «медленный старт»: хорошие конфигурации чаще стартуют медленно (сильный штраф, малый шаг). На доле бюджета <tex>b</tex> оценка — итоговое качество минус <tex>s</tex>·старт·<tex>(1 - b)</tex> плюс шум <tex>\sigma</tex>. Отсев сравнивается со случайным поиском, который на те же деньги обучает до конца столько конфигураций, сколько полных обучений стоил отсев. 300 повторов; расчёт совпал с Python во всех 216 сочетаниях.</p>
+    <div class="prow"><label for="sl_n">Конфигураций</label><input type="range" id="sl_n" min="0" max="1" step="1" value="0"><output id="o_n"></output></div>
+    <div class="prow"><label for="sl_e">Отсев <tex>\eta</tex></label><input type="range" id="sl_e" min="0" max="2" step="1" value="1"><output id="o_e"></output></div>
+    <div class="prow"><label for="sl_l">Раундов</label><input type="range" id="sl_l" min="0" max="2" step="1" value="2"><output id="o_l"></output></div>
+    <div class="prow"><label for="sl_s">Медленный старт <tex>s</tex></label><input type="range" id="sl_s" min="0" max="3" step="1" value="1"><output id="o_s"></output></div>
+    <div class="prow"><label for="sl_g">Шум <tex>\sigma</tex></label><input type="range" id="sl_g" min="0" max="2" step="1" value="1"><output id="o_g"></output></div>
+    <div class="chb"><canvas id="c_play"></canvas></div>
+    <div class="pout" id="out_play"></div>
+  </div>
+
+  <p><b>Что видно в песочнице.</b> Без медленного старта и шума отсев за 4 полных обучения находит лучшую из 27 всегда, случайный поиск за те же деньги — в 17% повторов. При <tex>s = 0.5</tex> и шуме 0.1 — 61% против 13%. При сильном медленном старте <tex>s = 2</tex> отсев проигрывает: 7% против 16% — первый раунд выкидывает именно будущих победителей. Меньше раундов, то есть больше стартовый бюджет, его спасает: при <tex>s = 1</tex> два раунда (стартовый бюджет 1/3) — 83% против 60% у случайного поиска, но и стоимость 18 полных обучений вместо 4.</p>
+
+  <div class="ex">
+    <div class="ex-n">Задача 4 · Экономия отсева на 81 конфигурации</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">81 конфигурация, полный бюджет — 27 эпох, стартовый — 1 эпоха, <tex>\eta = 3</tex>. В старых конспектах экономию оценивают как «примерно <tex>\log_\eta n</tex> раз».</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Раунды, стоимость отсева, стоимость полного перебора и экономию; сравнить с <tex>\log_3 81</tex>.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Бюджет растёт с 1 до 27 эпох — это <tex>L = 4</tex> раунда (1, 3, 9, 27). Каждый раунд стоит <tex>n r</tex>, экономия — по формуле 7.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s7">Формула 7</a> · раунды и экономия</div>
+        <texd>n_k = \Bigl\lfloor\frac{n}{\eta^k}\Bigr\rfloor \qquad r_k = r\,\eta^k \qquad \frac{C_{\text{полн}}}{C_{\text{SHA}}} = \frac{\eta^{L-1}}{L}</texd>
+        <div class="fr-w">где <tex>n = 81</tex>, <tex>r = 1</tex> эпоха, <tex>\eta = 3</tex>, <tex>L = 4</tex>.</div></div>
+      <texd>81\cdot 1 + 27\cdot 3 + 9\cdot 9 + 3\cdot 27 = 81 + 81 + 81 + 81 = 324</texd>
+      <texd>C_{\text{полн}} = 81\cdot 27 = 2\,187 \qquad \frac{2\,187}{324} = 6.75 = \frac{3^3}{4} \qquad \log_3 81 = 4</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Отсев стоит <b>324</b> эпохи против <b>2 187</b> — экономия <b>6.75</b> раза, а не 4. Правило «<tex>\log_\eta n</tex>» совпадает с точным только при трёх раундах (27 конфигураций, экономия 3). Последний раунд здесь оставляет 3 конфигурации на полном бюджете; лучшую из них выбирают по итоговой оценке.</div></div>
+  </div>
+
+  <p class="next">Отсеву надо заранее сказать, с какого бюджета начинать. Если ошибиться, он режет победителей или почти ничего не экономит. Hyperband не выбирает — он пробует несколько вариантов.</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sh"><span class="snum">8</span><h2>Hyperband, ASHA и BOHB</h2></div>
+  <p class="slead">Hyperband запускает несколько отсевов с разным стартовым бюджетом — от агрессивного до обычного случайного поиска без отсева — и страхует от неверного выбора. ASHA убирает ожидание медленных конфигураций на кластере. BOHB берёт конфигурации не случайно, а из TPE. В Optuna это <code>TPESampler</code> плюс <code>HyperbandPruner</code>.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 8 · брекеты Hyperband</div>
+    <texd>s_{\max} = \Bigl\lfloor\log_\eta\frac{R}{r_{\min}}\Bigr\rfloor \qquad n_s = \Bigl\lceil\frac{s_{\max} + 1}{s + 1}\,\eta^{s}\Bigr\rceil \qquad r_s = R\,\eta^{-s}</texd>
+    <div class="where">где <tex>R</tex> — полный бюджет одной конфигурации, <tex>r_{\min}</tex> — наименьший разумный, <tex>\eta</tex> — коэффициент отсева, <tex>s = s_{\max}, \dots, 0</tex> — номер брекета (отдельного запуска Successive Halving), <tex>n_s</tex> — сколько конфигураций в нём, <tex>r_s</tex> — их стартовый бюджет, <tex>\lfloor x\rfloor</tex> и <tex>\lceil x\rceil</tex> — округление вниз и вверх. Брекеты стоят примерно одинаково; брекет <tex>s = 0</tex> — без отсева, то есть случайный поиск. Цена страховки — <tex>s_{\max} + 1</tex> брекетов вместо одного угаданного. Пример: <tex>R = 81</tex>, <tex>r_{\min} = 1</tex>, <tex>\eta = 3</tex> — <tex>s_{\max} = 4</tex>, брекеты 81 × 1, 34 × 3, 15 × 9, 8 × 27, 5 × 81.</div>
+  </div>
+
+  <table class="ct">
+    <tr><th>Брекет <tex>s</tex> (<tex>R = 81</tex>, <tex>\eta = 3</tex>)</th><th>конфигураций × стартовый бюджет · раундов · стоимость</th></tr>
+    <tr><td>4 — самый агрессивный отсев</td><td>81 × 1 · 5 · 405</td></tr>
+    <tr><td>3</td><td>34 × 3 · 4 · 363</td></tr>
+    <tr><td>2</td><td>15 × 9 · 3 · 351</td></tr>
+    <tr><td>1</td><td>8 × 27 · 2 · 378</td></tr>
+    <tr><td>0 — без отсева, случайный поиск</td><td>5 × 81 · 1 · 405</td></tr>
+  </table>
+
+  <div class="ex">
+    <div class="ex-n">Задача 5 · Брекеты Hyperband для 27 эпох</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Нейросеть обучается до 27 эпох, меньше одной эпохи оценивать бессмысленно, <tex>\eta = 3</tex>.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Число брекетов, конфигурации и стартовый бюджет каждого, раунды и стоимость в эпохах.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">По формуле 8 находим <tex>s_{\max}</tex>, затем <tex>n_s</tex> и <tex>r_s</tex>; внутри брекета — обычный отсев: на каждом раунде остаётся треть, бюджет утраивается.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s8">Формула 8</a> · брекеты Hyperband</div>
+        <texd>s_{\max} = \Bigl\lfloor\log_\eta\frac{R}{r_{\min}}\Bigr\rfloor \qquad n_s = \Bigl\lceil\frac{s_{\max} + 1}{s + 1}\,\eta^{s}\Bigr\rceil \qquad r_s = R\,\eta^{-s}</texd>
+        <div class="fr-w">где <tex>R = 27</tex> эпох, <tex>r_{\min} = 1</tex>, <tex>\eta = 3</tex>.</div></div>
+      <texd>s_{\max} = \log_3 27 = 3 \qquad n_3 = \Bigl\lceil\tfrac{4}{4}\cdot 27\Bigr\rceil = 27 \quad n_2 = \Bigl\lceil\tfrac{4}{3}\cdot 9\Bigr\rceil = 12 \quad n_1 = \Bigl\lceil\tfrac{4}{2}\cdot 3\Bigr\rceil = 6 \quad n_0 = \Bigl\lceil\tfrac{4}{1}\cdot 1\Bigr\rceil = 4</texd>
+      <p>Раунды и стоимость:</p>
+      <texd>s = 3:\ 27\cdot 1 + 9\cdot 3 + 3\cdot 9 + 1\cdot 27 = 108 \qquad s = 2:\ 12\cdot 3 + 4\cdot 9 + 1\cdot 27 = 99</texd>
+      <texd>s = 1:\ 6\cdot 9 + 2\cdot 27 = 108 \qquad s = 0:\ 4\cdot 27 = 108</texd></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c"><b>4 брекета</b>: 27 конфигураций с 1 эпохи, 12 с 3, 6 с 9, 4 сразу на 27; каждый стоит около 100–110 эпох, весь Hyperband — <b>423</b>. За эти деньги можно обучить до конца 15 конфигураций; Hyperband посмотрит на 49, а если ранний отсев на задаче врёт, подстрахует брекет <tex>s = 0</tex> — честный случайный поиск из 4 конфигураций.</div></div>
+  </div>
+
+  <div class="fbox">
+    <div class="flabel">Формула 9 · правило продвижения ASHA</div>
+    <texd>\text{продвинуть } \lambda \text{ на уровень } k + 1, \text{ если } \operatorname{rank}_k(\lambda) \le \Bigl\lfloor\frac{|S_k|}{\eta}\Bigr\rfloor</texd>
+    <div class="where">где <tex>S_k</tex> — конфигурации, уже дошедшие до уровня бюджета <tex>k</tex>, <tex>|S_k|</tex> — их число, <tex>\operatorname{rank}_k(\lambda)</tex> — место <tex>\lambda</tex> среди них по качеству (1 — лучшая), <tex>\eta</tex> — коэффициент отсева, <tex>\lfloor x\rfloor</tex> — округление вниз. Решение принимается сразу, без ожидания остальных: свободный воркер берёт либо конфигурацию на продвижение, либо новую. Пример: на уровне 9 конфигураций, <tex>\eta = 3</tex> — продвигаются места 1–3.</div>
+  </div>
+
+  <p><b>Зачем асинхронность.</b> Синхронный отсев ждёт конца раунда — на 100 воркерах почти все простаивают, пока досчитывается самая медленная конфигурация. ASHA (Li и др., 2020) иногда продвигает конфигурацию, которая при полном сравнении не прошла бы, но загрузка кластера близка к 100%; это стандарт Ray Tune. Правило медианы (Google Vizier, <code>MedianPruner</code> — прунер Optuna по умолчанию) ещё проще: испытание обрывают, если его промежуточное значение хуже медианы завершённых на том же шаге.</p>
+
+  <p><b>BOHB</b> (Falkner и др., 2018): Hyperband хорошо распределяет бюджет, но берёт конфигурации случайно; BOHB берёт их из TPE, обученного на самом большом бюджете, где наблюдений уже достаточно. В расчёте TPE с <code>HyperbandPruner(min_resource=50, max_resource=600)</code> оборвал 15–20 испытаний из 40, потратил 6 000 деревьев вместо 16 200 и 13 секунд вместо 35. Тест — 0.7965 против 0.7989 без отсева: на одном сиде поиск с отсевом остановился на заметно худшей конфигурации (0.7935), на двух других разница в пределах шума.</p>
+
+  <p><b>Когда отсев не окупается.</b> Когда одно полное обучение — секунды: накладные расходы на промежуточные оценки сравнимы с самим обучением. Когда у бюджета нет естественной шкалы: у kNN нет «частичного обучения», а уменьшение выборки меняет задачу. И когда хорошие конфигурации стартуют медленно сильнее, чем различаются в конце, — песочница секции 7 при <tex>s = 2</tex>.</p>
+
+  <p class="next">Теперь соберём всё в рабочий код Optuna и разберём, что смотреть после поиска.</p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sh"><span class="snum">9</span><h2>Optuna на практике: код, ловушки, разбор исследования</h2></div>
+  <p class="slead">Пространство задаётся кодом внутри функции цели, сэмплер выбирает точки, прунер обрывает испытания, хранилище позволяет продолжить поиск и запускать его на нескольких машинах. После поиска смотрят историю, границы диапазонов и важности — и важности по 40 испытаниям оказываются ненадёжными.</p>
+
+<pre><code>import optuna, lightgbm as lgb
+
+dtr = lgb.Dataset(X_tr, y_tr, params={'feature_pre_filter': False})
+dva = lgb.Dataset(X_va, y_va, reference=dtr)
+
+def objective(trial):
+    p = {'objective': 'binary', 'metric': 'auc', 'verbosity': -1, 'bagging_freq': 1,
+         'learning_rate': trial.suggest_float('learning_rate', 1e-3, 0.3, log=True),
+         'num_leaves': trial.suggest_int('num_leaves', 2, 512, log=True),
+         'min_child_samples': trial.suggest_int('min_child_samples', 5, 300, log=True),
+         'feature_fraction': trial.suggest_float('feature_fraction', 0.4, 1.0),
+         'bagging_fraction': trial.suggest_float('bagging_fraction', 0.4, 1.0),
+         'lambda_l2': trial.suggest_float('lambda_l2', 1e-8, 10.0, log=True)}
+    def prune(env):                      # промежуточное значение прунеру
+        if (env.iteration + 1) % 10 == 0:
+            trial.report(env.evaluation_result_list[0][2], env.iteration + 1)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+    m = lgb.train(p, dtr, 600, valid_sets=[dva],
+                  callbacks=[lgb.early_stopping(50, verbose=False), prune])
+    return m.best_score['valid_0']['auc']
+
+study = optuna.create_study(
+    direction='maximize', study_name='churn_lgb_v3',
+    sampler=optuna.samplers.TPESampler(seed=0),
+    pruner=optuna.pruners.HyperbandPruner(min_resource=50, max_resource=600),
+    storage='sqlite:///optuna.db', load_if_exists=True)
+study.optimize(objective, timeout=3600)</code></pre>
+
+  <table class="ct">
+    <tr><th>Строка</th><th>зачем так</th></tr>
+    <tr><td><code>feature_pre_filter</code></td><td>значение <code>False</code>: один <code>Dataset</code> на все испытания: без этого смена <code>min_child_samples</code> между испытаниями падает с <code>LightGBMError</code></td></tr>
+    <tr><td><code>log=True</code></td><td>шаг, листья, минимум в листе и штрафы — по декадам (секция 3)</td></tr>
+    <tr><td><code>report</code>, <code>should_prune</code></td><td>промежуточное значение для прунера; готовый <code>LightGBMPruningCallback</code> делает то же, но в Optuna 5 он в отдельном пакете <code>optuna-integration</code></td></tr>
+    <tr><td><code>early_stopping</code></td><td>останавливает обучение одной модели; прунер обрывает испытание целиком</td></tr>
+    <tr><td><code>min_resource=50</code></td><td>прунер не судит раньше 50 деревьев — медленные конфигурации успевают разогнаться</td></tr>
+    <tr><td><code>storage</code></td><td>вместе с <code>load_if_exists</code> поиск продолжается после перезапуска, несколько машин пишут в одну базу</td></tr>
+    <tr><td><code>timeout</code></td><td>бюджет во времени, а не в испытаниях: поиск укладывается в окно</td></tr>
+  </table>
+
+  <p><b>Значения по умолчанию.</b> <code>optuna.create_study()</code> без аргументов — <code>TPESampler</code> и <code>MedianPruner</code>; прунер ничего не делает, пока функция цели не сообщает промежуточных значений. Оборванное испытание получает состояние <code>PRUNED</code>, упавшее — <code>FAIL</code>, и ни то ни другое не участвует в выборе лучшего. <code>GridSampler</code> перебирает сетку и останавливает исследование, когда она исчерпана, даже если <code>n_trials</code> больше.</p>
+
+  <div class="trace">
+    <div class="trace-hd">Трассировка · разбор исследования после поиска</div>
+    <div class="tstep"><b>Шаг 1. История.</b> Кривая «лучшее найденное» (секция 6): случайный поиск вышел на плато к 16-му испытанию, TPE — к 33-му. Дальше 40 испытаний на этой задаче много не дадут.</div>
+    <div class="tstep"><b>Шаг 2. Границы.</b> Срез по параметрам (<code>plot_slice</code>) показал: у двух победителей из шести <code>num_leaves</code> = 8 — ровно нижняя граница. Диапазон расширили до 2: TPE дал на тесте 0.8011, 0.8017, 0.7998 (было 0.7980, 0.8017, 0.7970), победители — 7, 4 и 8 листьев. +0.002 в среднем — больше, чем разница TPE и случайного поиска.</div>
+    <div class="tstep"><b>Шаг 3. Важности по случайным испытаниям.</b> <code>get_param_importances</code> (fANOVA) по 40 случайным испытаниям: на сиде 0 первым вышел <code>bagging_fraction</code> (0.38), на сидах 1 и 2 — шаг обучения (0.51 и 0.52). По всем 120 — шаг 0.64, листья и минимум в листе по 0.10, штрафы — 0.02 и 0.</div>
+    <div class="tstep"><b>Шаг 4. Важности по испытаниям TPE.</b> По 40 испытаниям TPE сида 0 первым вышел <code>feature_fraction</code> (0.44), шаг — только четвёртым (0.08). TPE к концу пробует точки около лучшей с почти одинаковым шагом; когда шаг в данных почти не меняется, fANOVA не может увидеть его влияния, и важности получают параметры, которые TPE ещё варьирует.</div>
+    <div class="tstep"><b>Итог.</b> Границы диапазонов — первое, что проверяют. Важности считают по случайной фазе или по сотням испытаний и не выбрасывают параметр по одному запуску: на 40 испытаниях порядок важностей меняется от сида к сиду.</div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Важности параметров по трём сидам случайного поиска</div>
+    <div class="chsub">Ось x — параметр, ось y — доля важности по fANOVA. Три серых столбца — 40 случайных испытаний на сидах 0, 1, 2; зелёный — все 120 вместе. На одном сиде главным вышел bagging_fraction, на двух других — шаг обучения.</div>
+    <canvas id="c_imp"></canvas>
+  </div>
+
+  <p><b>Двухфазный протокол.</b> Разведка: широкие диапазоны, все параметры, дешёвая оценка, 50–80 испытаний — найти границы и явно важные параметры. Уточнение: сузить диапазоны, зафиксировать то, что устойчиво неважно на нескольких сидах, полная кросс-валидация. И в конце — один взгляд на тест. Новые признаки или новая версия данных — новое исследование (<code>study_name</code> с версией), иначе смешиваются несравнимые испытания.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · ранняя остановка и прунер</div>
+    <p>Ранняя остановка бустинга обрывает обучение одной модели, когда метрика перестала расти, и возвращает лучшую итерацию — модель остаётся в исследовании. Прунер обрывает испытание целиком, сравнивая его с другими на том же шаге, — значение испытания не записывается. Если прунер судит раньше, чем медленная модель разгонится, он срезает её до того, как ранняя остановка дала бы ей проявиться; отсюда <code>min_resource</code> и <code>n_warmup_steps</code>.</p>
+  </div>
+
+  <p class="next">До сих пор цель была одна — AUC. В проде важны ещё задержка и размер модели.</p>
+</section>
+
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sh"><span class="snum">10</span><h2>Многокритериальный поиск: фронт Парето</h2></div>
+  <p class="slead">Когда важны и качество, и задержка, одной лучшей конфигурации нет — есть фронт Парето: конфигурации, которые нельзя улучшить по одной цели, не ухудшив другую. Поиск строит фронт, а точку на нём выбирают по ограничению прода. На наших пробах модель в 6.5 раза меньше по числу листьев отстала на тесте на 0.0004 AUC.</p>
+
+  <div class="fbox">
+    <div class="flabel">Формула 10 · доминирование по Парето</div>
+    <texd>a \succ b \iff f_j(a) \ge f_j(b)\ \ \text{для всех } j \quad\text{и}\quad f_j(a) \gt f_j(b)\ \ \text{хотя бы для одного } j</texd>
+    <div class="where">где <tex>a</tex>, <tex>b</tex> — конфигурации, <tex>f_j</tex> — <tex>j</tex>-я цель в направлении «больше — лучше» (задержку берут со знаком минус), <tex>a \succ b</tex> — «<tex>a</tex> доминирует <tex>b</tex>». Фронт Парето — конфигурации, которых не доминирует никто. Пример: AUC 0.814 за 3.2 мс доминирует 0.811 за 4.0 мс; 0.812 за 2.1 мс и 0.815 за 9.5 мс друг друга не доминируют.</div>
+  </div>
+
+  <div class="ex">
+    <div class="ex-n">Задача 6 · Фронт и выбор под ограничение задержки</div>
+    <div class="ex-r"><div class="ex-h">Ситуация</div><div class="ex-c">Шесть конфигураций (AUC, задержка в мс): A (0.812, 2.1), B (0.809, 0.6), C (0.815, 9.5), D (0.805, 0.9), E (0.811, 4.0), F (0.814, 3.2). Ограничение прода — 3 мс на ответ.</div></div>
+    <div class="ex-r q"><div class="ex-h">Что найти</div><div class="ex-c">Кто кого доминирует, фронт Парето и конфигурацию для прода.</div></div>
+    <div class="ex-r"><div class="ex-h">Как рассуждаем</div><div class="ex-c">Для каждой конфигурации ищем другую, которая не хуже по обеим целям и лучше хотя бы по одной (формула 10). Недоминируемые — фронт. Из фронта берём лучшую по AUC среди тех, что укладываются в 3 мс.</div></div>
+    <div class="ex-r"><div class="ex-h">Решение</div><div class="ex-c">
+      <div class="fr"><div class="fr-t"><a href="#s10">Формула 10</a> · доминирование</div>
+        <texd>a \succ b \iff \text{AUC}_a \ge \text{AUC}_b,\ t_a \le t_b,\ \text{и хотя бы одно строго}</texd>
+        <div class="fr-w">где <tex>t</tex> — задержка; пары (AUC, <tex>t</tex>): A (0.812, 2.1), B (0.809, 0.6), C (0.815, 9.5), D (0.805, 0.9), E (0.811, 4.0), F (0.814, 3.2).</div></div>
+      <p>D: B лучше по AUC (0.809 > 0.805) и быстрее (0.6 < 0.9) — <tex>B \succ D</tex>. E: A лучше (0.812 > 0.811) и быстрее (2.1 < 4.0) — <tex>A \succ E</tex>; F тоже (0.814 > 0.811, 3.2 < 4.0). A, B, C, F не доминирует никто: каждый, кто точнее, — медленнее.</p>
+      <texd>\begin{gathered}\text{фронт} = \{B\ (0.809,\ 0.6),\ A\ (0.812,\ 2.1), \\ F\ (0.814,\ 3.2),\ C\ (0.815,\ 9.5)\}\end{gathered}</texd>
+      <p>В 3 мс укладываются B и A; F (3.2 мс) и C — нет.</p></div></div>
+    <div class="ex-r ans"><div class="ex-h">Ответ и вывод</div><div class="ex-c">Фронт — <b>B, A, F, C</b>; D и E доминируются. Для прода — <b>A</b>: 0.812 за 2.1 мс. Лучшая по AUC C (0.815) в 4.5 раза медленнее A ради 0.003. Задержку меряют на целевом железе: число листьев и FLOPs — только грубые заменители.</div></div>
+  </div>
+
+  <div class="chb">
+    <div class="cht">Качество и размер модели по 309 испытаниям</div>
+    <div class="chsub">Ось x — число листьев во всех деревьях лучшей итерации (логарифмическая шкала; заменитель задержки), ось y — AUC на проверке. Серые точки — все завершённые испытания трёх методов и трёх сидов, зелёная ступенька — фронт Парето (12 испытаний).</div>
+    <canvas id="c_pareto"></canvas>
+  </div>
+
+  <p><b>Что видно.</b> Фронт из 12 испытаний: 750 листьев — AUC на проверке 0.7809, на тесте 0.7976; 4 886 листьев — 0.7845 и 0.7980. В 6.5 раза больше листьев ради 0.0036 на проверке и 0.0004 на тесте: прирост проверки частично был удачей отбора (секция 6). Если в проде дорога каждая миллисекунда, берут точку на колене фронта.</p>
+
+  <p><b>В Optuna.</b> <code>create_study(directions=['maximize', 'minimize'])</code>, функция цели возвращает пару (AUC, задержка). Фронт — <code>study.best_trials</code>; <code>study.best_trial</code> при нескольких целях бросает <code>RuntimeError</code>. Сэмплеры — <code>NSGAIISampler</code> или <code>TPESampler</code> (при нескольких целях по умолчанию с независимыми параметрами). Другие способы: жёсткое ограничение (<code>constraints_func</code> у сэмплера — нарушающие ограничение испытания не попадут во фронт) и скаляризация, например <tex>\text{AUC} - \beta\max(0,\ t - t_{\text{SLA}})</tex>. Самое надёжное — не пускать заведомо медленные конфигурации в пространство поиска.</p>
+
+  <p><b>Награда MnasNet.</b> Google искал архитектуры мобильных сетей с наградой <tex>\text{ACC}\cdot(\text{LAT}/T)^w</tex>, где LAT мерили на настоящем телефоне, <tex>T</tex> — целевая задержка, <tex>w \lt 0</tex> (у них −0.07). При <tex>T = 80</tex> мс: 0.75 за 80 мс — 0.750, 0.76 за 120 мс — 0.739, 0.74 за 50 мс — 0.765. Мягкий штраф: точность покупают у задержки по фиксированному курсу.</p>
+
+  <p class="next">Optuna ищет параметры одной модели. Полные AutoML-фреймворки делают больше — и тратят бюджет иначе.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sh"><span class="snum">11</span><h2>AutoGluon, H2O и FLAML</h2></div>
+  <p class="slead">AutoGluon почти не подбирает параметры: он обучает много разных моделей с хорошими значениями по умолчанию и складывает их многоуровневым стекингом. H2O делает то же на JVM-кластере и экспортирует модели без Python. FLAML учитывает цену испытания и начинает с дешёвых конфигураций. Все они усиливают ошибки схемы проверки.</p>
+
+  <p><b>AutoGluon-Tabular</b> (Erickson и др., 2020). Каждая модель — LightGBM, CatBoost, XGBoost, лес, Extra Trees, kNN, нейросети — обучается <tex>K</tex> раз на фолдах (bagging), и её прогнозы вне фолда идут во второй слой вместе с исходными признаками; сверху — взвешенное среднее, подобранное жадным отбором с возвратом (Caruana; <a href="block1_08_ensembles.html#s5">1.8, секция 5</a>). Дешёвые модели учатся первыми — при обрыве по времени готовый ансамбль уже есть. Вывод авторов: при фиксированном бюджете ансамбль разных моделей даёт больше, чем тонкая настройка одной.</p>
+
+  <table class="ct">
+    <tr><th>Пресет AutoGluon</th><th>что делает · когда</th></tr>
+    <tr><td><code>medium_quality</code></td><td>по модели каждого типа без bagging · быстрый прототип, проверка сигнала</td></tr>
+    <tr><td><code>good_quality</code>, <code>high_quality</code></td><td>bagging, стек, переобучение на всех данных (<code>refit_full</code>) · прод с ограничениями</td></tr>
+    <tr><td><code>best_quality</code></td><td>всё плюс повторный bagging · соревнования, офлайн-скоринг</td></tr>
+    <tr><td><code>optimize_for_deployment</code></td><td>удаляет лишние модели с диска · перед выкладкой</td></tr>
+  </table>
+
+  <p><b>H2O AutoML</b> обучает фиксированный набор — GLM, GBM, XGBoost, лес и Extra Trees, нейросеть — и два стека: из всех моделей и из лучшей модели каждого семейства. Сильные стороны — распределённое обучение и экспорт MOJO: модель работает как Java-артефакт без Python. <b>FLAML</b> (Microsoft) выбирает следующую конфигурацию по ожидаемому улучшению на единицу стоимости: дерево из 50 итераций в 40 раз дешевле, чем из 2 000. На бюджете в секундах он успевает сделать в разы больше испытаний, чем TPE.</p>
+
+  <table class="ct">
+    <tr><th>Инструмент</th><th>главный приём · что едет в прод</th></tr>
+    <tr><td>Optuna</td><td>TPE и отсев · одна модель, интерпретируемость сохраняется</td></tr>
+    <tr><td>AutoGluon</td><td>стек разных моделей · десятки моделей, гигабайты, десятки–сотни мс</td></tr>
+    <tr><td>H2O AutoML</td><td>набор алгоритмов и стек · модели в MOJO, банковская инфраструктура</td></tr>
+    <tr><td>FLAML</td><td>поиск с учётом цены · одна модель, жёсткий бюджет времени</td></tr>
+  </table>
+
+  <p><b>AutoGluon как верхняя планка.</b> Прежде чем неделю строить свою модель, запускают AutoGluon на час. Своя модель лучше — у вас есть знание предметной области, которого он не нашёл. Сильно хуже — проблема не в модели, а в признаках или проверке. Чуть хуже — посчитать, стоит ли разница того, что большой стек сложно сопровождать (<a href="block1_08_ensembles.html#s11">1.8, секция 11</a>).</p>
+
+  <p><b>Усилитель ошибок проверки.</b> AutoML максимизирует оценку, которую ему дали, и находит всё, что её повышает, включая утечку. В <a href="block1_01_validation_schemes.html#s9">1.1, секция 9</a> случайный k-fold уверенно (на 0.060) предпочитал модель с номером клиента, а в проде лучше была модель без него: перебор по такой проверке выберет именно запоминание. Отсюда правила: схему проверки задать явно (группы — <code>GroupKFold</code>, время — разрез по времени), метрику — явно (при дисбалансе не accuracy, <a href="block1_06_class_imbalance.html#s3">1.6, секция 3</a>), проверить, как фреймворк кодирует категории (target encoding вне фолда, <a href="block1_04_leakage.html#s3">1.4, секция 3</a>), зафиксировать сиды и версии.</p>
+
+  <div class="nb">
+    <div class="nb-t">Не путать · AutoML как исследование и AutoML как прод</div>
+    <p>Как исследование AutoML отвечает «сколько сигнала в данных» и задаёт планку. Как прод он приносит стек из десятков моделей: задержка, память, сложный откат, объяснение «почему отказали» сводится к весам моделей второго уровня. В регулируемых задачах часто ставят простую модель (скоркарту, монотонный бустинг), а разницу с AutoML считают ценой объяснимости.</p>
+  </div>
+
+  <p class="next">Остаются две темы на краях: поиск архитектур нейросетей и подбор как часть регулярного переобучения.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sh"><span class="snum">12</span><h2>Поиск архитектур коротко и подбор в проде</h2></div>
+  <p class="slead">NAS — подбор, где пространство поиска — устройство нейросети; его история — удешевление с тысяч GPU-дней до часов и честный вывод, что случайный поиск в хорошем пространстве почти не хуже. В проде подбор — шаг конвейера переобучения: с тёплым стартом, бюджетом во времени, версией исследования и отдельной отложенной выборкой для решения о выкладке.</p>
+
+  <p><b>Размер пространства.</b> В пространстве DARTS ячейка — 4 узла, каждый берёт два входа из предыдущих узлов и на каждый вход одну из 7 операций (свёртки, пулинг, пропуск). Вариантов ячейки <tex>\prod_{i=1}^{4}\binom{i + 1}{2}\cdot 7^2 = 180\cdot 7^8 \approx 1.04\cdot 10^9</tex>, а с двумя типами ячеек (обычной и уменьшающей) — около <tex>10^{18}</tex>. Перебирать нельзя даже теоретически.</p>
+
+  <table class="ct">
+    <tr><th>Поколение NAS</th><th>как ищут · цена</th></tr>
+    <tr><td>RL и эволюция (2017)</td><td>контроллер предлагает архитектуру, её учат с нуля, точность — награда · тысячи GPU-дней</td></tr>
+    <tr><td>общие веса (ENAS, 2018)</td><td>все архитектуры — подграфы одной большой сети с общими весами · в сотни раз дешевле</td></tr>
+    <tr><td>DARTS (2019)</td><td>выбор операции заменён смесью с весами softmax, по весам — градиентный спуск · часы</td></tr>
+    <tr><td>once-for-all, zero-cost (2020+)</td><td>одна сеть-родитель, подсети вырезают под устройство без дообучения</td></tr>
+  </table>
+
+  <p><b>Что важно знать.</b> DARTS при долгом поиске вырождается в лестницу из пропусков (skip-connection): у пропуска нет параметров, он быстрее всех снижает ошибку в начале и выигрывает гонку весов; лечат ранней остановкой поиска и штрафом на число пропусков. Li и Talwalkar (2019): случайный поиск с общими весами в том же пространстве конкурентен с большинством методов NAS — многое объяснялось удачным пространством и протоколом обучения. EfficientNet масштабирует глубину, ширину и разрешение вместе: <tex>d = \alpha^\phi</tex>, <tex>w = \beta^\phi</tex>, <tex>r = \gamma^\phi</tex> при <tex>\alpha\beta^2\gamma^2 \approx 2</tex> (<tex>1.2\cdot 1.1^2\cdot 1.15^2 = 1.92</tex>). Свой NAS нужен редко — чаще берут найденные архитектуры; устройство самих сетей — блок 3.</p>
+
+  <table class="ct">
+    <tr><th>Подбор в конвейере переобучения</th><th>как и почему</th></tr>
+    <tr><td>запуск</td><td>по расписанию, по тревоге дрейфа, по новой порции данных</td></tr>
+    <tr><td>тёплый старт</td><td><code>load_if_exists=True</code> или <code>enqueue_trial</code> с прошлым победителем; очень старые испытания отбрасывают — данные уехали</td></tr>
+    <tr><td>бюджет</td><td><code>timeout</code>, а не <code>n_trials</code>; на кластере — ASHA</td></tr>
+    <tr><td>версия</td><td><code>study_name</code> с версией признаков и данных; результат шага — JSON параметров, обучение финальной модели — отдельный шаг</td></tr>
+    <tr><td>решение о выкладке</td><td>отложенная выборка, не видевшая поиска; новая модель лучше старой парно и с запасом (<a href="block1_08_ensembles.html#s8">1.8, секция 8</a>); затем теневой режим и постепенная выкладка</td></tr>
+  </table>
+
+  <p><b>Подбор как сервис.</b> Google Vizier — сервис, а не библиотека: состояние на сервере, клиенты на любом языке, правило медианы для обрыва, перенос знаний между похожими исследованиями. Meta Ax/BoTorch подбирает не только модели, но и параметры продукта по онлайн-экспериментам: результат испытания приходит через дни и шумный, поэтому выбирают сразу пачку точек и моделируют шум явно.</p>
+
+  <p class="next">Осталось свести всё в рабочий порядок и типичные ошибки.</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sh"><span class="snum">13</span><h2>Где это в работе и 10 подводных камней</h2></div>
+  <p class="slead">Подбор нужен везде, где моделей много или они регулярно переобучаются; AutoML — как быстрая планка. Рабочий порядок: сначала схема проверки и признаки; пространство в логарифмической шкале с запасом по границам; случайная разведка, затем TPE, с отсевом, если обучение дорогое; разбор границ и важностей на нескольких сидах; отчёт — на отложенной выборке.</p>
+
+  <table class="ct">
+    <tr><th>Где</th><th>особенность</th></tr>
+    <tr><td>сотни моделей по магазинам, странам</td><td>подбор в ночном окне: <code>timeout</code>, тёплый старт от общей модели, ASHA на кластере (секции 8, 12)</td></tr>
+    <tr><td>реалтайм-ранжирование, реклама</td><td>две цели — качество и задержка, фронт Парето, задержка на целевом железе (секция 10)</td></tr>
+    <tr><td>кредитный скоринг</td><td>AutoML как планка, в прод — монотонный бустинг; параметры подбирают с монотонными ограничениями (секция 11)</td></tr>
+    <tr><td>нейросети</td><td>дорогие испытания — Hyperband/ASHA; медленный разгон (warmup) требует большого стартового бюджета (секции 7–8)</td></tr>
+    <tr><td>соревнования</td><td>длинный TPE, AutoGluon <code>best_quality</code>, стек; выбор по вложенной схеме (секции 6, 11)</td></tr>
+  </table>
+
+  <h3 style="margin:30px 0 16px;font-size:20px">10 подводных камней</h3>
+
+  <div class="pf"><div class="pfn">01</div><div class="pfc"><b>Шаг обучения без логарифмической шкалы</b><span>В [0.001, 0.01] попадает 3% проб вместо 40% (секция 3).</span></div></div>
+  <div class="pf"><div class="pfn">02</div><div class="pfc"><b>Не смотреть на границы диапазонов</b><span>num_leaves упёрся в 8; расширение до 2 дало +0.002 — больше смены метода (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">03</div><div class="pfc"><b>Выбрасывать параметры по важностям одного запуска</b><span>На 40 испытаниях главным выходил то bagging_fraction (0.38), то шаг (0.51) (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">04</div><div class="pfc"><b>Считать важности по испытаниям TPE</b><span>Шаг вышел четвёртым (0.08): TPE почти не варьировал его у конца поиска (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">05</div><div class="pfc"><b>Отчитываться лучшим значением на проверке</b><span>Победитель завышен удачей отбора; у TPE на 0.0017, при сотнях похожих конфигураций — сильнее (секция 6).</span></div></div>
+  <div class="pf"><div class="pfn">06</div><div class="pfc"><b>Агрессивный отсев при медленном старте</b><span>Песочница, s = 2: отсев находит лучшую в 7% повторов, случайный поиск — в 16% (секция 7).</span></div></div>
+  <div class="pf"><div class="pfn">07</div><div class="pfc"><b>Ждать многого от смены сэмплера</b><span>TPE против случайного поиска — 0.7989 против 0.7974 при разбросе по сидам 0.002–0.005 (секции 1, 6).</span></div></div>
+  <div class="pf"><div class="pfn">08</div><div class="pfc"><b>Один lgb.Dataset на все испытания без feature_pre_filter=False</b><span>Смена min_child_samples между испытаниями падает с LightGBMError (секция 9).</span></div></div>
+  <div class="pf"><div class="pfn">09</div><div class="pfc"><b>Оптимизировать только качество при ограничении задержки</b><span>В 6.5 раза больше листьев ради 0.0004 AUC на тесте (секция 10).</span></div></div>
+  <div class="pf"><div class="pfn">10</div><div class="pfc"><b>AutoML поверх неверной схемы проверки</b><span>Перебор выберет конфигурацию, которая лучше всех использует утечку (секция 11).</span></div></div>
+
+  <p class="next">Осталось свести формулы на один экран и разобрать три задачи из работы.</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sh"><span class="snum">14</span><h2>Шпаргалка формул и задачи у доски</h2></div>
+  <p class="slead">Все формулы темы на одном экране, затем три прикладные задачи о подборе и AutoML. Решения скрыты.</p>
+
+  <table class="ct cs">
+    <tr><th>№</th><th>Что это · формула</th><th>Когда применять</th></tr>
+    <tr><td><a href="#s2">1</a></td><td><b>Выбор алгоритма и параметров (CASH)</b><br><tex>\arg\min_{A,\ \lambda \in \Lambda_A}\frac{1}{K}\sum_k \mathcal{L}(A_\lambda, D^{(k)})</tex><div class="cs-w">пространство условное</div></td><td>постановка AutoML</td></tr>
+    <tr><td><a href="#s3">2</a></td><td><b>Размер сетки</b><br><tex>N_{\text{сетка}} = \prod_{i=1}^{d} k_i</tex><div class="cs-w"><tex>k_i</tex> значений у параметра <tex>i</tex></div></td><td>стоит ли перебирать сеткой</td></tr>
+    <tr><td><a href="#s3">3</a></td><td><b>Доля проб в отрезке</b><br><tex>p_{\text{равн}} = \frac{b - a}{B - A}</tex>, <tex>p_{\text{лог}} = \frac{\ln(b/a)}{\ln(B/A)}</tex><div class="cs-w">лог-шкала — равные доли декадам</div></td><td>шаг, штрафы, листья</td></tr>
+    <tr><td><a href="#s4">4</a></td><td><b>Ожидаемое улучшение</b><br><tex>\text{EI} = (\mu - f^+)\Phi(Z) + \sigma\varphi(Z)</tex>, <tex>Z = (\mu - f^+)/\sigma</tex><div class="cs-w">эксплуатация + исследование</div></td><td>выбор точки в BO</td></tr>
+    <tr><td><a href="#s4">5</a></td><td><b>Верхняя граница уверенности</b><br><tex>\text{UCB} = \mu + \kappa\sigma</tex><div class="cs-w"><tex>\kappa</tex> — ручка баланса</div></td><td>выбор точки в BO</td></tr>
+    <tr><td><a href="#s5">6</a></td><td><b>Критерий TPE</b><br><tex>\arg\max_\lambda \ell(\lambda)/g(\lambda)</tex><div class="cs-w">хороших <tex>\min(\lceil 0.1n\rceil, 25)</tex></div></td><td>как ищет Optuna</td></tr>
+    <tr><td><a href="#s7">7</a></td><td><b>Successive Halving</b><br><tex>n_k = \lfloor n/\eta^k\rfloor</tex>, <tex>r_k = r\eta^k</tex>, экономия <tex>\eta^{L-1}/L</tex><div class="cs-w"><tex>L</tex> — число раундов</div></td><td>дорогие испытания</td></tr>
+    <tr><td><a href="#s8">8</a></td><td><b>Брекеты Hyperband</b><br><tex>s_{\max} = \lfloor\log_\eta(R/r_{\min})\rfloor</tex>, <tex>n_s = \lceil\frac{s_{\max}+1}{s+1}\eta^s\rceil</tex>, <tex>r_s = R\eta^{-s}</tex><div class="cs-w"><tex>s = 0</tex> — случайный поиск</div></td><td>неизвестно, с какого бюджета судить</td></tr>
+    <tr><td><a href="#s8">9</a></td><td><b>Продвижение ASHA</b><br><tex>\operatorname{rank}_k(\lambda) \le \lfloor |S_k|/\eta\rfloor</tex><div class="cs-w">без ожидания медленных</div></td><td>кластер</td></tr>
+    <tr><td><a href="#s10">10</a></td><td><b>Доминирование по Парето</b><br><tex>a \succ b</tex>: не хуже по всем целям, лучше хотя бы по одной<div class="cs-w">фронт — недоминируемые</div></td><td>качество и задержка</td></tr>
+  </table>
+  <p class="tcap">Номера совпадают с карточками в тексте.</p>
+
+  <div class="task">
+    <div class="task-h">Задача 1 · 300 моделей спроса в ночном окне</div>
+    <div class="task-q">Сеть из 300 магазинов, у каждого своя модель LightGBM, переобучение каждую ночь, окно — 3 часа на 16 ядрах. Сейчас параметры одни на всех и подобраны год назад. Как встроить подбор?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Бюджет.</b> 3 часа × 16 ядер на 300 моделей — около 10 ядро-минут на магазин: полноценный поиск каждую ночь не влезает. Подбор — раз в неделю или по тревоге дрейфа, каждую ночь — только переобучение с найденными параметрами. Бюджет в <code>timeout</code>, параллельно — ASHA или Hyperband (секция 8).</p>
+      <p><b>Тёплый старт.</b> Общая модель по всем магазинам даёт стартовую точку: <code>enqueue_trial</code> с её параметрами и с прошлым победителем магазина, узкие диапазоны вокруг них. Магазины группируют по размеру: маленьким — сильнее штрафы и меньше листьев, иначе подбор подгоняет шум (секция 6).</p>
+      <p><b>Проверка и выкладка.</b> Разрез по времени с зазором (<a href="block1_01_validation_schemes.html#s5">1.1, секция 5</a>); новая конфигурация заменяет старую, только если парно лучше на последних неделях; исследования версионируются по данным и признакам (секции 9, 12).</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 2 · Скоринг: AutoML или своя модель</div>
+    <div class="task-q">AutoGluon за час дал AUC на 0.012 выше, чем скоркарта банка. Риск-менеджмент просит «выкатить AutoGluon». Регулятор требует причину каждого отказа и монотонность по долговой нагрузке. Что ответить?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Сначала проверка.</b> Убедиться, что AutoGluon и скоркарта оценены на одной отложенной выборке по времени, парно (<a href="block1_08_ensembles.html#s8">1.8, секция 8</a>), и что в данных нет утечки, которую AutoML мог найти (секция 11).</p>
+      <p><b>Промежуточная модель.</b> Монотонный LightGBM (<a href="block0_24_boosting_practice.html#s9">0.24, секция 9</a>) с подбором параметров в Optuna: одна модель, объяснимая через SHAP, монотонность гарантирована. Часто она забирает большую часть разницы.</p>
+      <p><b>Решение.</b> Остаток разницы до AutoGluon — цена объяснимости; её переводят в деньги (одобрения и дефолты на порогах) и решают явно. AutoGluon остаётся планкой: если разрыв растёт — признаки в скоркарте устарели.</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <div class="task-h">Задача 3 · Рекомендации с задержкой 20 мс</div>
+    <div class="task-q">Модель ранжирования подбирают по NDCG, лучшая конфигурация — 2 000 деревьев по 255 листьев, ответ 45 мс при ограничении 20 мс на всю выдачу. Как перестроить подбор?</div>
+    <details><summary>Показать решение</summary><div class="sol">
+      <p><b>Две цели.</b> <code>directions=['maximize', 'minimize']</code>: NDCG и задержка, измеренная на сервере прода на реальном батче, а не число листьев (секция 10). Из <code>best_trials</code> берут лучшую по NDCG среди укладывающихся в бюджет с запасом.</p>
+      <p><b>Пространство.</b> Ограничить сверху число деревьев и листьев так, чтобы заведомо медленные конфигурации туда не попадали, — дешевле, чем тратить на них испытания. Ранняя остановка по NDCG и прунер по промежуточным значениям (секция 9).</p>
+      <p><b>Если всё равно не влезает.</b> Дистилляция большой модели в маленькую (<a href="block1_08_ensembles.html#s11">1.8, секция 11</a>) или двухступенчатая схема: дешёвый отбор кандидатов, точное ранжирование только верхних.</p>
+    </div></details>
+  </div>
+
+  <p class="next">И последнее — вопросы, которые задают на собеседованиях.</p>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sh"><span class="snum">15</span><h2>20 вопросов и ответов</h2></div>
+  <p class="slead">Вопросы в том виде, в каком их задают на собеседованиях. Ответ открывается по клику — сначала ответьте сами.</p>
+  <div class="qa-ctrl"><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=true})">Раскрыть все</button><button type="button" onclick="document.querySelectorAll('details.qa').forEach(function(d){d.open=false})">Свернуть все</button></div>
+
+  <details class="qa"><summary>1. Что такое CASH и чем он сложнее обычного подбора параметров?</summary><div class="qa-a">Одновременный выбор алгоритма и его гиперпараметров. Пространство становится условным: у каждого алгоритма свои параметры, и часть их существует только при определённом выборе.</div></details>
+
+  <details class="qa"><summary>2. Зачем шаг обучения ищут в логарифмической шкале?</summary><div class="qa-a">Влияние шага зависит от порядка величины, а не от разности. При равномерном выборе из [0.001, 0.3] в первую декаду попадает 3% проб, при логарифмическом — 40%.</div></details>
+
+  <details class="qa"><summary>3. Что делает функция выбора следующей точки в байесовской оптимизации?</summary><div class="qa-a">Превращает прогноз суррогата и его неуверенность в одну оценку полезности испытания. Она высока там, где прогноз хороший, и там, где суррогат ничего не знает.</div></details>
+
+  <details class="qa"><summary>4. Чем TPE отличается от байесовской оптимизации на гауссовском процессе?</summary><div class="qa-a">GP моделирует качество при параметрах, TPE — плотность параметров у хороших и плохих испытаний. TPE дешевле и легко работает с категориальными и условными параметрами, GP экономнее на гладких задачах.</div></details>
+
+  <details class="qa"><summary>5. Почему TPE называется «tree-structured»?</summary><div class="qa-a">Из-за дерева в пространстве поиска: часть параметров существует только при определённых значениях других. Отсюда define-by-run в Optuna — пространство задаётся кодом с if.</div></details>
+
+  <details class="qa"><summary>6. Что такое γ в TPE и что будет, если сделать его большим?</summary><div class="qa-a">Доля испытаний, считающихся хорошими; в Optuna — лучшие 10%, но не больше 25. При большой доле плотности хороших и плохих почти совпадут, и поиск станет случайным.</div></details>
+
+  <details class="qa"><summary>7. Зачем TPE стартовые случайные испытания?</summary><div class="qa-a">Чтобы плотности строились не по одной-двум точкам. По умолчанию их 10. От узкого высокого пика они не спасают: TPE всё равно уходит туда, где уже хорошо.</div></details>
+
+  <details class="qa"><summary>8. Учитывает ли TPE в Optuna взаимодействия параметров?</summary><div class="qa-a">В Optuna 5 при одной цели — да: многомерный TPE включён по умолчанию. Раньше по умолчанию был независимый, и его включали через multivariate=True.</div></details>
+
+  <details class="qa"><summary>9. Во сколько раз Successive Halving дешевле полного перебора?</summary><div class="qa-a">Каждый раунд стоит столько же, сколько первый, поэтому экономия — η в степени (L − 1), делённое на L, где L — число раундов. 81 конфигурация, η = 3, 4 раунда — в 6.75 раза.</div></details>
+
+  <details class="qa"><summary>10. На каком допущении держится Successive Halving?</summary><div class="qa-a">Что лучшие конфигурации не выглядят плохими на малом бюджете. Полного совпадения порядка не нужно: на кривых темы корреляция на 10% бюджета была 0.21, а лучшая всё равно выжила.</div></details>
+
+  <details class="qa"><summary>11. Зачем Hyperband, если есть Successive Halving?</summary><div class="qa-a">Отсеву нужно заранее выбрать стартовый бюджет. Hyperband запускает несколько отсевов с разным стартом, включая вариант без отсева, и страхует от неверного выбора.</div></details>
+
+  <details class="qa"><summary>12. Чем ASHA отличается от синхронного отсева?</summary><div class="qa-a">Продвигает конфигурацию сразу, как только она в лучшей доле уже дошедших до уровня, не дожидаясь остальных. На кластере воркеры не простаивают.</div></details>
+
+  <details class="qa"><summary>13. Что такое BOHB?</summary><div class="qa-a">Hyperband, в котором конфигурации берутся не случайно, а из TPE. Умное распределение бюджета плюс умный выбор точек; в Optuna — TPESampler с HyperbandPruner.</div></details>
+
+  <details class="qa"><summary>14. Когда ранний отсев не окупается?</summary><div class="qa-a">Когда полное обучение занимает секунды, когда у бюджета нет естественной шкалы и когда хорошие конфигурации стартуют медленно сильнее, чем различаются в конце.</div></details>
+
+  <details class="qa"><summary>15. Лучшее значение параметра оказалось на границе диапазона. Что делать?</summary><div class="qa-a">Расширить диапазон и продолжить поиск: оптимум может быть за границей. В теме число листьев упёрлось в 8, расширение до 2 подняло тест на 0.002.</div></details>
+
+  <details class="qa"><summary>16. Почему важности параметров по испытаниям TPE обманчивы?</summary><div class="qa-a">TPE к концу почти не меняет важные параметры, и их влияние не видно в данных. Важности считают по случайным испытаниям или по сотням испытаний и проверяют на нескольких сидах.</div></details>
+
+  <details class="qa"><summary>17. Как учесть в подборе задержку модели?</summary><div class="qa-a">Искать по двум целям и выбирать точку на фронте Парето, укладывающуюся в ограничение. Задержку мерить на целевом железе; надёжнее всего не пускать медленные конфигурации в пространство.</div></details>
+
+  <details class="qa"><summary>18. Почему AutoGluon почти не подбирает гиперпараметры?</summary><div class="qa-a">Авторы получили, что ансамбль разных моделей с хорошими значениями по умолчанию даёт больше, чем настройка одной. Бюджет идёт на bagging и многоуровневый стекинг.</div></details>
+
+  <details class="qa"><summary>19. Когда AutoML вредит?</summary><div class="qa-a">Поверх неверной схемы проверки — он выберет то, что лучше всех использует утечку. На малых данных — подгоняет шум. И в проде, где нужны объяснение решений или жёсткая задержка.</div></details>
+
+  <details class="qa"><summary>20. Как встроить подбор в регулярное переобучение?</summary><div class="qa-a">Тёплый старт от прошлого исследования, бюджет во времени, версия исследования по данным и признакам, результат — параметры, решение о выкладке — по отложенной выборке и парному сравнению.</div></details>
+</section>
+
+<div class="roadmini">
+  <b>Где это в курсе.</b> Опора — гиперпараметры бустинга и ручной рецепт из <a href="block0_24_boosting_practice.html#s7">0.24</a>, завышение победителя и вложенная проверка из <a href="block1_01_validation_schemes.html#s10">1.1</a>, ансамбли и жадный отбор из <a href="block1_08_ensembles.html#s5">1.8</a>. Дальше — метрика и постановка задачи в теме 1.10: что именно оптимизировать.
+</div>
+
+<div class="pnav">
+  <a href="block1_08_ensembles.html">← 1.8 · Ансамбли и стекинг</a>
+  <a class="next" href="block1_10_metrics_framing.html">1.10 · Выбор метрики и постановка задачи →</a>
+</div>
+
+</div>
+
+
+<script>
+/* на телефоне графики выше: при соотношении 2:1 легенда съедает почти всю область рисования */
+Chart.defaults.aspectRatio=(window.innerWidth||1024)<640?1.05:2;
+Chart.defaults.animation=false; Chart.defaults.color='#cbd5e1'; Chart.defaults.borderColor='#1e293b'; Chart.defaults.font.family="-apple-system,'Segoe UI',Roboto,sans-serif";
+function mk(id, cfg){ var el=document.getElementById(id); if(!el) return null; try{ return new Chart(el.getContext('2d'), cfg); }catch(e){ console.log(id, e); return null; } }
+var GRID={grid:{color:'#1e293b'}};
+var BL='#60a5fa', OR='#fb923c', RD='#f87171', GY='#94a3b8', WH='#e2e8f0', GR='#34d399';
+var LEG={legend:{position:'bottom',labels:{filter:function(it){ return !!it.text; }}}};
+function L(v,label,color,dash,w){ return {type:'line',label:label,data:v,borderColor:color,backgroundColor:color,borderWidth:w||2.2,borderDash:dash||[],pointRadius:0,fill:false,tension:0}; }
+function XY(v,label,color,dash,w,pr){ return Object.assign(L(v.map(function(p){ return {x:p[0],y:p[1]}; }),label,color,dash,w),{pointRadius:pr||0}); }
+function LOGT(list){ return function(v){ return list.indexOf(+v.toPrecision(6))>=0?String(v):''; }; }
+
+/* числа — scratchpad t19: sim19a.py, post19a.py, sim19b.py, sim19c.py, arith19.py */
+var CH={"grid":{"g":[[0.16666666666666666,0.16666666666666666],[0.16666666666666666,0.5],[0.16666666666666666,0.8333333333333334],[0.5,0.16666666666666666],[0.5,0.5],[0.5,0.8333333333333334],[0.8333333333333334,0.16666666666666666],[0.8333333333333334,0.5],[0.8333333333333334,0.8333333333333334]],"r":[[0.086,0.237],[0.801,0.582],[0.094,0.433],[0.479,0.16],[0.735,0.114],[0.391,0.517],[0.431,0.587],[0.738,0.956],[0.284,0.649]]},"tpe":{"x":[-3.0,-2.938,-2.876,-2.814,-2.752,-2.69,-2.628,-2.567,-2.505,-2.443,-2.381,-2.319,-2.257,-2.195,-2.133,-2.071,-2.009,-1.947,-1.885,-1.823,-1.761,-1.7,-1.638,-1.576,-1.514,-1.452,-1.39,-1.328,-1.266,-1.204,-1.142,-1.08,-1.018,-0.956,-0.894,-0.833,-0.771,-0.709,-0.647,-0.585,-0.523],"l":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.001,0.003,0.006,0.012,0.024,0.045,0.08,0.134,0.214,0.323,0.462,0.628,0.811,0.995,1.163,1.293,1.371,1.386,1.339,1.236,1.092,0.924,0.749,0.582,0.433,0.308,0.209,0.136,0.084,0.049,0.028],"g":[0.414,0.427,0.434,0.435,0.431,0.42,0.404,0.381,0.351,0.315,0.273,0.228,0.183,0.141,0.103,0.072,0.048,0.03,0.018,0.01,0.006,0.004,0.004,0.006,0.011,0.02,0.036,0.06,0.095,0.145,0.21,0.289,0.381,0.478,0.574,0.658,0.719,0.751,0.748,0.71,0.641]},"cur":{"r":[1,16,31,46,61,76,91,106,121,136,151,166,181,196,211,226,241,256,271,286,301,316,331,346,361,376,391,406,421,436,451,466,481,496,511,526,541,556,571,586],"best":[0.6914,0.7506,0.7631,0.769,0.7725,0.7741,0.7763,0.7783,0.7791,0.7797,0.7803,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806,0.7806],"fast":[0.6699,0.762,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655,0.7655],"slow":[0.6667,0.7181,0.7252,0.729,0.7313,0.7348,0.7385,0.7407,0.7437,0.7459,0.7487,0.7503,0.7526,0.7539,0.7556,0.7571,0.7584,0.7596,0.7605,0.7613,0.7623,0.7635,0.7642,0.7652,0.7664,0.7669,0.7675,0.7681,0.7687,0.7693,0.7698,0.7706,0.7709,0.7715,0.7719,0.7722,0.7723,0.7729,0.7732,0.7735],"worst":[0.6886,0.7225,0.7248,0.7248,0.7249,0.726,0.729,0.7292,0.7311,0.7315,0.7322,0.733,0.7336,0.7338,0.7344,0.7349,0.7355,0.7362,0.7373,0.7382,0.7388,0.7396,0.7403,0.7411,0.7419,0.7426,0.7436,0.7443,0.7448,0.7456,0.7462,0.7469,0.748,0.7489,0.7495,0.7504,0.7511,0.7515,0.7521,0.7527]},"hist":{"r":[0.7737,0.7759,0.7759,0.7762,0.7772,0.7772,0.7777,0.7777,0.78,0.78,0.7801,0.7801,0.7801,0.7801,0.7807,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809,0.7809],"t":[0.7737,0.7759,0.7759,0.7762,0.7772,0.7772,0.7777,0.7777,0.78,0.78,0.78,0.78,0.7805,0.7806,0.7813,0.7813,0.7817,0.7817,0.7817,0.7817,0.7823,0.7823,0.7823,0.7823,0.7823,0.7823,0.7823,0.7823,0.7825,0.7825,0.7825,0.7825,0.7832,0.7832,0.7832,0.7832,0.7832,0.7832,0.7832,0.7832]},"imp":{"lab":["learning_rate","num_leaves","min_child_samples","feature_fraction","bagging_fraction","lambda_l2","lambda_l1"],"s0":[0.24,0.18,0.11,0.04,0.38,0.05,0.0],"s1":[0.51,0.11,0.07,0.22,0.05,0.02,0.02],"s2":[0.52,0.19,0.12,0.05,0.07,0.02,0.02],"all":[0.64,0.1,0.1,0.09,0.05,0.02,0.0]},"par":{"all":[[104,0.7152],[152,0.7384],[152,0.7384],[152,0.7384],[247,0.7513],[250,0.7279],[336,0.7731],[540,0.7224],[583,0.7767],[605,0.7133],[605,0.7133],[605,0.7133],[630,0.7751],[640,0.78],[666,0.7609],[672,0.7433],[700,0.771],[750,0.7809],[784,0.7721],[784,0.7721],[784,0.7721],[784,0.7707],[816,0.777],[858,0.7651],[880,0.7789],[901,0.7719],[945,0.7675],[960,0.7723],[966,0.7734],[1001,0.7749],[1005,0.7762],[1058,0.7695],[1071,0.7682],[1120,0.7808],[1150,0.7603],[1162,0.7781],[1173,0.7708],[1260,0.7786],[1260,0.7778],[1296,0.7752],[1309,0.7791],[1309,0.7774],[1330,0.7686],[1470,0.7808],[1485,0.7789],[1536,0.7746],[1550,0.7825],[1555,0.7495],[1599,0.779],[1610,0.7752],[1624,0.7797],[1632,0.7819],[1640,0.7666],[1702,0.7736],[1710,0.7771],[1768,0.7805],[1830,0.7777],[1872,0.7745],[1890,0.7779],[1896,0.7696],[1920,0.7655],[1920,0.7655],[1920,0.7655],[2000,0.7548],[2080,0.7742],[2110,0.7757],[2112,0.7809],[2120,0.7802],[2120,0.7802],[2120,0.7803],[2184,0.7828],[2220,0.7787],[2277,0.7691],[2331,0.7504],[2400,0.7804],[2419,0.7693],[2511,0.7728],[2520,0.7514],[2583,0.7723],[2624,0.7814],[2700,0.7759],[2730,0.7821],[2756,0.7786],[2763,0.7817],[2820,0.7773],[2834,0.7789],[2952,0.7828],[2970,0.7749],[2990,0.7468],[2990,0.7468],[2990,0.7468],[3015,0.7806],[3072,0.7776],[3080,0.7798],[3110,0.7775],[3132,0.7809],[3224,0.7792],[3240,0.7578],[3328,0.7791],[3350,0.7758],[3384,0.7701],[3392,0.7745],[3406,0.758],[3480,0.7805],[3500,0.7797],[3519,0.7823],[3542,0.7678],[3627,0.7788],[3636,0.7833],[3680,0.7802],[3720,0.7763],[3726,0.7749],[3740,0.7805],[3750,0.7787],[3776,0.7794],[3780,0.7791],[3894,0.7827],[3915,0.7748],[4005,0.781],[4228,0.7815],[4228,0.7815],[4305,0.7781],[4459,0.7719],[4482,0.7684],[4656,0.7824],[4728,0.7819],[4768,0.7757],[4800,0.7757],[4800,0.7773],[4800,0.7839],[4800,0.7757],[4800,0.7757],[4886,0.7845],[4995,0.7786],[5031,0.7841],[5070,0.7798],[5082,0.7781],[5082,0.7781],[5239,0.7776],[5380,0.7805],[5382,0.7805],[5382,0.7812],[5391,0.7685],[5400,0.7733],[5400,0.7733],[5400,0.7756],[5474,0.7794],[5568,0.7822],[5640,0.7781],[5660,0.778],[5814,0.7745],[5840,0.7686],[5990,0.7777],[6000,0.758],[6000,0.758],[6000,0.7733],[6148,0.7758],[6148,0.7758],[6148,0.7758],[6248,0.7774],[6248,0.7774],[6248,0.7774],[6600,0.7755],[7000,0.7817],[7176,0.7788],[7200,0.771],[7201,0.7791],[7476,0.7744],[7696,0.7818],[7787,0.7762],[7803,0.7779],[7992,0.7689],[8555,0.777],[8568,0.7736],[8985,0.7762],[9000,0.7783],[9099,0.7783],[9099,0.7783],[9099,0.7783],[9100,0.776],[9504,0.7771],[9520,0.7812],[9633,0.7769],[9720,0.7387],[10200,0.7571],[10200,0.7571],[10200,0.7571],[10386,0.7792],[10731,0.7749],[10800,0.7799],[10800,0.7808],[11132,0.7804],[11153,0.78],[11229,0.7807],[11400,0.7807],[11438,0.7757],[11760,0.7623],[12384,0.7744],[12552,0.7801],[12600,0.7682],[13156,0.7658],[13200,0.7799],[13200,0.7823],[13589,0.758],[13608,0.7817],[13754,0.7721],[13800,0.7765],[14382,0.7574],[14840,0.7801],[14925,0.782],[15052,0.758],[16100,0.7712],[16119,0.7761],[16173,0.7602],[16200,0.7774],[16200,0.7703],[16400,0.774],[16400,0.774],[16899,0.7787],[16899,0.7787],[17264,0.7729],[17325,0.7537],[17325,0.7537],[17325,0.7537],[17400,0.7788],[17618,0.7659],[17618,0.7659],[17618,0.7659],[18012,0.7728],[18040,0.7646],[18040,0.7646],[18040,0.7646],[18126,0.7635],[19108,0.7657],[19200,0.7558],[19800,0.7687],[19800,0.7687],[19800,0.7748],[20570,0.7594],[20886,0.774],[22001,0.7762],[23400,0.7732],[23754,0.7622],[23754,0.7622],[23760,0.7746],[23760,0.7746],[24000,0.7708],[24000,0.777],[24553,0.778],[24610,0.7674],[24780,0.7611],[25662,0.7689],[25800,0.7755],[26400,0.748],[26924,0.7619],[26924,0.7619],[28324,0.7735],[28363,0.77],[29547,0.7737],[33000,0.7685],[35697,0.7787],[38595,0.7771],[38595,0.7771],[39534,0.7768],[40066,0.7698],[40194,0.7747],[40194,0.7747],[40194,0.7747],[40592,0.7409],[42840,0.7703],[45998,0.7621],[48822,0.7748],[48954,0.7727],[49385,0.7721],[49800,0.7757],[52688,0.7798],[53044,0.7683],[53311,0.7685],[53354,0.7718],[53640,0.7752],[58800,0.7753],[62015,0.7706],[62015,0.7706],[62015,0.7706],[62828,0.7681],[63042,0.7627],[75993,0.7694],[81600,0.766],[81600,0.766],[83410,0.7656],[94010,0.7799],[101781,0.7734],[104400,0.7659],[107400,0.7756],[110460,0.767],[110460,0.767],[116451,0.7734],[123664,0.7675],[124200,0.7621],[124200,0.7621],[132379,0.7614],[142766,0.7561],[183600,0.7626],[183600,0.7626],[183600,0.7626],[198000,0.7685],[202878,0.7727],[238800,0.7721],[241893,0.7767]],"front":[[104,0.7152],[152,0.7384],[247,0.7513],[336,0.7731],[583,0.7767],[640,0.78],[750,0.7809],[1550,0.7825],[2184,0.7828],[3636,0.7833],[4800,0.7839],[4886,0.7845]]}};
+
+/* 1 — сетка и случайные точки */
+(function(){
+  var D=CH.grid, P=function(v,label,color){ return Object.assign(XY(v,label,color,null,0,6),{showLine:false}); };
+  mk('c_grid',{type:'scatter',data:{datasets:[P(D.g,'сетка 3 × 3',OR),P(D.r,'9 случайных точек',BL)]},
+    options:{responsive:true,scales:{x:Object.assign({min:0,max:1,ticks:{stepSize:0.2},title:{display:true,text:'важный параметр'}},GRID),y:Object.assign({min:0,max:1,ticks:{stepSize:0.2},title:{display:true,text:'неважный параметр'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 2 — плотности TPE */
+(function(){
+  var D=CH.tpe, z=function(v){ return D.x.map(function(x,i){ return [x,v[i]]; }); };
+  mk('c_tpe',{type:'line',data:{datasets:[XY(z(D.l),'ℓ — хорошие',GR,null,2.4),XY(z(D.g),'g — плохие',GY,null,2.4)]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:-3,max:-0.5,ticks:{stepSize:0.5},title:{display:true,text:'log₁₀ шага обучения'}},GRID),y:Object.assign({min:0,max:1.5,ticks:{stepSize:0.25},title:{display:true,text:'плотность'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 3 — кривые обучения */
+(function(){
+  var D=CH.cur, z=function(v){ return D.r.map(function(r,i){ return [r,v[i]]; }); }, V=function(x){ return XY([[x,0.66],[x,0.79]],'',WH,[4,4],1); };
+  mk('c_curves',{type:'line',data:{datasets:[XY(z(D.best),'лучшая, шаг 0.051',GR,null,2.4),XY(z(D.fast),'быстрая, шаг 0.24',OR,null,2.2),XY(z(D.slow),'медленная, шаг 0.007',BL,null,2.2),XY(z(D.worst),'худшая',GY,null,2),V(22),V(67),V(200)]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:0,max:600,ticks:{stepSize:100},title:{display:true,text:'деревьев'}},GRID),y:Object.assign({min:0.66,max:0.79,ticks:{stepSize:0.02},title:{display:true,text:'AUC на проверке'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 4 — лучшее найденное */
+(function(){
+  var D=CH.hist, z=function(v){ return v.map(function(y,i){ return [i+1,y]; }); };
+  mk('c_hist',{type:'line',data:{datasets:[XY(z(D.r),'случайный поиск',GY,null,2.4),XY(z(D.t),'TPE',GR,null,2.4)]},
+    options:{responsive:true,scales:{x:Object.assign({type:'linear',min:1,max:40,ticks:{stepSize:5},title:{display:true,text:'испытание'}},GRID),y:Object.assign({min:0.773,max:0.784,ticks:{stepSize:0.002},title:{display:true,text:'лучшее AUC на проверке'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 5 — важности */
+(function(){
+  var D=CH.imp, B=function(v,label,color){ return {label:label,data:v,backgroundColor:color,borderWidth:0}; };
+  mk('c_imp',{type:'bar',data:{labels:D.lab,datasets:[B(D.s0,'сид 0','#64748b'),B(D.s1,'сид 1',GY),B(D.s2,'сид 2','#cbd5e1'),B(D.all,'все 120',GR)]},
+    options:{responsive:true,scales:{x:Object.assign({},GRID),y:Object.assign({min:0,max:0.7,ticks:{stepSize:0.1},title:{display:true,text:'доля важности'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* 6 — фронт Парето */
+(function(){
+  var D=CH.par, st=[]; D.front.forEach(function(p,i){ if(i>0) st.push([p[0],D.front[i-1][1]]); st.push(p); });
+  mk('c_pareto',{type:'scatter',data:{datasets:[Object.assign(XY(D.all,'все испытания',GY,null,0,2.5),{showLine:false}),Object.assign(XY(st,'фронт Парето',GR,null,2.4,0),{showLine:true}),Object.assign(XY(D.front,'',GR,null,0,4),{showLine:false})]},
+    options:{responsive:true,scales:{x:Object.assign({type:'logarithmic',min:50,max:400000,title:{display:true,text:'листьев во всех деревьях'},ticks:{callback:LOGT([100,1000,10000,100000])}},GRID),y:Object.assign({min:0.70,max:0.79,ticks:{stepSize:0.02},title:{display:true,text:'AUC на проверке'}},GRID)},plugins:Object.assign({},LEG)}});
+})();
+
+/* Successive Halving против случайного поиска той же стоимости (= engine19.py).
+   У конфигурации i итоговое качество q_i ~ N(0, 1) и «медленный старт» a_i = 0.6 q_i + 0.8 e_i;
+   на доле бюджета b оценка q_i − s·a_i·(1 − b) + σ·шум. 300 повторов. */
+var SH={
+  N:[27,81], E:[2,3,4], L:[2,3,4], S:[0,0.5,1,2], G:[0,0.1,0.3], REP:300,
+  rng:function(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; },
+  calc:function(ni,ei,li,si,gi){ var n=SH.N[ni], eta=SH.E[ei], L=SH.L[li], s=SH.S[si], g=SH.G[gi],
+      u=SH.rng(1900+1000*ni+100*ei+10*li+3*si+gi), nr=function(){ var u1=u(), u2=u(); return Math.sqrt(-2*Math.log(1-u1))*Math.cos(2*Math.PI*u2); },
+      cost=0, hitS=0, hitR=0, regS=0, regR=0, rep, i, k;
+    for(rep=0;rep<SH.REP;rep++){
+      var q=[], a=[], best=0;
+      for(i=0;i<n;i++){ q.push(nr()); a.push(0.6*q[i]+0.8*nr()); if(q[i]>q[best]) best=i; }
+      var alive=[], c=0; for(i=0;i<n;i++) alive.push(i);
+      for(k=0;k<L;k++){
+        var b=Math.pow(eta,k-(L-1)); c+=alive.length*b;
+        var sc=alive.map(function(j){ return [q[j]-s*a[j]*(1-b)+g*nr(), j]; });
+        sc.sort(function(x,y){ return y[0]-x[0]||x[1]-y[1]; });
+        if(k<L-1){ var keep=Math.max(1,Math.floor(alive.length/eta)); alive=sc.slice(0,keep).map(function(x){ return x[1]; }); }
+        else alive=[sc[0][1]];
+      }
+      var win=alive[0], m=Math.min(n,Math.max(1,Math.floor(c+1e-9))), wr=0, bo=-1e9;
+      for(i=0;i<m;i++){ var o=q[i]+g*nr(); if(o>bo){ bo=o; wr=i; } }
+      cost+=c; if(win===best) hitS++; if(wr===best) hitR++; regS+=q[best]-q[win]; regR+=q[best]-q[wr];
+    }
+    var R=SH.REP;
+    return {n:n,eta:eta,L:L,s:s,g:g,cost:cost/R,hitS:hitS/R,hitR:hitR/R,regS:regS/R,regR:regR/R,minb:Math.pow(eta,-(L-1))}; },
+  text:function(r){ var f=function(x){ return x.toFixed(3); }, p=function(x){ return Math.round(100*x)+'%'; };
+    return r.n+' конфигураций, η = '+r.eta+', раундов '+r.L+': первый раунд — '+(r.minb<1?'1/'+Math.round(1/r.minb):'1')+' полного бюджета'+
+      '\nмедленный старт s = '+r.s+', шум оценки σ = '+r.g+
+      '\nстоимость отсева: '+r.cost.toFixed(1)+' полных обучений (всех до конца — '+r.n+')'+
+      '\nотсев:             лучшая найдена в '+p(r.hitS)+' повторов, потеря '+f(r.regS)+
+      '\nслучайный поиск из '+Math.max(1,Math.floor(r.cost+1e-9))+' полных: лучшая в '+p(r.hitR)+', потеря '+f(r.regR)+
+      '\nпотеря — насколько выбранная конфигурация хуже лучшей из '+r.n+' (в единицах разброса качества)'; }
+};
+
+
+/* песочница: отсев против случайного поиска */
+(function(){
+  if(!document.getElementById('c_play')) return;
+  function el(id){ return document.getElementById(id); }
+  var ch=mk('c_play',{type:'bar',data:{labels:['отсев','случайный'],datasets:[]},options:{responsive:true,indexAxis:'y',scales:{x:Object.assign({min:0,max:100,ticks:{stepSize:20},title:{display:true,text:'% повторов с лучшей'}},GRID),y:Object.assign({},GRID)},plugins:{legend:{display:false}}}});
+  if(!ch) return;
+  function draw(){
+    var r=SH.calc(+el('sl_n').value,+el('sl_e').value,+el('sl_l').value,+el('sl_s').value,+el('sl_g').value);
+    ch.data.datasets=[{label:'',data:[100*r.hitS,100*r.hitR],backgroundColor:[GR,GY],borderWidth:0}];
+    ch.update();
+    el('o_n').textContent=String(r.n); el('o_e').textContent=String(r.eta); el('o_l').textContent=String(r.L); el('o_s').textContent=String(r.s); el('o_g').textContent=String(r.g);
+    el('out_play').textContent=SH.text(r);
+  }
+  ['sl_n','sl_e','sl_l','sl_s','sl_g'].forEach(function(id){ el(id).addEventListener('input',draw); });
+  try{ draw(); }catch(e){ console.log('sandbox', e); }
+})();
+</script>
+
+</body>
+</html>

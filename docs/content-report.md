@@ -56,8 +56,8 @@
 | block1_05_missing.html | 869 | 15 | 20 | 6 / 6 |  | 0 |  |
 | block1_06_class_imbalance.html | 1022 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_07_calibration.html | 1074 | 15 | 20 | 7 / 7 |  | 0 |  |
-| block1_08_ensembles.html | 1145 | 15 | 20 | 8 / 8 |  | 0 |  |
-| block1_09_automl.html | 133 | 11 | 20 | 6 / 6 | да | 0 |  |
+| block1_08_ensembles.html | 1146 | 15 | 20 | 8 / 8 |  | 0 |  |
+| block1_09_automl.html | 1031 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_10_metrics_framing.html | 167 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block1_11_mlops.html | 127 | 10 | 22 | 4 / 4 | да | 0 |  |
 | block1_12_conformal.html | 211 | 15 | 30 | 16 / 16 | да | 0 |  |
@@ -127,4 +127,4 @@
 | block8_08_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block8_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 78 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 79 | 0 | 0 | 0 / 0 |  | 0 |  |
