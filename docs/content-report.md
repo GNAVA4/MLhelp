@@ -55,7 +55,7 @@
 | block1_04_leakage.html | 929 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_05_missing.html | 869 | 15 | 20 | 6 / 6 |  | 0 |  |
 | block1_06_class_imbalance.html | 1022 | 15 | 20 | 7 / 7 |  | 0 |  |
-| block1_07_calibration.html | 219 | 15 | 30 | 16 / 16 | да | 0 |  |
+| block1_07_calibration.html | 1074 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_08_ensembles.html | 177 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_09_automl.html | 133 | 11 | 20 | 6 / 6 | да | 0 |  |
 | block1_10_metrics_framing.html | 167 | 15 | 30 | 13 / 13 | да | 0 |  |
