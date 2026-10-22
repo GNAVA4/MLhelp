@@ -57,8 +57,8 @@
 | block1_06_class_imbalance.html | 1022 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_07_calibration.html | 1074 | 15 | 20 | 7 / 7 |  | 0 |  |
 | block1_08_ensembles.html | 1146 | 15 | 20 | 8 / 8 |  | 0 |  |
-| block1_09_automl.html | 1031 | 15 | 20 | 7 / 7 |  | 0 |  |
-| block1_10_metrics_framing.html | 167 | 15 | 30 | 13 / 13 | да | 0 |  |
+| block1_09_automl.html | 1030 | 15 | 20 | 7 / 7 |  | 0 |  |
+| block1_10_metrics_framing.html | 1200 | 15 | 20 | 8 / 8 |  | 0 |  |
 | block1_11_mlops.html | 127 | 10 | 22 | 4 / 4 | да | 0 |  |
 | block1_12_conformal.html | 211 | 15 | 30 | 16 / 16 | да | 0 |  |
 | block1_13_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
