@@ -1,6 +1,6 @@
 # Отчёт о состоянии контента
 
-Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-11-07. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
+Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-11-10. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
 **Итого:** 120 страниц, без проблем — 120, с проблемами — 0.
 
@@ -31,7 +31,7 @@
 | block0_21_gradient_boosting.html | 1733 | 15 | 30 | 16 / 16 |  | 0 |  |
 | block0_22_xgboost_math.html | 2114 | 15 | 30 | 14 / 14 |  | 0 |  |
 | block0_23_lightgbm_catboost.html | 1722 | 15 | 30 | 13 / 13 |  | 0 |  |
-| block0_24_boosting_practice.html | 973 | 15 | 20 | 8 / 8 |  | 0 |  |
+| block0_24_boosting_practice.html | 983 | 15 | 20 | 8 / 8 |  | 0 |  |
 | block0_plan.html | 80 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block10_01_ml_setup.html | 697 | 10 | 0 | 1 / 1 |  | 0 |  |
 | block10_02_statistics.html | 764 | 10 | 0 | 1 / 1 |  | 0 |  |
