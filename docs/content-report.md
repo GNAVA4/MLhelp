@@ -63,7 +63,7 @@
 | block1_12_conformal.html | 211 | 15 | 30 | 16 / 16 | да | 0 |  |
 | block1_13_gradient_boosting.html | 210 | 15 | 30 | 12 / 12 | да | 0 |  |
 | block1_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
-| block2_01_ab_testing.html | 151 | 15 | 30 | 14 / 14 | да | 0 |  |
+| block2_01_ab_testing.html | 846 | 15 | 20 | 8 / 8 |  | 0 |  |
 | block2_02_cuped.html | 124 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block2_03_srm_diagnostics.html | 181 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block2_04_sequential_testing.html | 197 | 15 | 30 | 15 / 15 | да | 0 |  |
@@ -127,4 +127,4 @@
 | block8_08_agents.html | 240 | 15 | 30 | 13 / 13 | да | 0 |  |
 | block8_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block9_quiz.html | 16 | 0 | 0 | 0 / 0 |  | 0 |  |
-| index_roadmap.html | 79 | 0 | 0 | 0 / 0 |  | 0 |  |
+| index_roadmap.html | 78 | 0 | 0 | 0 / 0 |  | 0 |  |
