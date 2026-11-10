@@ -2,7 +2,7 @@
 
 Каталог `content-legacy`. Сгенерирован `node tools/check-all.js` 2026-11-10. Проверка: `tools/check-page.js` (jsdom + настоящий Chart.js 4.4.1 + заглушка canvas).
 
-**Итого:** 120 страниц, без проблем — 120, с проблемами — 0.
+**Итого:** 121 страниц, без проблем — 121, с проблемами — 0.
 
 Колонки: секции (`id="sN"`), Q&A (`details.qa` + `div.qa`), графики (создано / `canvas#c_*`), CDN — Chart.js грузится с CDN.
 
@@ -74,6 +74,7 @@
 | block2_quiz.html | 17 | 0 | 0 | 0 / 0 |  | 0 |  |
 | block3_01_backprop.html | 109 | 9 | 20 | 2 / 2 | да | 0 |  |
 | block3_02_optimizers.html | 112 | 10 | 20 | 6 / 6 | да | 0 |  |
+| block3_03_embeddings_tokens.html | 712 | 15 | 20 | 5 / 5 |  | 0 |  |
 | block3_04_attention.html | 190 | 16 | 32 | 5 / 5 | да | 0 |  |
 | block3_05_normalization.html | 110 | 9 | 21 | 3 / 3 | да | 0 |  |
 | block3_06_ssl.html | 175 | 15 | 30 | 7 / 7 | да | 0 |  |

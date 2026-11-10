@@ -45,8 +45,12 @@ export default function Catalog({ manifest }) {
 
       <div className="blocks">
         {blocks.map((b) => (
-          <BlockCard key={b.id} block={b} topics={b.topicIds.map((id) => byId[id])} progress={progress}
-            open={!!open[b.id]} onToggle={() => toggle(b.id)} />
+          <div key={b.id}>
+            {b.id === '10' && <h2 className="route-heading">Экспресс-маршрут</h2>}
+            {b.id === '0' && <h2 className="route-heading">Полный курс</h2>}
+            <BlockCard block={b} topics={b.topicIds.map((id) => byId[id])} progress={progress}
+              open={!!open[b.id]} onToggle={() => toggle(b.id)} />
+          </div>
         ))}
       </div>
     </div>
